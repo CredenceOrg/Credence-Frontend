@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 export default function Home() {
   return (
     <div>
@@ -6,8 +8,8 @@ export default function Home() {
         On-chain economic identity on Stellar. Stake USDC as a programmable reputation bond.
       </p>
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <a
-          href="/bond"
+        <Link
+          to="/bond"
           style={{
             padding: '0.75rem 1.25rem',
             background: '#0ea5e9',
@@ -17,9 +19,9 @@ export default function Home() {
           }}
         >
           Create bond
-        </a>
-        <a
-          href="/trust"
+        </Link>
+        <Link
+          to="/trust"
           style={{
             padding: '0.75rem 1.25rem',
             background: '#e2e8f0',
@@ -29,7 +31,7 @@ export default function Home() {
           }}
         >
           View trust score
-        </a>
+        </Link>
       </div>
     </div>
   )

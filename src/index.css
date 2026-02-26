@@ -56,4 +56,12 @@ a:hover {
 
 .skip-link:focus {
   top: 0.5rem;
+/* Loading skeleton animation */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }

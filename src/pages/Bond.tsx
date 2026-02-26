@@ -1,10 +1,23 @@
+import Banner from '../components/Banner'
+import { useToast } from '../components/ToastProvider'
+
 export default function Bond() {
+  const { addToast } = useToast()
+
+  const handleCreate = () => {
+    addToast('success', 'Bond created successfully.')
+  }
+
   return (
     <div>
       <h1 style={{ marginBottom: '0.5rem' }}>Bond USDC</h1>
       <p id="bond-desc" style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+      <p id="bond-desc" style={{ color: '#64748b', marginBottom: '1rem' }}>
         Lock USDC into the Credence contract to build your economic reputation.
       </p>
+      <Banner severity="info">
+        Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
+      </Banner>
       <div
         style={{
           maxWidth: '24rem',
@@ -12,6 +25,7 @@ export default function Bond() {
           border: '1px solid #e2e8f0',
           borderRadius: '12px',
           background: '#fff',
+          marginTop: '1rem',
         }}
       >
         <label htmlFor="bond-amount" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -34,6 +48,7 @@ export default function Bond() {
         />
         <button
           type="button"
+          onClick={handleCreate}
           style={{
             marginTop: '1rem',
             width: '100%',

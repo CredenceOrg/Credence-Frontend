@@ -2,7 +2,7 @@ export default function Bond() {
   return (
     <div>
       <h1 style={{ marginBottom: '0.5rem' }}>Bond USDC</h1>
-      <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+      <p id="bond-desc" style={{ color: '#64748b', marginBottom: '1.5rem' }}>
         Lock USDC into the Credence contract to build your economic reputation.
       </p>
       <div
@@ -14,14 +14,16 @@ export default function Bond() {
           background: '#fff',
         }}
       >
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+        <label htmlFor="bond-amount" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
           Amount (USDC)
         </label>
         <input
+          id="bond-amount"
           type="number"
           placeholder="0"
           min="0"
           step="1"
+          aria-describedby="bond-desc"
           style={{
             width: '100%',
             padding: '0.75rem',
@@ -36,7 +38,7 @@ export default function Bond() {
             marginTop: '1rem',
             width: '100%',
             padding: '0.75rem',
-            background: '#0ea5e9',
+            background: '#0284c7',
             color: '#fff',
             border: 'none',
             borderRadius: '8px',

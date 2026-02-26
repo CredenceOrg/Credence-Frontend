@@ -10,9 +10,10 @@ export default function Home() {
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
         <Link
           to="/bond"
+          role="button"
           style={{
             padding: '0.75rem 1.25rem',
-            background: '#0ea5e9',
+            background: '#0284c7',
             color: '#fff',
             borderRadius: '8px',
             fontWeight: 600,
@@ -22,6 +23,7 @@ export default function Home() {
         </Link>
         <Link
           to="/trust"
+          role="button"
           style={{
             padding: '0.75rem 1.25rem',
             background: '#e2e8f0',

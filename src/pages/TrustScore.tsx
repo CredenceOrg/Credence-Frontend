@@ -2,7 +2,7 @@ export default function TrustScore() {
   return (
     <div>
       <h1 style={{ marginBottom: '0.5rem' }}>Trust Score</h1>
-      <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+      <p id="trust-desc" style={{ color: '#64748b', marginBottom: '1.5rem' }}>
         Your reputation score is computed from bond amount, duration, and attestations.
       </p>
       <div
@@ -14,12 +14,14 @@ export default function TrustScore() {
           background: '#fff',
         }}
       >
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+        <label htmlFor="wallet-address" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
           Identity / Wallet address
         </label>
         <input
+          id="wallet-address"
           type="text"
           placeholder="G..."
+          aria-describedby="trust-desc"
           style={{
             width: '100%',
             padding: '0.75rem',
@@ -34,7 +36,7 @@ export default function TrustScore() {
           style={{
             width: '100%',
             padding: '0.75rem',
-            background: '#0ea5e9',
+            background: '#0284c7',
             color: '#fff',
             border: 'none',
             borderRadius: '8px',

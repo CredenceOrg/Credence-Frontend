@@ -11,6 +11,7 @@ export default function Bond() {
   return (
     <div>
       <h1 style={{ marginBottom: '0.5rem' }}>Bond USDC</h1>
+      <p id="bond-desc" style={{ color: '#64748b', marginBottom: '1.5rem' }}>
       <p id="bond-desc" style={{ color: '#64748b', marginBottom: '1rem' }}>
         Lock USDC into the Credence contract to build your economic reputation.
       </p>

@@ -11,6 +11,7 @@ export default function TrustScore() {
   return (
     <div>
       <h1 style={{ marginBottom: '0.5rem' }}>Trust Score</h1>
+      <p id="trust-desc" style={{ color: '#64748b', marginBottom: '1.5rem' }}>
       <p id="trust-desc" style={{ color: '#64748b', marginBottom: '1rem' }}>
         Your reputation score is computed from bond amount, duration, and attestations.
       </p>

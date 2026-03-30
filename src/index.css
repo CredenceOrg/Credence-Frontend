@@ -1,9 +1,20 @@
 :root {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: #0f172a;
   background-color: #f8fafc;
+
+  /* Premium Color Palette */
+  --primary: #0284c7;
+  --primary-hover: #0369a1;
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-400: #94a3b8;
+  --slate-600: #475569;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
 }
 
 * {
@@ -14,19 +25,22 @@
 
 body {
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
-  color: #0284c7;
+  color: var(--primary);
   text-decoration: none;
+  transition: color 0.2s ease;
 }
 
 a:hover {
-  text-decoration: underline;
+  color: var(--primary-hover);
 }
 
 :focus-visible {
-  outline: 2px solid #0284c7;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -47,15 +61,93 @@ a:hover {
   top: -100%;
   left: 1rem;
   padding: 0.5rem 1rem;
-  background: #0284c7;
+  background: var(--primary);
   color: #fff;
   border-radius: 4px;
   font-weight: 600;
   z-index: 100;
+  transition: top 0.2s ease;
 }
 
 .skip-link:focus {
   top: 0.5rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  width: 100%;
+}
+
+/* App Shell Components */
+.app-header {
+  border-bottom: 1px solid var(--slate-200);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+}
+
+.app-nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.nav-link {
+  color: var(--slate-600);
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  color: var(--slate-900);
+  text-decoration: none;
+}
+
+.nav-link.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.app-footer {
+  margin-top: auto;
+  padding: 3rem 0;
+  border-top: 1px solid var(--slate-200);
+  color: var(--slate-600);
+  font-size: 0.875rem;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footer-link {
+  color: var(--slate-400);
+  transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+  color: var(--primary);
+}
+
 /* Loading skeleton animation */
 @keyframes shimmer {
   0% {

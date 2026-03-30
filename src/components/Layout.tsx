@@ -1,4 +1,4 @@
-import { Outlet, Link } from 'react-router-dom'
+import { Outlet, Link, NavLink } from 'react-router-dom'
 
 export default function Layout() {
   return (
@@ -6,27 +6,40 @@ export default function Layout() {
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <header
-        style={{
-          padding: '1rem 2rem',
-          borderBottom: '1px solid #e2e8f0',
-          background: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1.5rem',
-        }}
-      >
-        <Link to="/" style={{ fontWeight: 700, fontSize: '1.25rem', color: '#0f172a' }}>
-          Credence
-        </Link>
-        <nav aria-label="Main navigation" style={{ display: 'flex', gap: '1rem' }}>
-          <Link to="/bond">Bond</Link>
-          <Link to="/trust">Trust Score</Link>
-        </nav>
+
+      <header className="app-header">
+        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link to="/" style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--slate-900)', letterSpacing: '-0.025em' }}>
+            Credence
+          </Link>
+          <nav className="app-nav" aria-label="Main navigation">
+            <NavLink to="/bond" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              Bond
+            </NavLink>
+            <NavLink to="/trust" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              Trust Score
+            </NavLink>
+          </nav>
+        </div>
       </header>
-      <main id="main-content" style={{ flex: 1, padding: '2rem' }}>
+
+      <main id="main-content" className="container" style={{ flex: 1, padding: '3rem 2rem' }}>
         <Outlet />
       </main>
+
+      <footer className="app-footer">
+        <div className="container footer-content">
+          <div>
+            <p style={{ fontWeight: 600, color: 'var(--slate-900)', marginBottom: '0.25rem' }}>Credence</p>
+            <p>© 2026 Credence Protocol. Built on Stellar.</p>
+          </div>
+          <div className="footer-links">
+            <a href="#" className="footer-link">Documentation</a>
+            <a href="#" className="footer-link">Terms of Service</a>
+            <a href="#" className="footer-link">Privacy Policy</a>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

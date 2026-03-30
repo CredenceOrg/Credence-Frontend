@@ -1,7 +1,8 @@
-import type { BannerSeverity } from './Banner'
 import './Toast.css'
 
-const ICONS: Record<BannerSeverity, string> = {
+export type ToastSeverity = 'info' | 'success' | 'warning' | 'danger'
+
+const ICONS: Record<ToastSeverity, string> = {
     info: 'ℹ️',
     success: '✅',
     warning: '⚠️',
@@ -10,7 +11,7 @@ const ICONS: Record<BannerSeverity, string> = {
 
 export interface ToastData {
     id: string
-    severity: BannerSeverity
+    severity: ToastSeverity
     message: string
 }
 

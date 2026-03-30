@@ -39,16 +39,3 @@ export default function Layout() {
     </div>
   )
 }
-```
-
----
-
-## What changed (so you understand it):
-- `padding: '1rem 2rem'` → `padding: '1rem var(--container-padding)'` on header
-- `padding: '2rem'` → fluid padding + max-width on main
-
----
-
-Commit message:
-```
-feat(design): unify responsive breakpoints and section spacing

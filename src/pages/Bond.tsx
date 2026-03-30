@@ -1,4 +1,5 @@
 import Banner from '../components/Banner'
+import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
 
 export default function Bond() {
@@ -11,7 +12,6 @@ export default function Bond() {
   return (
     <div>
       <h1 style={{ marginBottom: '0.5rem' }}>Bond USDC</h1>
-      <p id="bond-desc" style={{ color: '#64748b', marginBottom: '1.5rem' }}>
       <p id="bond-desc" style={{ color: '#64748b', marginBottom: '1rem' }}>
         Lock USDC into the Credence contract to build your economic reputation.
       </p>
@@ -64,6 +64,11 @@ export default function Bond() {
           Create bond
         </button>
       </div>
+
+      <Disclaimer
+        context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
+        termsHref="#"
+      />
     </div>
   )
 }

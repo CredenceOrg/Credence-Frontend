@@ -1,4 +1,5 @@
 import Banner from '../components/Banner'
+import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
 
 export default function TrustScore() {
@@ -11,7 +12,6 @@ export default function TrustScore() {
   return (
     <div>
       <h1 style={{ marginBottom: '0.5rem' }}>Trust Score</h1>
-      <p id="trust-desc" style={{ color: '#64748b', marginBottom: '1.5rem' }}>
       <p id="trust-desc" style={{ color: '#64748b', marginBottom: '1rem' }}>
         Your reputation score is computed from bond amount, duration, and attestations.
       </p>
@@ -62,6 +62,11 @@ export default function TrustScore() {
           Look up score
         </button>
       </div>
+
+      <Disclaimer
+        context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments."
+        termsHref="#"
+      />
     </div>
   )
 }

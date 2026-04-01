@@ -43,6 +43,55 @@ Empty states appear when there's no data to display. They should be encouraging 
 
 ---
 
+## Bond page onboarding
+
+This section defines the first-run help pattern for the Bond page. The goal is to guide new users through their first bond creation without interrupting expert users.
+
+### Pattern
+
+- Show a dismissible coach mark on first Bond page visit when the user has no existing bond.
+- Anchor the coach mark to the bond form area and primary CTA, not as a modal overlay.
+- Provide a complementary inline helper text in the form header or description so the experience is accessible and lightweight.
+- Avoid blocking expert users: the coach mark is optional and can be closed immediately.
+
+### Copy and structure
+
+- Title: "Create your first bond"
+- Description: "Lock USDC into Credence to build your economic reputation. Start with a small amount and your bond will show up in your dashboard."
+- Primary action: "Got it" or "Start bond"
+- Secondary action: "Not now" or close icon
+- Optional inline helper: "Bonds are locked for a minimum of 30 days; early withdrawal may incur a penalty."
+
+### Accessibility requirements
+
+- The coach mark must be reachable by keyboard and screen readers.
+- It must not trap focus. Focus should remain in the main form flow or move naturally to the close button.
+- Use an accessible label and descriptive text, e.g. `aria-describedby="bond-onboarding-desc"`.
+- Support dismissal via keyboard (`Tab`, `Enter`, `Space`, `Escape`).
+- If the coach mark is visible, the page remains fully navigable and the user can interact with the form behind it.
+
+### Dismissal and persistence
+
+- Allow users to dismiss the coach mark with a close button or primary acknowledgment action.
+- Persist dismissal state only after legal/privacy review. For design purposes, the recommended implementation is localStorage with a namespaced key such as `credence.bondOnboardingDismissed`.
+- Do not show the coach mark again after dismissal, unless the user explicitly resets onboarding in settings or clears site data.
+- Do not persist dismissal for authenticated preferences unless privacy requirements allow it.
+
+### When to show it
+
+- First time a wallet user lands on `/bond` and has no active bonds recorded.
+- Do not show on subsequent visits after dismissal.
+- Do not show after the user has already created a bond.
+- On page refresh, if the coach mark was previously dismissed, keep it hidden.
+
+### Developer guidance (design-only)
+
+- Prefer a non-modal toast-like coach mark positioned near the bond amount field and create button.
+- If a static prototype is desired, use a simple page overlay callout on the Bond page in the design doc rather than implementing runtime behavior.
+- Keep the bond form usable while the coach mark is visible.
+
+---
+
 #### 2. No Trust Score Yet
 
 **When**: Address has no trust score data

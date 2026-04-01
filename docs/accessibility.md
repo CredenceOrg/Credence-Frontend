@@ -68,7 +68,9 @@ Use this checklist when building new components or pages.
 - [ ] Focus order follows visual reading order
 - [ ] `:focus-visible` outline is visible on all focusable elements
 - [ ] Custom components support Enter/Space activation
-- [ ] Modal dialogs trap focus and return focus on close
+- [ ] Modal dialogs trap focus and return focus on close (see [Focus Management Spec](focus-patterns.md))
+- [ ] Overlays set initial focus to the correct element per [focus-patterns.md §4](focus-patterns.md#4-initial-focus-rules)
+- [ ] Background is inert (`inert` attribute) while a focus-trapping overlay is active
 
 ### Forms
 
@@ -101,6 +103,30 @@ Use this checklist when building new components or pages.
 - [ ] Language attribute set on `<html lang="en">`
 
 ---
+
+## Form Field Accessibility Patterns
+
+### Labels
+- Every input must have a visible `<label>` element linked via `htmlFor` and `id`.
+- Do not use placeholder text as a substitute for labels — placeholders disappear on focus.
+- Labels should clearly describe the expected input (e.g. "Bond Amount" not "Amount").
+
+### Hint / Helper Text
+- Use helper text below the input to clarify format or requirements (e.g. "Enter amount in USD").
+- Link hint text to the input using `aria-describedby` so screen readers announce it.
+
+### Error / Inline Validation
+- Errors must never rely on color alone — always include an icon (⚠) and descriptive text.
+- Add `aria-invalid="true"` to the input when an error is present.
+- Use `role="alert"` on the error message so screen readers announce it immediately.
+- Error messages should be specific (e.g. "Amount must be greater than 0" not "Invalid input").
+
+### Manual Screen Reader Test Steps (VoiceOver)
+1. Enable VoiceOver (iOS: Settings → Accessibility → VoiceOver).
+2. Navigate to the bond form using swipe gestures.
+3. Confirm each label is announced when focusing its input.
+4. Confirm hint text is read after the label.
+5. Trigger a validation error and confirm the error message is announced automatically.
 
 ## Good vs. Bad Patterns
 
@@ -153,3 +179,6 @@ Use this checklist when building new components or pages.
 
 // Best — use <button> + navigation for true actions
 ```
+
+
+

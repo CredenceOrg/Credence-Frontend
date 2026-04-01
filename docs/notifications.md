@@ -16,8 +16,10 @@ Inline, persistent notification for contextual or global alerts.
 
 Ephemeral overlay notification triggered by user actions or system events.
 
-- Renders fixed top-right, stacked vertically
+- Renders fixed top-right on desktop, and **bottom-center** on mobile
+- Stays safe from covering primary CTAs on small screens
 - Auto-dismisses based on severity timeout
+- Supports "Dismiss All" when multiple toasts are active
 - Use for: action confirmations, transient status updates
 
 ## Severity Levels
@@ -29,13 +31,16 @@ Ephemeral overlay notification triggered by user actions or system events.
 | `warning` | Non-critical concern | Bond nearing slash threshold, low balance |
 | `danger` | Critical / destructive | Bond slashed, protocol paused, transaction failed |
 
+> [!TIP]
+> **Visuals**: Toasts use HSL-based color palettes with glassmorphism (backdrop-blur) and high-quality SVG icons to ensure a premium look and feel.
+
 ## Placement Rules
 
 | Type | Position | Scope |
 |------|----------|-------|
 | Global banner | Between header and `<main>` in Layout | Protocol-wide alerts (e.g. "Protocol paused") |
 | Contextual banner | Inline within page content | Page-specific guidance or warnings |
-| Toast | Fixed top-right overlay | Action confirmations and transient feedback |
+| Toast | Fixed Overlay | **Desktop**: Top-Right. **Mobile**: Bottom-Center. |
 
 ## Timeouts
 
@@ -50,7 +55,8 @@ Ephemeral overlay notification triggered by user actions or system events.
 
 - Maximum **3** toasts visible simultaneously
 - When a 4th toast arrives, the oldest is removed (FIFO)
-- Each toast can also be manually dismissed
+- A "**Dismiss All**" button appears when more than one toast is visible
+- Each toast can also be manually dismissed via the (X) button
 
 ## Accessibility
 
@@ -59,6 +65,7 @@ Ephemeral overlay notification triggered by user actions or system events.
 - Dismiss buttons have `aria-label` text
 - Icons are marked `aria-hidden="true"` (decorative)
 - Dismiss buttons are keyboard-focusable and respond to Enter/Space
+- Supports `prefers-reduced-motion` for simplified entrance animations
 
 ## Event → Notification Mapping
 

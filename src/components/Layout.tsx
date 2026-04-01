@@ -38,6 +38,20 @@ export default function Layout() {
       >
         <Outlet />
       </main>
+
+      <footer className="app-footer">
+        <div className="container footer-content">
+          <div>
+            <p style={{ fontWeight: 600, color: 'var(--slate-900)', marginBottom: '0.25rem' }}>Credence</p>
+            <p>© 2026 Credence Protocol. Built on Stellar.</p>
+          </div>
+          <div className="footer-links">
+            <a href="#" className="footer-link">Documentation</a>
+            <a href="#" className="footer-link">Terms of Service</a>
+            <a href="#" className="footer-link">Privacy Policy</a>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

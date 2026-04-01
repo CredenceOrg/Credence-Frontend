@@ -68,15 +68,18 @@
 
 body {
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
   color: var(--color-primary);
   text-decoration: none;
+  transition: color 0.2s ease;
 }
 
 a:hover {
-  text-decoration: underline;
+  color: var(--primary-hover);
 }
 
 :focus-visible {
@@ -106,6 +109,7 @@ a:hover {
   border-radius: 4px;
   font-weight: 600;
   z-index: 100;
+  transition: top 0.2s ease;
 }
 
 .skip-link:focus {

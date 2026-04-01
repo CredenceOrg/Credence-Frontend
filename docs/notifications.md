@@ -16,8 +16,10 @@ Inline notification for contextual or global alerts. Can be persistent or dismis
 
 Ephemeral overlay notification triggered by user actions or system events.
 
-- Renders fixed top-right, stacked vertically
+- Renders fixed top-right on desktop, and **bottom-center** on mobile
+- Stays safe from covering primary CTAs on small screens
 - Auto-dismisses based on severity timeout
+- Supports "Dismiss All" when multiple toasts are active
 - Use for: action confirmations, transient status updates
 
 ---
@@ -91,19 +93,16 @@ const triggerRef = useRef<HTMLButtonElement>(null)
 
 ---
 
+> [!TIP]
+> **Visuals**: Toasts use HSL-based color palettes with glassmorphism (backdrop-blur) and high-quality SVG icons to ensure a premium look and feel.
+
 ## Placement Rules
 
-| Type               | Position                                  | Scope                                          |
-|--------------------|-------------------------------------------|------------------------------------------------|
-| Global banner      | Between header and `<main>` in Layout     | Protocol-wide alerts (e.g. "Protocol paused")  |
-| Contextual banner  | Inline within page content                | Page-specific guidance or warnings             |
-| Toast              | Fixed top-right overlay                   | Action confirmations and transient feedback    |
-
-### Copy width
-
-Banners cap their content at `max-width: 72ch` to keep line lengths readable on ultra-wide screens. Do not override this with `width: 100%` on the banner itself — let the parent container control horizontal placement.
-
----
+| Type | Position | Scope |
+|------|----------|-------|
+| Global banner | Between header and `<main>` in Layout | Protocol-wide alerts (e.g. "Protocol paused") |
+| Contextual banner | Inline within page content | Page-specific guidance or warnings |
+| Toast | Fixed Overlay | **Desktop**: Top-Right. **Mobile**: Bottom-Center. |
 
 ## Severity Levels (Toast)
 
@@ -120,7 +119,8 @@ Banners cap their content at `max-width: 72ch` to keep line lengths readable on 
 
 - Maximum **3** toasts visible simultaneously
 - When a 4th toast arrives, the oldest is removed (FIFO)
-- Each toast can also be manually dismissed
+- A "**Dismiss All**" button appears when more than one toast is visible
+- Each toast can also be manually dismissed via the (X) button
 
 ---
 
@@ -129,13 +129,10 @@ Banners cap their content at `max-width: 72ch` to keep line lengths readable on 
 - Banners use `role="alert"` for `warning`/`critical` and `role="status"` for `info`/`success`
 - `aria-label` on the banner root announces severity to screen readers
 - Toast container uses `aria-live="polite"` so screen readers announce new toasts
-- Dismiss buttons have `aria-label="Dismiss banner"`
-- Icons are SVG with `aria-hidden="true"` (decorative)
-- Dismiss buttons are keyboard-focusable and respond to `Enter`, `Space`, and `Escape`
-- After dismiss, focus returns to `returnFocusRef` or `document.body`
-- Action links and buttons have `:focus-visible` outlines using `currentColor`
-
----
+- Dismiss buttons have `aria-label` text
+- Icons are marked `aria-hidden="true"` (decorative)
+- Dismiss buttons are keyboard-focusable and respond to Enter/Space
+- Supports `prefers-reduced-motion` for simplified entrance animations
 
 ## Event → Notification Mapping
 

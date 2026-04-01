@@ -1,9 +1,63 @@
 :root {
-  font-family: system-ui, -apple-system, sans-serif;
+  --font-family: system-ui, -apple-system, sans-serif;
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-default: #e2e8f0;
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
+
+  /* Severity Tokens - Light */
+  --bg-info: #eff6ff;
+  --border-info: #3b82f6;
+  --text-info: #1e40af;
+
+  --bg-success: #f0fdf4;
+  --border-success: #22c55e;
+  --text-success: #166534;
+
+  --bg-warning: #fffbeb;
+  --border-warning: #f59e0b;
+  --text-warning: #92400e;
+
+  --bg-danger: #fef2f2;
+  --border-danger: #ef4444;
+  --text-danger: #991b1b;
+
+  font-family: var(--font-family);
   line-height: 1.5;
   font-weight: 400;
-  color: #0f172a;
-  background-color: #f8fafc;
+  color: var(--text-primary);
+  background-color: var(--bg-page);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+[data-theme='dark'] {
+  --bg-page: #0f172a;
+  --bg-card: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-default: #334155;
+  --color-primary: #38bdf8;
+  --color-primary-hover: #7dd3fc;
+
+  /* Severity Tokens - Dark */
+  --bg-info: rgba(59, 130, 246, 0.15);
+  --border-info: #3b82f6;
+  --text-info: #93c5fd;
+
+  --bg-success: rgba(34, 197, 94, 0.15);
+  --border-success: #22c55e;
+  --text-success: #86efac;
+
+  --bg-warning: rgba(245, 158, 11, 0.15);
+  --border-warning: #f59e0b;
+  --text-warning: #fcd34d;
+
+  --bg-danger: rgba(239, 68, 68, 0.15);
+  --border-danger: #ef4444;
+  --text-danger: #fca5a5;
 }
 
 * {
@@ -17,7 +71,7 @@ body {
 }
 
 a {
-  color: #0284c7;
+  color: var(--color-primary);
   text-decoration: none;
 }
 
@@ -26,7 +80,7 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 2px solid #0284c7;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -47,8 +101,8 @@ a:hover {
   top: -100%;
   left: 1rem;
   padding: 0.5rem 1rem;
-  background: #0284c7;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--bg-page);
   border-radius: 4px;
   font-weight: 600;
   z-index: 100;
@@ -56,6 +110,8 @@ a:hover {
 
 .skip-link:focus {
   top: 0.5rem;
+}
+
 /* Loading skeleton animation */
 @keyframes shimmer {
   0% {

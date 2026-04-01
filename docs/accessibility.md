@@ -68,7 +68,9 @@ Use this checklist when building new components or pages.
 - [ ] Focus order follows visual reading order
 - [ ] `:focus-visible` outline is visible on all focusable elements
 - [ ] Custom components support Enter/Space activation
-- [ ] Modal dialogs trap focus and return focus on close
+- [ ] Modal dialogs trap focus and return focus on close (see [Focus Management Spec](focus-patterns.md))
+- [ ] Overlays set initial focus to the correct element per [focus-patterns.md §4](focus-patterns.md#4-initial-focus-rules)
+- [ ] Background is inert (`inert` attribute) while a focus-trapping overlay is active
 
 ### Forms
 

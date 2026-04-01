@@ -1,4 +1,3 @@
-import type { BannerSeverity } from './Banner'
 import './Toast.css'
 
 const ICONS: Record<BannerSeverity, React.ReactNode> = {
@@ -32,7 +31,7 @@ const ICONS: Record<BannerSeverity, React.ReactNode> = {
 
 export interface ToastData {
     id: string
-    severity: BannerSeverity
+    severity: ToastSeverity
     message: string
 }
 

@@ -1,11 +1,10 @@
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
-import type { BannerSeverity } from './Banner'
-import Toast, { type ToastData } from './Toast'
+import Toast, { type ToastData, type ToastSeverity } from './Toast'
 import './Toast.css'
 
 const MAX_TOASTS = 3
 
-const TIMEOUTS: Record<BannerSeverity, number> = {
+const TIMEOUTS: Record<ToastSeverity, number> = {
     info: 5000,
     success: 5000,
     warning: 8000,
@@ -13,7 +12,7 @@ const TIMEOUTS: Record<BannerSeverity, number> = {
 }
 
 interface ToastContextValue {
-    addToast: (severity: BannerSeverity, message: string) => void
+    addToast: (severity: ToastSeverity, message: string) => void
     removeToast: (id: string) => void
     removeAllToasts: () => void
 }
@@ -38,7 +37,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         setToasts([])
     }, [])
 
-    const addToast = useCallback((severity: BannerSeverity, message: string) => {
+    const addToast = useCallback((severity: ToastSeverity, message: string) => {
         const id = String(++idCounter.current)
         setToasts((prev: ToastData[]) => {
             const next = [...prev, { id, severity, message }]

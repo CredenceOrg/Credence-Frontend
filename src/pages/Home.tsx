@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 export default function Home() {
   return (
     <div>
-      <h1 style={{ marginBottom: '0.5rem' }}>Credence — Economic Trust</h1>
-      <p style={{ color: '#64748b', marginBottom: '2rem' }}>
+      <h1 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Credence — Economic Trust</h1>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
         On-chain economic identity on Stellar. Stake USDC as a programmable reputation bond.
       </p>
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -13,10 +13,11 @@ export default function Home() {
           role="button"
           style={{
             padding: '0.75rem 1.25rem',
-            background: '#0284c7',
-            color: '#fff',
+            background: 'var(--color-primary)',
+            color: 'var(--bg-page)',
             borderRadius: '8px',
             fontWeight: 600,
+            textDecoration: 'none',
           }}
         >
           Create bond
@@ -26,10 +27,11 @@ export default function Home() {
           role="button"
           style={{
             padding: '0.75rem 1.25rem',
-            background: '#e2e8f0',
-            color: '#0f172a',
+            background: 'var(--border-default)',
+            color: 'var(--text-primary)',
             borderRadius: '8px',
             fontWeight: 600,
+            textDecoration: 'none',
           }}
         >
           View trust score

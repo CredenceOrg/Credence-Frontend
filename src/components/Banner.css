@@ -1,62 +1,156 @@
+/* ─── Banner base ─────────────────────────────────────────────────────────── */
+
 .banner {
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1rem;
     border-left: 4px solid;
     border-radius: 6px;
     font-size: 0.875rem;
     line-height: 1.5;
+    /* Readable copy max-width — avoids full-bleed text on ultra-wide screens */
+    max-width: 72ch;
+    width: 100%;
 }
 
+/* ─── Severity variants ───────────────────────────────────────────────────── */
+
 .banner--info {
-    background: #eff6ff;
-    border-color: #3b82f6;
-    color: #1e40af;
+    background: var(--bg-info);
+    border-color: var(--border-info);
+    color: var(--text-info);
 }
 
 .banner--success {
-    background: #f0fdf4;
-    border-color: #22c55e;
-    color: #166534;
+    background: var(--bg-success);
+    border-color: var(--border-success);
+    color: var(--text-success);
 }
 
 .banner--warning {
-    background: #fffbeb;
-    border-color: #f59e0b;
-    color: #92400e;
+    background: var(--bg-warning);
+    border-color: var(--border-warning);
+    color: var(--text-warning);
 }
 
 .banner--danger {
-    background: #fef2f2;
-    border-color: #ef4444;
-    color: #991b1b;
+    background: var(--bg-danger);
+    border-color: var(--border-danger);
+    color: var(--text-danger);
 }
+
+/* ─── Dismissible vs persistent visual distinction ────────────────────────── */
+
+/*
+ * Persistent banners have a slightly stronger left border and no close affordance.
+ * They signal "this requires your attention and won't go away on its own."
+ */
+.banner--persistent {
+    border-left-width: 6px;
+}
+
+/*
+ * Dismissible banners use the standard 4px border and show a close button,
+ * signalling the user can acknowledge and move on.
+ */
+.banner--dismissible {
+    border-left-width: 4px;
+    padding-right: 0.75rem;
+}
+
+/* ─── Icon ────────────────────────────────────────────────────────────────── */
 
 .banner__icon {
     flex-shrink: 0;
-    font-size: 1.125rem;
-    line-height: 1;
+    display: flex;
+    align-items: center;
     margin-top: 1px;
+    opacity: 0.85;
 }
 
-.banner__content {
+/* ─── Body ────────────────────────────────────────────────────────────────── */
+
+.banner__body {
     flex: 1;
     min-width: 0;
 }
 
+.banner__title {
+    font-weight: 600;
+    margin: 0 0 0.2rem;
+}
+
+.banner__content {
+    margin: 0;
+}
+
+/* ─── Action link / button ────────────────────────────────────────────────── */
+
+.banner__action {
+    margin-top: 0.5rem;
+}
+
+.banner__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.banner__link:hover {
+    text-decoration-thickness: 2px;
+}
+
+.banner__link:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+    border-radius: 2px;
+    text-decoration: none;
+}
+
+/* Reset button styles for link-as-button variant */
+.banner__link--btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    line-height: inherit;
+}
+
+.banner__link-arrow {
+    flex-shrink: 0;
+}
+
+/* ─── Dismiss button ──────────────────────────────────────────────────────── */
+
 .banner__dismiss {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.125rem;
-    line-height: 1;
-    padding: 0;
+    padding: 0.125rem;
     color: inherit;
-    opacity: 0.6;
+    opacity: 0.5;
+    border-radius: 4px;
+    margin-top: 1px;
+    transition: opacity 0.15s ease;
 }
 
 .banner__dismiss:hover {
+    opacity: 1;
+}
+
+.banner__dismiss:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
     opacity: 1;
 }

@@ -1,0 +1,102 @@
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid transparent;
+}
+
+/* Tier Variants */
+.badge--bronze {
+    --badge-bg: #fef3c7;
+    --badge-color: #92400e;
+    --badge-border: #f59e0b;
+}
+
+[data-theme='dark'] .badge--bronze {
+    --badge-bg: rgba(245, 158, 11, 0.1);
+    --badge-color: #fcd34d;
+    --badge-border: #f59e0b;
+}
+
+.badge--silver {
+    --badge-bg: #f1f5f9;
+    --badge-color: #475569;
+    --badge-border: #94a3b8;
+}
+
+[data-theme='dark'] .badge--silver {
+    --badge-bg: rgba(148, 163, 184, 0.1);
+    --badge-color: #cbd5e1;
+    --badge-border: #94a3b8;
+}
+
+.badge--gold {
+    --badge-bg: #fefce8;
+    --badge-color: #854d0e;
+    --badge-border: #eab308;
+}
+
+[data-theme='dark'] .badge--gold {
+    --badge-bg: rgba(234, 179, 8, 0.1);
+    --badge-color: #fef08a;
+    --badge-border: #eab308;
+}
+
+.badge--platinum {
+    --badge-bg: #eff6ff;
+    --badge-color: #1e3a8a;
+    --badge-border: #3b82f6;
+}
+
+[data-theme='dark'] .badge--platinum {
+    --badge-bg: rgba(59, 130, 246, 0.1);
+    --badge-color: #93c5fd;
+    --badge-border: #3b82f6;
+}
+
+/* Status Variants */
+.badge--active {
+    --badge-bg: var(--bg-success);
+    --badge-color: var(--text-success);
+    --badge-border: var(--border-success);
+}
+
+.badge--locked {
+    --badge-bg: var(--bg-page);
+    --badge-color: var(--text-secondary);
+    --badge-border: var(--border-default);
+}
+
+.badge--slashed {
+    --badge-bg: var(--bg-danger);
+    --badge-color: var(--text-danger);
+    --badge-border: var(--border-danger);
+}
+
+.badge--grace-period {
+    --badge-bg: #f5f3ff;
+    --badge-color: #5b21b6;
+    --badge-border: #8b5cf6;
+}
+
+[data-theme='dark'] .badge--grace-period {
+    --badge-bg: rgba(139, 92, 246, 0.1);
+    --badge-color: #c4b5fd;
+    --badge-border: #8b5cf6;
+}
+
+.badge--unknown {
+    --badge-bg: var(--bg-page);
+    --badge-color: var(--text-secondary);
+    --badge-border: var(--border-default);
+}
+
+.badge {
+    background: var(--badge-bg);
+    color: var(--badge-color);
+    border-color: var(--badge-border);
+}

@@ -1,0 +1,35 @@
+/* ─── Risk / non-financial-advice disclaimer ──────────────────────────────── */
+
+/*
+ * Intentionally secondary: small type, muted color, generous top margin.
+ * Must not compete visually with primary CTAs or page headings.
+ */
+.disclaimer {
+    margin-top: 2rem;
+    max-width: 52ch;
+    font-size: 0.75rem;       /* 12px — readable but clearly subordinate */
+    line-height: 1.6;
+    color: #94a3b8;           /* slate-400 — visible but unobtrusive */
+    border-top: 1px solid #e2e8f0;
+    padding-top: 1rem;
+}
+
+.disclaimer p + p {
+    margin-top: 0.4rem;
+}
+
+.disclaimer a {
+    color: #94a3b8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.disclaimer a:hover {
+    color: #64748b;           /* slightly darker on hover, still secondary */
+}
+
+.disclaimer a:focus-visible {
+    outline: 2px solid #94a3b8;
+    outline-offset: 2px;
+    border-radius: 2px;
+}

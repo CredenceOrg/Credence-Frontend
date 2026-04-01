@@ -1,4 +1,5 @@
 import Banner from '../components/Banner'
+import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
 import Badge from '../components/Badge'
 
@@ -108,6 +109,11 @@ export default function TrustScore() {
           </ul>
         </div>
       </div>
+
+      <Disclaimer
+        context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments."
+        termsHref="#"
+      />
     </div>
   )
 }

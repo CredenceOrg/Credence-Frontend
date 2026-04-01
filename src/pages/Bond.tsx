@@ -1,4 +1,5 @@
 import Banner from '../components/Banner'
+import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
 import Badge from '../components/Badge'
 
@@ -104,6 +105,11 @@ export default function Bond() {
           </ul>
         </div>
       </div>
+
+      <Disclaimer
+        context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
+        termsHref="#"
+      />
     </div>
   )
 }

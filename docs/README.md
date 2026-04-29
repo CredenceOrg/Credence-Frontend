@@ -27,6 +27,13 @@ This directory contains comprehensive design specifications and implementation g
    - Accessibility guidelines
    - Performance considerations
 
+4. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
+   - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
+   - Complete implementation guide with code examples
+   - Accessibility requirements (WCAG 2.1 AA)
+   - Testing guide and troubleshooting
+   - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
+
 ### Quick Start
 
 To implement UI states in your components:
@@ -52,6 +59,12 @@ function MyComponent() {
   - `ErrorState.tsx` - Error state component
   - `LoadingSkeleton.tsx` - Loading skeleton component
   - `index.ts` - Barrel export
+
+- **Navigation Components**: `src/components/navigation/` (to be implemented)
+  - `MobileNav.tsx` - Hamburger menu + drawer (mobile)
+  - `DesktopNav.tsx` - Horizontal navigation (desktop)
+  - `NavigationLinks.tsx` - Shared navigation data
+  - `useMediaQuery.ts` - Breakpoint detection hook
 
 ### Design Principles
 

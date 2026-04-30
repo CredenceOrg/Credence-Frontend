@@ -142,7 +142,7 @@
     opacity: 0.5;
     border-radius: 4px;
     margin-top: 1px;
-    transition: opacity 0.15s ease;
+    transition: opacity var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 
 .banner__dismiss:hover {

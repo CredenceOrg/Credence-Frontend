@@ -23,7 +23,7 @@
   background: var(--credence-surface-card);
   color: var(--credence-text-primary);
   pointer-events: auto;
-  animation: toast-in 0.25s ease-out;
+  animation: toast-in var(--credence-motion-duration-fast) var(--credence-motion-easing-decelerate);
 }
 
 .toast--info {

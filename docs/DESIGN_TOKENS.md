@@ -68,6 +68,25 @@ Credence design tokens are defined in `src/index.css` and use the `--credence-*`
 --credence-line-height-relaxed
 ```
 
+### Motion
+
+```css
+--credence-motion-duration-instant
+--credence-motion-duration-fast
+--credence-motion-duration-base
+--credence-motion-duration-slow
+--credence-motion-easing-standard
+--credence-motion-easing-decelerate
+--credence-motion-easing-accelerate
+--credence-motion-easing-linear
+--credence-motion-skeleton
+```
+
+- Use motion tokens for transitions and animation timing across components.
+- Prefer `--credence-motion-duration-fast` for hover/focus micro-interactions.
+- Prefer `--credence-motion-duration-base` for common UI transitions.
+- Respect `prefers-reduced-motion: reduce` by keeping motion subtle or removing non-essential animation.
+
 ## Example
 
 ```tsx

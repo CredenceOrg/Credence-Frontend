@@ -37,7 +37,7 @@ export default function ThemeToggle() {
         justifyContent: 'center',
         width: '40px',
         height: '40px',
-        transition: 'all 0.2s ease',
+        transition: 'all var(--credence-motion-duration-base) var(--credence-motion-easing-standard)',
       }}
       title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
     >

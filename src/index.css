@@ -30,6 +30,17 @@
   --credence-radius-xl: 0.75rem;
   --credence-radius-full: 9999px;
 
+  /* Motion */
+  --credence-motion-duration-instant: 0ms;
+  --credence-motion-duration-fast: 150ms;
+  --credence-motion-duration-base: 250ms;
+  --credence-motion-duration-slow: 400ms;
+  --credence-motion-easing-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --credence-motion-easing-decelerate: ease-out;
+  --credence-motion-easing-accelerate: ease-in;
+  --credence-motion-easing-linear: linear;
+  --credence-motion-skeleton: shimmer 1.5s infinite;
+
   /* Layout */
   --credence-container-max: 72rem;
   --credence-container-padding: clamp(1rem, 2vw, 2rem);
@@ -135,8 +146,8 @@
   color: var(--credence-text-primary);
   background-color: var(--credence-surface-page);
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+    background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
 }
 
 [data-theme='dark'] {
@@ -184,7 +195,7 @@ body {
 a {
   color: var(--credence-color-primary);
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
 }
 
 a:hover {
@@ -218,7 +229,7 @@ a:hover {
   border-radius: var(--credence-radius-sm);
   font-weight: var(--credence-font-weight-semibold);
   z-index: 100;
-  transition: top 0.2s ease;
+  transition: top var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
 }
 
 .skip-link:focus {
@@ -233,6 +244,23 @@ a:hover {
 
   100% {
     background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --credence-motion-duration-fast: 0ms;
+    --credence-motion-duration-base: 0ms;
+    --credence-motion-duration-slow: 0ms;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-delay: 0ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

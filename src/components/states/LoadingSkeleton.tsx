@@ -14,7 +14,7 @@ export default function LoadingSkeleton({
   const baseStyle = {
     background: 'var(--credence-skeleton-gradient)',
     backgroundSize: '200% 100%',
-    animation: 'shimmer 1.5s infinite',
+    animation: 'var(--credence-motion-skeleton)',
     borderRadius: 'var(--credence-radius-lg)',
   }
 

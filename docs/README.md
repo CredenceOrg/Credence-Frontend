@@ -14,10 +14,15 @@ This directory contains comprehensive design specifications and implementation g
 
 2. **[Design Tokens](./DESIGN_TOKENS.md)**
    - Canonical `--credence-*` CSS variable reference
-   - Color, spacing, radius, and typography scales
+   - Color, spacing, radius, typography, and motion scales
    - Guidance for replacing one-off hex values in components
 
-3. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+3. **[Motion Guidelines](./motion-guidelines.md)**
+   - Motion token strategy and reduced-motion defaults
+   - Best practices for animation and transitions
+   - Implementation examples for UI micro-interactions
+
+4. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
    - Visual design specifications
    - Color palette and design tokens
    - Layout measurements and spacing

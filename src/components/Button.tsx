@@ -1,9 +1,9 @@
-import { ButtonHTMLAttributes, ReactNode } from 'react'
+import { ButtonHTMLAttributes, forwardRef, ReactNode } from 'react'
 import './Button.css'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Visual style variant */
-  variant?: 'primary' | 'secondary' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
   /** Loading state - shows spinner and disables interaction */
   isLoading?: boolean
   /** Full width button */
@@ -16,20 +16,24 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * Standardized button component with consistent variants and interactive states.
  * Includes accessible focus styles and loading state support.
  */
-export default function Button({
-  variant = 'primary',
-  isLoading = false,
-  fullWidth = false,
-  disabled,
-  children,
-  className = '',
-  type = 'button',
-  ...props
-}: ButtonProps) {
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = 'primary',
+    isLoading = false,
+    fullWidth = false,
+    disabled,
+    children,
+    className = '',
+    type = 'button',
+    ...props
+  },
+  ref
+) {
   const isDisabled = disabled || isLoading
 
   return (
     <button
+      ref={ref}
       type={type}
       disabled={isDisabled}
       className={`credence-button credence-button--${variant} ${fullWidth ? 'credence-button--full-width' : ''} ${className}`}
@@ -67,4 +71,6 @@ export default function Button({
       <span className={isLoading ? 'credence-button__content--loading' : ''}>{children}</span>
     </button>
   )
-}
+})
+
+export default Button

@@ -104,6 +104,30 @@
   background: rgba(56, 189, 248, 0.15);
 }
 
+/* Danger variant - destructive confirmations */
+.credence-button--danger {
+  background: var(--credence-color-danger-action);
+  color: var(--credence-color-white);
+  border-color: var(--credence-color-danger-action);
+}
+
+.credence-button--danger:hover:not(:disabled) {
+  background: var(--credence-color-danger-border);
+  border-color: var(--credence-color-danger-border);
+}
+
+.credence-button--danger:active:not(:disabled) {
+  background: var(--credence-color-danger-text);
+  border-color: var(--credence-color-danger-text);
+}
+
+.credence-button--danger:disabled {
+  background: var(--credence-color-danger-surface-strong);
+  border-color: var(--credence-color-danger-border);
+  color: var(--credence-color-danger-text-muted);
+  opacity: 1;
+}
+
 /* Disabled state - all variants */
 .credence-button:disabled {
   cursor: not-allowed;

@@ -44,7 +44,7 @@
 .badge--locked {
   --badge-bg: var(--bg-page);
   --badge-color: var(--text-secondary);
-  --badge-border: var(--border-default);
+  --badge-border: var(--text-secondary);
 }
 
 .badge--slashed {
@@ -62,7 +62,7 @@
 .badge--unknown {
   --badge-bg: var(--bg-page);
   --badge-color: var(--text-secondary);
-  --badge-border: var(--border-default);
+  --badge-border: var(--text-secondary);
 }
 
 .badge {

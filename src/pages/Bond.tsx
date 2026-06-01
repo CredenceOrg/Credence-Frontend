@@ -6,6 +6,7 @@ import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
+import EmptyState from '../components/states/EmptyState'
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -31,12 +32,6 @@ function getPenaltyRate(status: BondStatus): number {
   }
 }
 
-const MOCK_BONDS: MockBond[] = [
-  { id: 1, amountUsdc: 500, status: 'active' },
-  { id: 2, amountUsdc: 1000, status: 'locked' },
-  { id: 3, amountUsdc: 250, status: 'grace-period' },
-]
-
 function computeWithdrawBreakdown(bond: MockBond): ConfirmDialogPenaltyBreakdown & {
   penaltyUsdc: number
 } {
@@ -58,10 +53,18 @@ export default function Bond() {
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
 
+  const bonds: MockBond[] = []
+
   const handleCreate = () => {
     addToast('success', 'Bond created successfully.')
   }
 
+  const focusBondCreation = () => {
+    const createBondInput = document.getElementById('bond-amount')
+    if (!createBondInput) return
+    createBondInput.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    ;(createBondInput as HTMLInputElement).focus()
+  }
 
   const withdrawBreakdown = useMemo(
     () => (withdrawTarget ? computeWithdrawBreakdown(withdrawTarget) : null),
@@ -93,8 +96,8 @@ export default function Bond() {
   }, [withdrawTarget, withdrawBreakdown, addToast])
 
   const slashExposureBond = useMemo(
-    () => MOCK_BONDS.find((b) => getPenaltyRate(b.status) > 0),
-    []
+    () => bonds.find((b) => getPenaltyRate(b.status) > 0),
+    [bonds]
   )
 
   const slashBannerBreakdown = slashExposureBond
@@ -161,42 +164,65 @@ export default function Bond() {
               color: 'var(--text-primary)',
             }}
           />
-          <Button type="button" onClick={handleCreate} fullWidth style={{ marginTop: 'var(--credence-space-4)' }}>
+          <Button
+            type="button"
+            onClick={handleCreate}
+            fullWidth
+            style={{ marginTop: 'var(--credence-space-4)' }}
+          >
             Create bond
           </Button>
         </ActionCard>
 
         <ActionCard title="Active Bonds">
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid' }}>
-            {MOCK_BONDS.map((bond, index) => (
-              <li
-                key={bond.id}
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingBlock: 'var(--credence-space-3)',
-                  borderBottom:
-                    index === MOCK_BONDS.length - 1 ? 'none' : '1px solid var(--border-default)',
-                  gap: 'var(--credence-space-3)',
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--credence-space-1)' }}>
-                  <span style={{ fontWeight: 500 }}>{formatUsdc(bond.amountUsdc)}</span>
-                  <Badge variant={bond.status as BadgeVariant} />
-                </div>
-                <Button
-                  type="button"
-                  variant={getPenaltyRate(bond.status) > 0 ? 'danger' : 'secondary'}
-                  onClick={(event) => requestWithdraw(bond, event)}
-                  aria-haspopup="dialog"
+          {bonds.length === 0 ? (
+            <EmptyState
+              illustration="bond"
+              title="No active bonds"
+              description="You do not have any active bonds yet. Create your first bond to start building on-chain reputation."
+              action={{
+                label: 'Create your first bond',
+                onClick: focusBondCreation,
+              }}
+            />
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid' }}>
+              {bonds.map((bond, index) => (
+                <li
+                  key={bond.id}
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingBlock: 'var(--credence-space-3)',
+                    borderBottom:
+                      index === bonds.length - 1 ? 'none' : '1px solid var(--border-default)',
+                    gap: 'var(--credence-space-3)',
+                  }}
                 >
-                  Withdraw
-                </Button>
-              </li>
-            ))}
-          </ul>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--credence-space-1)',
+                    }}
+                  >
+                    <span style={{ fontWeight: 500 }}>{formatUsdc(bond.amountUsdc)}</span>
+                    <Badge variant={bond.status as BadgeVariant} />
+                  </div>
+                  <Button
+                    type="button"
+                    variant={getPenaltyRate(bond.status) > 0 ? 'danger' : 'secondary'}
+                    onClick={(event) => requestWithdraw(bond, event)}
+                    aria-haspopup="dialog"
+                  >
+                    Withdraw
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
         </ActionCard>
       </div>
 

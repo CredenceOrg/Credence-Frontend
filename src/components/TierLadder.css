@@ -1,0 +1,250 @@
+/* ─── Tier ladder container ───────────────────────────────────────────────── */
+
+.tier-ladder {
+  margin-block: var(--credence-space-4);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+  overflow: hidden;
+  transition:
+    border-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+}
+
+/* ─── Disclosure trigger (native button) ──────────────────────────────────── */
+
+.tier-ladder__trigger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--credence-space-2) var(--credence-space-4);
+  width: 100%;
+  padding: var(--credence-space-4) var(--credence-space-5);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--credence-motion-duration-fast)
+    var(--credence-motion-easing-standard);
+}
+
+.tier-ladder__trigger:hover {
+  background: var(--credence-color-slate-100);
+}
+
+[data-theme='dark'] .tier-ladder__trigger:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.tier-ladder__trigger:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: -2px;
+}
+
+.tier-ladder__trigger-label {
+  flex: 1 1 auto;
+  font-size: var(--credence-font-size-base);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+}
+
+.tier-ladder__trigger-hint {
+  flex: 1 1 100%;
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+  line-height: var(--credence-line-height-base);
+}
+
+@media (min-width: 480px) {
+  .tier-ladder__trigger-hint {
+    flex: 1 1 auto;
+    text-align: right;
+    order: 1;
+  }
+
+  .tier-ladder__trigger-label {
+    order: 0;
+  }
+
+  .tier-ladder__chevron {
+    order: 2;
+  }
+}
+
+.tier-ladder__chevron {
+  flex-shrink: 0;
+  color: var(--credence-text-secondary);
+  transition: transform var(--credence-motion-duration-base)
+    var(--credence-motion-easing-standard);
+}
+
+.tier-ladder__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ─── Expandable panel ────────────────────────────────────────────────────── */
+
+.tier-ladder__panel {
+  border-top: 1px solid var(--credence-border-default);
+  padding: var(--credence-space-5);
+  padding-top: var(--credence-space-4);
+}
+
+.tier-ladder__intro {
+  margin: 0 0 var(--credence-space-6);
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-relaxed);
+  color: var(--credence-text-secondary);
+  max-width: 72ch;
+}
+
+/* ─── Vertical ladder list ────────────────────────────────────────────────── */
+
+.tier-ladder__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-4);
+}
+
+.tier-ladder__step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--credence-space-4);
+  align-items: stretch;
+}
+
+/* ─── Rail / step markers ─────────────────────────────────────────────────── */
+
+.tier-ladder__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 2rem;
+}
+
+.tier-ladder__marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--credence-radius-full);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: 1;
+  background: var(--tier-surface);
+  color: var(--tier-text);
+  border: 2px solid var(--tier-border);
+  flex-shrink: 0;
+}
+
+.tier-ladder__connector {
+  flex: 1;
+  width: 2px;
+  min-height: var(--credence-space-4);
+  margin-block: var(--credence-space-1);
+  background: linear-gradient(
+    to bottom,
+    var(--tier-border),
+    var(--credence-border-default)
+  );
+  border-radius: var(--credence-radius-full);
+}
+
+/* ─── Tier cards (surface / border / text triplet — matches Badge.css) ───── */
+
+.tier-ladder__step--bronze {
+  --tier-surface: var(--credence-color-bronze-surface);
+  --tier-border: var(--credence-color-bronze-border);
+  --tier-text: var(--credence-color-bronze-text);
+}
+
+.tier-ladder__step--silver {
+  --tier-surface: var(--credence-color-silver-surface);
+  --tier-border: var(--credence-color-silver-border);
+  --tier-text: var(--credence-color-silver-text);
+}
+
+.tier-ladder__step--gold {
+  --tier-surface: var(--credence-color-gold-surface);
+  --tier-border: var(--credence-color-gold-border);
+  --tier-text: var(--credence-color-gold-text);
+}
+
+.tier-ladder__step--platinum {
+  --tier-surface: var(--credence-color-platinum-surface);
+  --tier-border: var(--credence-color-platinum-border);
+  --tier-text: var(--credence-color-platinum-text);
+}
+
+.tier-ladder__card {
+  flex: 1;
+  padding: var(--credence-space-4) var(--credence-space-5);
+  border-radius: var(--credence-radius-lg);
+  background: var(--tier-surface);
+  border: 1px solid var(--tier-border);
+  color: var(--tier-text);
+  transition:
+    background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+}
+
+.tier-ladder__card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--credence-space-3);
+  margin-bottom: var(--credence-space-3);
+}
+
+.tier-ladder__threshold {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--credence-space-1);
+}
+
+.tier-ladder__threshold-label {
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-regular);
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tier-ladder__threshold-value {
+  font-size: var(--credence-font-size-lg);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.tier-ladder__tier-name {
+  margin: 0 0 var(--credence-space-3);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+}
+
+.tier-ladder__benefits {
+  margin: 0;
+  padding-left: var(--credence-space-5);
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-relaxed);
+}
+
+.tier-ladder__benefits li + li {
+  margin-top: var(--credence-space-2);
+}
+
+.tier-ladder__benefits li::marker {
+  color: var(--tier-border);
+}

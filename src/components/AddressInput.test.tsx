@@ -1,22 +1,27 @@
-/**
- * NOTE: Regex gap found in AddressInput.tsx.
- * The regex /^G[A-Z0-9]{54}$/ matches 55 characters (G + 54), not 56.
- * A correct Stellar public key is 56 characters, so the regex should be /^G[A-Z0-9]{55}$/.
- * Tests below document the ACTUAL behaviour of the current regex (accepts 55-char keys).
- * Update VALID_KEY and the length-boundary tests once the source bug is fixed.
- */
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import AddressInput from './AddressInput'
+import AddressInput, { truncateAddress } from './AddressInput'
 
-// The current regex /^G[A-Z0-9]{54}$/ accepts exactly 55 chars (G + 54 uppercase alphanum).
-// This is one char short of the true Stellar spec (56) — see regex-gap note above.
-const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN' // 55 chars
+// A valid 56-character Stellar public key
+const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA' // 56 chars
+
+// --- truncateAddress ---
+describe('truncateAddress', () => {
+  it('returns short addresses unchanged', () => {
+    expect(truncateAddress('GABC')).toBe('GABC')
+    expect(truncateAddress('G'.repeat(20))).toBe('G'.repeat(20))
+  })
+
+  it('truncates long addresses correctly', () => {
+    const truncated = truncateAddress(VALID_KEY)
+    expect(truncated).toBe(`${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`)
+  })
+})
 
 // --- isValidStellarAddress (observed via onValidationChange) ---
 describe('isValidStellarAddress', () => {
-  it('passes a valid key accepted by the current regex', () => {
+  it('passes a valid 56-character key', () => {
     const onV = vi.fn()
     render(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} onValidationChange={onV} />)
     expect(onV).toHaveBeenCalledWith(true)
@@ -28,13 +33,13 @@ describe('isValidStellarAddress', () => {
     expect(onV).toHaveBeenCalledWith(false)
   })
 
-  it('rejects a key one char shorter than VALID_KEY (54 chars)', () => {
+  it('rejects a key one char shorter than VALID_KEY (55 chars)', () => {
     const onV = vi.fn()
-    render(<AddressInput id="addr" value={VALID_KEY.slice(0, 54)} onChange={vi.fn()} onValidationChange={onV} />)
+    render(<AddressInput id="addr" value={VALID_KEY.slice(0, 55)} onChange={vi.fn()} onValidationChange={onV} />)
     expect(onV).toHaveBeenCalledWith(false)
   })
 
-  it('rejects a key one char longer than VALID_KEY (56 chars)', () => {
+  it('rejects a key one char longer than VALID_KEY (57 chars)', () => {
     const onV = vi.fn()
     render(<AddressInput id="addr" value={VALID_KEY + 'A'} onChange={vi.fn()} onValidationChange={onV} />)
     expect(onV).toHaveBeenCalledWith(false)
@@ -112,7 +117,7 @@ describe('conditional rendering', () => {
     expect(screen.getByText('Recognized:')).toBeInTheDocument()
     // truncateAddress: first 12 + ... + last 8 chars
     const code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
-    expect(code?.textContent).toBe(`${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`)
+    expect(code?.textContent).toBe(truncateAddress(VALID_KEY))
   })
 
   it('shows character count while there is input', () => {
@@ -125,6 +130,31 @@ describe('conditional rendering', () => {
   it('hides character count when input is empty', () => {
     render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
     expect(document.querySelector('.address-input-count')).toBeNull()
+  })
+})
+
+// --- Accessibility ---
+describe('accessibility', () => {
+  it('associates error with input via aria-describedby', async () => {
+    const user = userEvent.setup()
+    render(<AddressInput id="test-addr" value="invalid" onChange={vi.fn()} />)
+    const input = screen.getByRole('textbox')
+    
+    // Blur to trigger error
+    await user.click(input)
+    await user.tab()
+    
+    const error = screen.getByRole('alert')
+    const errorId = error.getAttribute('id')
+    expect(input.getAttribute('aria-describedby')).toContain(errorId)
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('ensures no duplicate IDs', () => {
+    const { container } = render(<AddressInput id="test-addr" value="" onChange={vi.fn()} />)
+    const elementsWithId = container.querySelectorAll('#test-addr')
+    expect(elementsWithId.length).toBe(1)
+    expect(elementsWithId[0].tagName).toBe('INPUT')
   })
 })
 

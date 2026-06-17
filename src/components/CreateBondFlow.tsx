@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { FormField } from './forms/FormField'
 import Button from './Button'
 import Banner from './Banner'

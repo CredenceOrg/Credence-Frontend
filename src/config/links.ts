@@ -9,9 +9,9 @@ const defaults = {
   privacy: '/legal/privacy',
 } as const
 
-const envDocs = (import.meta as any).env?.VITE_DOCS_URL || (import.meta as any).env?.VITE_DOCS
-const envTerms = (import.meta as any).env?.VITE_TERMS_URL || (import.meta as any).env?.VITE_TERMS
-const envPrivacy = (import.meta as any).env?.VITE_PRIVACY_URL || (import.meta as any).env?.VITE_PRIVACY
+const envDocs = (import.meta as { env?: Record<string, string> }).env?.VITE_DOCS_URL || (import.meta as { env?: Record<string, string> }).env?.VITE_DOCS
+const envTerms = (import.meta as { env?: Record<string, string> }).env?.VITE_TERMS_URL || (import.meta as { env?: Record<string, string> }).env?.VITE_TERMS
+const envPrivacy = (import.meta as { env?: Record<string, string> }).env?.VITE_PRIVACY_URL || (import.meta as { env?: Record<string, string> }).env?.VITE_PRIVACY
 
 export const LINKS = {
   docs: envDocs || defaults.docs,

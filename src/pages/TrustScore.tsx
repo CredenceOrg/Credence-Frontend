@@ -5,6 +5,8 @@ import { useToast } from '../components/ToastProvider'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
+import TierLadder from '../components/TierLadder'
+import EmptyState from '../components/states/EmptyState'
 
 export default function TrustScore() {
   const { addToast } = useToast()

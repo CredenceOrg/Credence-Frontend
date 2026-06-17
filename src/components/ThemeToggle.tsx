@@ -50,23 +50,11 @@ export default function ThemeToggle() {
   })
 
   useEffect(() => {
-    if (themeMode === 'system') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      setResolved(isDark ? 'dark' : 'light')
-    } else {
-      setResolved(themeMode)
-    }
-  }, [themeMode])
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
 
-  const toggleTheme = () => {
-    // if system, switch to explicit opposite of resolved
-    if (themeMode === 'system') {
-      setThemeMode(resolved === 'light' ? 'dark' : 'light')
-    } else {
-      setThemeMode(themeMode === 'light' ? 'dark' : 'light')
-    }
-  }
-
+  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'))
   const nextTheme = theme === 'light' ? 'dark' : 'light'
 
   return (

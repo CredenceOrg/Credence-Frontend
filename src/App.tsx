@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ToastProvider from './components/ToastProvider'
-import { SettingsProvider } from './context/SettingsContext'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import Bond from './pages/Bond'

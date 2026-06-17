@@ -1,6 +1,15 @@
 import { Outlet, Link } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle'
+import LINKS from '../config/links'
 import './Layout.css'
+
+function FooterLink({ label, href }: { label: string; href: string }) {
+  return (
+    <a href={href} className="footer-link" target="_blank" rel="noopener noreferrer">
+      {label}
+    </a>
+  )
+}
 
 export default function Layout() {
   return (

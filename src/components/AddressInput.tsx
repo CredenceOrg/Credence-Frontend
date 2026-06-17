@@ -19,15 +19,100 @@ interface AddressInputProps {
 function isValidStellarAddress(address: string): boolean {
   if (!address) return false
   // Stellar addresses are 56 characters and start with 'G'
-  return /^G[A-Z0-9]{54}$/.test(address)
+  return /^G[A-Z0-9]{55}$/.test(address)
 }
 
 /**
  * Truncates address for display: shows first 12 and last 8 characters
  */
-function truncateAddress(address: string): string {
+export function truncateAddress(address: string): string {
   if (address.length <= 20) return address
   return `${address.substring(0, 12)}...${address.substring(address.length - 8)}`
+}
+
+/**
+ * Internal component to handle prop injection from FormField
+ */
+interface AddressInputInnerProps {
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: 'true' | 'false'
+  inputRef: React.RefObject<HTMLInputElement>
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onBlur: () => void
+  onFocus: () => void
+  disabled: boolean
+  handlePaste: () => void
+  focused: boolean
+  showError: boolean
+  showSuccess: boolean
+}
+
+function AddressInputInner({
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  inputRef,
+  value,
+  onChange,
+  onBlur,
+  onFocus,
+  disabled,
+  handlePaste,
+  focused,
+  showError,
+  showSuccess,
+}: AddressInputInnerProps) {
+  return (
+    <div
+      className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''}`}
+    >
+      <input
+        ref={inputRef}
+        type="text"
+        id={id}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        disabled={disabled}
+        placeholder="Enter Stellar address (G...)"
+        className="address-input-field"
+        spellCheck="false"
+        autoComplete="off"
+        autoCapitalize="off"
+      />
+
+      <button
+        type="button"
+        onClick={handlePaste}
+        disabled={disabled}
+        className="address-input-paste-button"
+        aria-label="Paste address from clipboard"
+        title="Paste address from clipboard"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <path
+            d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
+  )
 }
 
 export default function AddressInput({
@@ -96,69 +181,36 @@ export default function AddressInput({
   const hint = 'Stellar public key format (56 characters, starts with G)'
 
   return (
-    <FormField id={id} label={label} hint={hint} error={error}>
-      <div className={`address-input-wrapper ${className}`}>
-        <div
-          className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''}`}
-        >
-          <input
-            ref={inputRef}
-            type="text"
-            id={id}
-            value={value}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-            disabled={disabled}
-            placeholder="Enter Stellar address (G...)"
-            className="address-input-field"
-            spellCheck="false"
-            autoComplete="off"
-            autoCapitalize="off"
-          />
+    <div className={`address-input-wrapper ${className}`}>
+      <FormField id={id} label={label} hint={hint} error={error}>
+        <AddressInputInner
+          inputRef={inputRef}
+          value={value}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onFocus={handleFocus}
+          disabled={disabled}
+          handlePaste={handlePaste}
+          focused={focused}
+          showError={showError}
+          showSuccess={showSuccess}
+        />
+      </FormField>
 
-          <button
-            type="button"
-            onClick={handlePaste}
-            disabled={disabled}
-            className="address-input-paste-button"
-            aria-label="Paste address from clipboard"
-            title="Paste address from clipboard"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+      {/* Address echo display when valid */}
+      {showSuccess && value && (
+        <div className="address-input-echo">
+          <span className="address-input-echo-label">Recognized:</span>
+          <code className="address-input-echo-value">{truncateAddress(value)}</code>
         </div>
+      )}
 
-        {/* Address echo display when valid */}
-        {showSuccess && value && (
-          <div className="address-input-echo">
-            <span className="address-input-echo-label">Recognized:</span>
-            <code className="address-input-echo-value">{truncateAddress(value)}</code>
-          </div>
-        )}
-
-        {/* Character count hint */}
-        {value && (
-          <div className="address-input-count">
-            {value.length} / 56 characters
-          </div>
-        )}
-      </div>
-    </FormField>
+      {/* Character count hint */}
+      {value && (
+        <div className="address-input-count">
+          {value.length} / 56 characters
+        </div>
+      )}
+    </div>
   )
 }

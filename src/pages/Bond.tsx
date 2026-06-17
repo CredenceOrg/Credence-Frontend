@@ -7,6 +7,8 @@ import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 import EmptyState from '../components/states/EmptyState'
+import { FormField } from '../components/forms/FormField'
+import AmountInput from '../components/AmountInput'
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -52,6 +54,11 @@ export default function Bond() {
   const { addToast } = useToast()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
+
+  const mockedBalance = 10000
+  const [amount, setAmount] = useState('')
+  const overBalance = parseFloat(amount) > mockedBalance
+  const balanceLabel = mockedBalance.toLocaleString('en-US', { maximumFractionDigits: 2 })
 
   const bonds: MockBond[] = []
 

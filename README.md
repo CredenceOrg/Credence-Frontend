@@ -25,6 +25,28 @@ npm run dev
 
 App runs at [http://localhost:5173](http://localhost:5173). API requests to `/api` are proxied to the backend (default `http://localhost:3000`).
 
+## Configuration
+
+Copy `.env.example` to `.env` when you need local link overrides:
+
+```bash
+cp .env.example .env
+```
+
+The footer and legal links are resolved in `src/config/links.ts`. Use placeholder or canonical public URLs only; do not add secrets to Vite env files because `VITE_*` values are exposed to the browser build.
+
+| Variable | Legacy alias | Default fallback | Purpose |
+|----------|--------------|------------------|---------|
+| `VITE_DOCS_URL` | `VITE_DOCS` | `/docs` | Documentation link used in the footer. |
+| `VITE_TERMS_URL` | `VITE_TERMS` | `/legal/terms` | Terms of Service link used in the footer. |
+| `VITE_PRIVACY_URL` | `VITE_PRIVACY` | `/legal/privacy` | Privacy Policy link used in the footer. |
+
+Precedence is `VITE_*_URL` first, then the legacy `VITE_*` alias, then the default fallback path. For example, `VITE_DOCS_URL` wins over `VITE_DOCS`; if neither is set, the app uses `/docs`.
+
+The Vite dev server also proxies local API requests. Requests from the frontend to `/api` are forwarded to `http://localhost:3000` by `vite.config.ts`, so run the backend on port `3000` when testing API-backed flows locally.
+
+The link variable intent and legal handoff notes are also tracked in `docs/footer-link-manifest.md`.
+
 ## Scripts
 
 | Command   | Description          |

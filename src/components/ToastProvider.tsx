@@ -66,7 +66,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         setTimeout(() => removeToast(id), timeout)
       }
     },
-    [removeToast]
+    [removeToast, toastsEnabled, autoDismiss]
   )
 
   return (

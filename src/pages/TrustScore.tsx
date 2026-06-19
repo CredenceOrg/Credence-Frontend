@@ -70,11 +70,11 @@ export default function TrustScore() {
             />
           ) : (
             <ul className="trustScore__activityList">
-              {activity.map((item) => (
+              {activity.map((item, index) => (
                 <li
                   key={item.id}
                   className={`trustScore__activityRow ${
-                    item.id === activity.length ? 'trustScore__activityRow--last' : ''
+                    index === activity.length - 1 ? 'trustScore__activityRow--last' : ''
                   }`}
                 >
                   <div>

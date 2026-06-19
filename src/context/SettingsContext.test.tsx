@@ -1,3 +1,191 @@
+import React from 'react'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { SettingsProvider, useSettings } from './SettingsContext'
+
+const STORAGE_KEY = 'credence:settings'
+
+function StateDump() {
+  const s = useSettings()
+  return (
+    <pre data-testid="state">{JSON.stringify({
+      themeMode: s.themeMode,
+      network: s.network,
+      addressDisplay: s.addressDisplay,
+      toastsEnabled: s.toastsEnabled,
+      autoDismiss: s.autoDismiss,
+    })}</pre>
+  )
+}
+
+function Controls() {
+  const s = useSettings()
+  return (
+    <div>
+      <button data-testid="set-dark" onClick={() => s.setThemeMode('dark')}>
+        dark
+      </button>
+      <button data-testid="set-system" onClick={() => s.setThemeMode('system')}>
+        system
+      </button>
+      <button data-testid="save" onClick={() => s.saveSettings()}>
+        save
+      </button>
+    </div>
+  )
+}
+
+function setupMatchMedia(initialMatches = false) {
+  const listeners = new Set<any>()
+  const add = vi.fn((_: string, cb: any) => listeners.add(cb))
+  const remove = vi.fn((_: string, cb: any) => listeners.delete(cb))
+
+  const mql: any = {
+    matches: initialMatches,
+    addEventListener: add,
+    removeEventListener: remove,
+    // helper to simulate change events in tests
+    _dispatch(matches: boolean) {
+      mql.matches = matches
+      for (const cb of Array.from(listeners)) cb({ matches })
+    },
+  }
+
+  ;(window as any).matchMedia = (_query: string) => mql
+  return mql
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-theme')
+  cleanup()
+})
+
+describe('SettingsContext persistence & theme application', () => {
+  it('hydrates defaults when no key present and applies system theme', () => {
+    const mql = setupMatchMedia(false)
+
+    render(
+      <SettingsProvider>
+        <StateDump />
+      </SettingsProvider>,
+    )
+
+    const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
+    expect(state).toEqual({
+      themeMode: 'system',
+      network: 'public',
+      addressDisplay: 'short',
+      toastsEnabled: true,
+      autoDismiss: '5s',
+    })
+
+    // system + prefers-color-scheme false => light
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+    expect(mql.addEventListener).toHaveBeenCalled()
+  })
+
+  it('restores valid JSON from localStorage', () => {
+    const payload = {
+      themeMode: 'dark',
+      network: 'private',
+      addressDisplay: 'long',
+      toastsEnabled: false,
+      autoDismiss: '10s',
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    setupMatchMedia(false)
+
+    render(
+      <SettingsProvider>
+        <StateDump />
+      </SettingsProvider>,
+    )
+
+    const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
+    expect(state).toEqual(payload)
+    // explicit theme should be applied regardless of matchMedia
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+  })
+
+  it('falls back gracefully on corrupt JSON', () => {
+    localStorage.setItem(STORAGE_KEY, 'not-a-json')
+    setupMatchMedia(false)
+
+    expect(() =>
+      render(
+        <SettingsProvider>
+          <StateDump />
+        </SettingsProvider>,
+      ),
+    ).not.toThrow()
+
+    const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
+    expect(state.themeMode).toBe('system')
+  })
+
+  it('persists full payload when saveSettings is called after changes', () => {
+    setupMatchMedia(false)
+
+    render(
+      <SettingsProvider>
+        <Controls />
+      </SettingsProvider>,
+    )
+
+    fireEvent.click(screen.getByTestId('set-dark'))
+    fireEvent.click(screen.getByTestId('save'))
+
+    const raw = localStorage.getItem(STORAGE_KEY)
+    expect(raw).toBeTruthy()
+    const stored = JSON.parse(raw as string)
+    expect(stored).toEqual({
+      themeMode: 'dark',
+      network: 'public',
+      addressDisplay: 'short',
+      toastsEnabled: true,
+      autoDismiss: '5s',
+    })
+  })
+
+  it('system theme follows matchMedia and updates on change', () => {
+    const mql = setupMatchMedia(true)
+
+    render(
+      <SettingsProvider>
+        <StateDump />
+      </SettingsProvider>,
+    )
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+
+    // simulate user toggling OS theme
+    mql._dispatch(false)
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+  })
+
+  it('removes matchMedia listener on theme change and on unmount', () => {
+    const mql = setupMatchMedia(true)
+
+    const { unmount } = render(
+      <SettingsProvider>
+        <Controls />
+      </SettingsProvider>,
+    )
+
+    // initial effect should have added listener
+    expect(mql.addEventListener).toHaveBeenCalled()
+
+    // change away from system — effect cleanup should remove previous listener
+    fireEvent.click(screen.getByTestId('set-dark'))
+
+    expect(mql.removeEventListener).toHaveBeenCalled()
+
+    // unmount should also attempt to remove listener
+    unmount()
+    expect(mql.removeEventListener).toHaveBeenCalled()
+  })
+})
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

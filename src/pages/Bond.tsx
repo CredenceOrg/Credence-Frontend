@@ -55,15 +55,38 @@ export default function Bond() {
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
 
+  const [error, setError] = useState<string | undefined>(undefined)
   const mockedBalance = 10000
   const [amount, setAmount] = useState('')
   const overBalance = parseFloat(amount) > mockedBalance
   const balanceLabel = mockedBalance.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  const displayError = error || (overBalance ? 'Amount exceeds available balance.' : undefined)
 
   const bonds: MockBond[] = []
 
+  const handleAmountChange = (val: string) => {
+    setAmount(val)
+    if (error) {
+      setError(undefined)
+    }
+  }
+
+  /**
+   * Validates the entered bond amount and fires a success toast if valid,
+   * otherwise sets an inline validation error.
+   */
   const handleCreate = () => {
-    addToast('success', 'Bond created successfully.')
+    const parsed = parseFloat(amount)
+    if (isNaN(parsed) || parsed <= 0) {
+      setError('Please enter a valid amount greater than 0.')
+      return
+    }
+    if (parsed > mockedBalance) {
+      setError('Amount exceeds available balance.')
+      return
+    }
+    setError(undefined)
+    addToast('success', `Bond of ${formatUsdc(parsed)} created successfully.`)
   }
 
   const focusBondCreation = () => {
@@ -146,21 +169,22 @@ export default function Bond() {
             id="bond-amount"
             label="Amount (USDC)"
             hint={`Available: ${balanceLabel} USDC`}
-            error={overBalance ? 'Amount exceeds available balance.' : undefined}
+            error={displayError}
           >
             <AmountInput
               value={amount}
-              onChange={setAmount}
+              onChange={handleAmountChange}
               balance={mockedBalance}
               presets={[100, 500, 1000]}
               placeholder="0.00"
               aria-describedby="bond-desc"
-              error={overBalance ? 'Amount exceeds available balance.' : undefined}
+              error={displayError}
             />
           </FormField>
           <Button
             type="button"
             onClick={handleCreate}
+            disabled={!amount || overBalance}
             fullWidth
             style={{ marginTop: 'var(--credence-space-4)' }}
           >

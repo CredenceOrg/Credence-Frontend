@@ -7,11 +7,17 @@ type NativeInputProps = Omit<
 >
 
 export interface AmountInputProps extends NativeInputProps {
+  /** Controlled decimal amount string. */
   value: string
+  /** Called with sanitized input while editing and normalized input on blur. */
   onChange: (value: string) => void
+  /** Available balance used by the Max button and preset disabled states. */
   balance: number
+  /** Quick-select amounts rendered below the input. */
   presets?: number[]
+  /** Currency label shown as the input adornment and in button labels. */
   currencyLabel?: string
+  /** Optional validation message that marks the amount control invalid. */
   error?: string
 }
 

@@ -69,18 +69,31 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
     [removeToast, toastsEnabled, autoDismiss]
   )
 
+  /** Toasts split by politeness: danger → assertive; all others → polite. */
+  const politeToasts = toasts.filter((t: ToastData) => t.severity !== 'danger')
+  const assertiveToasts = toasts.filter((t: ToastData) => t.severity === 'danger')
+
   return (
     <ToastContext.Provider value={{ addToast, removeToast, removeAllToasts }}>
       {children}
-      <div className="toast-container" aria-live="polite" aria-label="Notifications">
+      <div className="toast-container">
         {toasts.length > 1 && (
           <button type="button" className="toast-dismiss-all" onClick={removeAllToasts}>
             Dismiss All
           </button>
         )}
-        {toasts.map((t: ToastData) => (
-          <Toast key={t.id} toast={t} onDismiss={removeToast} />
-        ))}
+        {/* Polite region: info, success, warning — announced when the screen reader is idle */}
+        <div role="region" aria-live="polite" aria-label="Notifications">
+          {politeToasts.map((t: ToastData) => (
+            <Toast key={t.id} toast={t} onDismiss={removeToast} />
+          ))}
+        </div>
+        {/* Assertive region: danger — interrupts and announces immediately */}
+        <div role="region" aria-live="assertive" aria-label="Error notifications">
+          {assertiveToasts.map((t: ToastData) => (
+            <Toast key={t.id} toast={t} onDismiss={removeToast} />
+          ))}
+        </div>
       </div>
     </ToastContext.Provider>
   )

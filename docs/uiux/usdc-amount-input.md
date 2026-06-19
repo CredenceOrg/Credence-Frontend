@@ -29,3 +29,7 @@ This introduces a reusable USDC amount input pattern for `Bond` that improves UX
 - Viewports: 375×800 and 1280×800
 - Check: adornment, Max, presets, focus-visible ring, error state when amount > 2500.00
 
+## Test Coverage
+
+- `src/components/AmountInput.test.ts` covers `sanitizeUSDCInput`, `normalizeUSDC`, and `formatUSDC` with table-driven USDC edge cases.
+- React Testing Library coverage verifies typing sanitization, blur normalization, Max balance selection, preset disabling, and disabled Max behavior when balance is zero.

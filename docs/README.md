@@ -6,23 +6,28 @@ This directory contains comprehensive design specifications and implementation g
 
 ### Available Documents
 
-1. **[UI States Guide](./UI_STATES_GUIDE.md)**
+1. **[Testing Guide](./TESTING.md)**
+   - How to run Vitest and generate coverage
+   - Render helpers, router wrapper, and mock patterns for matchMedia / localStorage / clipboard
+   - File naming conventions and coverage thresholds
+
+3. **[UI States Guide](./UI_STATES_GUIDE.md)**
    - Complete guide for empty states, error states, and loading patterns
    - Microcopy guidelines and tone recommendations
    - When and how to use each state type
    - Validation checklist
 
-2. **[Design Tokens](./DESIGN_TOKENS.md)**
+4. **[Design Tokens](./DESIGN_TOKENS.md)**
    - Canonical `--credence-*` CSS variable reference
    - Color, spacing, radius, typography, and motion scales
    - Guidance for replacing one-off hex values in components
 
-3. **[Motion Guidelines](./motion-guidelines.md)**
+5. **[Motion Guidelines](./motion-guidelines.md)**
    - Motion token strategy and reduced-motion defaults
    - Best practices for animation and transitions
    - Implementation examples for UI micro-interactions
 
-4. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+6. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
    - Visual design specifications
    - Color palette and design tokens
    - Layout measurements and spacing
@@ -30,14 +35,14 @@ This directory contains comprehensive design specifications and implementation g
    - Responsive breakpoints
    - Component organization structure
 
-5. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
+7. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
    - Practical code examples for each page
    - Reusable hooks and patterns
    - Testing examples
    - Accessibility guidelines
    - Performance considerations
 
-6. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
+8. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
    - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
    - Complete implementation guide with code examples
    - Accessibility requirements (WCAG 2.1 AA)

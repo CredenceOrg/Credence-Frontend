@@ -2,13 +2,20 @@ import React, { useState, useRef } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
 
-interface AddressInputProps {
+export interface AddressInputProps {
+  /** Input id forwarded to FormField for label and description wiring. */
   id: string
+  /** Visible field label. Defaults to `Stellar Address`. */
   label?: string
+  /** Controlled Stellar public key value. */
   value: string
+  /** Called with the raw address text whenever the user edits or pastes. */
   onChange: (value: string) => void
+  /** Receives the current 56-character Stellar public key validation state. */
   onValidationChange?: (isValid: boolean) => void
+  /** Disables both the text input and paste button. */
   disabled?: boolean
+  /** Additional class names appended to the wrapper. */
   className?: string
 }
 

@@ -18,8 +18,22 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
+    saveSettings,
+    cancelSettings,
+    hasUnsavedChanges,
   } = useSettings()
   const { addToast } = useToast()
+
+  const handleSave = () => {
+    saveSettings()
+    addToast('success', 'Settings saved successfully')
+  }
+
+  const handleCancel = () => {
+    cancelSettings()
+    addToast('info', 'Settings reverted to last saved state')
+    window.history.back()
+  }
 
   return (
     <div className="settings-page">
@@ -125,10 +139,10 @@ export default function Settings() {
       </section>
 
       <div className="settings-actions">
-        <button type="button" style={{ padding: '0.5rem 0.75rem' }}>
-          Save (spec)
+        <button type="button" onClick={handleSave} style={{ padding: '0.5rem 0.75rem' }}>
+          Save
         </button>
-        <button type="button" style={{ padding: '0.5rem 0.75rem' }} onClick={() => window.history.back()}>
+        <button type="button" onClick={handleCancel} style={{ padding: '0.5rem 0.75rem' }}>
           Cancel
         </button>
       </div>

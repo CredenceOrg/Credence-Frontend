@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
 import './ThemeToggle.css'
+import { useSettings } from '../context/SettingsContext'
 
 function SunIcon() {
   return (
@@ -39,37 +39,31 @@ function MoonIcon() {
   )
 }
 
-export default function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('theme')
-      if (saved === 'light' || saved === 'dark') return saved
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return 'light'
-  })
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem('theme', theme)
-  }, [theme])
-
-  const toggleTheme = () => {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'))
+function resolveTheme(themeMode: 'light' | 'dark' | 'system'): 'light' | 'dark' {
+  if (themeMode !== 'system') return themeMode
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark'
   }
+  return 'light'
+}
 
-  const nextTheme = theme === 'light' ? 'dark' : 'light'
+export default function ThemeToggle() {
+  const { themeMode, setThemeMode } = useSettings()
+  const resolved = resolveTheme(themeMode)
+  const nextTheme = resolved === 'light' ? 'dark' : 'light'
+
+  const handleClick = () => setThemeMode(nextTheme)
 
   return (
     <button
       type="button"
       className="theme-toggle"
-      onClick={toggleTheme}
+      onClick={handleClick}
       aria-label={`Switch to ${nextTheme} mode`}
-      aria-pressed={theme === 'dark'}
+      aria-pressed={resolved === 'dark'}
       title={`Switch to ${nextTheme} mode`}
     >
-      {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+      {resolved === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>
   )
 }

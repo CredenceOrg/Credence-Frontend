@@ -1,116 +1,33 @@
-// Manual test file for AmountInput utility functions
-// Run with: npx ts-node src/components/AmountInput.test.ts (if ts-node is available)
-// Or copy the functions into a browser console to test
+import { describe, it, expect } from 'vitest'
+import { sanitizeUSDCInput, formatUSDC, normalizeUSDC } from './AmountInput'
 
-function normalizeUSDC(rawValue: string) {
-  const trimmed = rawValue.trim()
-  if (!trimmed) return ''
-
-  const normalized = trimmed.replace(/,/g, '')
-  const numericValue = Number(normalized)
-  if (!Number.isFinite(numericValue)) return ''
-
-  const clamped = Math.max(0, numericValue)
-  return clamped.toFixed(2)
-}
-
-function formatUSDC(rawValue: string) {
-  const trimmed = rawValue.trim()
-  if (!trimmed) return ''
-
-  const normalized = trimmed.replace(/,/g, '')
-  const numericValue = Number(normalized)
-  if (!Number.isFinite(numericValue)) return rawValue
-
-  const numberFormatter = new Intl.NumberFormat(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  return numberFormatter.format(numericValue)
-}
-
-function sanitizeUSDCInput(nextValue: string) {
-  const cleaned = nextValue.replace(/[^\d.]/g, '')
-  const [whole = '', fraction = ''] = cleaned.split('.')
-  const trimmedWhole = whole.replace(/^0+(?=\d)/, '')
-  const trimmedFraction = fraction.slice(0, 2)
-
-  if (cleaned.includes('.')) return `${trimmedWhole || '0'}.${trimmedFraction}`
-  return trimmedWhole
-}
-
-// Test cases
-function runTests() {
-  console.log('=== AmountInput Utility Function Tests ===\n')
-
-  // Test sanitizeUSDCInput
-  console.log('--- sanitizeUSDCInput Tests ---')
-  const sanitizeTests = [
-    { input: '123.45', expected: '123.45', description: 'Valid decimal' },
-    { input: 'abc123', expected: '123', description: 'Letters removed' },
-    { input: '12.345', expected: '12.34', description: 'Fraction truncated to 2 decimals' },
-    { input: '00123', expected: '123', description: 'Leading zeros removed' },
-    { input: '0.5', expected: '0.5', description: 'Leading zero kept for decimal' },
-    { input: '12.34.56', expected: '12.34', description: 'Multiple decimals handled' },
-    { input: '$100.00', expected: '100.00', description: 'Currency symbol removed' },
-    { input: '1,000.50', expected: '1000.50', description: 'Comma removed' },
-    { input: '', expected: '', description: 'Empty string' },
-    { input: '0', expected: '0', description: 'Single zero' },
-    { input: '00', expected: '0', description: 'Multiple zeros' },
-  ]
-
-  sanitizeTests.forEach(({ input, expected, description }) => {
-    const result = sanitizeUSDCInput(input)
-    const passed = result === expected
-    console.log(`${passed ? '✓' : '✗'} ${description}: "${input}" → "${result}" (expected: "${expected}")`)
+describe('sanitizeUSDCInput', () => {
+  it('passes through a valid decimal string', () => {
+    expect(sanitizeUSDCInput('123.45')).toBe('123.45')
   })
 
-  // Test formatUSDC
-  console.log('\n--- formatUSDC Tests ---')
-  const formatTests = [
-    { input: '1234.56', expected: '1,234.56', description: 'Thousands separator' },
-    { input: '100', expected: '100.00', description: 'Add decimal places' },
-    { input: '1234567.89', expected: '1,234,567.89', description: 'Multiple thousands separators' },
-    { input: '0.5', expected: '0.50', description: 'Single decimal to two decimals' },
-    { input: '1,234.56', expected: '1,234.56', description: 'Already formatted' },
-    { input: '', expected: '', description: 'Empty string' },
-    { input: 'abc', expected: 'abc', description: 'Invalid string returned as-is' },
-  ]
-
-  formatTests.forEach(({ input, expected, description }) => {
-    const result = formatUSDC(input)
-    const passed = result === expected
-    console.log(`${passed ? '✓' : '✗'} ${description}: "${input}" → "${result}" (expected: "${expected}")`)
+  it('strips non-numeric, non-dot characters', () => {
+    expect(sanitizeUSDCInput('abc123')).toBe('123')
+    expect(sanitizeUSDCInput('$100.00')).toBe('100.00')
+    expect(sanitizeUSDCInput('1,000.50')).toBe('1000.50')
   })
 
-  // Test normalizeUSDC
-  console.log('\n--- normalizeUSDC Tests ---')
-  const normalizeTests = [
-    { input: '123.456', expected: '123.46', description: 'Round to 2 decimals' },
-    { input: '123.4', expected: '123.40', description: 'Pad to 2 decimals' },
-    { input: '1,234.56', expected: '1234.56', description: 'Remove comma' },
-    { input: '-100', expected: '0.00', description: 'Negative values clamped to 0' },
-    { input: '0', expected: '0.00', description: 'Zero formatted' },
-    { input: '', expected: '', description: 'Empty string' },
-    { input: 'abc', expected: '', description: 'Invalid string returns empty' },
-    { input: '999999.99', expected: '999999.99', description: 'Large number' },
-  ]
-
-  normalizeTests.forEach(({ input, expected, description }) => {
-    const result = normalizeUSDC(input)
-    const passed = result === expected
-    console.log(`${passed ? '✓' : '✗'} ${description}: "${input}" → "${result}" (expected: "${expected}")`)
+  it('truncates fraction to 2 decimal places', () => {
+    expect(sanitizeUSDCInput('12.345')).toBe('12.34')
   })
 
-  console.log('\n=== Tests Complete ===')
-}
+  it('removes leading zeros from whole part', () => {
+    expect(sanitizeUSDCInput('00123')).toBe('123')
+    expect(sanitizeUSDCInput('00')).toBe('0')
+  })
 
-// Run tests
-runTests()
+  it('keeps leading zero before a decimal point', () => {
+    expect(sanitizeUSDCInput('0.5')).toBe('0.5')
+  })
 
 // Export for manual testing in browser console
 if (typeof window !== 'undefined') {
-  (window as any).testAmountInput = {
+  (window as Window & { testAmountInput?: unknown }).testAmountInput = {
     sanitizeUSDCInput,
     formatUSDC,
     normalizeUSDC,

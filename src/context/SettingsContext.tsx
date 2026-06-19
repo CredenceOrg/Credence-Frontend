@@ -13,6 +13,9 @@ interface SettingsState {
   setAddressDisplay: (s: string) => void
   setToastsEnabled: (b: boolean) => void
   setAutoDismiss: (s: string) => void
+  saveSettings: () => void
+  cancelSettings: () => void
+  hasUnsavedChanges: boolean
 }
 
 const STORAGE_KEY = 'credence:settings'
@@ -28,6 +31,9 @@ const defaultState: SettingsState = {
   setAddressDisplay: () => {},
   setToastsEnabled: () => {},
   setAutoDismiss: () => {},
+  saveSettings: () => {},
+  cancelSettings: () => {},
+  hasUnsavedChanges: false,
 }
 
 const SettingsContext = createContext<SettingsState>(defaultState)
@@ -37,70 +43,75 @@ export function useSettings() {
 }
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+  // Load saved settings from localStorage
+  const loadSavedSettings = () => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return 'system'
-      const parsed = JSON.parse(raw)
-      return (parsed.themeMode as ThemeMode) || 'system'
+      if (!raw) return null
+      return JSON.parse(raw)
     } catch {
-      return 'system'
+      return null
     }
+  }
+
+  const savedSettings = loadSavedSettings()
+
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    return (savedSettings?.themeMode as ThemeMode) || 'system'
   })
 
   const [network, setNetwork] = useState<string>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return 'public'
-      const parsed = JSON.parse(raw)
-      return parsed.network || 'public'
-    } catch {
-      return 'public'
-    }
+    return savedSettings?.network || 'public'
   })
 
   const [addressDisplay, setAddressDisplay] = useState<string>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return 'short'
-      const parsed = JSON.parse(raw)
-      return parsed.addressDisplay || 'short'
-    } catch {
-      return 'short'
-    }
+    return savedSettings?.addressDisplay || 'short'
   })
 
   const [toastsEnabled, setToastsEnabled] = useState<boolean>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return true
-      const parsed = JSON.parse(raw)
-      return typeof parsed.toastsEnabled === 'boolean' ? parsed.toastsEnabled : true
-    } catch {
-      return true
-    }
+    return typeof savedSettings?.toastsEnabled === 'boolean' ? savedSettings.toastsEnabled : true
   })
 
   const [autoDismiss, setAutoDismiss] = useState<string>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return '5s'
-      const parsed = JSON.parse(raw)
-      return parsed.autoDismiss || '5s'
-    } catch {
-      return '5s'
-    }
+    return savedSettings?.autoDismiss || '5s'
   })
 
-  // persist on changes
-  useEffect(() => {
+  // Track the original saved state to detect unsaved changes
+  const [originalSettings, setOriginalSettings] = useState(() => ({
+    themeMode,
+    network,
+    addressDisplay,
+    toastsEnabled,
+    autoDismiss,
+  }))
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges =
+    themeMode !== originalSettings.themeMode ||
+    network !== originalSettings.network ||
+    addressDisplay !== originalSettings.addressDisplay ||
+    toastsEnabled !== originalSettings.toastsEnabled ||
+    autoDismiss !== originalSettings.autoDismiss
+
+  // Explicit save function
+  const saveSettings = () => {
     try {
       const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+      setOriginalSettings({ themeMode, network, addressDisplay, toastsEnabled, autoDismiss })
     } catch {
       // ignore
     }
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss])
+  }
+
+  // Cancel function - revert to original saved state
+  const cancelSettings = () => {
+    setThemeMode(originalSettings.themeMode)
+    setNetwork(originalSettings.network)
+    setAddressDisplay(originalSettings.addressDisplay)
+    setToastsEnabled(originalSettings.toastsEnabled)
+    setAutoDismiss(originalSettings.autoDismiss)
+  }
 
   // apply theme to document
   useEffect(() => {
@@ -135,6 +146,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setAddressDisplay,
     setToastsEnabled,
     setAutoDismiss,
+    saveSettings,
+    cancelSettings,
+    hasUnsavedChanges,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

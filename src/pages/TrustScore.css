@@ -37,6 +37,10 @@
   margin-bottom: var(--credence-space-4);
 }
 
+.trustScore__lookupButton {
+  margin-top: var(--credence-space-4);
+}
+
 .trustScore__label {
   display: block;
   margin-bottom: var(--credence-space-2);
@@ -80,4 +84,3 @@
   font-size: var(--credence-font-size-xs);
   color: var(--credence-text-secondary);
 }
-

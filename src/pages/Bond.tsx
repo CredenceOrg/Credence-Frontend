@@ -1,14 +1,16 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
 import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
-import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
+import type { ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 import EmptyState from '../components/states/EmptyState'
 import { FormField } from '../components/forms/FormField'
 import AmountInput from '../components/AmountInput'
+
+const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -50,7 +52,11 @@ function computeWithdrawBreakdown(bond: MockBond): ConfirmDialogPenaltyBreakdown
   }
 }
 
-export default function Bond() {
+export interface BondProps {
+  initialBonds?: MockBond[]
+}
+
+export default function Bond({ initialBonds = [] }: BondProps = {}) {
   const { addToast } = useToast()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
@@ -60,7 +66,7 @@ export default function Bond() {
   const overBalance = parseFloat(amount) > mockedBalance
   const balanceLabel = mockedBalance.toLocaleString('en-US', { maximumFractionDigits: 2 })
 
-  const bonds: MockBond[] = []
+  const bonds = initialBonds
 
   const handleCreate = () => {
     addToast('success', 'Bond created successfully.')
@@ -221,15 +227,17 @@ export default function Bond() {
       </div>
 
       {withdrawTarget && withdrawBreakdown && (
-        <ConfirmDialog
-          open
-          title="Confirm bond withdrawal"
-          subtitle={`You are withdrawing bond #${withdrawTarget.id} (${formatUsdc(withdrawTarget.amountUsdc)}).`}
-          breakdown={withdrawBreakdown}
-          onConfirm={confirmWithdraw}
-          onCancel={cancelWithdraw}
-          returnFocusRef={withdrawTriggerRef}
-        />
+        <Suspense fallback={null}>
+          <ConfirmDialog
+            open
+            title="Confirm bond withdrawal"
+            subtitle={`You are withdrawing bond #${withdrawTarget.id} (${formatUsdc(withdrawTarget.amountUsdc)}).`}
+            breakdown={withdrawBreakdown}
+            onConfirm={confirmWithdraw}
+            onCancel={cancelWithdraw}
+            returnFocusRef={withdrawTriggerRef}
+          />
+        </Suspense>
       )}
 
       <Disclaimer

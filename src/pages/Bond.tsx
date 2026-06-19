@@ -9,6 +9,7 @@ import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components
 import EmptyState from '../components/states/EmptyState'
 import { FormField } from '../components/forms/FormField'
 import AmountInput from '../components/AmountInput'
+import { formatUsdc } from '../lib/format'
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -18,9 +19,7 @@ interface MockBond {
   status: BondStatus
 }
 
-function formatUsdc(amount: number): string {
-  return `${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDC`
-}
+// formatUsdc is imported from src/lib/format.ts — do not redeclare here.
 
 function getPenaltyRate(status: BondStatus): number {
   switch (status) {

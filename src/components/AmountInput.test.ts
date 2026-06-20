@@ -24,14 +24,14 @@ describe('sanitizeUSDCInput', () => {
   it('keeps leading zero before a decimal point', () => {
     expect(sanitizeUSDCInput('0.5')).toBe('0.5')
   })
+})
 
 // Export for manual testing in browser console
 if (typeof window !== 'undefined') {
-  (window as Window & { testAmountInput?: unknown }).testAmountInput = {
+  ;(window as Window & { testAmountInput?: unknown }).testAmountInput = {
     sanitizeUSDCInput,
     formatUSDC,
     normalizeUSDC,
-    runTests,
   }
   console.log('Test functions available as window.testAmountInput')
 }

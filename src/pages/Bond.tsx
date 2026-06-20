@@ -9,6 +9,7 @@ import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components
 import EmptyState from '../components/states/EmptyState'
 import { FormField } from '../components/forms/FormField'
 import AmountInput from '../components/AmountInput'
+import { useWallet } from '../context/WalletContext'
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -52,6 +53,7 @@ function computeWithdrawBreakdown(bond: MockBond): ConfirmDialogPenaltyBreakdown
 
 export default function Bond() {
   const { addToast } = useToast()
+  const { connected, connect } = useWallet()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
 
@@ -76,6 +78,11 @@ export default function Bond() {
    * otherwise sets an inline validation error.
    */
   const handleCreate = () => {
+    if (!connected) {
+      connect()
+      return
+    }
+
     const parsed = parseFloat(amount)
     if (isNaN(parsed) || parsed <= 0) {
       setError('Please enter a valid amount greater than 0.')
@@ -102,9 +109,14 @@ export default function Bond() {
   )
 
   const requestWithdraw = useCallback((bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => {
+    if (!connected) {
+      connect()
+      return
+    }
+
     withdrawTriggerRef.current = event.currentTarget
     setWithdrawTarget(bond)
-  }, [])
+  }, [connected, connect])
 
   const cancelWithdraw = useCallback(() => {
     setWithdrawTarget(null)
@@ -147,6 +159,16 @@ export default function Bond() {
         Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
       </Banner>
 
+      {!connected && (
+        <Banner
+          severity="warning"
+          title="Connect wallet required"
+          action={{ label: 'Connect wallet', onClick: connect }}
+        >
+          Create bond and withdraw actions require a connected Stellar wallet.
+        </Banner>
+      )}
+
       {slashBannerBreakdown && slashExposureBond && (
         <Banner severity="warning" title="Slash exposure on early withdrawal">
           Withdrawing {formatUsdc(slashExposureBond.amountUsdc)} while{' '}
@@ -183,12 +205,12 @@ export default function Bond() {
           </FormField>
           <Button
             type="button"
-            onClick={handleCreate}
-            disabled={!amount || overBalance}
+            onClick={connected ? handleCreate : connect}
+            disabled={connected ? !amount || overBalance : false}
             fullWidth
             style={{ marginTop: 'var(--credence-space-4)' }}
           >
-            Create bond
+            {connected ? 'Create bond' : 'Connect wallet to continue'}
           </Button>
         </ActionCard>
 
@@ -232,10 +254,12 @@ export default function Bond() {
                   <Button
                     type="button"
                     variant={getPenaltyRate(bond.status) > 0 ? 'danger' : 'secondary'}
-                    onClick={(event) => requestWithdraw(bond, event)}
-                    aria-haspopup="dialog"
+                    onClick={
+                      connected ? (event) => requestWithdraw(bond, event) : () => connect()
+                    }
+                    aria-haspopup={connected ? 'dialog' : undefined}
                   >
-                    Withdraw
+                    {connected ? 'Withdraw' : 'Connect wallet to withdraw'}
                   </Button>
                 </li>
               ))}

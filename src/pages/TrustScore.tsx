@@ -7,14 +7,26 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import { EmptyState } from '../components/states'
+import { useWallet } from '../context/WalletContext'
 
 export default function TrustScore() {
   const { addToast } = useToast()
+  const { connected, address: walletAddress, connect } = useWallet()
   const [address, setAddress] = useState('')
   const [isAddressValid, setIsAddressValid] = useState(false)
 
   const handleLookup = () => {
+    if (!connected) {
+      connect()
+      return
+    }
+
     addToast('success', 'Trust score retrieved.')
+  }
+
+  const useConnectedAddress = () => {
+    if (!walletAddress) return
+    setAddress(walletAddress)
   }
 
   const activity: Array<{ id: number; action: string; date: string; status: 'active' | 'slashed' }> =
@@ -33,6 +45,17 @@ export default function TrustScore() {
       <Banner severity="info">
         Scores update once per epoch. Recent bond changes may not be reflected immediately.
       </Banner>
+
+      {!connected && (
+        <Banner
+          severity="warning"
+          title="Connect wallet required"
+          action={{ label: 'Connect wallet', onClick: connect }}
+        >
+          Connect a wallet to look up your own trust score. You can still type another Stellar
+          address for review.
+        </Banner>
+      )}
 
       <div
         style={{
@@ -59,15 +82,26 @@ export default function TrustScore() {
             onChange={setAddress}
             onValidationChange={setIsAddressValid}
           />
+          {connected && walletAddress && (
+            <Button
+              type="button"
+              onClick={useConnectedAddress}
+              variant="secondary"
+              fullWidth
+              style={{ marginTop: '1rem' }}
+            >
+              Use connected wallet
+            </Button>
+          )}
           <Button
             type="button"
-            onClick={handleLookup}
+            onClick={connected ? handleLookup : connect}
             variant="primary"
             fullWidth
-            disabled={!isAddressValid}
+            disabled={connected ? !isAddressValid : false}
             style={{ marginTop: '1rem' }}
           >
-            Look up score
+            {connected ? 'Look up score' : 'Connect wallet to continue'}
           </Button>
         </div>
 

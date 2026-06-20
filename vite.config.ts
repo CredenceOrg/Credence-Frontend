@@ -58,9 +58,12 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      include: ['src/components/AddressInput.tsx'],
+      include: ['src/components/AddressInput.tsx', 'src/components/Badge.tsx'],
       reporter: ['text', 'lcov'],
-      thresholds: { lines: 90, branches: 90 },
+      thresholds: {
+        'src/components/AddressInput.tsx': { lines: 90, branches: 90 },
+        'src/components/Badge.tsx': { branches: 95 },
+      },
     },
   },
 })

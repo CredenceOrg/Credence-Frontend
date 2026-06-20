@@ -52,3 +52,25 @@ For Banners and Toasts in Dark Mode, we will use tinted dark backgrounds instead
 2.  **Phase 2**: Refactor `Layout`, `Bond`, and `TrustScore` to use CSS variables instead of hardcoded hexes in inline styles.
 3.  **Phase 3**: Update `Banner.css`, `Toast.css`, and `Badge.css` to use status tokens.
 4.  **Phase 4**: Add a `ThemeToggle` component to `Layout.tsx`.
+
+## Single Source of Truth
+
+The theme has exactly **one** owner: `SettingsContext` (`src/context/SettingsContext.tsx`).
+
+- **State + persistence**: `themeMode` (`'light' | 'dark' | 'system'`) lives in
+  `SettingsContext` and is persisted under the single `credence:settings`
+  localStorage key. There is no separate `'theme'` key.
+- **Document attribute**: `SettingsContext` is the _only_ writer of
+  `document.documentElement[data-theme]`. Its effect resolves `'system'` via
+  `matchMedia('(prefers-color-scheme: dark)')` and re-applies on OS changes.
+- **`ThemeToggle`** (`src/components/ThemeToggle.tsx`) is a pure consumer of
+  `useSettings()`. It owns no theme state and writes to no storage key. It:
+  - _derives_ the displayed light/dark from `themeMode` (resolving `'system'`
+    via `matchMedia`),
+  - subscribes to `matchMedia` so its icon, `aria-pressed`, and `aria-label`
+    stay in sync with `data-theme` when the OS theme changes in `system` mode,
+  - on click calls `setThemeMode` with the **explicit** opposite of the
+    currently resolved theme (never back to `'system'`).
+
+This removes the historical desync where the toggle kept its own state under a
+duplicate `'theme'` key while the document was driven by `credence:settings`.

@@ -24,6 +24,7 @@ export default defineConfig({
       include: [
         'src/components/AddressInput.tsx',
         'src/components/ConfirmDialog.tsx',
+        'src/components/ThemeToggle.tsx',
         'src/hooks/useFocusTrap.ts',
         'src/context/SettingsContext.tsx',
         'src/components/ToastProvider.tsx',
@@ -33,6 +34,7 @@ export default defineConfig({
         'src/components/AddressInput.tsx': { lines: 90, branches: 90 },
         'src/components/AmountInput.tsx': { lines: 80, branches: 80 },
         'src/components/ConfirmDialog.tsx': { branches: 90 },
+        'src/components/ThemeToggle.tsx': { lines: 85, branches: 85 },
         'src/hooks/useFocusTrap.ts': { branches: 85 },
         'src/context/SettingsContext.tsx': { lines: 80, branches: 80 },
         'src/components/ToastProvider.tsx': { lines: 80, branches: 80 },

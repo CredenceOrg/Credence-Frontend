@@ -26,6 +26,7 @@ function renderLayout(initialPath = '/') {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<div>Home Page Content</div>} />
+          <Route path="dashboard" element={<div>Dashboard Page Content</div>} />
           <Route path="bond" element={<div>Bond Page Content</div>} />
           <Route path="trust" element={<div>Trust Score Page Content</div>} />
           <Route path="settings" element={<div>Settings Page Content</div>} />
@@ -53,8 +54,9 @@ describe('Layout Integration', () => {
 
   it('renders desktop navigation links', () => {
     renderLayout()
-    const desktopLinks = screen.getAllByRole('link', { name: /bond|trust score|settings/i })
+    const desktopLinks = screen.getAllByRole('link', { name: /dashboard|bond|trust score|settings/i })
     expect(desktopLinks.length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /dashboard/i }).length).toBeGreaterThan(0)
   })
 
   it('marks active link on desktop navigation', () => {

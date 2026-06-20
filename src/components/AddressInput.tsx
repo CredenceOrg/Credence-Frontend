@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
-import { useSettings } from '../context/SettingsContext'
 
 export interface AddressInputProps {
   /** Input id forwarded to FormField for label and description wiring. */
@@ -132,8 +131,6 @@ export default function AddressInput({
   disabled = false,
   className = '',
 }: AddressInputProps) {
-  const { addressDisplay } = useSettings()
-
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [focused, setFocused] = useState(false)

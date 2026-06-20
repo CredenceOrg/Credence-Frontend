@@ -13,6 +13,10 @@ interface ActivityItem {
   meta: string
 }
 
+interface ActivityTimelineProps {
+  compact?: boolean
+}
+
 const ACTIVITY_ITEMS: ActivityItem[] = [
   {
     id: 'evt-001',
@@ -46,9 +50,12 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
   },
 ]
 
-export default function ActivityTimeline() {
+export default function ActivityTimeline({ compact = false }: ActivityTimelineProps) {
   return (
-    <section className="activity-surface" aria-label="Activity and attestations">
+    <section
+      className={`activity-surface${compact ? ' activity-surface--compact' : ''}`}
+      aria-label="Activity and attestations"
+    >
       <header className="activity-surface__header">
         <div>
           <p className="activity-surface__eyebrow">Activity Surface Concept</p>

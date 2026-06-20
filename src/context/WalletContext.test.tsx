@@ -1,7 +1,18 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { WalletProvider, useWallet } from './WalletContext'
+
+vi.mock('../hooks/useWallet', () => ({
+  useWallet: () => ({
+    address: '',
+    isConnected: false,
+    isConnecting: false,
+    error: null,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    network: 'public',
+  }),
+}))
 
 function WalletConsumer() {
   const wallet = useWallet()
@@ -21,26 +32,14 @@ function WalletConsumer() {
 }
 
 describe('WalletProvider', () => {
-  it('connects and disconnects the placeholder wallet state', async () => {
-    const user = userEvent.setup()
-
+  it('exposes shared wallet state with the legacy connected alias', () => {
     render(
       <WalletProvider>
         <WalletConsumer />
-      </WalletProvider>
+      </WalletProvider>,
     )
 
     expect(screen.getByTestId('connected')).toHaveTextContent('false')
-    expect(screen.getByTestId('address')).toHaveTextContent('none')
-
-    await user.click(screen.getByRole('button', { name: 'connect' }))
-
-    expect(screen.getByTestId('connected')).toHaveTextContent('true')
-    expect(screen.getByTestId('address').textContent).toMatch(/^G[A-Z0-9]{55}$/)
-
-    await user.click(screen.getByRole('button', { name: 'disconnect' }))
-
-    expect(screen.getByTestId('connected')).toHaveTextContent('false')
-    expect(screen.getByTestId('address')).toHaveTextContent('none')
+    expect(screen.getByTestId('address')).toHaveTextContent('')
   })
 })

@@ -7,6 +7,7 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import { EmptyState } from '../components/states'
+import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function TrustScore() {

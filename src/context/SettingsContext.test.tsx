@@ -1,9 +1,10 @@
-import React from 'react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { SettingsProvider, useSettings } from './SettingsContext'
 
 const STORAGE_KEY = 'credence:settings'
+type MatchMediaListener = (event: { matches: boolean }) => void
 
 function StateDump() {
   const s = useSettings()
@@ -36,14 +37,17 @@ function Controls() {
 }
 
 function setupMatchMedia(initialMatches = false) {
-  const listeners = new Set<any>()
-  const add = vi.fn((_: string, cb: any) => listeners.add(cb))
-  const remove = vi.fn((_: string, cb: any) => listeners.delete(cb))
+  const listeners = new Set<MatchMediaListener>()
+  const add = vi.fn((_eventName: string, cb: MatchMediaListener) => listeners.add(cb))
+  const remove = vi.fn((_eventName: string, cb: MatchMediaListener) => listeners.delete(cb))
 
-  const mql: any = {
+  const mql = {
     matches: initialMatches,
+    media: '(prefers-color-scheme: dark)',
+    onchange: null,
     addEventListener: add,
     removeEventListener: remove,
+    dispatchEvent: vi.fn(),
     // helper to simulate change events in tests
     _dispatch(matches: boolean) {
       mql.matches = matches
@@ -51,7 +55,7 @@ function setupMatchMedia(initialMatches = false) {
     },
   }
 
-  ;(window as any).matchMedia = (_query: string) => mql
+  window.matchMedia = vi.fn((_query: string) => mql as unknown as MediaQueryList)
   return mql
 }
 
@@ -186,13 +190,6 @@ describe('SettingsContext persistence & theme application', () => {
     expect(mql.removeEventListener).toHaveBeenCalled()
   })
 })
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { SettingsProvider, useSettings } from './SettingsContext'
-
-const STORAGE_KEY = 'credence:settings'
-
 function SettingsConsumer() {
   const s = useSettings()
   return (

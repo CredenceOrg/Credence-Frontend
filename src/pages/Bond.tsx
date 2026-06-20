@@ -9,7 +9,9 @@ import type { ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 import EmptyState from '../components/states/EmptyState'
 import { FormField } from '../components/forms/FormField'
 import AmountInput from '../components/AmountInput'
+import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { formatUsdc } from '../lib/format'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
@@ -21,7 +23,7 @@ interface MockBond {
   status: BondStatus
 }
 
-// formatUsdc is imported from src/lib/format.ts — do not redeclare here.
+const initialBonds: MockBond[] = []
 
 function getPenaltyRate(status: BondStatus): number {
   switch (status) {

@@ -20,7 +20,6 @@ export default function Settings() {
     setAutoDismiss,
     saveSettings,
     cancelSettings,
-    hasUnsavedChanges,
   } = useSettings()
   const { addToast } = useToast()
 

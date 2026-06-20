@@ -3,10 +3,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { SettingsProvider } from './context/SettingsContext'
 import ToastProvider from './components/ToastProvider'
 import Layout from './components/Layout'
-import { Suspense, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
-import Layout from './components/Layout';
-import RouteLoader from './components/RouteLoader';
 
 const Home = lazy(() => import('./pages/Home'))
 const Bond = lazy(() => import('./pages/Bond'))

@@ -127,7 +127,10 @@ const triggerRef = useRef<HTMLButtonElement>(null)
 
 - Banners use `role="alert"` for `warning`/`critical` and `role="status"` for `info`/`success`
 - `aria-label` on the banner root announces severity to screen readers
-- Toast container uses `aria-live="polite"` so screen readers announce new toasts
+- Toast container splits toasts across two sibling live regions to avoid double-announcing:
+  - `aria-live="polite"` (labelled "Notifications") for `info`, `success`, and `warning` — announced when the screen reader is idle
+  - `aria-live="assertive"` (labelled "Error notifications") for `danger` — interrupts and announces immediately, matching the sticky, must-acknowledge nature of error feedback
+- Individual toast elements use `role="alert"` for `danger` and `role="status"` for all other severities
 - Dismiss buttons have `aria-label` text
 - Icons are marked `aria-hidden="true"` (decorative)
 - Dismiss buttons are keyboard-focusable and respond to Enter/Space

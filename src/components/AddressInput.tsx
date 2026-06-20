@@ -1,14 +1,22 @@
 import React, { useState, useRef } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
+import { useSettings } from '../context/SettingsContext'
 
-interface AddressInputProps {
+export interface AddressInputProps {
+  /** Input id forwarded to FormField for label and description wiring. */
   id: string
+  /** Visible field label. Defaults to `Stellar Address`. */
   label?: string
+  /** Controlled Stellar public key value. */
   value: string
+  /** Called with the raw address text whenever the user edits or pastes. */
   onChange: (value: string) => void
+  /** Receives the current 56-character Stellar public key validation state. */
   onValidationChange?: (isValid: boolean) => void
+  /** Disables both the text input and paste button. */
   disabled?: boolean
+  /** Additional class names appended to the wrapper. */
   className?: string
 }
 
@@ -23,7 +31,7 @@ function isValidStellarAddress(address: string): boolean {
 }
 
 /**
- * Truncates address for display: shows first 12 and last 8 characters
+ * Truncates address for display: shows first 12 and last 8 characters.
  */
 export function truncateAddress(address: string): string {
   if (address.length <= 20) return address
@@ -124,7 +132,10 @@ export default function AddressInput({
   disabled = false,
   className = '',
 }: AddressInputProps) {
+  const { addressDisplay } = useSettings()
+
   const inputRef = useRef<HTMLInputElement>(null)
+
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
 
@@ -177,7 +188,9 @@ export default function AddressInput({
     }
   }
 
-  const error = showError ? 'Invalid address. Stellar public keys are 56 characters starting with G.' : undefined
+  const error = showError
+    ? 'Invalid address. Stellar public keys are 56 characters starting with G.'
+    : undefined
   const hint = 'Stellar public key format (56 characters, starts with G)'
 
   return (

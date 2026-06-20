@@ -4,6 +4,9 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import Bond from './Bond'
 
 const mockAddToast = vi.fn()
+const mockConnect = vi.fn()
+
+let mockConnected = true
 
 vi.mock('../components/ToastProvider', () => ({
   useToast: () => ({
@@ -11,9 +14,20 @@ vi.mock('../components/ToastProvider', () => ({
   }),
 }))
 
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({
+    connected: mockConnected,
+    address: mockConnected ? 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' : null,
+    connect: mockConnect,
+    disconnect: vi.fn(),
+  }),
+}))
+
 describe('Bond Page', () => {
   beforeEach(() => {
     mockAddToast.mockClear()
+    mockConnect.mockClear()
+    mockConnected = true
     // Mock scrollIntoView since it's not implemented in JSDOM
     window.HTMLElement.prototype.scrollIntoView = vi.fn()
   })
@@ -115,5 +129,33 @@ describe('Bond Page', () => {
 
     await user.click(actionBtn)
     expect(document.activeElement).toBe(input)
+  })
+
+  it('shows wallet gating and connects instead of creating a bond while disconnected', async () => {
+    const user = userEvent.setup()
+    mockConnected = false
+    render(<Bond />)
+
+    expect(screen.getByText(/Create bond and withdraw actions require a connected Stellar wallet/i)).toBeInTheDocument()
+
+    const input = screen.getByPlaceholderText('0.00')
+    await user.type(input, '500')
+
+    await user.click(screen.getByRole('button', { name: /^Connect wallet to continue$/i }))
+
+    expect(mockConnect).toHaveBeenCalledTimes(1)
+    expect(mockAddToast).not.toHaveBeenCalled()
+  })
+
+  it('restores the create bond action while connected', async () => {
+    const user = userEvent.setup()
+    render(<Bond />)
+
+    const input = screen.getByPlaceholderText('0.00')
+    await user.type(input, '250')
+    await user.click(screen.getByRole('button', { name: /^Create bond$/i }))
+
+    expect(mockConnect).not.toHaveBeenCalled()
+    expect(mockAddToast).toHaveBeenCalledWith('success', 'Bond of 250 USDC created successfully.')
   })
 })

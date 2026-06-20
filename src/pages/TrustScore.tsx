@@ -7,8 +7,11 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import { EmptyState } from '../components/states'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function TrustScore() {
+  useDocumentTitle('Trust Score')
+
   const { addToast } = useToast()
   const [address, setAddress] = useState('')
   const [isAddressValid, setIsAddressValid] = useState(false)

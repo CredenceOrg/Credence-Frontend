@@ -11,6 +11,21 @@ This directory contains comprehensive design specifications and implementation g
    - Render helpers, router wrapper, and mock patterns for matchMedia / localStorage / clipboard
    - File naming conventions and coverage thresholds
 
+2. **Per-route document titles (`useDocumentTitle`)**
+   - `src/hooks/useDocumentTitle.ts` keeps `document.title` in sync with the active route
+   - Each page sets a distinct, branded title (e.g. `Bond · Credence`); the 404 page uses `Page Not Found · Credence`
+   - Why it matters: screen readers announce the title on navigation, and tabs, history, and bookmarks become distinguishable per page
+   - SSR-safe (`typeof document` guard), restores the previous title on unmount, and never double-applies the ` · Credence` brand suffix
+
+   ```tsx
+   import { useDocumentTitle } from '../hooks/useDocumentTitle'
+
+   function Bond() {
+     useDocumentTitle('Bond') // document.title === 'Bond · Credence'
+     return <main>…</main>
+   }
+   ```
+
 3. **[UI States Guide](./UI_STATES_GUIDE.md)**
    - Complete guide for empty states, error states, and loading patterns
    - Microcopy guidelines and tone recommendations

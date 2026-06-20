@@ -4,6 +4,7 @@ import { useToast } from '../components/ToastProvider'
 import { FormField } from '../components/forms/FormField'
 import Toggle from '../components/controls/Toggle'
 import Select from '../components/controls/Select'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import './Settings.css'
 
 export default function Settings() {
@@ -23,6 +24,8 @@ export default function Settings() {
     hasUnsavedChanges,
   } = useSettings()
   const { addToast } = useToast()
+
+  useDocumentTitle('Settings')
 
   const handleSave = () => {
     saveSettings()

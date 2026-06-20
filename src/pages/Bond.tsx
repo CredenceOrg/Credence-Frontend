@@ -9,6 +9,7 @@ import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components
 import EmptyState from '../components/states/EmptyState'
 import { FormField } from '../components/forms/FormField'
 import AmountInput from '../components/AmountInput'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -51,6 +52,8 @@ function computeWithdrawBreakdown(bond: MockBond): ConfirmDialogPenaltyBreakdown
 }
 
 export default function Bond() {
+  useDocumentTitle('Bond')
+
   const { addToast } = useToast()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)

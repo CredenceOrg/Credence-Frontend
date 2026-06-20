@@ -21,6 +21,11 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
     exclude: ['**/node_modules/**', '**/AmountInput.test.ts'],
+    server: {
+      deps: {
+        inline: ['@exodus/bytes'],
+      },
+    },
     coverage: {
       provider: 'v8',
       include: [
@@ -45,22 +50,6 @@ export default defineConfig({
         'src/components/ToastProvider.tsx': { lines: 80, branches: 80 },
         'src/components/TrustGauge.tsx': { lines: 90, branches: 90 },
       },
-    },
-  },
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/test-setup.ts'],
-    server: {
-      deps: {
-        inline: ['@exodus/bytes'],
-      },
-    },
-    coverage: {
-      provider: 'v8',
-      include: ['src/components/AddressInput.tsx'],
-      reporter: ['text', 'lcov'],
-      thresholds: { lines: 90, branches: 90 },
     },
   },
 })

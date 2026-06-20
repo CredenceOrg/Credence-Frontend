@@ -44,6 +44,16 @@ describe('pointsToNextTier', () => {
   it('never returns negative (score above tier threshold)', () => {
     expect(pointsToNextTier(300, 'bronze')).toBe(0)
   })
+
+  it('handles negative score defensively (treats as below-zero offset)', () => {
+    // score is below zero: points = TIER_CONFIG.silver.min - (-50) = 300
+    expect(pointsToNextTier(-50, 'bronze')).toBe(300)
+  })
+
+  it('handles tier mismatch where score already exceeds next-tier threshold', () => {
+    // score=600 with tier='bronze': silver.min(250) - 600 < 0, clamped to 0
+    expect(pointsToNextTier(600, 'bronze')).toBe(0)
+  })
 })
 
 // --- getProgressPercentage ---
@@ -79,6 +89,11 @@ describe('getProgressPercentage', () => {
 
   it('returns 49.9 for score=499', () => {
     expect(getProgressPercentage(499)).toBeCloseTo(49.9)
+  })
+
+  it('returns a negative value for negative score (no lower clamp)', () => {
+    // getProgressPercentage only clamps at 100; callers must supply score >= 0
+    expect(getProgressPercentage(-100)).toBeCloseTo(-10)
   })
 })
 

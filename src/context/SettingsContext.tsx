@@ -93,6 +93,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     toastsEnabled !== originalSettings.toastsEnabled ||
     autoDismiss !== originalSettings.autoDismiss
 
+  useEffect(() => {
+    try {
+      const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    } catch {
+      // ignore
+    }
+  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss])
+
   // Explicit save function
   const saveSettings = () => {
     try {

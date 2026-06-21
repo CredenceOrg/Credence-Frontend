@@ -48,6 +48,11 @@
 .appNav-link--active {
   color: var(--credence-color-primary);
   font-weight: var(--credence-font-weight-bold);
+  /* token-driven underline for active nav */
+  text-decoration: underline;
+  text-decoration-color: var(--credence-color-primary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 .appNav-link:focus-visible {

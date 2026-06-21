@@ -4,6 +4,7 @@ import { useToast } from '../components/ToastProvider'
 import { FormField } from '../components/forms/FormField'
 import Toggle from '../components/controls/Toggle'
 import Select from '../components/controls/Select'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import './Settings.css'
 
 export default function Settings() {
@@ -18,8 +19,23 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
+    saveSettings,
+    cancelSettings,
   } = useSettings()
   const { addToast } = useToast()
+
+  useDocumentTitle('Settings')
+
+  const handleSave = () => {
+    saveSettings()
+    addToast('success', 'Settings saved successfully')
+  }
+
+  const handleCancel = () => {
+    cancelSettings()
+    addToast('info', 'Settings reverted to last saved state')
+    window.history.back()
+  }
 
   return (
     <div className="settings-page">
@@ -125,10 +141,10 @@ export default function Settings() {
       </section>
 
       <div className="settings-actions">
-        <button type="button" style={{ padding: '0.5rem 0.75rem' }}>
-          Save (spec)
+        <button type="button" onClick={handleSave} style={{ padding: '0.5rem 0.75rem' }}>
+          Save
         </button>
-        <button type="button" style={{ padding: '0.5rem 0.75rem' }} onClick={() => window.history.back()}>
+        <button type="button" onClick={handleCancel} style={{ padding: '0.5rem 0.75rem' }}>
           Cancel
         </button>
       </div>

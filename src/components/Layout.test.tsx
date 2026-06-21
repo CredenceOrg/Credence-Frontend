@@ -60,10 +60,14 @@ describe('Layout Integration', () => {
   it('marks active link on desktop navigation', () => {
     renderLayout('/bond')
     const activeLinks = screen.getAllByRole('link', { name: /bond/i })
-    const hasActiveClass = activeLinks.some(link =>
-      link.classList.contains('appNav-link--active') || link.classList.contains('mobileNav-link--active')
+    const hasActiveClass = activeLinks.some((link) =>
+      link.classList.contains('appNav-link--active') || link.classList.contains('mobileNav-link--active'),
     )
     expect(hasActiveClass).toBe(true)
+
+    // active nav should expose aria-current="page"
+    const active = activeLinks.find((l) => l.getAttribute('aria-current') === 'page')
+    expect(active).toBeDefined()
   })
 
   it('opens and closes mobile nav drawer', () => {

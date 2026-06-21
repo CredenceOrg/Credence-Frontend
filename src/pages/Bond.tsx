@@ -22,7 +22,11 @@ interface MockBond {
   status: BondStatus
 }
 
-const initialBonds: MockBond[] = []
+const initialBonds: MockBond[] = [
+  { id: 1, amountUsdc: 1000, status: 'locked' },
+  { id: 2, amountUsdc: 500, status: 'grace-period' },
+  { id: 3, amountUsdc: 750, status: 'active' },
+]
 
 function getPenaltyRate(status: BondStatus): number {
   switch (status) {
@@ -50,6 +54,115 @@ function computeWithdrawBreakdown(bond: MockBond): ConfirmDialogPenaltyBreakdown
     resultingBalance: formatUsdc(resultingUsdc),
     penaltyUsdc,
   }
+}
+
+interface BondRowProps {
+  bond: MockBond
+  isConnected: boolean
+  onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
+  onConnect: () => void
+}
+
+function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
+  const [open, setOpen] = useState(false)
+  const panelId = `slash-detail-${bond.id}`
+  const penaltyRate = getPenaltyRate(bond.status)
+  const hasPenalty = penaltyRate > 0
+  const breakdown = useMemo(() => computeWithdrawBreakdown(bond), [bond])
+
+  return (
+    <li
+      style={{
+        display: 'grid',
+        gap: 'var(--credence-space-2)',
+        paddingBlock: 'var(--credence-space-3)',
+        borderBottom: '1px solid var(--border-default)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--credence-space-3)',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--credence-space-1)' }}>
+          <span style={{ fontWeight: 500 }}>{formatUsdc(bond.amountUsdc)}</span>
+          <Badge variant={bond.status as BadgeVariant} />
+        </div>
+        <div style={{ display: 'flex', gap: 'var(--credence-space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+          {hasPenalty && (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={panelId}
+              onClick={() => setOpen((v) => !v)}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--credence-radius-sm)',
+                padding: 'var(--credence-space-1) var(--credence-space-2)',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                fontSize: '0.8rem',
+              }}
+            >
+              {open ? 'Hide penalty' : 'Show penalty'}
+            </button>
+          )}
+          <Button
+            type="button"
+            variant={hasPenalty ? 'danger' : 'secondary'}
+            onClick={isConnected ? (event) => onWithdraw(bond, event) : onConnect}
+            aria-haspopup={isConnected ? 'dialog' : undefined}
+          >
+            {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
+          </Button>
+        </div>
+      </div>
+
+      {hasPenalty ? (
+        <div
+          id={panelId}
+          role="region"
+          aria-label={`Penalty breakdown for bond ${bond.id}`}
+          hidden={!open}
+          style={{
+            display: open ? 'grid' : 'none',
+            gap: 'var(--credence-space-1)',
+            padding: 'var(--credence-space-3)',
+            background: 'var(--surface-warning, #fef3c7)',
+            borderRadius: 'var(--credence-radius-sm)',
+            fontSize: '0.85rem',
+            color: 'var(--text-primary)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Bond amount</span><span>{breakdown.bondAmount}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Penalty ({breakdown.penaltyPercent}%)</span><span>− {breakdown.penaltyAmount}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+            <span>You receive</span><span>{breakdown.resultingBalance}</span>
+          </div>
+        </div>
+      ) : (
+        <p
+          id={panelId}
+          style={{
+            margin: 0,
+            fontSize: '0.85rem',
+            color: 'var(--text-success, #15803d)',
+          }}
+        >
+          No early-withdrawal penalty
+        </p>
+      )}
+    </li>
+  )
 }
 
 export default function Bond() {
@@ -180,41 +293,14 @@ export default function Bond() {
             />
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid' }}>
-              {bonds.map((bond, index) => (
-                <li
+              {bonds.map((bond) => (
+                <BondRow
                   key={bond.id}
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingBlock: 'var(--credence-space-3)',
-                    borderBottom:
-                      index === bonds.length - 1 ? 'none' : '1px solid var(--border-default)',
-                    gap: 'var(--credence-space-3)',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 'var(--credence-space-1)',
-                    }}
-                  >
-                    <span style={{ fontWeight: 500 }}>{formatUsdc(bond.amountUsdc)}</span>
-                    <Badge variant={bond.status as BadgeVariant} />
-                  </div>
-                  <Button
-                    type="button"
-                    variant={getPenaltyRate(bond.status) > 0 ? 'danger' : 'secondary'}
-                    onClick={
-                      isConnected ? (event) => requestWithdraw(bond, event) : () => connect()
-                    }
-                    aria-haspopup={isConnected ? 'dialog' : undefined}
-                  >
-                    {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
-                  </Button>
-                </li>
+                  bond={bond}
+                  isConnected={isConnected}
+                  onWithdraw={requestWithdraw}
+                  onConnect={connect}
+                />
               ))}
             </ul>
           )}

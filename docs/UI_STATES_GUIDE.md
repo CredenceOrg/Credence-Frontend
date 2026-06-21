@@ -490,6 +490,32 @@ serves as forward-compatible scaffolding; it becomes fully active if the app is 
 
 ---
 
+## Bond Row Inline Slash-Exposure Disclosure
+
+Each bond row in the Active Bonds list surfaces penalty exposure inline — before the user commits to withdrawing — via an accessible disclosure.
+
+### States per row
+
+| Bond status | Disclosure control | Panel content |
+|---|---|---|
+| `locked` | "Show penalty" button (`aria-expanded`) | Bond amount, 20% penalty amount, resulting balance |
+| `grace-period` | "Show penalty" button (`aria-expanded`) | Bond amount, 10% penalty amount, resulting balance |
+| `active` | None (no expander) | Static "No early-withdrawal penalty" message |
+
+### Behaviour
+
+- The toggle button carries `aria-expanded="false"` when collapsed and `aria-expanded="true"` when open, pointing to the panel via `aria-controls`.
+- The panel uses `role="region"` with an `aria-label` identifying the bond.
+- The breakdown values (bond amount, penalty %, penalty USDC, resulting balance) are computed by `computeWithdrawBreakdown` — the same function used in the `ConfirmDialog` — so numbers are identical at both stages.
+- Active bonds show a "No early-withdrawal penalty" message in place of the expander to make the safe state explicit.
+- The row layout uses `flexWrap: wrap` so it reflows cleanly on narrow viewports.
+
+### Disclaimer placement
+
+The existing page-level slash-exposure `Banner` remains above the bond list as a summary callout. The per-row disclosure is the detailed, bond-specific complement to that banner — not a replacement.
+
+---
+
 ## Future Enhancements
 
 - Custom illustrations for each empty state

@@ -13,6 +13,13 @@ const Settings = lazy(() => import('./pages/Settings'))
 const AmountInputTestPage = lazy(() => import('./pages/AmountInputTestPage'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
+// import.meta.env.DEV is replaced with `false` at build time by Vite/Rollup,
+// so the dynamic import('./pages/ToastTest') reference is dead-code eliminated
+// from the production bundle.
+const ToastTest = import.meta.env.DEV
+  ? lazy(() => import('./pages/ToastTest'))
+  : null
+
 /**
  * Provider order is load-bearing: SettingsProvider must be the outer ancestor
  * because ToastProvider reads toastsEnabled and autoDismiss via useSettings().
@@ -32,6 +39,9 @@ function App() {
                   <Route path="trust" element={<TrustScore />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="test-amount-input" element={<AmountInputTestPage />} />
+                  {import.meta.env.DEV && ToastTest && (
+                    <Route path="dev/toasts" element={<ToastTest />} />
+                  )}
                   <Route path="*" element={<NotFound />} />
                 </Route>
               </Routes>

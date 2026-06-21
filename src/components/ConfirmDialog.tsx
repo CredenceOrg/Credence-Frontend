@@ -109,11 +109,7 @@ export default function ConfirmDialog({
   if (!open) return null
 
   return createPortal(
-    <div
-      className="confirm-dialog__backdrop"
-      onClick={handleBackdropClick}
-      aria-hidden={false}
-    >
+    <div className="confirm-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
       <div
         ref={dialogRef}
         role="dialog"

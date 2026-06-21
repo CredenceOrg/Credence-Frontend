@@ -113,7 +113,7 @@ describe('ToastProvider', () => {
     act(() => {
       vi.advanceTimersByTime(3000)
     })
-    
+
     // Should be dismissed now
     expect(screen.queryByText('Info Message')).not.toBeInTheDocument()
   })
@@ -131,7 +131,7 @@ describe('ToastProvider', () => {
     act(() => {
       vi.advanceTimersByTime(100000)
     })
-    
+
     expect(screen.getByText('Danger Message')).toBeInTheDocument()
   })
 
@@ -151,7 +151,7 @@ describe('ToastProvider', () => {
     fireEvent.click(screen.getByText('Add Danger'))
     fireEvent.click(screen.getByText('Add Danger'))
     fireEvent.click(screen.getByText('Add Danger'))
-    
+
     expect(screen.getAllByText('Danger Message').length).toBe(3)
 
     // Add a 4th one, should drop the first one
@@ -187,7 +187,7 @@ describe('ToastProvider', () => {
         <TestComponent />
       </ToastProvider>
     )
-    
+
     expect(screen.getByLabelText('Notifications')).toHaveAttribute('aria-live', 'polite')
   })
 })

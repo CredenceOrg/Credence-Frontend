@@ -19,9 +19,7 @@ let mockTrustScoreState: {
 vi.mock('../context/WalletContext', () => ({
   useWallet: () => ({
     isConnected: mockConnected,
-    address: mockConnected
-      ? 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-      : '',
+    address: mockConnected ? 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' : '',
     connect: mockConnect,
     disconnect: vi.fn(),
     isConnecting: false,
@@ -56,7 +54,7 @@ describe('TrustScore', () => {
     expect(screen.getByRole('button', { name: /how trust is earned/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'No recent activity' })).toBeInTheDocument()
     expect(
-      screen.getByText(/New trust score events will appear here once bonds/i),
+      screen.getByText(/New trust score events will appear here once bonds/i)
     ).toBeInTheDocument()
   })
 

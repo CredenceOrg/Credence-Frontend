@@ -10,8 +10,17 @@
 
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import CreateBondFlow from './CreateBondFlow'
+import { useReducedMotion } from '../hooks/useReducedMotion'
+
+vi.mock('../hooks/useReducedMotion', () => ({
+  useReducedMotion: vi.fn(() => false),
+}))
+
+afterEach(() => {
+  vi.clearAllMocks()
+})
 
 // ToastProvider depends on SettingsProvider → wrap renders with both
 import ToastProvider from './ToastProvider'
@@ -421,5 +430,49 @@ describe('CreateBondFlow – step 4 confirm', () => {
     await user.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: /Confirm & Create Bond/i }))
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Transition gating tests: prefers-reduced-motion
+// ---------------------------------------------------------------------------
+
+describe('CreateBondFlow – transition gating under prefers-reduced-motion', () => {
+  it('allows transitions for motion-OK users (default)', async () => {
+    vi.mocked(useReducedMotion).mockReturnValue(false)
+    const user = userEvent.setup()
+    renderFlow()
+
+    // Check step indicator transition style
+    const stepIndicator = screen.getByLabelText(/Step 1 of 4/i)
+    const bars = stepIndicator.querySelectorAll('div')
+    expect(bars[0].style.transition).toBe('background 0.2s ease')
+
+    // Advance to step 2 to check duration buttons
+    const amountInput = screen.getByPlaceholderText('0')
+    await user.type(amountInput, '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+
+    const button = screen.getByRole('button', { name: /30 Days/i })
+    expect(button.style.transition).toBe('all 0.2s ease')
+  })
+
+  it('disables transitions when reduced motion is preferred', async () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+    const user = userEvent.setup()
+    renderFlow()
+
+    // Check step indicator transition style is none
+    const stepIndicator = screen.getByLabelText(/Step 1 of 4/i)
+    const bars = stepIndicator.querySelectorAll('div')
+    expect(bars[0].style.transition).toBe('none')
+
+    // Advance to step 2 to check duration buttons
+    const amountInput = screen.getByPlaceholderText('0')
+    await user.type(amountInput, '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+
+    const button = screen.getByRole('button', { name: /30 Days/i })
+    expect(button.style.transition).toBe('none')
   })
 })

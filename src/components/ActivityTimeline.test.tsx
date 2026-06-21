@@ -54,9 +54,7 @@ describe('ActivityTimeline', () => {
 
     it('renders the EmptyState description', () => {
       render(<ActivityTimeline items={[]} />)
-      expect(
-        screen.getByText(/attestations and events will appear here/i)
-      ).toBeInTheDocument()
+      expect(screen.getByText(/attestations and events will appear here/i)).toBeInTheDocument()
     })
 
     it('does not render the timeline list', () => {

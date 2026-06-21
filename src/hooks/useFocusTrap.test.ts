@@ -53,9 +53,7 @@ describe('useFocusTrap', () => {
     })
 
     const containerRef = { current: container }
-    renderHook(() =>
-      useFocusTrap({ containerRef, isActive: true })
-    )
+    renderHook(() => useFocusTrap({ containerRef, isActive: true }))
 
     expect(document.activeElement).toBe(btn1)
     rafSpy.mockRestore()
@@ -70,9 +68,7 @@ describe('useFocusTrap', () => {
     const containerRef = { current: container }
     const initialFocusRef = { current: btn2 }
 
-    renderHook(() =>
-      useFocusTrap({ containerRef, isActive: true, initialFocusRef })
-    )
+    renderHook(() => useFocusTrap({ containerRef, isActive: true, initialFocusRef }))
 
     expect(document.activeElement).toBe(btn2)
     rafSpy.mockRestore()
@@ -80,9 +76,7 @@ describe('useFocusTrap', () => {
 
   it('does not trap focus when isActive is false', () => {
     const containerRef = { current: container }
-    renderHook(() =>
-      useFocusTrap({ containerRef, isActive: false })
-    )
+    renderHook(() => useFocusTrap({ containerRef, isActive: false }))
 
     // Focus should not have moved to inside the container
     expect(container.contains(document.activeElement)).toBe(false)
@@ -124,7 +118,11 @@ describe('useFocusTrap', () => {
 
     renderHook(() => useFocusTrap({ containerRef, isActive: true, onEscape }))
 
-    const escEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    const escEvent = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    })
     const preventDefaultSpy = vi.spyOn(escEvent, 'preventDefault')
 
     container.dispatchEvent(escEvent)
@@ -145,8 +143,7 @@ describe('useFocusTrap', () => {
     const containerRef = { current: container }
 
     const { rerender } = renderHook(
-      ({ isActive }: { isActive: boolean }) =>
-        useFocusTrap({ containerRef, isActive }),
+      ({ isActive }: { isActive: boolean }) => useFocusTrap({ containerRef, isActive }),
       { initialProps: { isActive: true } }
     )
 

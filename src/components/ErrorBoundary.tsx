@@ -56,10 +56,7 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
             padding: 'var(--credence-space-6)',
           }}
         >
-          <ErrorState
-            type="generic"
-            action={{ label: 'Try again', onClick: this.handleReset }}
-          />
+          <ErrorState type="generic" action={{ label: 'Try again', onClick: this.handleReset }} />
           <a
             href="/"
             style={{

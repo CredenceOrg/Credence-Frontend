@@ -72,10 +72,7 @@ export function formatDocumentTitle(title: string, brandSuffix = true): string {
  * }
  * ```
  */
-export function useDocumentTitle(
-  title: string,
-  options: UseDocumentTitleOptions = {}
-): void {
+export function useDocumentTitle(title: string, options: UseDocumentTitleOptions = {}): void {
   const { brandSuffix = true, restoreOnUnmount = true } = options
 
   useEffect(() => {

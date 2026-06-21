@@ -7,7 +7,7 @@ function renderToggle() {
   return render(
     <SettingsProvider>
       <ThemeToggle />
-    </SettingsProvider>,
+    </SettingsProvider>
   )
 }
 

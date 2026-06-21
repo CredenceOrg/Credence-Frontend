@@ -148,4 +148,3 @@ For questions about UI states implementation, contact the design team or refer t
 
 - **Storage key**: `credence:settings` — the settings context persists a JSON payload under this key in `localStorage`.
 - **Fallback contract**: on load the provider attempts to `JSON.parse` the value; if parsing fails or no key exists the provider falls back to built-in defaults (no exception is thrown).
-

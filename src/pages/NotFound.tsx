@@ -1,12 +1,12 @@
-import { useNavigate } from 'react-router-dom';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import Button from '../components/Button';
-import './NotFound.css';
+import { useNavigate } from 'react-router-dom'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import Button from '../components/Button'
+import './NotFound.css'
 
 export default function NotFound() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
-  useDocumentTitle('Page Not Found');
+  useDocumentTitle('Page Not Found')
 
   return (
     <main className="not-found-container">
@@ -22,34 +22,24 @@ export default function NotFound() {
           height="32"
           aria-hidden="true"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M6 18L18 6M6 6l12 12"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </div>
 
       <h1 className="not-found-title">Page Not Found</h1>
-      
+
       <p className="not-found-code">404</p>
-      
+
       <p className="not-found-description">
         The page you're looking for doesn't exist. It may have been moved or removed.
       </p>
 
       <div className="not-found-actions">
-        <Button 
-          variant="primary" 
-          onClick={() => navigate('/')}
-        >
+        <Button variant="primary" onClick={() => navigate('/')}>
           Back to Home
         </Button>
 
-        <Button 
-          variant="secondary" 
-          onClick={() => navigate(-1)}
-        >
+        <Button variant="secondary" onClick={() => navigate(-1)}>
           Go Back
         </Button>
       </div>
@@ -62,5 +52,5 @@ export default function NotFound() {
         .
       </p>
     </main>
-  );
+  )
 }

@@ -11,9 +11,7 @@ const defaultBreakdown: ConfirmDialogPenaltyBreakdown = {
   resultingBalance: '900 USDC',
 }
 
-function renderDialog(
-  overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}
-) {
+function renderDialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
   const onConfirm = vi.fn()
   const onCancel = vi.fn()
 

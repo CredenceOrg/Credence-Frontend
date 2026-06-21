@@ -61,19 +61,16 @@ export function useWallet(settingsNetwork: string): UseWalletState {
     watcherStopRef.current = watcher?.stop ?? null
   }, [stopWatcher])
 
-  const verifyNetwork = useCallback(
-    async (): Promise<WalletError | null> => {
-      const freighterNetwork = await fetchFreighterNetwork()
-      if (freighterNetwork && freighterNetwork !== network) {
-        return {
-          code: 'network_mismatch',
-          message: `Freighter is on ${freighterNetwork === 'test' ? 'Testnet' : 'Mainnet'}, but Credence is set to ${network === 'test' ? 'Testnet' : 'Mainnet'}. Update Settings or switch Freighter network.`,
-        }
+  const verifyNetwork = useCallback(async (): Promise<WalletError | null> => {
+    const freighterNetwork = await fetchFreighterNetwork()
+    if (freighterNetwork && freighterNetwork !== network) {
+      return {
+        code: 'network_mismatch',
+        message: `Freighter is on ${freighterNetwork === 'test' ? 'Testnet' : 'Mainnet'}, but Credence is set to ${network === 'test' ? 'Testnet' : 'Mainnet'}. Update Settings or switch Freighter network.`,
       }
-      return null
-    },
-    [network],
-  )
+    }
+    return null
+  }, [network])
 
   const connect = useCallback(async () => {
     if (typeof window === 'undefined') return

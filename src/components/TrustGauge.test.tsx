@@ -1,10 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
-import TrustGauge, {
-  pointsToNextTier,
-  getProgressPercentage,
-  TIER_CONFIG,
-} from './TrustGauge'
+import TrustGauge, { pointsToNextTier, getProgressPercentage, TIER_CONFIG } from './TrustGauge'
 import type { TrustTier } from './TrustGauge'
 
 // --- pointsToNextTier ---
@@ -119,7 +115,7 @@ describe('TrustGauge ARIA attributes', () => {
     render(<TrustGauge score={300} tier="silver" />)
     expect(screen.getByRole('progressbar')).toHaveAttribute(
       'aria-label',
-      'Trust score: 300 out of 1000, silver tier',
+      'Trust score: 300 out of 1000, silver tier'
     )
   })
 })

@@ -23,7 +23,12 @@ export default function Disclaimer({ context, termsHref = LINKS.terms }: Disclai
         This is not financial advice. Credence protocol interactions involve smart contract risk and
         potential loss of funds. Participate only with amounts you can afford to lose.{' '}
         {isPlaceholder ? (
-          <span aria-disabled="true" className="disclaimer-terms-disabled" title="Coming soon" tabIndex={-1}>
+          <span
+            aria-disabled="true"
+            className="disclaimer-terms-disabled"
+            title="Coming soon"
+            tabIndex={-1}
+          >
             Full terms &amp; conditions
           </span>
         ) : (

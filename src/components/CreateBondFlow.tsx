@@ -21,6 +21,7 @@ import Banner from './Banner'
 import Disclaimer from './Disclaimer'
 import { useToast } from './ToastProvider'
 import { computeBondSlashBreakdown } from '../lib/bondPenalty'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,6 +64,7 @@ interface CreateBondFlowProps {
 }
 
 export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowProps = {}) {
+  const prefersReducedMotion = useReducedMotion()
   const { addToast } = useToast()
   const [step, setStep] = useState(1)
   const [amount, setAmount] = useState('')
@@ -139,7 +141,11 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   // ---------------------------------------------------------------------------
   const StepIndicator = () => (
     <div
-      style={{ display: 'flex', gap: 'var(--credence-space-2)', marginBottom: 'var(--credence-space-4)' }}
+      style={{
+        display: 'flex',
+        gap: 'var(--credence-space-2)',
+        marginBottom: 'var(--credence-space-4)',
+      }}
       aria-label={`Step ${step} of 4`}
     >
       {[1, 2, 3, 4].map((i) => (
@@ -150,7 +156,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             height: '4px',
             borderRadius: 'var(--credence-radius-full)',
             background: i <= step ? 'var(--color-primary)' : 'var(--border-default)',
-            transition: 'background 0.2s ease',
+            transition: prefersReducedMotion ? 'none' : 'background 0.2s ease',
           }}
         />
       ))}
@@ -167,7 +173,11 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       {/* ── Step 1: Amount ── */}
       {step === 1 && (
         <div style={{ display: 'grid', gap: 'var(--credence-space-4)' }}>
-          <h2 ref={step1Ref} tabIndex={-1} style={{ outline: 'none', color: 'var(--text-primary)' }}>
+          <h2
+            ref={step1Ref}
+            tabIndex={-1}
+            style={{ outline: 'none', color: 'var(--text-primary)' }}
+          >
             Step 1: Enter Bond Amount
           </h2>
           <Banner severity="info">
@@ -202,13 +212,25 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       {/* ── Step 2: Duration ── */}
       {step === 2 && (
         <div style={{ display: 'grid', gap: 'var(--credence-space-4)' }}>
-          <h2 ref={step2Ref} tabIndex={-1} style={{ outline: 'none', color: 'var(--text-primary)' }}>
+          <h2
+            ref={step2Ref}
+            tabIndex={-1}
+            style={{ outline: 'none', color: 'var(--text-primary)' }}
+          >
             Step 2: Choose Lock Duration
           </h2>
-          <p style={{ color: 'var(--text-secondary)' }}>Select how long you want to lock your USDC:</p>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Select how long you want to lock your USDC:
+          </p>
 
           {error && (
-            <div role="alert" style={{ color: 'var(--color-danger)', fontWeight: 'var(--credence-font-weight-semibold)' }}>
+            <div
+              role="alert"
+              style={{
+                color: 'var(--color-danger)',
+                fontWeight: 'var(--credence-font-weight-semibold)',
+              }}
+            >
               ⚠ {error}
             </div>
           )}
@@ -231,7 +253,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                   borderRadius: 'var(--credence-radius-lg)',
                   fontWeight: 'var(--credence-font-weight-semibold)',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: prefersReducedMotion ? 'none' : 'all 0.2s ease',
                 }}
               >
                 {d} Days
@@ -244,7 +266,11 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       {/* ── Step 3: Review Terms ── */}
       {step === 3 && (
         <div style={{ display: 'grid', gap: 'var(--credence-space-4)' }}>
-          <h2 ref={step3Ref} tabIndex={-1} style={{ outline: 'none', color: 'var(--text-primary)' }}>
+          <h2
+            ref={step3Ref}
+            tabIndex={-1}
+            style={{ outline: 'none', color: 'var(--text-primary)' }}
+          >
             Step 3: Review Terms
           </h2>
 
@@ -308,7 +334,9 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             {slashBreakdown ? (
               <>
                 {/* Slash penalty % + amount */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
                   <span style={{ color: 'var(--text-secondary)' }}>
                     Slash Penalty ({slashBreakdown.penaltyPercent}%):
                   </span>
@@ -332,7 +360,12 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                     border: '1px solid var(--border-default)',
                   }}
                 >
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: 'var(--credence-font-weight-semibold)' }}>
+                  <span
+                    style={{
+                      color: 'var(--text-secondary)',
+                      fontWeight: 'var(--credence-font-weight-semibold)',
+                    }}
+                  >
                     You would receive:
                   </span>
                   <strong
@@ -363,7 +396,11 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       {/* ── Step 4: Confirm ── */}
       {step === 4 && (
         <div style={{ display: 'grid', gap: 'var(--credence-space-4)' }}>
-          <h2 ref={step4Ref} tabIndex={-1} style={{ outline: 'none', color: 'var(--text-primary)' }}>
+          <h2
+            ref={step4Ref}
+            tabIndex={-1}
+            style={{ outline: 'none', color: 'var(--text-primary)' }}
+          >
             Step 4: Confirm Bond
           </h2>
           <Disclaimer
@@ -392,7 +429,13 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       )}
 
       {/* ── Navigation ── */}
-      <div style={{ display: 'flex', gap: 'var(--credence-space-3)', marginTop: 'var(--credence-space-4)' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 'var(--credence-space-3)',
+          marginTop: 'var(--credence-space-4)',
+        }}
+      >
         {step > 1 && (
           <Button
             type="button"

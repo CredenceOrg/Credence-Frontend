@@ -66,8 +66,12 @@ export default function TrustScore() {
     setAddress(walletAddress)
   }
 
-  const activity: Array<{ id: number; action: string; date: string; status: 'active' | 'slashed' }> =
-    []
+  const activity: Array<{
+    id: number
+    action: string
+    date: string
+    status: 'active' | 'slashed'
+  }> = []
 
   const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
 
@@ -99,21 +103,13 @@ export default function TrustScore() {
       )}
 
       {hasAttemptedLookup && (
-        <section
-          aria-labelledby="trust-score-results-heading"
-          className="trustScore__results"
-        >
+        <section aria-labelledby="trust-score-results-heading" className="trustScore__results">
           <h2 id="trust-score-results-heading" className="sr-only">
             Trust score results
           </h2>
 
           {isLoading && (
-            <div
-              role="status"
-              aria-live="polite"
-              aria-busy="true"
-              aria-label="Loading trust score"
-            >
+            <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading trust score">
               <p className="sr-only">Loading trust score…</p>
               <LoadingSkeleton variant="card" />
             </div>

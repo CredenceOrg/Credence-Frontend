@@ -34,11 +34,16 @@ export async function checkFreighterInstalled(): Promise<boolean> {
 }
 
 export async function requestFreighterAccess(): Promise<
-  { ok: true; address: string } | { ok: false; code: 'not_installed' | 'rejected' | 'unknown'; message: string }
+  | { ok: true; address: string }
+  | { ok: false; code: 'not_installed' | 'rejected' | 'unknown'; message: string }
 > {
   const freighter = await loadFreighter()
   if (!freighter) {
-    return { ok: false, code: 'not_installed', message: 'Freighter is not available in this environment.' }
+    return {
+      ok: false,
+      code: 'not_installed',
+      message: 'Freighter is not available in this environment.',
+    }
   }
 
   const installed = await freighter.isConnected()
@@ -87,7 +92,7 @@ export async function fetchFreighterNetwork(): Promise<CredenceNetwork | null> {
 }
 
 export async function createWalletWatcher(
-  onChange: (params: { address: string; network: CredenceNetwork | null }) => void,
+  onChange: (params: { address: string; network: CredenceNetwork | null }) => void
 ): Promise<{ stop: () => void } | null> {
   const freighter = await loadFreighter()
   if (!freighter) return null

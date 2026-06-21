@@ -441,11 +441,11 @@ Before shipping, validate:
 
 Two boundaries protect the app from white-screen crashes:
 
-| Layer | Component | Location | Catches |
-|---|---|---|---|
-| Root (outermost) | `ErrorBoundary` | `main.tsx` wrapping `<App />` | Provider bootstrap errors |
-| Route tree | `ErrorBoundary` | `App.tsx` wrapping `<Suspense>` | Lazy-chunk failures, route render errors |
-| Router-level | `RouteErrorPage` | `errorElement` on root `<Route>` | Loader errors (data-router) |
+| Layer            | Component        | Location                         | Catches                                  |
+| ---------------- | ---------------- | -------------------------------- | ---------------------------------------- |
+| Root (outermost) | `ErrorBoundary`  | `main.tsx` wrapping `<App />`    | Provider bootstrap errors                |
+| Route tree       | `ErrorBoundary`  | `App.tsx` wrapping `<Suspense>`  | Lazy-chunk failures, route render errors |
+| Router-level     | `RouteErrorPage` | `errorElement` on root `<Route>` | Loader errors (data-router)              |
 
 ### Class ErrorBoundary (`src/components/ErrorBoundary.tsx`)
 

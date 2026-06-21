@@ -58,9 +58,7 @@ const DEFAULT_PENALTY_RATE = 0.2
  * @param durationDays - Lock duration in days.
  */
 export function getPenaltyRateForDuration(durationDays: number): number {
-  return (
-    PENALTY_RATE_BY_DURATION[durationDays as BondDurationDays] ?? DEFAULT_PENALTY_RATE
-  )
+  return PENALTY_RATE_BY_DURATION[durationDays as BondDurationDays] ?? DEFAULT_PENALTY_RATE
 }
 
 /**

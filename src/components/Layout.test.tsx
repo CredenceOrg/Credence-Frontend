@@ -54,7 +54,9 @@ describe('Layout Integration', () => {
 
   it('renders desktop navigation links', () => {
     renderLayout()
-    const desktopLinks = screen.getAllByRole('link', { name: /dashboard|bond|trust score|settings/i })
+    const desktopLinks = screen.getAllByRole('link', {
+      name: /dashboard|bond|trust score|settings/i,
+    })
     expect(desktopLinks.length).toBeGreaterThan(0)
     expect(screen.getAllByRole('link', { name: /dashboard/i }).length).toBeGreaterThan(0)
   })
@@ -62,8 +64,10 @@ describe('Layout Integration', () => {
   it('marks active link on desktop navigation', () => {
     renderLayout('/bond')
     const activeLinks = screen.getAllByRole('link', { name: /bond/i })
-    const hasActiveClass = activeLinks.some((link) =>
-      link.classList.contains('appNav-link--active') || link.classList.contains('mobileNav-link--active'),
+    const hasActiveClass = activeLinks.some(
+      (link) =>
+        link.classList.contains('appNav-link--active') ||
+        link.classList.contains('mobileNav-link--active')
     )
     expect(hasActiveClass).toBe(true)
 
@@ -76,14 +80,14 @@ describe('Layout Integration', () => {
     renderLayout()
     const hamburger = screen.getByRole('button', { name: /open navigation menu/i })
     const drawer = document.getElementById('mobile-nav-drawer')
-    
+
     expect(drawer).toHaveAttribute('aria-hidden', 'true')
-    
+
     // Open drawer
     fireEvent.click(hamburger)
     expect(drawer).toHaveAttribute('aria-hidden', 'false')
     expect(drawer).toHaveClass('mobileNav-drawer--open')
-    
+
     // Close drawer using close button
     const closeBtn = screen.getByRole('button', { name: /close navigation menu/i })
     fireEvent.click(closeBtn)
@@ -93,15 +97,15 @@ describe('Layout Integration', () => {
   it('closes mobile nav drawer when clicking on the backdrop', () => {
     renderLayout()
     const hamburger = screen.getByRole('button', { name: /open navigation menu/i })
-    
+
     fireEvent.click(hamburger)
     const backdrop = document.querySelector('.mobileNav-backdrop')
     expect(backdrop).not.toBeNull()
-    
+
     if (backdrop) {
       fireEvent.click(backdrop)
     }
-    
+
     const drawer = document.getElementById('mobile-nav-drawer')
     expect(drawer).toHaveAttribute('aria-hidden', 'true')
   })
@@ -109,10 +113,10 @@ describe('Layout Integration', () => {
   it('closes mobile nav drawer on Escape key', () => {
     renderLayout()
     const hamburger = screen.getByRole('button', { name: /open navigation menu/i })
-    
+
     fireEvent.click(hamburger)
     const drawer = document.getElementById('mobile-nav-drawer') as HTMLElement
-    
+
     fireEvent.keyDown(drawer, { key: 'Escape' })
     expect(drawer).toHaveAttribute('aria-hidden', 'true')
   })
@@ -120,17 +124,19 @@ describe('Layout Integration', () => {
   it('closes mobile nav drawer when a link is clicked', () => {
     renderLayout()
     const hamburger = screen.getByRole('button', { name: /open navigation menu/i })
-    
+
     fireEvent.click(hamburger)
-    
+
     const drawer = document.getElementById('mobile-nav-drawer') as HTMLElement
-    const bondLink = screen.getAllByRole('link', { name: /bond/i }).find(link => drawer.contains(link))
-    
+    const bondLink = screen
+      .getAllByRole('link', { name: /bond/i })
+      .find((link) => drawer.contains(link))
+
     expect(bondLink).toBeDefined()
     if (bondLink) {
       fireEvent.click(bondLink)
     }
-    
+
     expect(drawer).toHaveAttribute('aria-hidden', 'true')
   })
 })

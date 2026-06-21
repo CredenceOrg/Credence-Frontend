@@ -16,16 +16,11 @@ export default function AmountInputTestPage() {
   return (
     <div style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
       <h1>AmountInput Test Page</h1>
-      
+
       <section style={{ marginBottom: '2rem' }}>
         <h2>Basic Test (Default Presets)</h2>
         <p>Balance: {balance.toFixed(2)} USDC</p>
-        <AmountInput
-          value={value}
-          onChange={handleValueChange}
-          balance={balance}
-          error={error}
-        />
+        <AmountInput value={value} onChange={handleValueChange} balance={balance} error={error} />
         <div style={{ marginTop: '1rem' }}>
           <strong>Current value:</strong> {value || '(empty)'}
         </div>
@@ -45,12 +40,7 @@ export default function AmountInputTestPage() {
 
       <section style={{ marginBottom: '2rem' }}>
         <h2>Zero Balance Test (Max Disabled)</h2>
-        <AmountInput
-          value={value}
-          onChange={handleValueChange}
-          balance={0}
-          error={error}
-        />
+        <AmountInput value={value} onChange={handleValueChange} balance={0} error={error} />
       </section>
 
       <section style={{ marginBottom: '2rem' }}>
@@ -86,7 +76,9 @@ export default function AmountInputTestPage() {
           <button onClick={() => setValue('1234.56')}>Set Value: 1234.56</button>
           <button onClick={() => setValue('0.01')}>Set Value: 0.01</button>
           <button onClick={() => setCustomPresets([50, 100, 200])}>Presets: [50, 100, 200]</button>
-          <button onClick={() => setCustomPresets([1000, 5000, 10000])}>Presets: [1000, 5000, 10000]</button>
+          <button onClick={() => setCustomPresets([1000, 5000, 10000])}>
+            Presets: [1000, 5000, 10000]
+          </button>
         </div>
       </section>
 
@@ -94,24 +86,48 @@ export default function AmountInputTestPage() {
         <h2>Manual Input Test Cases</h2>
         <p>Try entering these values manually to test sanitization:</p>
         <ul>
-          <li><code>abc123</code> - should strip letters</li>
-          <li><code>$100.00</code> - should strip $</li>
-          <li><code>1,000.50</code> - should strip comma</li>
-          <li><code>12.345</code> - should truncate to 12.34</li>
-          <li><code>00123</code> - should remove leading zeros</li>
-          <li><code>-100</code> - should normalize to 0 on blur</li>
-          <li><code>0.5</code> - should format to 0.50 on blur</li>
+          <li>
+            <code>abc123</code> - should strip letters
+          </li>
+          <li>
+            <code>$100.00</code> - should strip $
+          </li>
+          <li>
+            <code>1,000.50</code> - should strip comma
+          </li>
+          <li>
+            <code>12.345</code> - should truncate to 12.34
+          </li>
+          <li>
+            <code>00123</code> - should remove leading zeros
+          </li>
+          <li>
+            <code>-100</code> - should normalize to 0 on blur
+          </li>
+          <li>
+            <code>0.5</code> - should format to 0.50 on blur
+          </li>
         </ul>
       </section>
 
       <section style={{ marginBottom: '2rem' }}>
         <h2>Expected Behaviors</h2>
         <ul>
-          <li><strong>Sanitization:</strong> Invalid characters are stripped during input</li>
-          <li><strong>Formatting:</strong> Value shows with commas when not focused, raw when focused</li>
-          <li><strong>Normalization:</strong> On blur, value normalizes to 2 decimal places</li>
-          <li><strong>Max:</strong> Sets value to balance, disabled when balance ≤ 0</li>
-          <li><strong>Presets:</strong> Disabled when preset &gt; balance</li>
+          <li>
+            <strong>Sanitization:</strong> Invalid characters are stripped during input
+          </li>
+          <li>
+            <strong>Formatting:</strong> Value shows with commas when not focused, raw when focused
+          </li>
+          <li>
+            <strong>Normalization:</strong> On blur, value normalizes to 2 decimal places
+          </li>
+          <li>
+            <strong>Max:</strong> Sets value to balance, disabled when balance ≤ 0
+          </li>
+          <li>
+            <strong>Presets:</strong> Disabled when preset &gt; balance
+          </li>
         </ul>
       </section>
     </div>

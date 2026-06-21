@@ -170,14 +170,15 @@ function closeOverlay() {
 
 Confirmation dialogs that gate destructive actions behind a typed phrase (e.g., "CONFIRM") implement the following focus and announcement behavior:
 
-| State | Focus target | aria-live announcement |
-|-------|--------------|------------------------|
-| Dialog opens | **Cancel** button (per §4) | Dialog title + subtitle |
-| User types exact phrase → button enabled | **Confirm** button | "Withdrawal enabled. Type CONFIRM to confirm." |
-| User deletes/changes phrase → button disabled | **Cancel** button | "Withdrawal disabled. Type CONFIRM to enable." |
-| Dialog closes (any path) | Trigger element (per §5) | — |
+| State                                         | Focus target               | aria-live announcement                         |
+| --------------------------------------------- | -------------------------- | ---------------------------------------------- |
+| Dialog opens                                  | **Cancel** button (per §4) | Dialog title + subtitle                        |
+| User types exact phrase → button enabled      | **Confirm** button         | "Withdrawal enabled. Type CONFIRM to confirm." |
+| User deletes/changes phrase → button disabled | **Cancel** button          | "Withdrawal disabled. Type CONFIRM to enable." |
+| Dialog closes (any path)                      | Trigger element (per §5)   | —                                              |
 
 **Implementation notes:**
+
 - The dialog uses an `aria-live="assertive"` region (reused from the title/subtitle announcement) to communicate gating state changes.
 - Focus movement is performed via `requestAnimationFrame` after the state update to ensure the target element is interactive.
 - The initial focus-on-Cancel pattern is preserved on open; focus only shifts to Confirm when the user explicitly enables the action.

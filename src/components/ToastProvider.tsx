@@ -28,7 +28,7 @@ export function useToast() {
 
 export default function ToastProvider({ children }: { children: ReactNode }) {
   const { toastsEnabled, autoDismiss } = useSettings()
-  
+
   /**
    * We use a ref to track the current settings to avoid recreating `addToast`
    * on every setting change, which would cause unnecessary re-renders of consumers.
@@ -51,7 +51,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
 
   const removeAllToasts = useCallback(() => {
     setToasts([])
-    timeoutsMap.current.forEach(timerId => clearTimeout(timerId))
+    timeoutsMap.current.forEach((timerId) => clearTimeout(timerId))
     timeoutsMap.current.clear()
   }, [])
 

@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
-import { useSettings } from '../context/SettingsContext'
 
 export interface AddressInputProps {
   /** Input id forwarded to FormField for label and description wiring. */
@@ -24,7 +23,7 @@ export interface AddressInputProps {
  * Validates Stellar public key format.
  * Valid addresses: 56 characters, starts with 'G'
  */
-function isValidStellarAddress(address: string): boolean {
+export function isValidStellarAddress(address: string): boolean {
   if (!address) return false
   // Stellar addresses are 56 characters and start with 'G'
   return /^G[A-Z0-9]{55}$/.test(address)
@@ -132,8 +131,6 @@ export default function AddressInput({
   disabled = false,
   className = '',
 }: AddressInputProps) {
-  const { addressDisplay } = useSettings()
-
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [focused, setFocused] = useState(false)

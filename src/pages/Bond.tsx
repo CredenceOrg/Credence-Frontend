@@ -9,7 +9,9 @@ import type { ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 import EmptyState from '../components/states/EmptyState'
 import { FormField } from '../components/forms/FormField'
 import AmountInput from '../components/AmountInput'
+import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { formatUsdc } from '../lib/format'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
@@ -21,7 +23,7 @@ interface MockBond {
   status: BondStatus
 }
 
-// formatUsdc is imported from src/lib/format.ts — do not redeclare here.
+const initialBonds: MockBond[] = []
 
 function getPenaltyRate(status: BondStatus): number {
   switch (status) {
@@ -55,7 +57,7 @@ export default function Bond() {
   useDocumentTitle('Bond')
 
   const { addToast } = useToast()
-  const { connected, connect } = useWallet()
+  const { isConnected, connect } = useWallet()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
 
@@ -80,7 +82,7 @@ export default function Bond() {
    * otherwise sets an inline validation error.
    */
   const handleCreate = () => {
-    if (!connected) {
+    if (!isConnected) {
       connect()
       return
     }
@@ -111,14 +113,14 @@ export default function Bond() {
   )
 
   const requestWithdraw = useCallback((bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => {
-    if (!connected) {
+    if (!isConnected) {
       connect()
       return
     }
 
     withdrawTriggerRef.current = event.currentTarget
     setWithdrawTarget(bond)
-  }, [connected, connect])
+  }, [isConnected, connect])
 
   const cancelWithdraw = useCallback(() => {
     setWithdrawTarget(null)
@@ -161,7 +163,7 @@ export default function Bond() {
         Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
       </Banner>
 
-      {!connected && (
+      {!isConnected && (
         <Banner
           severity="warning"
           title="Connect wallet required"
@@ -207,12 +209,12 @@ export default function Bond() {
           </FormField>
           <Button
             type="button"
-            onClick={connected ? handleCreate : connect}
-            disabled={connected ? !amount || overBalance : false}
+            onClick={isConnected ? handleCreate : connect}
+            disabled={isConnected ? !amount || overBalance : false}
             fullWidth
             style={{ marginTop: 'var(--credence-space-4)' }}
           >
-            {connected ? 'Create bond' : 'Connect wallet to continue'}
+            {isConnected ? 'Create bond' : 'Connect wallet to continue'}
           </Button>
         </ActionCard>
 
@@ -257,11 +259,11 @@ export default function Bond() {
                     type="button"
                     variant={getPenaltyRate(bond.status) > 0 ? 'danger' : 'secondary'}
                     onClick={
-                      connected ? (event) => requestWithdraw(bond, event) : () => connect()
+                      isConnected ? (event) => requestWithdraw(bond, event) : () => connect()
                     }
-                    aria-haspopup={connected ? 'dialog' : undefined}
+                    aria-haspopup={isConnected ? 'dialog' : undefined}
                   >
-                    {connected ? 'Withdraw' : 'Connect wallet to withdraw'}
+                    {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
                   </Button>
                 </li>
               ))}

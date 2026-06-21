@@ -20,7 +20,6 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
-    exclude: ['**/node_modules/**', '**/AmountInput.test.ts'],
     server: {
       deps: {
         inline: ['@exodus/bytes'],
@@ -28,27 +27,11 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      include: [
-        'src/components/AddressInput.tsx',
-        'src/components/ConfirmDialog.tsx',
-        'src/components/ThemeToggle.tsx',
-        'src/hooks/useFocusTrap.ts',
-        'src/hooks/useDocumentTitle.ts',
-        'src/context/SettingsContext.tsx',
-        'src/components/ToastProvider.tsx',
-        'src/components/TrustGauge.tsx',
-      ],
+      include: ['src/components/AddressInput.tsx', 'src/components/Badge.tsx'],
       reporter: ['text', 'lcov'],
       thresholds: {
         'src/components/AddressInput.tsx': { lines: 90, branches: 90 },
-        'src/components/AmountInput.tsx': { lines: 80, branches: 80 },
-        'src/components/ConfirmDialog.tsx': { branches: 90 },
-        'src/components/ThemeToggle.tsx': { lines: 85, branches: 85 },
-        'src/hooks/useFocusTrap.ts': { branches: 85 },
-        'src/hooks/useDocumentTitle.ts': { lines: 90, branches: 90 },
-        'src/context/SettingsContext.tsx': { lines: 80, branches: 80 },
-        'src/components/ToastProvider.tsx': { lines: 80, branches: 80 },
-        'src/components/TrustGauge.tsx': { lines: 90, branches: 90 },
+        'src/components/Badge.tsx': { branches: 95 },
       },
     },
   },

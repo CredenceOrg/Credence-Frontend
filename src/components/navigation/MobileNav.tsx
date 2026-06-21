@@ -5,6 +5,7 @@ import './MobileNav.css'
 
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/bond', label: 'Bond' },
   { to: '/trust', label: 'Trust Score' },
   { to: '/settings', label: 'Settings' },

@@ -116,4 +116,34 @@ Presentational reference component:
 - [src/components/ActivityTimeline.tsx](src/components/ActivityTimeline.tsx)
 - [src/components/ActivityTimeline.css](src/components/ActivityTimeline.css)
 
-This component is static by design and intended as a concept surface for future data binding.
+### Props
+
+| Prop    | Type             | Default        | Description                                       |
+|---------|------------------|----------------|---------------------------------------------------|
+| `items` | `ActivityItem[]` | Sample 3 items | Timeline events to render. Pass `[]` for no data. |
+
+### Usage
+
+```tsx
+import ActivityTimeline, { ActivityItem } from '../components/ActivityTimeline'
+
+// Concept demo — no props needed (shows 3 sample events)
+<ActivityTimeline />
+
+// Data-driven (empty state when no events)
+<ActivityTimeline items={[]} />
+
+// Data-driven with real events
+<ActivityTimeline items={myEvents} />
+```
+
+### Empty state
+
+When `items` is an empty array the timeline rail is hidden and `EmptyState` (with
+`illustration="activity"`) is rendered in its place, consistent with the pattern used
+across the app.
+
+### Exported types
+
+`ActivityItem` and `ActivityTone` are exported so consumers can type their own data without
+duplicating the interface.

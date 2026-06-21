@@ -1,10 +1,15 @@
 import React, { createContext, useContext } from 'react'
 import { useSettings } from './SettingsContext'
-import { useWallet, type UseWalletState } from '../hooks/useWallet'
+import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWallet'
 
-const defaultWalletState: UseWalletState = {
+export type WalletContextValue = UseWalletState & {
+  connected: boolean
+}
+
+const defaultWalletState: WalletContextValue = {
   address: '',
   isConnected: false,
+  connected: false,
   isConnecting: false,
   error: null,
   connect: async () => {},
@@ -12,16 +17,25 @@ const defaultWalletState: UseWalletState = {
   network: 'public',
 }
 
-const WalletContext = createContext<UseWalletState>(defaultWalletState)
+const WalletContext = createContext<WalletContextValue>(defaultWalletState)
 
 /** Read shared wallet connection state. Must be used within WalletProvider. */
-export function useWalletContext(): UseWalletState {
+export function useWalletContext(): WalletContextValue {
   return useContext(WalletContext)
+}
+
+/** Read shared wallet connection state with the legacy `connected` alias. */
+export function useWallet(): WalletContextValue {
+  return useWalletContext()
 }
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { network } = useSettings()
-  const wallet = useWallet(network)
+  const wallet = useWalletState(network)
+  const value = {
+    ...wallet,
+    connected: wallet.isConnected,
+  }
 
-  return <WalletContext.Provider value={wallet}>{children}</WalletContext.Provider>
+  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
 }

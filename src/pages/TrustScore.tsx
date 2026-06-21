@@ -1,30 +1,64 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './TrustScore.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
-import { useToast } from '../components/ToastProvider'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
-import { EmptyState } from '../components/states'
+import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
+import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
+import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useTrustScore } from '../hooks/useTrustScore'
+import { ApiError } from '../api/client'
+
+function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {
+  if (error.status === 0) {
+    return 'network'
+  }
+  if (error.status >= 400 && error.status < 500) {
+    return 'validation'
+  }
+  if (error.status >= 500) {
+    return 'backend'
+  }
+  return 'generic'
+}
 
 export default function TrustScore() {
   useDocumentTitle('Trust Score')
 
-  const { addToast } = useToast()
-  const { connected, address: walletAddress, connect } = useWallet()
+  const { isConnected, address: walletAddress, connect } = useWallet()
   const [address, setAddress] = useState('')
   const [isAddressValid, setIsAddressValid] = useState(false)
+  const [hasAttemptedLookup, setHasAttemptedLookup] = useState(false)
+  const [lookupAddress, setLookupAddress] = useState('')
+  const pendingLookupRef = useRef(false)
+
+  const { data, isLoading, error, refetch } = useTrustScore(lookupAddress)
+
+  useEffect(() => {
+    if (!pendingLookupRef.current || !lookupAddress) {
+      return
+    }
+    pendingLookupRef.current = false
+    refetch()
+  }, [lookupAddress, refetch])
 
   const handleLookup = () => {
-    if (!connected) {
-      connect()
+    if (!isConnected) {
+      void connect()
       return
     }
 
-    addToast('success', 'Trust score retrieved.')
+    if (!isAddressValid) {
+      return
+    }
+
+    setHasAttemptedLookup(true)
+    pendingLookupRef.current = true
+    setLookupAddress(address.trim())
   }
 
   const useConnectedAddress = () => {
@@ -35,11 +69,15 @@ export default function TrustScore() {
   const activity: Array<{ id: number; action: string; date: string; status: 'active' | 'slashed' }> =
     []
 
+  const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
+
   return (
     <div>
       <div className="trustScore__headerRow">
         <h1 className="trustScore__title">Trust Score</h1>
-        <Badge variant="gold" label="Gold Tier" className="tier-badge" />
+        {data && lookupAddress === address.trim() && (
+          <Badge variant={data.tier} label={tierLabel} className="tier-badge" />
+        )}
       </div>
       <p id="trust-desc" className="trustScore__description">
         Your reputation score is computed from bond amount, duration, and attestations.
@@ -49,15 +87,58 @@ export default function TrustScore() {
         Scores update once per epoch. Recent bond changes may not be reflected immediately.
       </Banner>
 
-      {!connected && (
+      {!isConnected && (
         <Banner
           severity="warning"
           title="Connect wallet required"
-          action={{ label: 'Connect wallet', onClick: connect }}
+          action={{ label: 'Connect wallet', onClick: () => void connect() }}
         >
           Connect a wallet to look up your own trust score. You can still type another Stellar
           address for review.
         </Banner>
+      )}
+
+      {hasAttemptedLookup && (
+        <section
+          aria-labelledby="trust-score-results-heading"
+          className="trustScore__results"
+        >
+          <h2 id="trust-score-results-heading" className="sr-only">
+            Trust score results
+          </h2>
+
+          {isLoading && (
+            <div
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+              aria-label="Loading trust score"
+            >
+              <p className="sr-only">Loading trust score…</p>
+              <LoadingSkeleton variant="card" />
+            </div>
+          )}
+
+          {!isLoading && error && (
+            <div role="alert">
+              <ErrorState
+                type={trustScoreErrorType(error)}
+                title="Unable to load trust score"
+                message={error.message}
+                action={{ label: 'Try again', onClick: refetch }}
+              />
+            </div>
+          )}
+
+          {!isLoading && !error && data && lookupAddress === address.trim() && (
+            <div>
+              <TrustGauge score={data.score} tier={data.tier} />
+              <div className="trustScore__tierBadge">
+                <Badge variant={data.tier} label={tierLabel} />
+              </div>
+            </div>
+          )}
+        </section>
       )}
 
       <div className="trustScore__grid">
@@ -70,7 +151,7 @@ export default function TrustScore() {
             onChange={setAddress}
             onValidationChange={setIsAddressValid}
           />
-          {connected && walletAddress && (
+          {isConnected && walletAddress && (
             <Button
               type="button"
               onClick={useConnectedAddress}
@@ -83,13 +164,13 @@ export default function TrustScore() {
           )}
           <Button
             type="button"
-            onClick={connected ? handleLookup : connect}
+            onClick={handleLookup}
             variant="primary"
             fullWidth
-            disabled={connected ? !isAddressValid : false}
+            disabled={isConnected ? !isAddressValid : false}
             className="trustScore__buttonRow"
           >
-            {connected ? 'Look up score' : 'Connect wallet to continue'}
+            {isConnected ? 'Look up score' : 'Connect wallet to continue'}
           </Button>
         </div>
 

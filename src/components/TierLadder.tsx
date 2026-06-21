@@ -2,7 +2,9 @@ import { useId, useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import './TierLadder.css'
 
-export type TierId = 'bronze' | 'silver' | 'gold' | 'platinum'
+import { type TrustTier, TIER_THRESHOLDS } from '../lib/tier'
+
+export type TierId = TrustTier
 
 export interface TierDefinition {
   id: TierId
@@ -17,8 +19,8 @@ export const TIER_LADDER: TierDefinition[] = [
   {
     id: 'bronze',
     label: 'Bronze',
-    scoreMin: 0,
-    scoreMax: 249,
+    scoreMin: TIER_THRESHOLDS.bronze.min,
+    scoreMax: TIER_THRESHOLDS.bronze.max,
     benefits: [
       'Trust score visible in protocol lookups',
       'Eligible to create and maintain a standard bond',
@@ -28,8 +30,8 @@ export const TIER_LADDER: TierDefinition[] = [
   {
     id: 'silver',
     label: 'Silver',
-    scoreMin: 250,
-    scoreMax: 499,
+    scoreMin: TIER_THRESHOLDS.silver.min,
+    scoreMax: TIER_THRESHOLDS.silver.max,
     benefits: [
       'Improved ranking in identity search results',
       'Extended grace period before bond status warnings',
@@ -39,8 +41,8 @@ export const TIER_LADDER: TierDefinition[] = [
   {
     id: 'gold',
     label: 'Gold',
-    scoreMin: 500,
-    scoreMax: 749,
+    scoreMin: TIER_THRESHOLDS.gold.min,
+    scoreMax: TIER_THRESHOLDS.gold.max,
     benefits: [
       'Priority consideration for attestation requests',
       'Reduced slashing sensitivity on first-time violations',
@@ -50,8 +52,8 @@ export const TIER_LADDER: TierDefinition[] = [
   {
     id: 'platinum',
     label: 'Platinum',
-    scoreMin: 750,
-    scoreMax: null,
+    scoreMin: TIER_THRESHOLDS.platinum.min,
+    scoreMax: TIER_THRESHOLDS.platinum.max,
     benefits: [
       'Maximum attestation and bond-duration weighting',
       'Eligible for validator and governance reputation signals',

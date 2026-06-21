@@ -1,6 +1,6 @@
 import './TrustGauge.css'
 
-export type TrustTier = 'bronze' | 'silver' | 'gold' | 'platinum'
+import { type TrustTier, TIER_THRESHOLDS } from '../lib/tier'
 
 export interface TrustGaugeProps {
   /** Current trust score (0-1000) */
@@ -15,36 +15,36 @@ export interface TrustGaugeProps {
 
 /**
  * Tier thresholds and configuration
- * These define the score ranges for each tier
+ * These define the score ranges for each tier using the canonical limits
  */
 export const TIER_CONFIG = {
   bronze: {
-    min: 0,
-    max: 250,
+    min: TIER_THRESHOLDS.bronze.min,
+    max: TIER_THRESHOLDS.bronze.max,
     color: 'var(--credence-color-bronze-border)',
     surfaceColor: 'var(--credence-color-bronze-surface)',
     textColor: 'var(--credence-color-bronze-text)',
     label: 'Bronze',
   },
   silver: {
-    min: 250,
-    max: 500,
+    min: TIER_THRESHOLDS.silver.min,
+    max: TIER_THRESHOLDS.silver.max,
     color: 'var(--credence-color-silver-border)',
     surfaceColor: 'var(--credence-color-silver-surface)',
     textColor: 'var(--credence-color-silver-text)',
     label: 'Silver',
   },
   gold: {
-    min: 500,
-    max: 750,
+    min: TIER_THRESHOLDS.gold.min,
+    max: TIER_THRESHOLDS.gold.max,
     color: 'var(--credence-color-gold-border)',
     surfaceColor: 'var(--credence-color-gold-surface)',
     textColor: 'var(--credence-color-gold-text)',
     label: 'Gold',
   },
   platinum: {
-    min: 750,
-    max: 1000,
+    min: TIER_THRESHOLDS.platinum.min,
+    max: 1000, // Visual maximum for the gauge progress
     color: 'var(--credence-color-platinum-border)',
     surfaceColor: 'var(--credence-color-platinum-surface)',
     textColor: 'var(--credence-color-platinum-text)',

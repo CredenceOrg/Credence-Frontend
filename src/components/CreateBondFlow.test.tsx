@@ -194,6 +194,51 @@ describe('CreateBondFlow – step navigation', () => {
 })
 
 // ---------------------------------------------------------------------------
+// a11y: focus moves to the step heading on advance/back
+// ---------------------------------------------------------------------------
+
+describe('CreateBondFlow – focus management', () => {
+  it('focuses the step 1 heading on initial render', async () => {
+    renderFlow()
+    // useEffect fires after render; wait for the heading to receive focus
+    const heading = await screen.findByRole('heading', { name: /Step 1: Enter Bond Amount/i })
+    expect(document.activeElement).toBe(heading)
+  })
+
+  it('moves focus to the step 2 heading when advancing from step 1', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(screen.getByPlaceholderText('0'), '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    const heading = await screen.findByRole('heading', { name: /Step 2: Choose Lock Duration/i })
+    expect(document.activeElement).toBe(heading)
+  })
+
+  it('moves focus to the step 3 heading when advancing from step 2', async () => {
+    await reachStep3('1000', 30)
+    const heading = await screen.findByRole('heading', { name: /Step 3: Review Terms/i })
+    expect(document.activeElement).toBe(heading)
+  })
+
+  it('moves focus to the step 4 heading when advancing from step 3', async () => {
+    await reachStep3('1000', 30)
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    const heading = await screen.findByRole('heading', { name: /Step 4: Confirm Bond/i })
+    expect(document.activeElement).toBe(heading)
+  })
+
+  it('moves focus back to the step 1 heading when going back from step 2', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(screen.getByPlaceholderText('0'), '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+    const heading = await screen.findByRole('heading', { name: /Step 1: Enter Bond Amount/i })
+    expect(document.activeElement).toBe(heading)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Step 3 – core requirements
 // ---------------------------------------------------------------------------
 

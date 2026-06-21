@@ -20,6 +20,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
+    alias: {
+      '@stellar/freighter-api': path.resolve(__dirname, './src/test/__mocks__/freighter-api.stub.ts'),
+    },
     server: {
       deps: {
         inline: ['@exodus/bytes'],

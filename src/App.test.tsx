@@ -39,4 +39,11 @@ describe('App routing', () => {
     expect(await screen.findByRole('heading', { name: /page not found/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Settings' })).not.toBeInTheDocument()
   })
+
+  it('renders the CreateBondFlow wizard at /bond/new', async () => {
+    renderAppAt('/bond/new')
+
+    expect(await screen.findByRole('heading', { name: /^Create Bond$/i })).toBeInTheDocument()
+    expect(await screen.findByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+  })
 })

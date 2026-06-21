@@ -1,6 +1,7 @@
 /**
  * @file CreateBondFlow.tsx
  * @description Multi-step wizard for creating a USDC bond on the Credence protocol.
+ * Mounted at `/bond/new` via `CreateBondPage` (see `src/pages/CreateBondPage.tsx`).
  *
  * Step 1 – Enter bond amount (USDC)
  * Step 2 – Choose lock duration (30 / 90 / 180 days)
@@ -54,7 +55,14 @@ const ReviewDivider = () => (
 // Component
 // ---------------------------------------------------------------------------
 
-export default function CreateBondFlow() {
+interface CreateBondFlowProps {
+  /** Called after the success toast fires. When provided, replaces the default reset-to-step-1 behaviour. */
+  onComplete?: () => void
+  /** Called when the Cancel button is clicked. When provided, replaces the default reset-to-step-1 behaviour. */
+  onCancel?: () => void
+}
+
+export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowProps = {}) {
   const { addToast } = useToast()
   const [step, setStep] = useState(1)
   const [amount, setAmount] = useState('')
@@ -106,7 +114,11 @@ export default function CreateBondFlow() {
 
   const handleConfirm = () => {
     addToast('success', 'Bond created successfully.')
-    reset()
+    if (onComplete) {
+      onComplete()
+    } else {
+      reset()
+    }
   }
 
   /**
@@ -201,7 +213,7 @@ export default function CreateBondFlow() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 'var(--credence-space-3)' }}>
+          <div style={{ display: 'flex', gap: 'var(--credence-space-3)', flexWrap: 'wrap' }}>
             {[30, 90, 180].map((d) => (
               <Button
                 key={d}
@@ -436,7 +448,7 @@ export default function CreateBondFlow() {
         )}
         <Button
           type="button"
-          onClick={reset}
+          onClick={onCancel ?? reset}
           style={{
             padding: 'var(--credence-space-3) var(--credence-space-4)',
             background: 'var(--bg-page)',

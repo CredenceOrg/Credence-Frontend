@@ -154,11 +154,7 @@ describe('ErrorBoundary', () => {
       }
 
       render(
-        <ErrorBoundary
-          fallback={(_err, reset) => (
-            <button onClick={reset}>Custom retry</button>
-          )}
-        >
+        <ErrorBoundary fallback={(_err, reset) => <button onClick={reset}>Custom retry</button>}>
           <MaybeThrow />
         </ErrorBoundary>
       )

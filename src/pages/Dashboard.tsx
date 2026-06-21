@@ -21,8 +21,16 @@ const activeBonds = [
 
 const shortcuts = [
   { to: '/bond', label: 'Create bond', description: 'Lock more USDC into reputation bonds.' },
-  { to: '/trust', label: 'View trust score', description: 'Look up score details and tier context.' },
-  { to: '/attestations', label: 'Review attestations', description: 'Open recent evidence and claims.' },
+  {
+    to: '/trust',
+    label: 'View trust score',
+    description: 'Look up score details and tier context.',
+  },
+  {
+    to: '/attestations',
+    label: 'Review attestations',
+    description: 'Open recent evidence and claims.',
+  },
 ]
 
 export default function Dashboard() {

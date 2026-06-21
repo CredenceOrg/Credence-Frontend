@@ -4,8 +4,6 @@ import { SettingsProvider } from './context/SettingsContext'
 import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import Layout from './components/Layout'
-import ErrorBoundary from './components/ErrorBoundary'
-import RouteErrorPage from './pages/RouteErrorPage'
 
 const Home = lazy(() => import('./pages/Home'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -19,9 +17,7 @@ const NotFound = lazy(() => import('./pages/NotFound'))
 // import.meta.env.DEV is replaced with `false` at build time by Vite/Rollup,
 // so the dynamic import('./pages/ToastTest') reference is dead-code eliminated
 // from the production bundle.
-const ToastTest = import.meta.env.DEV
-  ? lazy(() => import('./pages/ToastTest'))
-  : null
+const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
 
 /**
  * Provider order is load-bearing: SettingsProvider must be the outer ancestor

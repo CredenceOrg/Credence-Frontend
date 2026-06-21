@@ -25,7 +25,7 @@ function renderDashboard() {
   return render(
     <MemoryRouter>
       <Dashboard />
-    </MemoryRouter>,
+    </MemoryRouter>
   )
 }
 
@@ -65,10 +65,13 @@ describe('Dashboard', () => {
     renderDashboard()
 
     expect(screen.getByRole('link', { name: /create bond/i })).toHaveAttribute('href', '/bond')
-    expect(screen.getByRole('link', { name: /view trust score/i })).toHaveAttribute('href', '/trust')
+    expect(screen.getByRole('link', { name: /view trust score/i })).toHaveAttribute(
+      'href',
+      '/trust'
+    )
     expect(screen.getByRole('link', { name: /review attestations/i })).toHaveAttribute(
       'href',
-      '/attestations',
+      '/attestations'
     )
   })
 

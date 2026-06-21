@@ -29,7 +29,12 @@ export default function RouteErrorPage() {
             ? "The page you're looking for doesn't exist."
             : 'An unexpected router error occurred. Please try again.'
         }
-        action={{ label: 'Go home', onClick: () => { window.location.href = '/' } }}
+        action={{
+          label: 'Go home',
+          onClick: () => {
+            window.location.href = '/'
+          },
+        }}
       />
       <a
         href="/"

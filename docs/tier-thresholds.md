@@ -4,32 +4,32 @@ Source of truth for the **How trust is earned** explainer (`TierLadder` on the T
 
 ## Score model
 
-| Property | Value |
-| -------- | ----- |
-| Scale | 0–1000 (protocol trust score) |
-| Inputs | Bond amount, bond duration, attestations |
+| Property        | Value                                                           |
+| --------------- | --------------------------------------------------------------- |
+| Scale           | 0–1000 (protocol trust score)                                   |
+| Inputs          | Bond amount, bond duration, attestations                        |
 | Tier assignment | Evaluated at **epoch settlement** (see Trust Score info banner) |
-| Display | Four tiers: Bronze → Silver → Gold → Platinum |
+| Display         | Four tiers: Bronze → Silver → Gold → Platinum                   |
 
 ## Tier thresholds
 
-| Tier | Score range | Badge variant |
-| ---- | ----------- | ------------- |
-| Bronze | 0–249 | `bronze` |
-| Silver | 250–499 | `silver` |
-| Gold | 500–749 | `gold` |
-| Platinum | 750+ | `platinum` |
+| Tier     | Score range | Badge variant |
+| -------- | ----------- | ------------- |
+| Bronze   | 0–249       | `bronze`      |
+| Silver   | 250–499     | `silver`      |
+| Gold     | 500–749     | `gold`        |
+| Platinum | 750+        | `platinum`    |
 
 Ranges are inclusive on both ends except Platinum, which has no upper cap.
 
 ## Copy deck — section chrome
 
-| Element | Copy |
-| ------- | ---- |
-| Trigger (collapsed label) | **How trust is earned** |
-| Trigger hint | Tier thresholds and benefits |
-| Panel intro | Your trust score (0–1000) is computed from bond amount, bond duration, and attestations. Tiers unlock as your score crosses each threshold at epoch settlement. |
-| Threshold column label | Score range |
+| Element                   | Copy                                                                                                                                                            |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trigger (collapsed label) | **How trust is earned**                                                                                                                                         |
+| Trigger hint              | Tier thresholds and benefits                                                                                                                                    |
+| Panel intro               | Your trust score (0–1000) is computed from bond amount, bond duration, and attestations. Tiers unlock as your score crosses each threshold at epoch settlement. |
+| Threshold column label    | Score range                                                                                                                                                     |
 
 ## Copy deck — tier benefits
 
@@ -61,21 +61,21 @@ Ranges are inclusive on both ends except Platinum, which has no upper cap.
 
 Each tier card uses the same **surface / border / text** triplet as `Badge.css`:
 
-| Tier | Surface | Border | Text |
-| ---- | ------- | ------ | ---- |
-| Bronze | `--credence-color-bronze-surface` | `--credence-color-bronze-border` | `--credence-color-bronze-text` |
-| Silver | `--credence-color-silver-surface` | `--credence-color-silver-border` | `--credence-color-silver-text` |
-| Gold | `--credence-color-gold-surface` | `--credence-color-gold-border` | `--credence-color-gold-text` |
+| Tier     | Surface                             | Border                             | Text                             |
+| -------- | ----------------------------------- | ---------------------------------- | -------------------------------- |
+| Bronze   | `--credence-color-bronze-surface`   | `--credence-color-bronze-border`   | `--credence-color-bronze-text`   |
+| Silver   | `--credence-color-silver-surface`   | `--credence-color-silver-border`   | `--credence-color-silver-text`   |
+| Gold     | `--credence-color-gold-surface`     | `--credence-color-gold-border`     | `--credence-color-gold-text`     |
 | Platinum | `--credence-color-platinum-surface` | `--credence-color-platinum-border` | `--credence-color-platinum-text` |
 
 Dark mode overrides for tier surfaces and text are defined in `src/index.css` under `[data-theme='dark']`.
 
 ## Component integration
 
-| Item | Location |
-| ---- | -------- |
-| Component | `src/components/TierLadder.tsx` |
-| Styles | `src/components/TierLadder.css` |
+| Item       | Location                                                                                        |
+| ---------- | ----------------------------------------------------------------------------------------------- |
+| Component  | `src/components/TierLadder.tsx`                                                                 |
+| Styles     | `src/components/TierLadder.css`                                                                 |
 | Page mount | `src/pages/TrustScore.tsx` — after page description (`#trust-desc`), before epoch info `Banner` |
 
 ## Accessibility requirements

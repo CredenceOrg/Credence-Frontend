@@ -48,15 +48,30 @@ export default function Settings() {
         <FormField id="theme-seg" label="Theme">
           <div role="radiogroup" aria-label="Theme mode" style={{ display: 'flex', gap: '0.5rem' }}>
             <label>
-              <input type="radio" name="theme" checked={themeMode === 'light'} onChange={() => setThemeMode('light')} />{' '}
+              <input
+                type="radio"
+                name="theme"
+                checked={themeMode === 'light'}
+                onChange={() => setThemeMode('light')}
+              />{' '}
               Light
             </label>
             <label>
-              <input type="radio" name="theme" checked={themeMode === 'dark'} onChange={() => setThemeMode('dark')} />{' '}
+              <input
+                type="radio"
+                name="theme"
+                checked={themeMode === 'dark'}
+                onChange={() => setThemeMode('dark')}
+              />{' '}
               Dark
             </label>
             <label>
-              <input type="radio" name="theme" checked={themeMode === 'system'} onChange={() => setThemeMode('system')} />{' '}
+              <input
+                type="radio"
+                name="theme"
+                checked={themeMode === 'system'}
+                onChange={() => setThemeMode('system')}
+              />{' '}
               System
             </label>
           </div>
@@ -75,7 +90,14 @@ export default function Settings() {
         <p className="form-hint">Choose the Stellar network to interact with.</p>
 
         <FormField id="network-select" label="Stellar Network">
-          <Select value={network} onChange={setNetwork} options={[{ value: 'public', label: 'Public (Mainnet)' }, { value: 'test', label: 'Test (Testnet)' }]} />
+          <Select
+            value={network}
+            onChange={setNetwork}
+            options={[
+              { value: 'public', label: 'Public (Mainnet)' },
+              { value: 'test', label: 'Test (Testnet)' },
+            ]}
+          />
         </FormField>
       </section>
 
@@ -88,15 +110,30 @@ export default function Settings() {
           <FormField id="address-display" label="Address format">
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               <label>
-                <input type="radio" name="address" checked={addressDisplay === 'full'} onChange={() => setAddressDisplay('full')} />{' '}
+                <input
+                  type="radio"
+                  name="address"
+                  checked={addressDisplay === 'full'}
+                  onChange={() => setAddressDisplay('full')}
+                />{' '}
                 Full (G...)
               </label>
               <label>
-                <input type="radio" name="address" checked={addressDisplay === 'short'} onChange={() => setAddressDisplay('short')} />{' '}
+                <input
+                  type="radio"
+                  name="address"
+                  checked={addressDisplay === 'short'}
+                  onChange={() => setAddressDisplay('short')}
+                />{' '}
                 Short (G...…)
               </label>
               <label>
-                <input type="radio" name="address" checked={addressDisplay === 'friendly'} onChange={() => setAddressDisplay('friendly')} />{' '}
+                <input
+                  type="radio"
+                  name="address"
+                  checked={addressDisplay === 'friendly'}
+                  onChange={() => setAddressDisplay('friendly')}
+                />{' '}
                 Friendly (when available)
               </label>
             </div>

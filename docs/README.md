@@ -64,6 +64,11 @@ This directory contains comprehensive design specifications and implementation g
    - Testing guide and troubleshooting
    - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 
+9. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
+   - Provider tree and routing architecture
+   - Context responsibilities
+   - Theming flow and mock data boundaries
+
 ### Quick Start
 
 To implement UI states in your components:
@@ -148,4 +153,3 @@ For questions about UI states implementation, contact the design team or refer t
 
 - **Storage key**: `credence:settings` — the settings context persists a JSON payload under this key in `localStorage`.
 - **Fallback contract**: on load the provider attempts to `JSON.parse` the value; if parsing fails or no key exists the provider falls back to built-in defaults (no exception is thrown).
-

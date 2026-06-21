@@ -24,7 +24,7 @@ describe('Badge', () => {
         render(<Badge variant={variant} />)
         const el = screen.getByText(label)
         expect(el).toHaveClass('badge', `badge--${variant}`)
-      },
+      }
     )
   })
 

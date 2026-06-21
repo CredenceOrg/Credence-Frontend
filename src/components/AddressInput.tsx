@@ -232,13 +232,45 @@ export default function AddressInput({
             disabled={copied}
           >
             {copied ? (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M2 7L5 10L12 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 7L5 10L12 3"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect x="2.5" y="3.5" width="9" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-                <path d="M10 2.5V1.5C10 0.947715 9.55228 0.5 9 0.5H3C2.44772 0.5 2 0.947715 2 1.5V9.5C2 10.0523 2.44772 10.5 3 10.5H4" stroke="currentColor" strokeWidth="1.2" />
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <rect
+                  x="2.5"
+                  y="3.5"
+                  width="9"
+                  height="10"
+                  rx="1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                />
+                <path
+                  d="M10 2.5V1.5C10 0.947715 9.55228 0.5 9 0.5H3C2.44772 0.5 2 0.947715 2 1.5V9.5C2 10.0523 2.44772 10.5 3 10.5H4"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                />
               </svg>
             )}
             {copied && <span className="address-input-copy-feedback">Copied</span>}
@@ -247,11 +279,7 @@ export default function AddressInput({
       )}
 
       {/* Character count hint */}
-      {value && (
-        <div className="address-input-count">
-          {value.length} / 56 characters
-        </div>
-      )}
+      {value && <div className="address-input-count">{value.length} / 56 characters</div>}
     </div>
   )
 }

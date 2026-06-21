@@ -9,13 +9,15 @@ type MatchMediaListener = (event: { matches: boolean }) => void
 function StateDump() {
   const s = useSettings()
   return (
-    <pre data-testid="state">{JSON.stringify({
-      themeMode: s.themeMode,
-      network: s.network,
-      addressDisplay: s.addressDisplay,
-      toastsEnabled: s.toastsEnabled,
-      autoDismiss: s.autoDismiss,
-    })}</pre>
+    <pre data-testid="state">
+      {JSON.stringify({
+        themeMode: s.themeMode,
+        network: s.network,
+        addressDisplay: s.addressDisplay,
+        toastsEnabled: s.toastsEnabled,
+        autoDismiss: s.autoDismiss,
+      })}
+    </pre>
   )
 }
 
@@ -72,7 +74,7 @@ describe('SettingsContext persistence & theme application', () => {
     render(
       <SettingsProvider>
         <StateDump />
-      </SettingsProvider>,
+      </SettingsProvider>
     )
 
     const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
@@ -103,7 +105,7 @@ describe('SettingsContext persistence & theme application', () => {
     render(
       <SettingsProvider>
         <StateDump />
-      </SettingsProvider>,
+      </SettingsProvider>
     )
 
     const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
@@ -120,8 +122,8 @@ describe('SettingsContext persistence & theme application', () => {
       render(
         <SettingsProvider>
           <StateDump />
-        </SettingsProvider>,
-      ),
+        </SettingsProvider>
+      )
     ).not.toThrow()
 
     const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
@@ -134,7 +136,7 @@ describe('SettingsContext persistence & theme application', () => {
     render(
       <SettingsProvider>
         <Controls />
-      </SettingsProvider>,
+      </SettingsProvider>
     )
 
     fireEvent.click(screen.getByTestId('set-dark'))
@@ -158,7 +160,7 @@ describe('SettingsContext persistence & theme application', () => {
     render(
       <SettingsProvider>
         <StateDump />
-      </SettingsProvider>,
+      </SettingsProvider>
     )
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
@@ -174,7 +176,7 @@ describe('SettingsContext persistence & theme application', () => {
     const { unmount } = render(
       <SettingsProvider>
         <Controls />
-      </SettingsProvider>,
+      </SettingsProvider>
     )
 
     // initial effect should have added listener
@@ -216,7 +218,7 @@ function renderWithProvider(initialStorage?: Record<string, unknown>) {
   return render(
     <SettingsProvider>
       <SettingsConsumer />
-    </SettingsProvider>,
+    </SettingsProvider>
   )
 }
 
@@ -271,7 +273,7 @@ describe('SettingsProvider', () => {
       render(
         <SettingsProvider>
           <SettingsConsumer />
-        </SettingsProvider>,
+        </SettingsProvider>
       )
       expect(screen.getByTestId('theme').textContent).toBe('system')
     })
@@ -435,7 +437,7 @@ describe('SettingsProvider', () => {
       rerender(
         <SettingsProvider>
           <SettingsConsumer />
-        </SettingsProvider>,
+        </SettingsProvider>
       )
       expect(screen.getByTestId('theme').textContent).toBe('system')
     })

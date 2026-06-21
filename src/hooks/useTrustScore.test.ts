@@ -95,7 +95,7 @@ describe('useTrustScore', () => {
     expect(result.current.error).toBeNull()
     expect(apiFetchMock).toHaveBeenCalledWith(
       `/trust-score/${encodeURIComponent(VALID_ADDRESS)}`,
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
     )
   })
 

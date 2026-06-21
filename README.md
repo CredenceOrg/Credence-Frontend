@@ -66,6 +66,11 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 - Vite
 - React Router
 
+## Documentation
+
+See the [docs/](docs/) directory for detailed project documentation, including:
+- [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
+
 ## Project layout
 
 - `src/pages/` — Home, Bond, Trust Score

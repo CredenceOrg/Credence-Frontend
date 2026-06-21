@@ -54,7 +54,7 @@ describe('AmountInput formatting helpers', () => {
 // Export for manual testing in browser console
 if (typeof window !== 'undefined') {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).testAmountInput = {
+  ;(window as any).testAmountInput = {
     sanitizeUSDCInput,
     formatUSDC,
     normalizeUSDC,

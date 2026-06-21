@@ -33,9 +33,7 @@ import Button from './Button'
  * Optionally matches by accessible name when `name` is supplied.
  */
 function getBtn(name?: string | RegExp) {
-  return name
-    ? screen.getByRole('button', { name })
-    : screen.getByRole('button')
+  return name ? screen.getByRole('button', { name }) : screen.getByRole('button')
 }
 
 // ---------------------------------------------------------------------------

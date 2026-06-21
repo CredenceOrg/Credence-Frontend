@@ -11,7 +11,7 @@ export default function FocusTrapTestPage() {
   const externalBeforeRef = useRef<HTMLButtonElement>(null)
 
   const addLog = (message: string) => {
-    setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`])
+    setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`])
   }
 
   const handleEscape = () => {
@@ -57,8 +57,15 @@ export default function FocusTrapTestPage() {
   return (
     <div style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
       <h1>useFocusTrap Test Page</h1>
-      
-      <section style={{ marginBottom: '2rem', border: '1px solid #ccc', padding: '1.5rem', borderRadius: '8px' }}>
+
+      <section
+        style={{
+          marginBottom: '2rem',
+          border: '1px solid #ccc',
+          padding: '1.5rem',
+          borderRadius: '8px',
+        }}
+      >
         <h2>Test Controls</h2>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <button onClick={handleActivate}>Activate Focus Trap</button>
@@ -68,21 +75,30 @@ export default function FocusTrapTestPage() {
           </button>
           <button onClick={clearLogs}>Clear Log</button>
         </div>
-        <div style={{ 
-          padding: '0.5rem', 
-          borderRadius: '4px', 
-          margin: '0.5rem 0', 
-          fontWeight: 'bold',
-          background: isActive ? '#d4edda' : '#f8d7da',
-          color: isActive ? '#155724' : '#721c24'
-        }}>
+        <div
+          style={{
+            padding: '0.5rem',
+            borderRadius: '4px',
+            margin: '0.5rem 0',
+            fontWeight: 'bold',
+            background: isActive ? '#d4edda' : '#f8d7da',
+            color: isActive ? '#155724' : '#721c24',
+          }}
+        >
           Status: {isActive ? 'Active' : 'Inactive'}
         </div>
       </section>
 
-      <section style={{ marginBottom: '2rem', border: '1px solid #ccc', padding: '1.5rem', borderRadius: '8px' }}>
+      <section
+        style={{
+          marginBottom: '2rem',
+          border: '1px solid #ccc',
+          padding: '1.5rem',
+          borderRadius: '8px',
+        }}
+      >
         <h2>External Button (Before Trap)</h2>
-        <button 
+        <button
           ref={externalBeforeRef}
           onFocus={handleExternalBeforeFocus}
           style={{ margin: '1rem 0' }}
@@ -91,44 +107,45 @@ export default function FocusTrapTestPage() {
         </button>
       </section>
 
-      <section style={{ marginBottom: '2rem', border: '1px solid #ccc', padding: '1.5rem', borderRadius: '8px' }}>
+      <section
+        style={{
+          marginBottom: '2rem',
+          border: '1px solid #ccc',
+          padding: '1.5rem',
+          borderRadius: '8px',
+        }}
+      >
         <h2>Focus Trap Container</h2>
-        <div 
+        <div
           ref={containerRef}
           style={{
             border: `2px solid ${isActive ? '#28a745' : '#007bff'}`,
             padding: '1.5rem',
             borderRadius: '8px',
-            background: isActive ? '#d4edda' : '#f8f9fa'
+            background: isActive ? '#d4edda' : '#f8f9fa',
           }}
         >
           <h3>Inside Focus Trap</h3>
-          <button 
+          <button
             ref={initialFocusRef}
             onFocus={() => handleTrapElementFocus('Button 1')}
             style={{ margin: '0.5rem' }}
           >
             Button 1
           </button>
-          <button 
-            onFocus={() => handleTrapElementFocus('Button 2')}
-            style={{ margin: '0.5rem' }}
-          >
+          <button onFocus={() => handleTrapElementFocus('Button 2')} style={{ margin: '0.5rem' }}>
             Button 2
           </button>
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Input 1"
             onFocus={() => handleTrapElementFocus('Input 1')}
             style={{ margin: '0.5rem', padding: '0.5rem' }}
           />
-          <button 
-            onFocus={() => handleTrapElementFocus('Button 3')}
-            style={{ margin: '0.5rem' }}
-          >
+          <button onFocus={() => handleTrapElementFocus('Button 3')} style={{ margin: '0.5rem' }}>
             Button 3
           </button>
-          <a 
+          <a
             href="#"
             onClick={(e) => e.preventDefault()}
             onFocus={() => handleTrapElementFocus('Link 1')}
@@ -136,24 +153,28 @@ export default function FocusTrapTestPage() {
           >
             Link 1
           </a>
-          <input 
-            type="text" 
+          <input
+            type="text"
             placeholder="Input 2"
             onFocus={() => handleTrapElementFocus('Input 2')}
             style={{ margin: '0.5rem', padding: '0.5rem' }}
           />
-          <button 
-            onFocus={() => handleTrapElementFocus('Button 4')}
-            style={{ margin: '0.5rem' }}
-          >
+          <button onFocus={() => handleTrapElementFocus('Button 4')} style={{ margin: '0.5rem' }}>
             Button 4
           </button>
         </div>
       </section>
 
-      <section style={{ marginBottom: '2rem', border: '1px solid #ccc', padding: '1.5rem', borderRadius: '8px' }}>
+      <section
+        style={{
+          marginBottom: '2rem',
+          border: '1px solid #ccc',
+          padding: '1.5rem',
+          borderRadius: '8px',
+        }}
+      >
         <h2>External Button (After Trap)</h2>
-        <button 
+        <button
           ref={returnFocusRef}
           onFocus={handleExternalAfterFocus}
           style={{ margin: '1rem 0' }}
@@ -162,19 +183,30 @@ export default function FocusTrapTestPage() {
         </button>
       </section>
 
-      <section style={{ marginBottom: '2rem', border: '1px solid #ccc', padding: '1.5rem', borderRadius: '8px' }}>
+      <section
+        style={{
+          marginBottom: '2rem',
+          border: '1px solid #ccc',
+          padding: '1.5rem',
+          borderRadius: '8px',
+        }}
+      >
         <h2>Event Log</h2>
-        <div style={{ 
-          background: '#f4f4f4', 
-          padding: '1rem', 
-          borderRadius: '4px', 
-          maxHeight: '200px', 
-          overflowY: 'auto',
-          fontFamily: 'monospace',
-          fontSize: '0.9rem'
-        }}>
+        <div
+          style={{
+            background: '#f4f4f4',
+            padding: '1rem',
+            borderRadius: '4px',
+            maxHeight: '200px',
+            overflowY: 'auto',
+            fontFamily: 'monospace',
+            fontSize: '0.9rem',
+          }}
+        >
           {logs.length === 0 ? (
-            <div style={{ color: '#666' }}>No logs yet. Activate the focus trap to begin testing.</div>
+            <div style={{ color: '#666' }}>
+              No logs yet. Activate the focus trap to begin testing.
+            </div>
           ) : (
             logs.map((log, index) => (
               <div key={index} style={{ margin: '0.25rem 0', borderBottom: '1px solid #ddd' }}>
@@ -185,14 +217,26 @@ export default function FocusTrapTestPage() {
         </div>
       </section>
 
-      <section style={{ marginBottom: '2rem', border: '1px solid #ccc', padding: '1.5rem', borderRadius: '8px' }}>
+      <section
+        style={{
+          marginBottom: '2rem',
+          border: '1px solid #ccc',
+          padding: '1.5rem',
+          borderRadius: '8px',
+        }}
+      >
         <h2>Test Instructions</h2>
-        
+
         <h3>Tab/Shift+Tab Cycling Test:</h3>
         <ol>
           <li>Click "Activate Focus Trap"</li>
-          <li>Press <code>Tab</code> repeatedly - focus should cycle through trap elements only</li>
-          <li>Press <code>Shift+Tab</code> repeatedly - focus should cycle backwards through trap elements only</li>
+          <li>
+            Press <code>Tab</code> repeatedly - focus should cycle through trap elements only
+          </li>
+          <li>
+            Press <code>Shift+Tab</code> repeatedly - focus should cycle backwards through trap
+            elements only
+          </li>
           <li>Focus should never leave the trap container while active</li>
         </ol>
 
@@ -200,7 +244,9 @@ export default function FocusTrapTestPage() {
         <ol>
           <li>Click "Activate Focus Trap"</li>
           <li>Focus any element inside the trap</li>
-          <li>Press <code>Escape</code> - should deactivate trap and call onEscape callback</li>
+          <li>
+            Press <code>Escape</code> - should deactivate trap and call onEscape callback
+          </li>
           <li>Check log for "Escape key pressed" entry</li>
         </ol>
 

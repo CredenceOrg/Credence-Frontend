@@ -76,15 +76,18 @@ export default function Bond() {
     [withdrawTarget]
   )
 
-  const requestWithdraw = useCallback((bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => {
-    if (!isConnected) {
-      connect()
-      return
-    }
+  const requestWithdraw = useCallback(
+    (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => {
+      if (!isConnected) {
+        connect()
+        return
+      }
 
-    withdrawTriggerRef.current = event.currentTarget
-    setWithdrawTarget(bond)
-  }, [isConnected, connect])
+      withdrawTriggerRef.current = event.currentTarget
+      setWithdrawTarget(bond)
+    },
+    [isConnected, connect]
+  )
 
   const cancelWithdraw = useCallback(() => {
     setWithdrawTarget(null)
@@ -105,10 +108,7 @@ export default function Bond() {
     setWithdrawTarget(null)
   }, [withdrawTarget, withdrawBreakdown, addToast])
 
-  const slashExposureBond = useMemo(
-    () => bonds.find((b) => getPenaltyRate(b.status) > 0),
-    [bonds]
-  )
+  const slashExposureBond = useMemo(() => bonds.find((b) => getPenaltyRate(b.status) > 0), [bonds])
 
   const slashBannerBreakdown = slashExposureBond
     ? computeWithdrawBreakdown(slashExposureBond)
@@ -140,9 +140,10 @@ export default function Bond() {
       {slashBannerBreakdown && slashExposureBond && (
         <Banner severity="warning" title="Slash exposure on early withdrawal">
           Withdrawing {formatUsdc(slashExposureBond.amountUsdc)} while{' '}
-          <strong>{slashExposureBond.status === 'locked' ? 'locked' : 'in grace period'}</strong> may
-          slash up to {slashBannerBreakdown.penaltyAmount} ({slashBannerBreakdown.penaltyPercent}%
-          penalty). You would receive approximately {slashBannerBreakdown.resultingBalance}.
+          <strong>{slashExposureBond.status === 'locked' ? 'locked' : 'in grace period'}</strong>{' '}
+          may slash up to {slashBannerBreakdown.penaltyAmount} (
+          {slashBannerBreakdown.penaltyPercent}% penalty). You would receive approximately{' '}
+          {slashBannerBreakdown.resultingBalance}.
         </Banner>
       )}
 
@@ -156,13 +157,10 @@ export default function Bond() {
       >
         <ActionCard title="Create New Bond">
           <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-            Lock USDC using the guided four-step wizard — set an amount, choose a lock duration, review slash terms, and confirm.
+            Lock USDC using the guided four-step wizard — set an amount, choose a lock duration,
+            review slash terms, and confirm.
           </p>
-          <Button
-            type="button"
-            onClick={handleCreateBond}
-            fullWidth
-          >
+          <Button type="button" onClick={handleCreateBond} fullWidth>
             {isConnected ? 'Create bond' : 'Connect wallet to continue'}
           </Button>
         </ActionCard>
@@ -242,4 +240,3 @@ export default function Bond() {
     </div>
   )
 }
-

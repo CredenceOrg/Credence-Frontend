@@ -1,11 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import {
-  BRAND,
-  BRAND_SUFFIX,
-  formatDocumentTitle,
-  useDocumentTitle,
-} from './useDocumentTitle'
+import { BRAND, BRAND_SUFFIX, formatDocumentTitle, useDocumentTitle } from './useDocumentTitle'
 
 describe('formatDocumentTitle', () => {
   it('appends the brand suffix by default', () => {
@@ -74,9 +69,7 @@ describe('useDocumentTitle', () => {
   })
 
   it('leaves the title in place when restoreOnUnmount is false', () => {
-    const { unmount } = renderHook(() =>
-      useDocumentTitle('Settings', { restoreOnUnmount: false })
-    )
+    const { unmount } = renderHook(() => useDocumentTitle('Settings', { restoreOnUnmount: false }))
     expect(document.title).toBe(`Settings ${BRAND_SUFFIX}`)
 
     unmount()

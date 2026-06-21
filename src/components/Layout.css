@@ -36,7 +36,8 @@
   color: var(--credence-text-secondary);
   text-decoration: none;
   border-radius: var(--credence-radius-lg);
-  transition: background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+  transition:
+    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
     color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 

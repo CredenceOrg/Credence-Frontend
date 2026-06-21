@@ -36,7 +36,7 @@ describe('WalletProvider', () => {
     render(
       <WalletProvider>
         <WalletConsumer />
-      </WalletProvider>,
+      </WalletProvider>
     )
 
     expect(screen.getByTestId('connected')).toHaveTextContent('false')

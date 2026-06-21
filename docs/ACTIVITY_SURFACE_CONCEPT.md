@@ -119,7 +119,7 @@ Presentational reference component:
 ### Props
 
 | Prop    | Type             | Default        | Description                                       |
-|---------|------------------|----------------|---------------------------------------------------|
+| ------- | ---------------- | -------------- | ------------------------------------------------- |
 | `items` | `ActivityItem[]` | Sample 3 items | Timeline events to render. Pass `[]` for no data. |
 
 ### Usage

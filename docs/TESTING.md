@@ -49,10 +49,10 @@ import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 Co-locate test files with their source files using the `.test.tsx` / `.test.ts` suffix:
 
-| Source | Test file |
-|--------|-----------|
+| Source                   | Test file                     |
+| ------------------------ | ----------------------------- |
 | `src/components/Foo.tsx` | `src/components/Foo.test.tsx` |
-| `src/hooks/useBar.ts` | `src/hooks/useBar.test.ts` |
+| `src/hooks/useBar.ts`    | `src/hooks/useBar.test.ts`    |
 
 ---
 
@@ -65,9 +65,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 function renderWithRouter(ui: React.ReactElement, { path = '/' } = {}) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>
-  )
+  return render(<MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>)
 }
 ```
 
@@ -121,12 +119,10 @@ Spy on `Storage.prototype` so tests stay isolated:
 ```ts
 beforeEach(() => {
   const store: Record<string, string> = {}
-  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(
-    (key) => store[key] ?? null
-  )
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(
-    (key, val) => { store[key] = String(val) }
-  )
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => store[key] ?? null)
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key, val) => {
+    store[key] = String(val)
+  })
 })
 
 afterEach(() => vi.restoreAllMocks())
@@ -165,12 +161,12 @@ Run `npm run coverage` to generate a text summary and an `lcov` report.
 
 Per-file thresholds are enforced in `vite.config.ts`. The current targets are:
 
-| File | Lines | Branches |
-|------|-------|----------|
-| `src/components/AddressInput.tsx` | 90% | 90% |
-| `src/components/AmountInput.tsx` | 80% | 80% |
-| `src/components/ConfirmDialog.tsx` | — | 90% |
-| `src/hooks/useFocusTrap.ts` | — | 85% |
+| File                               | Lines | Branches |
+| ---------------------------------- | ----- | -------- |
+| `src/components/AddressInput.tsx`  | 90%   | 90%      |
+| `src/components/AmountInput.tsx`   | 80%   | 80%      |
+| `src/components/ConfirmDialog.tsx` | —     | 90%      |
+| `src/hooks/useFocusTrap.ts`        | —     | 85%      |
 
 A build that misses a threshold exits with a non-zero code, which fails CI.
 

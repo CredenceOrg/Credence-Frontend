@@ -39,7 +39,7 @@ describe('LoadingSkeleton', () => {
       const { container } = render(<LoadingSkeleton variant="text" rows={5} />)
       const lines = rootChildren(container)
       expect(lines).toHaveLength(5)
-      lines.slice(0, 4).forEach(l => expect(l.style.width).toBe('100%'))
+      lines.slice(0, 4).forEach((l) => expect(l.style.width).toBe('100%'))
       expect(lines[4].style.width).toBe('60%')
     })
 
@@ -102,7 +102,7 @@ describe('LoadingSkeleton', () => {
 
     it('each field group contains a label shimmer and an input shimmer', () => {
       const { container } = render(<LoadingSkeleton variant="form" rows={2} />)
-      rootChildren(container).forEach(group => {
+      rootChildren(container).forEach((group) => {
         expect(group.children).toHaveLength(2)
       })
     })
@@ -141,7 +141,7 @@ describe('LoadingSkeleton', () => {
       const { container } = render(<LoadingSkeleton variant="table" rows={2} />)
       const [header, ...rows] = rootChildren(container)
       expect(header.style.height).toBe('3rem')
-      rows.forEach(r => expect(r.style.height).toBe('3.5rem'))
+      rows.forEach((r) => expect(r.style.height).toBe('3.5rem'))
     })
   })
 
@@ -160,7 +160,7 @@ describe('LoadingSkeleton', () => {
 
     it('each tile is 120px tall', () => {
       const { container } = render(<LoadingSkeleton variant="dashboard" rows={2} />)
-      rootChildren(container).forEach(tile => {
+      rootChildren(container).forEach((tile) => {
         expect(tile.style.height).toBe('120px')
       })
     })

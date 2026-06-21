@@ -91,9 +91,7 @@ export default function TierLadder({ className = '', defaultOpen = false }: Tier
         onClick={() => setIsOpen((open) => !open)}
       >
         <span className="tier-ladder__trigger-label">How trust is earned</span>
-        <span className="tier-ladder__trigger-hint">
-          Tier thresholds and benefits
-        </span>
+        <span className="tier-ladder__trigger-hint">Tier thresholds and benefits</span>
         <svg
           className={`tier-ladder__chevron${isOpen ? ' tier-ladder__chevron--open' : ''}`}
           width="20"
@@ -110,23 +108,15 @@ export default function TierLadder({ className = '', defaultOpen = false }: Tier
         </svg>
       </button>
 
-      <div
-        id={panelId}
-        className="tier-ladder__panel"
-        hidden={!isOpen}
-      >
+      <div id={panelId} className="tier-ladder__panel" hidden={!isOpen}>
         <p className="tier-ladder__intro">
-          Your trust score (0–1000) is computed from bond amount, bond duration, and
-          attestations. Tiers unlock as your score crosses each threshold at epoch
-          settlement.
+          Your trust score (0–1000) is computed from bond amount, bond duration, and attestations.
+          Tiers unlock as your score crosses each threshold at epoch settlement.
         </p>
 
         <ol className="tier-ladder__list">
           {TIER_LADDER.map((tier, index) => (
-            <li
-              key={tier.id}
-              className={`tier-ladder__step tier-ladder__step--${tier.id}`}
-            >
+            <li key={tier.id} className={`tier-ladder__step tier-ladder__step--${tier.id}`}>
               <div className="tier-ladder__rail" aria-hidden="true">
                 <span className="tier-ladder__marker">{index + 1}</span>
                 {index < TIER_LADDER.length - 1 && <span className="tier-ladder__connector" />}

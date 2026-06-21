@@ -28,12 +28,12 @@ destructive confirmations.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `variant` | `'primary' | 'secondary' | 'ghost' | 'danger'` | `'primary'` | Controls visual emphasis. |
-| `isLoading` | `boolean` | `false` | Shows a spinner, sets `aria-busy`, and disables interaction. |
-| `fullWidth` | `boolean` | `false` | Expands the button to its container width. |
-| `children` | `ReactNode` | required | Visible button label or inline content. |
+| Prop        | Type        | Default     | Notes                                                        |
+| ----------- | ----------- | ----------- | ------------------------------------------------------------ | --------- | ----------- | ------------------------- |
+| `variant`   | `'primary'  | 'secondary' | 'ghost'                                                      | 'danger'` | `'primary'` | Controls visual emphasis. |
+| `isLoading` | `boolean`   | `false`     | Shows a spinner, sets `aria-busy`, and disables interaction. |
+| `fullWidth` | `boolean`   | `false`     | Expands the button to its container width.                   |
+| `children`  | `ReactNode` | required    | Visible button label or inline content.                      |
 
 Example:
 
@@ -52,11 +52,11 @@ to the `unknown` style so callers do not silently render unstyled text.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `variant` | `BadgeVariant | string` | required | Known variants: `bronze`, `silver`, `gold`, `platinum`, `active`, `locked`, `slashed`, `grace-period`, `unknown`. |
-| `label` | `string` | variant label | Overrides the default display label. |
-| `className` | `string` | `''` | Appends custom classes. |
+| Prop        | Type          | Default       | Notes                                |
+| ----------- | ------------- | ------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `variant`   | `BadgeVariant | string`       | required                             | Known variants: `bronze`, `silver`, `gold`, `platinum`, `active`, `locked`, `slashed`, `grace-period`, `unknown`. |
+| `label`     | `string`      | variant label | Overrides the default display label. |
+| `className` | `string`      | `''`          | Appends custom classes.              |
 
 Example:
 
@@ -75,15 +75,15 @@ messages. Warning and critical banners use `role="alert"`; info and success use
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `severity` | `'info' | 'success' | 'warning' | 'critical'` | required | Controls icon, tone, and live-region role. |
-| `children` | `ReactNode` | required | Message body. |
-| `title` | `string` | undefined | Optional bold heading. |
-| `dismissible` | `boolean` | false | Shows a close button and enables Escape dismissal on that button. |
-| `onDismiss` | `() => void` | undefined | Called when the banner is dismissed. |
-| `action` | `{ label; href?; onClick? }` | undefined | Inline CTA rendered as a link or button. |
-| `returnFocusRef` | `RefObject<HTMLElement>` | `document.body` | Focus target after dismissal. |
+| Prop             | Type                         | Default         | Notes                                                             |
+| ---------------- | ---------------------------- | --------------- | ----------------------------------------------------------------- | ----------- | -------- | ------------------------------------------ |
+| `severity`       | `'info'                      | 'success'       | 'warning'                                                         | 'critical'` | required | Controls icon, tone, and live-region role. |
+| `children`       | `ReactNode`                  | required        | Message body.                                                     |
+| `title`          | `string`                     | undefined       | Optional bold heading.                                            |
+| `dismissible`    | `boolean`                    | false           | Shows a close button and enables Escape dismissal on that button. |
+| `onDismiss`      | `() => void`                 | undefined       | Called when the banner is dismissed.                              |
+| `action`         | `{ label; href?; onClick? }` | undefined       | Inline CTA rendered as a link or button.                          |
+| `returnFocusRef` | `RefObject<HTMLElement>`     | `document.body` | Focus target after dismissal.                                     |
 
 Example:
 
@@ -103,16 +103,16 @@ returns focus through `useFocusTrap`.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `open` | `boolean` | required | Controls portal rendering. |
-| `title` | `string` | required | Dialog heading. |
-| `subtitle` | `string` | undefined | Optional explanatory text. |
-| `breakdown` | `ConfirmDialogPenaltyBreakdown` | required | Bond amount, penalty, percent, and resulting balance. |
-| `onConfirm` | `() => void` | required | Called only after the typed phrase matches. |
-| `onCancel` | `() => void` | required | Called on cancel, backdrop click, or Escape. |
-| `returnFocusRef` | `RefObject<HTMLElement | null>` | undefined | Focus target after close. |
-| `confirmLabel` | `string` | `'Withdraw bond'` | Destructive action label. |
+| Prop             | Type                            | Default           | Notes                                                 |
+| ---------------- | ------------------------------- | ----------------- | ----------------------------------------------------- | ------------------------- |
+| `open`           | `boolean`                       | required          | Controls portal rendering.                            |
+| `title`          | `string`                        | required          | Dialog heading.                                       |
+| `subtitle`       | `string`                        | undefined         | Optional explanatory text.                            |
+| `breakdown`      | `ConfirmDialogPenaltyBreakdown` | required          | Bond amount, penalty, percent, and resulting balance. |
+| `onConfirm`      | `() => void`                    | required          | Called only after the typed phrase matches.           |
+| `onCancel`       | `() => void`                    | required          | Called on cancel, backdrop click, or Escape.          |
+| `returnFocusRef` | `RefObject<HTMLElement          | null>`            | undefined                                             | Focus target after close. |
+| `confirmLabel`   | `string`                        | `'Withdraw bond'` | Destructive action label.                             |
 
 Example:
 
@@ -138,13 +138,13 @@ control. It clones the child element and injects `id`, `aria-describedby`, and
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `id` | `string` | required | Shared by the label and child control. |
-| `label` | `string` | required | Visible field label. |
-| `hint` | `string` | undefined | Optional helper text. |
-| `error` | `string` | undefined | Optional error text rendered with `role="alert"`. |
-| `children` | `ReactElement` | required | A single input-like element. |
+| Prop       | Type           | Default   | Notes                                             |
+| ---------- | -------------- | --------- | ------------------------------------------------- |
+| `id`       | `string`       | required  | Shared by the label and child control.            |
+| `label`    | `string`       | required  | Visible field label.                              |
+| `hint`     | `string`       | undefined | Optional helper text.                             |
+| `error`    | `string`       | undefined | Optional error text rendered with `role="alert"`. |
+| `children` | `ReactElement` | required  | A single input-like element.                      |
 
 ### `AddressInput`
 
@@ -156,15 +156,15 @@ paste, and echoes a truncated valid address.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `id` | `string` | required | Input id passed into `FormField`. |
-| `label` | `string` | `'Stellar Address'` | Field label. |
-| `value` | `string` | required | Controlled address value. |
-| `onChange` | `(value: string) => void` | required | Called with raw address text. |
-| `onValidationChange` | `(isValid: boolean) => void` | undefined | Called whenever validity changes. |
-| `disabled` | `boolean` | `false` | Disables input and paste button. |
-| `className` | `string` | `''` | Wrapper class. |
+| Prop                 | Type                         | Default             | Notes                             |
+| -------------------- | ---------------------------- | ------------------- | --------------------------------- |
+| `id`                 | `string`                     | required            | Input id passed into `FormField`. |
+| `label`              | `string`                     | `'Stellar Address'` | Field label.                      |
+| `value`              | `string`                     | required            | Controlled address value.         |
+| `onChange`           | `(value: string) => void`    | required            | Called with raw address text.     |
+| `onValidationChange` | `(isValid: boolean) => void` | undefined           | Called whenever validity changes. |
+| `disabled`           | `boolean`                    | `false`             | Disables input and paste button.  |
+| `className`          | `string`                     | `''`                | Wrapper class.                    |
 
 Utility:
 
@@ -181,14 +181,14 @@ quick presets plus a max button.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `value` | `string` | required | Controlled decimal string. |
-| `onChange` | `(value: string) => void` | required | Receives sanitized or normalized value. |
-| `balance` | `number` | required | Maximum value used by the Max button and preset disabled state. |
-| `presets` | `number[]` | `[100, 500, 1000]` | Quick amount chips. |
-| `currencyLabel` | `string` | `'USDC'` | Visible adornment and accessible labels. |
-| `error` | `string` | undefined | Marks the wrapper invalid. |
+| Prop            | Type                      | Default            | Notes                                                           |
+| --------------- | ------------------------- | ------------------ | --------------------------------------------------------------- |
+| `value`         | `string`                  | required           | Controlled decimal string.                                      |
+| `onChange`      | `(value: string) => void` | required           | Receives sanitized or normalized value.                         |
+| `balance`       | `number`                  | required           | Maximum value used by the Max button and preset disabled state. |
+| `presets`       | `number[]`                | `[100, 500, 1000]` | Quick amount chips.                                             |
+| `currencyLabel` | `string`                  | `'USDC'`           | Visible adornment and accessible labels.                        |
+| `error`         | `string`                  | undefined          | Marks the wrapper invalid.                                      |
 
 Example:
 
@@ -207,12 +207,12 @@ and Platinum tiers. It renders an accessible progressbar plus a tier legend.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `score` | `number` | required | Current score. Values above 1000 visually clamp at 100%. |
-| `tier` | `'bronze' | 'silver' | 'gold' | 'platinum'` | required | Current tier used for labels and next-tier text. |
-| `className` | `string` | `''` | Wrapper class. |
-| `id` | `string` | `'trust-gauge'` | Wrapper id. |
+| Prop        | Type      | Default         | Notes                                                    |
+| ----------- | --------- | --------------- | -------------------------------------------------------- | ----------- | -------- | ------------------------------------------------ |
+| `score`     | `number`  | required        | Current score. Values above 1000 visually clamp at 100%. |
+| `tier`      | `'bronze' | 'silver'        | 'gold'                                                   | 'platinum'` | required | Current tier used for labels and next-tier text. |
+| `className` | `string`  | `''`            | Wrapper class.                                           |
+| `id`        | `string`  | `'trust-gauge'` | Wrapper id.                                              |
 
 Related export:
 
@@ -227,9 +227,9 @@ benefits. Thresholds align with `docs/tier-thresholds.md`.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `className` | `string` | `''` | Section class. |
+| Prop          | Type      | Default | Notes                   |
+| ------------- | --------- | ------- | ----------------------- |
+| `className`   | `string`  | `''`    | Section class.          |
 | `defaultOpen` | `boolean` | `false` | Initial expanded state. |
 
 Related exports:
@@ -247,13 +247,13 @@ Use `EmptyState` when a view has no content yet and the user needs a next step.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `icon` | `ReactNode` | undefined | Custom icon node. |
-| `title` | `string` | required | Heading. |
-| `description` | `string` | required | Supporting copy. |
-| `action` | `{ label; onClick; variant? }` | undefined | Optional CTA button. |
-| `illustration` | `'bond' | 'trust' | 'dispute' | 'attestation' | 'activity'` | undefined | Token-backed preset illustration. |
+| Prop           | Type                           | Default   | Notes                |
+| -------------- | ------------------------------ | --------- | -------------------- | ------------- | ----------- | --------- | --------------------------------- |
+| `icon`         | `ReactNode`                    | undefined | Custom icon node.    |
+| `title`        | `string`                       | required  | Heading.             |
+| `description`  | `string`                       | required  | Supporting copy.     |
+| `action`       | `{ label; onClick; variant? }` | undefined | Optional CTA button. |
+| `illustration` | `'bond'                        | 'trust'   | 'dispute'            | 'attestation' | 'activity'` | undefined | Token-backed preset illustration. |
 
 ### `ErrorState`
 
@@ -264,13 +264,13 @@ message, and icon copy.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `type` | `'network' | 'backend' | 'validation' | 'generic'` | `'generic'` | Selects default copy. |
-| `title` | `string` | preset title | Overrides default title. |
-| `message` | `string` | preset message | Overrides default message. |
-| `action` | `{ label; onClick }` | undefined | Optional recovery button. |
-| `icon` | `ReactNode` | preset icon | Overrides default icon. |
+| Prop      | Type                 | Default        | Notes                      |
+| --------- | -------------------- | -------------- | -------------------------- | ---------- | ----------- | --------------------- |
+| `type`    | `'network'           | 'backend'      | 'validation'               | 'generic'` | `'generic'` | Selects default copy. |
+| `title`   | `string`             | preset title   | Overrides default title.   |
+| `message` | `string`             | preset message | Overrides default message. |
+| `action`  | `{ label; onClick }` | undefined      | Optional recovery button.  |
+| `icon`    | `ReactNode`          | preset icon    | Overrides default icon.    |
 
 ### `LoadingSkeleton`
 
@@ -281,12 +281,12 @@ table, dashboard, and fallback block shapes.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `variant` | `'text' | 'card' | 'form' | 'table' | 'dashboard'` | `'text'` | Skeleton layout. |
-| `rows` | `number` | `3` | Number of repeated rows/cards. |
-| `width` | `string` | `'100%'` | CSS width. |
-| `height` | `string` | undefined | Fallback block height. |
+| Prop      | Type     | Default   | Notes                          |
+| --------- | -------- | --------- | ------------------------------ | ------- | ------------ | -------- | ---------------- |
+| `variant` | `'text'  | 'card'    | 'form'                         | 'table' | 'dashboard'` | `'text'` | Skeleton layout. |
+| `rows`    | `number` | `3`       | Number of repeated rows/cards. |
+| `width`   | `string` | `'100%'`  | CSS width.                     |
+| `height`  | `string` | undefined | Fallback block height.         |
 
 ## Control Components
 
@@ -298,13 +298,13 @@ Use `Select` for simple native select controls where the caller owns the value.
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `id` | `string` | undefined | Native select id. |
-| `value` | `string` | required | Controlled selected value. |
-| `onChange` | `(value: string) => void` | required | Called with the selected option value. |
-| `options` | `{ value: string; label: string }[]` | required | Option list. |
-| `ariaLabel` | `string` | undefined | Accessible label when no visible label exists. |
+| Prop        | Type                                 | Default   | Notes                                          |
+| ----------- | ------------------------------------ | --------- | ---------------------------------------------- |
+| `id`        | `string`                             | undefined | Native select id.                              |
+| `value`     | `string`                             | required  | Controlled selected value.                     |
+| `onChange`  | `(value: string) => void`            | required  | Called with the selected option value.         |
+| `options`   | `{ value: string; label: string }[]` | required  | Option list.                                   |
+| `ariaLabel` | `string`                             | undefined | Accessible label when no visible label exists. |
 
 ### `Toggle`
 
@@ -315,12 +315,12 @@ Use `Toggle` for binary settings. It renders a button with `role="switch"` and
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `id` | `string` | undefined | Button id. |
-| `checked` | `boolean` | required | Current switch state. |
-| `onChange` | `(next: boolean) => void` | required | Called with the next state. |
-| `ariaLabel` | `string` | undefined | Accessible label when surrounding text is not enough. |
+| Prop        | Type                      | Default   | Notes                                                 |
+| ----------- | ------------------------- | --------- | ----------------------------------------------------- |
+| `id`        | `string`                  | undefined | Button id.                                            |
+| `checked`   | `boolean`                 | required  | Current switch state.                                 |
+| `onChange`  | `(next: boolean) => void` | required  | Called with the next state.                           |
+| `ariaLabel` | `string`                  | undefined | Accessible label when surrounding text is not enough. |
 
 ## Review Checklist
 

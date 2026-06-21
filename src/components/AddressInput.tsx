@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
 
@@ -135,6 +135,7 @@ export default function AddressInput({
 
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const isValid = isValidStellarAddress(value)
   const isEmpty = !value
@@ -185,6 +186,16 @@ export default function AddressInput({
     }
   }
 
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard API tidak tersedia — fallback diam
+    }
+  }, [value])
+
   const error = showError
     ? 'Invalid address. Stellar public keys are 56 characters starting with G.'
     : undefined
@@ -212,6 +223,26 @@ export default function AddressInput({
         <div className="address-input-echo">
           <span className="address-input-echo-label">Recognized:</span>
           <code className="address-input-echo-value">{truncateAddress(value)}</code>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className={`address-input-copy-button ${copied ? 'address-input-copy-button--copied' : ''}`}
+            aria-label="Copy address to clipboard"
+            title={copied ? 'Copied!' : 'Copy address to clipboard'}
+            disabled={copied}
+          >
+            {copied ? (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M2 7L5 10L12 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="2.5" y="3.5" width="9" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M10 2.5V1.5C10 0.947715 9.55228 0.5 9 0.5H3C2.44772 0.5 2 0.947715 2 1.5V9.5C2 10.0523 2.44772 10.5 3 10.5H4" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+            )}
+            {copied && <span className="address-input-copy-feedback">Copied</span>}
+          </button>
         </div>
       )}
 

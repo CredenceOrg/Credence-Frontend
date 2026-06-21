@@ -152,6 +152,69 @@
   word-break: break-all;
 }
 
+/**
+ * Copy button: appears inside echo bar, copies full address to clipboard
+ */
+.address-input-copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--credence-space-1);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--credence-color-success-border);
+  border-radius: var(--credence-radius-sm);
+  color: var(--credence-color-success-text);
+  cursor: pointer;
+  position: relative;
+  transition:
+    background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+}
+
+.address-input-copy-button:hover:not(:disabled) {
+  background: var(--credence-color-success-surface);
+  border-color: var(--credence-color-success-text);
+}
+
+.address-input-copy-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.address-input-copy-button:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.address-input-copy-button--copied {
+  border-color: var(--credence-color-success-text);
+  background: var(--credence-color-success-surface);
+  cursor: default;
+}
+
+.address-input-copy-feedback {
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  white-space: nowrap;
+  animation: address-input-copy-fadeIn 0.15s ease-out;
+}
+
+@keyframes address-input-copy-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 [data-theme='dark'] .address-input-echo {
   background: var(--credence-color-success-surface);
 }
@@ -222,5 +285,15 @@
   .address-input-echo-value {
     display: block;
     width: 100%;
+  }
+
+  .address-input-copy-button {
+    width: 26px;
+    height: 26px;
+    margin-left: 0;
+  }
+
+  .address-input-copy-feedback {
+    font-size: var(--credence-font-size-2xs);
   }
 }

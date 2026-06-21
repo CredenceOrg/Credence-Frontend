@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `src/hooks/useLocalStorage.ts`: generic `useLocalStorage<T>(key, initialValue)` hook with SSR guard (`typeof window`), corrupt-JSON fallback, and a stable `useCallback`-memoised setter that writes through to `localStorage`.
+- `src/hooks/useLocalStorage.test.ts`: 10 unit tests covering missing key, stored value, corrupt JSON, boolean `false` preservation, unavailable storage fallback, setter round-trip, object values, and new-instance read-back.
+
+### Changed
+- `src/context/SettingsContext.tsx`: replaced manual `loadSavedSettings` + five independent `JSON.parse` calls with a single `useLocalStorage<StoredSettings>` invocation; all five fields are now seeded from one parsed record; auto-save effect calls `persistSettings` via the hook instead of writing directly to `localStorage`.
+
 ## [1.0.0] - 2026-04-28
 
 ### Added

@@ -33,23 +33,25 @@ function App() {
       <SettingsProvider>
         <WalletProvider>
           <ToastProvider>
-            <Suspense fallback={<div>Loading...</div>}>
-              <Routes>
-                <Route path="/" element={<Layout />}>
-                  <Route index element={<Home />} />
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="bond" element={<Bond />} />
-                  <Route path="bond/new" element={<CreateBondPage />} />
-                  <Route path="trust" element={<TrustScore />} />
-                  <Route path="settings" element={<Settings />} />
-                  <Route path="test-amount-input" element={<AmountInputTestPage />} />
-                  {import.meta.env.DEV && ToastTest && (
-                    <Route path="dev/toasts" element={<ToastTest />} />
-                  )}
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-              </Routes>
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<div>Loading...</div>}>
+                <Routes>
+                  <Route path="/" element={<Layout />} errorElement={<RouteErrorPage />}>
+                    <Route index element={<Home />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="bond" element={<Bond />} />
+                    <Route path="bond/new" element={<CreateBondPage />} />
+                    <Route path="trust" element={<TrustScore />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="test-amount-input" element={<AmountInputTestPage />} />
+                    {import.meta.env.DEV && ToastTest && (
+                      <Route path="dev/toasts" element={<ToastTest />} />
+                    )}
+                    <Route path="*" element={<NotFound />} />
+                  </Route>
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
           </ToastProvider>
         </WalletProvider>
       </SettingsProvider>

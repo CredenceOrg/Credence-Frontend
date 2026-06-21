@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import './TrustScore.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
-import AddressInput from '../components/AddressInput'
+import AddressInput, { isValidStellarAddress } from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
@@ -30,7 +31,11 @@ export default function TrustScore() {
   useDocumentTitle('Trust Score')
 
   const { isConnected, address: walletAddress, connect } = useWallet()
-  const [address, setAddress] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [address, setAddress] = useState<string>(() => {
+    const param = searchParams.get('address')?.trim() ?? ''
+    return isValidStellarAddress(param) ? param : ''
+  })
   const [isAddressValid, setIsAddressValid] = useState(false)
   const [hasAttemptedLookup, setHasAttemptedLookup] = useState(false)
   const [lookupAddress, setLookupAddress] = useState('')
@@ -46,6 +51,28 @@ export default function TrustScore() {
     refetch()
   }, [lookupAddress, refetch])
 
+  const commitAddressParam = (value: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (value) {
+          next.set('address', value)
+        } else {
+          next.delete('address')
+        }
+        return next
+      },
+      { replace: true },
+    )
+  }
+
+  const handleAddressChange = (value: string) => {
+    setAddress(value)
+    if (!value) {
+      commitAddressParam('')
+    }
+  }
+
   const handleLookup = () => {
     if (!isConnected) {
       void connect()
@@ -58,7 +85,9 @@ export default function TrustScore() {
 
     setHasAttemptedLookup(true)
     pendingLookupRef.current = true
-    setLookupAddress(address.trim())
+    const trimmed = address.trim()
+    setLookupAddress(trimmed)
+    commitAddressParam(trimmed)
   }
 
   const useConnectedAddress = () => {
@@ -148,7 +177,7 @@ export default function TrustScore() {
             id="wallet-address"
             label="Stellar Address"
             value={address}
-            onChange={setAddress}
+            onChange={handleAddressChange}
             onValidationChange={setIsAddressValid}
           />
           {isConnected && walletAddress && (

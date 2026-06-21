@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TrustScore from './TrustScore'
 import type { TrustScore as TrustScoreData } from '../api/types'
@@ -15,6 +15,9 @@ let mockTrustScoreState: {
   isLoading: false,
   error: null,
 }
+
+const mockSetSearchParams = vi.fn()
+let mockSearchParams = new URLSearchParams()
 
 vi.mock('../context/WalletContext', () => ({
   useWallet: () => ({
@@ -37,11 +40,23 @@ vi.mock('../hooks/useTrustScore', () => ({
   }),
 }))
 
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>()
+  return {
+    ...actual,
+    useSearchParams: () => [mockSearchParams, mockSetSearchParams],
+  }
+})
+
+const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
+
 describe('TrustScore', () => {
   beforeEach(() => {
     mockConnect.mockClear()
     mockRefetch.mockClear()
+    mockSetSearchParams.mockClear()
     mockConnected = true
+    mockSearchParams = new URLSearchParams()
     mockTrustScoreState = {
       data: null,
       isLoading: false,
@@ -72,5 +87,105 @@ describe('TrustScore', () => {
     render(<TrustScore />)
 
     expect(screen.getByRole('button', { name: /connect wallet to continue/i })).toBeInTheDocument()
+  })
+})
+
+describe('TrustScore URL sync', () => {
+  beforeEach(() => {
+    mockConnect.mockClear()
+    mockRefetch.mockClear()
+    mockSetSearchParams.mockClear()
+    mockConnected = true
+    mockSearchParams = new URLSearchParams()
+    mockTrustScoreState = { data: null, isLoading: false, error: null }
+  })
+
+  it('seeds the address input from a valid ?address= param on mount', () => {
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    render(<TrustScore />)
+    expect(screen.getByRole('textbox')).toHaveValue(VALID_ADDRESS)
+  })
+
+  it('does not seed the address input from an invalid ?address= param', () => {
+    mockSearchParams = new URLSearchParams({ address: 'not-a-valid-stellar-address' })
+    render(<TrustScore />)
+    expect(screen.getByRole('textbox')).toHaveValue('')
+  })
+
+  it('does not crash when ?address= param is absent', () => {
+    render(<TrustScore />)
+    expect(screen.getByRole('textbox')).toHaveValue('')
+  })
+
+  it('enables the lookup button when seeded with a valid address', async () => {
+    mockConnected = true
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    render(<TrustScore />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled()
+    })
+  })
+
+  it('does not enable the lookup button when seeded with an invalid address', () => {
+    mockConnected = true
+    mockSearchParams = new URLSearchParams({ address: 'bad' })
+    render(<TrustScore />)
+
+    expect(screen.getByRole('button', { name: /look up score/i })).toBeDisabled()
+  })
+
+  it('commits the address to the URL with replace semantics on a successful lookup', async () => {
+    mockConnected = true
+    render(<TrustScore />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: VALID_ADDRESS } })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /look up score/i }))
+
+    expect(mockSetSearchParams).toHaveBeenCalledOnce()
+    const [updater, options] = mockSetSearchParams.mock.calls[0] as [
+      (prev: URLSearchParams) => URLSearchParams,
+      { replace: boolean },
+    ]
+    const result = updater(new URLSearchParams())
+    expect(result.get('address')).toBe(VALID_ADDRESS)
+    expect(options).toEqual({ replace: true })
+  })
+
+  it('clears the ?address= param when the address input is cleared', () => {
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    render(<TrustScore />)
+
+    mockSetSearchParams.mockClear()
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+
+    expect(mockSetSearchParams).toHaveBeenCalledOnce()
+    const [updater, options] = mockSetSearchParams.mock.calls[0] as [
+      (prev: URLSearchParams) => URLSearchParams,
+      { replace: boolean },
+    ]
+    const result = updater(new URLSearchParams({ address: VALID_ADDRESS }))
+    expect(result.has('address')).toBe(false)
+    expect(options).toEqual({ replace: true })
+  })
+
+  it('does not write to the URL on partial keystrokes — only on clear or lookup', () => {
+    render(<TrustScore />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'GAAZI4' } })
+
+    expect(mockSetSearchParams).not.toHaveBeenCalled()
+  })
+
+  it('does not loop: seeding from URL does not call setSearchParams', () => {
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    render(<TrustScore />)
+
+    expect(mockSetSearchParams).not.toHaveBeenCalled()
   })
 })

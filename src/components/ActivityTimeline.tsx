@@ -16,6 +16,8 @@ export interface ActivityItem {
 
 interface ActivityTimelineProps {
   compact?: boolean
+  /** Timeline events to render. Defaults to the built-in sample data. */
+  items?: ActivityItem[]
 }
 
 const ACTIVITY_ITEMS: ActivityItem[] = [
@@ -51,7 +53,13 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
   },
 ]
 
-export default function ActivityTimeline({ compact = false }: ActivityTimelineProps) {
+export default function ActivityTimeline({
+  compact = false,
+  items = ACTIVITY_ITEMS,
+}: ActivityTimelineProps) {
+  const count = items.length
+  const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
+
   return (
     <section
       className={`activity-surface${compact ? ' activity-surface--compact' : ''}`}

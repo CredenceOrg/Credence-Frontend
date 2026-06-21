@@ -25,8 +25,6 @@ interface MockBond {
 
 const initialBonds: MockBond[] = []
 
-const initialBonds: MockBond[] = []
-
 function getPenaltyRate(status: BondStatus): number {
   switch (status) {
     case 'locked':
@@ -59,7 +57,7 @@ export default function Bond() {
   useDocumentTitle('Bond')
 
   const { addToast } = useToast()
-  const { isConnected, connect } = useWalletContext()
+  const { isConnected, connect } = useWallet()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
 

@@ -211,9 +211,7 @@ export default function AddressInput({
       {showSuccess && value && (
         <div className="address-input-echo">
           <span className="address-input-echo-label">Recognized:</span>
-          <code className="address-input-echo-value">
-            {addressDisplay === 'full' ? value : truncateAddress(value)}
-          </code>
+          <code className="address-input-echo-value">{truncateAddress(value)}</code>
         </div>
       )}
 

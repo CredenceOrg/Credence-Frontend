@@ -5,7 +5,8 @@ import Badge from '../components/Badge'
 import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
-import { EmptyState } from '../components/states'
+import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
+import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useTrustScore } from '../hooks/useTrustScore'
@@ -27,7 +28,7 @@ function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validati
 export default function TrustScore() {
   useDocumentTitle('Trust Score')
 
-  const { isConnected, address: walletAddress, connect } = useWalletContext()
+  const { isConnected, address: walletAddress, connect } = useWallet()
   const [address, setAddress] = useState('')
   const [isAddressValid, setIsAddressValid] = useState(false)
   const [hasAttemptedLookup, setHasAttemptedLookup] = useState(false)

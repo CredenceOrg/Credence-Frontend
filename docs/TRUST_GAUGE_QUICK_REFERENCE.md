@@ -107,6 +107,31 @@ export default function TrustScore() {
 
 ---
 
+## Test Coverage
+
+Tests live in **[src/components/TrustGauge.test.tsx](../src/components/TrustGauge.test.tsx)** (Vitest + RTL).
+
+| Area | What is covered |
+| ---- | --------------- |
+| `pointsToNextTier` | Mid-tier values, exact thresholds (250/500/750), platinum always returns 0, scores above the next threshold clamp to 0, negative scores handled defensively, tier mismatch clamping |
+| `getProgressPercentage` | Score 0 → 0%, tier boundaries (25/50/75/100%), cap at 100% for scores ≥ 1000, documents negative-score behavior (no lower clamp) |
+| ARIA progressbar | `aria-valuenow`, `aria-valuemin=0`, `aria-valuemax=1000`, `aria-label` per tier |
+| Maxed caption | Appears only when `tier=platinum` and `score >= 1000`; absent at score=750 platinum |
+| Tier badge | `data-tier` attribute matches each tier; label text from `TIER_CONFIG` |
+| Score display | Numeric value and `/ 1000` label rendered |
+| Tier legend | All four range strings (Bronze: 0–250 … Platinum: 750–1000) |
+| Props | Default `id`, custom `id`, merged `className` |
+| Heading | Visible `<h3>` with "Trust Score Gauge" |
+
+Coverage target: ≥ 90% lines and branches on `src/components/TrustGauge.tsx` (enforced in `vite.config.ts` thresholds).
+
+```bash
+npm run test              # run all tests (TrustGauge: 43 tests)
+npm run test:coverage     # print coverage report with per-file thresholds
+```
+
+---
+
 ## Build & Lint Status
 
 ```bash

@@ -6,6 +6,9 @@ import './ConfirmDialog.css'
 
 const CONFIRM_PHRASE = 'CONFIRM'
 
+const CONFIRM_ENABLED_ANNOUNCEMENT = 'Withdrawal enabled. Type CONFIRM to confirm.'
+const CONFIRM_DISABLED_ANNOUNCEMENT = 'Withdrawal disabled. Type CONFIRM to enable.'
+
 export interface ConfirmDialogPenaltyBreakdown {
   bondAmount: string
   penaltyAmount: string
@@ -39,8 +42,10 @@ export default function ConfirmDialog({
   const announcementId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const confirmRef = useRef<HTMLButtonElement>(null)
   const [confirmText, setConfirmText] = useState('')
   const [announcement, setAnnouncement] = useState('')
+  const [prevConfirmEnabled, setPrevConfirmEnabled] = useState(false)
 
   const handleCancel = useCallback(() => {
     onCancel()
@@ -58,6 +63,7 @@ export default function ConfirmDialog({
     if (!open) {
       setConfirmText('')
       setAnnouncement('')
+      setPrevConfirmEnabled(false)
       return
     }
 
@@ -73,6 +79,21 @@ export default function ConfirmDialog({
   }, [open, title, subtitle])
 
   const isConfirmEnabled = confirmText === CONFIRM_PHRASE
+
+  useEffect(() => {
+    if (isConfirmEnabled !== prevConfirmEnabled) {
+      if (isConfirmEnabled) {
+        setAnnouncement(CONFIRM_ENABLED_ANNOUNCEMENT)
+        requestAnimationFrame(() => {
+          confirmRef.current?.focus()
+        })
+      } else {
+        setAnnouncement(CONFIRM_DISABLED_ANNOUNCEMENT)
+        requestAnimationFrame(() => cancelRef.current?.focus())
+      }
+      setPrevConfirmEnabled(isConfirmEnabled)
+    }
+  }, [isConfirmEnabled, prevConfirmEnabled])
 
   const handleConfirm = () => {
     if (!isConfirmEnabled) return
@@ -154,6 +175,7 @@ export default function ConfirmDialog({
             Cancel
           </Button>
           <Button
+            ref={confirmRef}
             type="button"
             variant="danger"
             disabled={!isConfirmEnabled}

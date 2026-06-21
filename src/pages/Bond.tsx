@@ -1,14 +1,18 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
 import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
-import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
+import type { ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 import EmptyState from '../components/states/EmptyState'
-import { FormField } from '../components/forms/FormField'
-import AmountInput from '../components/AmountInput'
+import { useWallet } from '../context/WalletContext'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { formatUsdc } from '../lib/format'
+
+const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -18,9 +22,7 @@ interface MockBond {
   status: BondStatus
 }
 
-function formatUsdc(amount: number): string {
-  return `${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDC`
-}
+const initialBonds: MockBond[] = []
 
 function getPenaltyRate(status: BondStatus): number {
   switch (status) {
@@ -51,27 +53,23 @@ function computeWithdrawBreakdown(bond: MockBond): ConfirmDialogPenaltyBreakdown
 }
 
 export default function Bond() {
+  useDocumentTitle('Bond')
+
+  const navigate = useNavigate()
   const { addToast } = useToast()
+  const { isConnected, connect } = useWallet()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
 
-  const mockedBalance = 10000
-  const [amount, setAmount] = useState('')
-  const overBalance = parseFloat(amount) > mockedBalance
-  const balanceLabel = mockedBalance.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  const bonds = initialBonds
 
-  const bonds: MockBond[] = []
-
-  const handleCreate = () => {
-    addToast('success', 'Bond created successfully.')
-  }
-
-  const focusBondCreation = () => {
-    const createBondInput = document.getElementById('bond-amount')
-    if (!createBondInput) return
-    createBondInput.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    ;(createBondInput as HTMLInputElement).focus()
-  }
+  const handleCreateBond = useCallback(() => {
+    if (!isConnected) {
+      connect()
+      return
+    }
+    navigate('/bond/new')
+  }, [isConnected, connect, navigate])
 
   const withdrawBreakdown = useMemo(
     () => (withdrawTarget ? computeWithdrawBreakdown(withdrawTarget) : null),
@@ -79,9 +77,14 @@ export default function Bond() {
   )
 
   const requestWithdraw = useCallback((bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isConnected) {
+      connect()
+      return
+    }
+
     withdrawTriggerRef.current = event.currentTarget
     setWithdrawTarget(bond)
-  }, [])
+  }, [isConnected, connect])
 
   const cancelWithdraw = useCallback(() => {
     setWithdrawTarget(null)
@@ -124,6 +127,16 @@ export default function Bond() {
         Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
       </Banner>
 
+      {!isConnected && (
+        <Banner
+          severity="warning"
+          title="Connect wallet required"
+          action={{ label: 'Connect wallet', onClick: connect }}
+        >
+          Create bond and withdraw actions require a connected Stellar wallet.
+        </Banner>
+      )}
+
       {slashBannerBreakdown && slashExposureBond && (
         <Banner severity="warning" title="Slash exposure on early withdrawal">
           Withdrawing {formatUsdc(slashExposureBond.amountUsdc)} while{' '}
@@ -142,29 +155,15 @@ export default function Bond() {
         }}
       >
         <ActionCard title="Create New Bond">
-          <FormField
-            id="bond-amount"
-            label="Amount (USDC)"
-            hint={`Available: ${balanceLabel} USDC`}
-            error={overBalance ? 'Amount exceeds available balance.' : undefined}
-          >
-            <AmountInput
-              value={amount}
-              onChange={setAmount}
-              balance={mockedBalance}
-              presets={[100, 500, 1000]}
-              placeholder="0.00"
-              aria-describedby="bond-desc"
-              error={overBalance ? 'Amount exceeds available balance.' : undefined}
-            />
-          </FormField>
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            Lock USDC using the guided four-step wizard — set an amount, choose a lock duration, review slash terms, and confirm.
+          </p>
           <Button
             type="button"
-            onClick={handleCreate}
+            onClick={handleCreateBond}
             fullWidth
-            style={{ marginTop: 'var(--credence-space-4)' }}
           >
-            Create bond
+            {isConnected ? 'Create bond' : 'Connect wallet to continue'}
           </Button>
         </ActionCard>
 
@@ -176,7 +175,7 @@ export default function Bond() {
               description="You do not have any active bonds yet. Create your first bond to start building on-chain reputation."
               action={{
                 label: 'Create your first bond',
-                onClick: focusBondCreation,
+                onClick: handleCreateBond,
               }}
             />
           ) : (
@@ -208,10 +207,12 @@ export default function Bond() {
                   <Button
                     type="button"
                     variant={getPenaltyRate(bond.status) > 0 ? 'danger' : 'secondary'}
-                    onClick={(event) => requestWithdraw(bond, event)}
-                    aria-haspopup="dialog"
+                    onClick={
+                      isConnected ? (event) => requestWithdraw(bond, event) : () => connect()
+                    }
+                    aria-haspopup={isConnected ? 'dialog' : undefined}
                   >
-                    Withdraw
+                    {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
                   </Button>
                 </li>
               ))}
@@ -221,15 +222,17 @@ export default function Bond() {
       </div>
 
       {withdrawTarget && withdrawBreakdown && (
-        <ConfirmDialog
-          open
-          title="Confirm bond withdrawal"
-          subtitle={`You are withdrawing bond #${withdrawTarget.id} (${formatUsdc(withdrawTarget.amountUsdc)}).`}
-          breakdown={withdrawBreakdown}
-          onConfirm={confirmWithdraw}
-          onCancel={cancelWithdraw}
-          returnFocusRef={withdrawTriggerRef}
-        />
+        <Suspense fallback={null}>
+          <ConfirmDialog
+            open
+            title="Confirm bond withdrawal"
+            subtitle={`You are withdrawing bond #${withdrawTarget.id} (${formatUsdc(withdrawTarget.amountUsdc)}).`}
+            breakdown={withdrawBreakdown}
+            onConfirm={confirmWithdraw}
+            onCancel={cancelWithdraw}
+            returnFocusRef={withdrawTriggerRef}
+          />
+        </Suspense>
       )}
 
       <Disclaimer

@@ -64,7 +64,7 @@ const TIER_ORDER: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
  * @param tier Current tier
  * @returns Points needed to reach next tier (0 if at platinum)
  */
-function pointsToNextTier(score: number, tier: TrustTier): number {
+export function pointsToNextTier(score: number, tier: TrustTier): number {
   const tierIndex = TIER_ORDER.indexOf(tier)
   if (tierIndex === TIER_ORDER.length - 1) {
     // Already at platinum
@@ -79,7 +79,7 @@ function pointsToNextTier(score: number, tier: TrustTier): number {
  * @param score Current score
  * @returns Percentage (0-100)
  */
-function getProgressPercentage(score: number): number {
+export function getProgressPercentage(score: number): number {
   return Math.min((score / MAX_SCORE) * 100, 100)
 }
 

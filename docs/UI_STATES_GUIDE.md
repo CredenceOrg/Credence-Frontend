@@ -433,6 +433,63 @@ Before shipping, validate:
 
 ---
 
+---
+
+## Error Boundary Strategy
+
+### Architecture
+
+Two boundaries protect the app from white-screen crashes:
+
+| Layer | Component | Location | Catches |
+|---|---|---|---|
+| Root (outermost) | `ErrorBoundary` | `main.tsx` wrapping `<App />` | Provider bootstrap errors |
+| Route tree | `ErrorBoundary` | `App.tsx` wrapping `<Suspense>` | Lazy-chunk failures, route render errors |
+| Router-level | `RouteErrorPage` | `errorElement` on root `<Route>` | Loader errors (data-router) |
+
+### Class ErrorBoundary (`src/components/ErrorBoundary.tsx`)
+
+```tsx
+import ErrorBoundary from './components/ErrorBoundary'
+
+// Default fallback (ErrorState + retry + home link)
+<ErrorBoundary>
+  <SomeSubtree />
+</ErrorBoundary>
+
+// Custom fallback via render prop
+<ErrorBoundary fallback={(error, reset) => (
+  <div>
+    <p>{error.message}</p>
+    <button onClick={reset}>Retry</button>
+  </div>
+)}>
+  <SomeSubtree />
+</ErrorBoundary>
+```
+
+**Retry behaviour:** clicking "Try again" calls `setState({ hasError: false, error: null })`.
+React re-renders the children without a hard reload. If they throw again the boundary
+catches once more.
+
+**Telemetry hook:** `componentDidCatch` currently logs to `console.error`. Replace the
+`console.error` call with your error monitoring SDK (Sentry, Datadog, etc.) before shipping.
+
+### RouteErrorPage (`src/pages/RouteErrorPage.tsx`)
+
+Registered as `errorElement` on the root route. In the current `BrowserRouter` setup this
+serves as forward-compatible scaffolding; it becomes fully active if the app is migrated to
+`createBrowserRouter`. Handles 404 (route miss) and generic router errors with the same
+`ErrorState` visual.
+
+### Accessibility
+
+- The fallback renders an `<h3>` heading from `ErrorState` — screen readers announce the error.
+- A `<a href="/">Go to home page</a>` link ensures keyboard-only users have a navigation escape hatch even if JavaScript is broken.
+- The retry `<button>` is `focus-visible` styled via the shared class.
+
+---
+
 ## Future Enhancements
 
 - Custom illustrations for each empty state

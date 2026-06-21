@@ -1,14 +1,21 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
 
-interface AddressInputProps {
+export interface AddressInputProps {
+  /** Input id forwarded to FormField for label and description wiring. */
   id: string
+  /** Visible field label. Defaults to `Stellar Address`. */
   label?: string
+  /** Controlled Stellar public key value. */
   value: string
+  /** Called with the raw address text whenever the user edits or pastes. */
   onChange: (value: string) => void
+  /** Receives the current 56-character Stellar public key validation state. */
   onValidationChange?: (isValid: boolean) => void
+  /** Disables both the text input and paste button. */
   disabled?: boolean
+  /** Additional class names appended to the wrapper. */
   className?: string
 }
 
@@ -16,14 +23,14 @@ interface AddressInputProps {
  * Validates Stellar public key format.
  * Valid addresses: 56 characters, starts with 'G'
  */
-function isValidStellarAddress(address: string): boolean {
+export function isValidStellarAddress(address: string): boolean {
   if (!address) return false
   // Stellar addresses are 56 characters and start with 'G'
   return /^G[A-Z0-9]{55}$/.test(address)
 }
 
 /**
- * Truncates address for display: shows first 12 and last 8 characters
+ * Truncates address for display: shows first 12 and last 8 characters.
  */
 export function truncateAddress(address: string): string {
   if (address.length <= 20) return address
@@ -125,8 +132,10 @@ export default function AddressInput({
   className = '',
 }: AddressInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const isValid = isValidStellarAddress(value)
   const isEmpty = !value
@@ -177,7 +186,19 @@ export default function AddressInput({
     }
   }
 
-  const error = showError ? 'Invalid address. Stellar public keys are 56 characters starting with G.' : undefined
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard API tidak tersedia — fallback diam
+    }
+  }, [value])
+
+  const error = showError
+    ? 'Invalid address. Stellar public keys are 56 characters starting with G.'
+    : undefined
   const hint = 'Stellar public key format (56 characters, starts with G)'
 
   return (
@@ -202,6 +223,26 @@ export default function AddressInput({
         <div className="address-input-echo">
           <span className="address-input-echo-label">Recognized:</span>
           <code className="address-input-echo-value">{truncateAddress(value)}</code>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className={`address-input-copy-button ${copied ? 'address-input-copy-button--copied' : ''}`}
+            aria-label="Copy address to clipboard"
+            title={copied ? 'Copied!' : 'Copy address to clipboard'}
+            disabled={copied}
+          >
+            {copied ? (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M2 7L5 10L12 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="2.5" y="3.5" width="9" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M10 2.5V1.5C10 0.947715 9.55228 0.5 9 0.5H3C2.44772 0.5 2 0.947715 2 1.5V9.5C2 10.0523 2.44772 10.5 3 10.5H4" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+            )}
+            {copied && <span className="address-input-copy-feedback">Copied</span>}
+          </button>
         </div>
       )}
 

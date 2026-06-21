@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>useFocusTrap Test Page</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.5;
+    }
+    .test-section {
+      border: 1px solid #ccc;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border-radius: 8px;
+    }
+    .test-section h2 {
+      margin-top: 0;
+    }
+    .focus-trap-container {
+      border: 2px solid #007bff;
+      padding: 1.5rem;
+      border-radius: 8px;
+      background: #f8f9fa;
+    }
+    .focus-trap-container.active {
+      border-color: #28a745;
+      background: #d4edda;
+    }
+    .focus-trap-container button,
+    .focus-trap-container input,
+    .focus-trap-container a {
+      margin: 0.5rem;
+      padding: 0.5rem;
+    }
+    .controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .log {
+      background: #f4f4f4;
+      padding: 1rem;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    .log-entry {
+      margin: 0.25rem 0;
+      padding: 0.25rem;
+      border-bottom: 1px solid #ddd;
+    }
+    .log-entry.focus {
+      color: #007bff;
+    }
+    .log-entry.escape {
+      color: #dc3545;
+    }
+    .log-entry.activate {
+      color: #28a745;
+    }
+    .log-entry.deactivate {
+      color: #ffc107;
+    }
+    .external-button {
+      margin: 1rem 0;
+    }
+    code {
+      background: #f4f4f4;
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+    }
+    .status {
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin: 0.5rem 0;
+      font-weight: bold;
+    }
+    .status.active {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.inactive {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <h1>useFocusTrap Test Page</h1>
+  
+  <div class="test-section">
+    <h2>Test Controls</h2>
+    <div class="controls">
+      <button id="activate-btn">Activate Focus Trap</button>
+      <button id="deactivate-btn">Deactivate Focus Trap</button>
+      <button id="toggle-return-focus">Toggle Return Focus: ON</button>
+      <button id="clear-log">Clear Log</button>
+    </div>
+    <div id="status" class="status inactive">Status: Inactive</div>
+  </div>
+
+  <div class="test-section">
+    <h2>External Button (Before Trap)</h2>
+    <button class="external-button" id="external-before">External Button Before</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Focus Trap Container</h2>
+    <div id="trap-container" class="focus-trap-container">
+      <h3>Inside Focus Trap</h3>
+      <button id="trap-btn-1">Button 1</button>
+      <button id="trap-btn-2">Button 2</button>
+      <input type="text" id="trap-input-1" placeholder="Input 1" />
+      <button id="trap-btn-3">Button 3</button>
+      <a href="#" id="trap-link-1" onclick="return false;">Link 1</a>
+      <input type="text" id="trap-input-2" placeholder="Input 2" />
+      <button id="trap-btn-4">Button 4</button>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>External Button (After Trap)</h2>
+    <button class="external-button" id="external-after">External Button After</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Event Log</h2>
+    <div id="log" class="log"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Instructions</h2>
+    <h3>Tab/Shift+Tab Cycling Test:</h3>
+    <ol>
+      <li>Click "Activate Focus Trap"</li>
+      <li>Press <code>Tab</code> repeatedly - focus should cycle through trap elements only</li>
+      <li>Press <code>Shift+Tab</code> repeatedly - focus should cycle backwards through trap elements only</li>
+      <li>Focus should never leave the trap container while active</li>
+    </ol>
+
+    <h3>Escape Key Test:</h3>
+    <ol>
+      <li>Click "Activate Focus Trap"</li>
+      <li>Focus any element inside the trap</li>
+      <li>Press <code>Escape</code> - should call onEscape callback</li>
+      <li>Check log for "Escape key pressed" entry</li>
+    </ol>
+
+    <h3>Focus Restore on Deactivate Test:</h3>
+    <ol>
+      <li>Click "External Button Before" to focus it</li>
+      <li>Click "Activate Focus Trap"</li>
+      <li>Click "Deactivate Focus Trap"</li>
+      <li>Focus should return to "External Button Before"</li>
+      <li>Toggle "Return Focus" to OFF and repeat - focus should not return</li>
+    </ol>
+
+    <h3>Initial Focus Test:</h3>
+    <ol>
+      <li>Click "External Button Before" to focus it</li>
+      <li>Click "Activate Focus Trap"</li>
+      <li>Focus should move to first focusable element in trap (Button 1)</li>
+    </ol>
+  </div>
+
+  <script>
+    // Simplified focus trap implementation for testing
+    const FOCUSABLE_SELECTOR =
+      'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+    function getFocusableElements(container) {
+      return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
+        (el) => el.offsetParent !== null || el.getClientRects().length > 0
+      )
+    }
+
+    let isActive = false
+    let returnFocusOnDeactivate = true
+    let previouslyFocusedElement = null
+    const trapContainer = document.getElementById('trap-container')
+    const logDiv = document.getElementById('log')
+    const statusDiv = document.getElementById('status')
+
+    function log(message, type = '') {
+      const entry = document.createElement('div')
+      entry.className = `log-entry ${type}`
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`
+      logDiv.appendChild(entry)
+      logDiv.scrollTop = logDiv.scrollHeight
+    }
+
+    function updateStatus() {
+      if (isActive) {
+        trapContainer.classList.add('active')
+        statusDiv.textContent = 'Status: Active'
+        statusDiv.className = 'status active'
+      } else {
+        trapContainer.classList.remove('active')
+        statusDiv.textContent = 'Status: Inactive'
+        statusDiv.className = 'status inactive'
+      }
+    }
+
+    function activateTrap() {
+      if (isActive) return
+      
+      previouslyFocusedElement = document.activeElement
+      log(`Activating trap. Previously focused: ${previouslyFocusedElement?.id || 'none'}`, 'activate')
+      
+      isActive = true
+      updateStatus()
+
+      // Focus first element
+      const focusables = getFocusableElements(trapContainer)
+      if (focusables.length > 0) {
+        focusables[0].focus()
+        log(`Focused first element: ${focusables[0].id}`, 'focus')
+      }
+    }
+
+    function deactivateTrap() {
+      if (!isActive) return
+      
+      log('Deactivating trap', 'deactivate')
+      
+      isActive = false
+      updateStatus()
+
+      // Return focus if enabled
+      if (returnFocusOnDeactivate && previouslyFocusedElement) {
+        log(`Returning focus to: ${previouslyFocusedElement.id}`, 'focus')
+        requestAnimationFrame(() => {
+          if (previouslyFocusedElement && typeof previouslyFocusedElement.focus === 'function') {
+            previouslyFocusedElement.focus()
+          }
+        })
+      }
+      
+      previouslyFocusedElement = null
+    }
+
+    function handleKeyDown(event) {
+      if (!isActive) return
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        log('Escape key pressed - calling onEscape', 'escape')
+        deactivateTrap()
+        return
+      }
+
+      if (event.key !== 'Tab') return
+
+      const focusables = getFocusableElements(trapContainer)
+      if (focusables.length === 0) return
+
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement
+
+      log(`Tab pressed. Active: ${active?.id}, First: ${first.id}, Last: ${last.id}, Shift: ${event.shiftKey}`)
+
+      if (event.shiftKey) {
+        if (active === first || !trapContainer.contains(active)) {
+          event.preventDefault()
+          last.focus()
+          log(`Shift+Tab: Wrapped to last element: ${last.id}`, 'focus')
+        }
+      } else if (active === last) {
+        event.preventDefault()
+        first.focus()
+        log(`Tab: Wrapped to first element: ${first.id}`, 'focus')
+      }
+    }
+
+    // Event listeners
+    document.getElementById('activate-btn').addEventListener('click', activateTrap)
+    document.getElementById('deactivate-btn').addEventListener('click', deactivateTrap)
+    
+    const toggleReturnBtn = document.getElementById('toggle-return-focus')
+    toggleReturnBtn.addEventListener('click', () => {
+      returnFocusOnDeactivate = !returnFocusOnDeactivate
+      toggleReturnBtn.textContent = `Toggle Return Focus: ${returnFocusOnDeactivate ? 'ON' : 'OFF'}`
+      log(`Return focus on deactivate: ${returnFocusOnDeactivate ? 'ON' : 'OFF'}`)
+    })
+
+    document.getElementById('clear-log').addEventListener('click', () => {
+      logDiv.innerHTML = ''
+    })
+
+    // Log focus changes
+    document.querySelectorAll('button, input, a').forEach(el => {
+      el.addEventListener('focus', () => {
+        log(`Focused: ${el.id}`, 'focus')
+      })
+    })
+
+    // Add keydown listener to trap container
+    trapContainer.addEventListener('keydown', handleKeyDown)
+
+    // Initial log
+    log('Test page loaded. Click "Activate Focus Trap" to begin testing.')
+  </script>
+</body>
+</html>

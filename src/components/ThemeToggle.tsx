@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
 import './ThemeToggle.css'
+import { useEffect, useState } from 'react'
+import { useSettings } from '../context/SettingsContext'
 
 function SunIcon() {
   return (
@@ -39,37 +40,74 @@ function MoonIcon() {
   )
 }
 
+/** SSR-safe read of the OS-level `prefers-color-scheme: dark` preference. */
+function getSystemPrefersDark(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+/**
+ * ThemeToggle — a single-icon button for flipping the app between light and
+ * dark mode.
+ *
+ * ## Single source of truth
+ *
+ * The displayed state is derived *entirely* from {@link useSettings}; this
+ * component owns **no** theme state and writes to **no** storage key of its
+ * own. {@link SettingsContext} is the sole owner of the theme (persisted under
+ * the `credence:settings` key) and the sole writer of the document's
+ * `data-theme` attribute. See `docs/dark-mode.md` for the model.
+ *
+ * The light/dark value shown is *resolved* from `themeMode`:
+ * - `'light'` / `'dark'` resolve to themselves;
+ * - `'system'` resolves via `matchMedia('(prefers-color-scheme: dark)')`.
+ *
+ * A `matchMedia` subscription keeps the resolved value (and therefore the icon,
+ * `aria-pressed`, and `aria-label`) in sync when the OS theme changes while
+ * `themeMode` is `'system'`, so the toggle always matches the document's
+ * `data-theme`.
+ *
+ * Clicking flips `themeMode` to the *explicit* opposite of the currently
+ * resolved theme (e.g. resolved-dark → `'light'`), never back to `'system'`.
+ */
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('theme')
-      if (saved === 'light' || saved === 'dark') return saved
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return 'light'
-  })
+  const { themeMode, setThemeMode } = useSettings()
+
+  // Mirror the OS preference so the toggle re-renders when it changes while in
+  // `system` mode. This is a *derived* value, not a second source of truth —
+  // `themeMode` (owned by SettingsContext) remains authoritative.
+  const [systemPrefersDark, setSystemPrefersDark] = useState(getSystemPrefersDark)
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem('theme', theme)
-  }, [theme])
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return
+    }
+    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (event: MediaQueryListEvent) => setSystemPrefersDark(event.matches)
+    // Re-sync once on mount in case the OS preference changed before subscribing.
+    setSystemPrefersDark(mql.matches)
+    mql.addEventListener?.('change', handler)
+    return () => mql.removeEventListener?.('change', handler)
+  }, [])
 
-  const toggleTheme = () => {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'))
-  }
+  const resolved: 'light' | 'dark' =
+    themeMode === 'system' ? (systemPrefersDark ? 'dark' : 'light') : themeMode
+  const nextTheme = resolved === 'dark' ? 'light' : 'dark'
 
-  const nextTheme = theme === 'light' ? 'dark' : 'light'
+  const handleClick = () => setThemeMode(nextTheme)
 
   return (
     <button
       type="button"
       className="theme-toggle"
-      onClick={toggleTheme}
+      onClick={handleClick}
       aria-label={`Switch to ${nextTheme} mode`}
-      aria-pressed={theme === 'dark'}
+      aria-pressed={resolved === 'dark'}
       title={`Switch to ${nextTheme} mode`}
     >
-      {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+      {resolved === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>
   )
 }

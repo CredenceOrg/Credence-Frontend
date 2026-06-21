@@ -5,6 +5,7 @@ import LINKS from '../config/links'
 import './Layout.css'
 
 const NAV_LINKS = [
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/bond', label: 'Bond' },
   { to: '/trust', label: 'Trust Score' },
   { to: '/settings', label: 'Settings' },
@@ -38,6 +39,7 @@ export default function Layout() {
             <NavLink
               key={to}
               to={to}
+              end
               className={({ isActive }) => (isActive ? 'appNav-link appNav-link--active' : 'appNav-link')}
             >
               {label}

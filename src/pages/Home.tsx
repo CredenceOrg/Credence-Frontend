@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import './Home.css'
 
 export default function Home() {
+  useDocumentTitle('Home')
+
   return (
     <div className="home">
       <div>

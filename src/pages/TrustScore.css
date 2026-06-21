@@ -81,3 +81,15 @@
   color: var(--credence-text-secondary);
 }
 
+.trustScore__buttonRow {
+  margin-top: var(--credence-space-4);
+}
+
+.trustScore__results {
+  margin-top: var(--credence-space-8);
+}
+
+.trustScore__tierBadge {
+  margin-top: var(--credence-space-4);
+}
+

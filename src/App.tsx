@@ -4,6 +4,8 @@ import { SettingsProvider } from './context/SettingsContext'
 import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import Layout from './components/Layout'
+import ErrorBoundary from './components/ErrorBoundary'
+import RouteErrorPage from './pages/RouteErrorPage'
 
 const Home = lazy(() => import('./pages/Home'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -30,22 +32,24 @@ function App() {
       <SettingsProvider>
         <WalletProvider>
           <ToastProvider>
-            <Suspense fallback={<div>Loading...</div>}>
-              <Routes>
-                <Route path="/" element={<Layout />}>
-                  <Route index element={<Home />} />
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="bond" element={<Bond />} />
-                  <Route path="trust" element={<TrustScore />} />
-                  <Route path="settings" element={<Settings />} />
-                  <Route path="test-amount-input" element={<AmountInputTestPage />} />
-                  {import.meta.env.DEV && ToastTest && (
-                    <Route path="dev/toasts" element={<ToastTest />} />
-                  )}
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-              </Routes>
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<div>Loading...</div>}>
+                <Routes>
+                  <Route path="/" element={<Layout />} errorElement={<RouteErrorPage />}>
+                    <Route index element={<Home />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="bond" element={<Bond />} />
+                    <Route path="trust" element={<TrustScore />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="test-amount-input" element={<AmountInputTestPage />} />
+                    {import.meta.env.DEV && ToastTest && (
+                      <Route path="dev/toasts" element={<ToastTest />} />
+                    )}
+                    <Route path="*" element={<NotFound />} />
+                  </Route>
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
           </ToastProvider>
         </WalletProvider>
       </SettingsProvider>

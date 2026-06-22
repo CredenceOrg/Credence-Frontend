@@ -36,6 +36,11 @@ This directory contains comprehensive design specifications and implementation g
    - When and how to use each state type
    - Validation checklist
 
+5. **[Error Handling](./ERROR_HANDLING.md)**
+   - Decision flow for loading, empty, recoverable error, banner, toast, and boundary surfaces
+   - Accessibility expectations for each surface
+   - Bond and Trust Score usage guidance grounded in the current component APIs
+
 5. **[Design Tokens](./DESIGN_TOKENS.md)**
    - Canonical `--credence-*` CSS variable reference
    - Color, spacing, radius, typography, and motion scales

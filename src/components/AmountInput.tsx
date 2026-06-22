@@ -20,7 +20,7 @@ const numberFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 2,
 })
 
-function normalizeUSDC(rawValue: string) {
+export function normalizeUSDC(rawValue: string) {
   const trimmed = rawValue.trim()
   if (!trimmed) return ''
 
@@ -32,7 +32,7 @@ function normalizeUSDC(rawValue: string) {
   return clamped.toFixed(2)
 }
 
-function formatUSDC(rawValue: string) {
+export function formatUSDC(rawValue: string) {
   const trimmed = rawValue.trim()
   if (!trimmed) return ''
 
@@ -43,7 +43,7 @@ function formatUSDC(rawValue: string) {
   return numberFormatter.format(numericValue)
 }
 
-function sanitizeUSDCInput(nextValue: string) {
+export function sanitizeUSDCInput(nextValue: string) {
   const cleaned = nextValue.replace(/[^\d.]/g, '')
   const [whole = '', fraction = ''] = cleaned.split('.')
   const trimmedWhole = whole.replace(/^0+(?=\d)/, '')

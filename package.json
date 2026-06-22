@@ -12,9 +12,7 @@
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\" \"docs/**/*.md\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\" \"docs/**/*.md\"",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -26,6 +24,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^26.0.0",
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.2.1",

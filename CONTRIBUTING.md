@@ -1,8 +1,8 @@
 # Contributing to Credence Frontend
 
-Thanks for helping improve Credence Frontend. This guide covers the local workflow,
-branch conventions, quality gates, and pull request expectations for UI and
-component-library contributions.
+Thanks for helping improve Credence Frontend. This guide covers the path from a
+fresh clone to a reviewable pull request: local setup, npm scripts, branch and
+commit conventions, and the checks expected before opening a PR.
 
 ## Project Shape
 
@@ -18,73 +18,81 @@ Useful directories:
 - `src/context/` - shared app context.
 - `docs/` - design, motion, accessibility, and implementation references.
 
+## Reference Docs
+
+Use these docs instead of duplicating project details here:
+
+- [Architecture overview](docs/ARCHITECTURE.md) - provider tree, routing, data flow, and mock boundaries.
+- [Shared components catalog](docs/COMPONENTS.md) - props, accessibility contracts, styling ownership, and token usage.
+- [Testing guide](docs/TESTING.md) - Vitest, React Testing Library, mocks, file naming, and coverage expectations.
+- [Runtime configuration](README.md#configuration) - `.env.example`, public Vite variables, and the local `/api` proxy.
+
 ## Local Setup
 
-Use a recent Node.js LTS release. Install dependencies once:
+Use Node.js 18 or newer with npm. After cloning the repository, install
+dependencies once:
 
 ```bash
 npm install
 ```
 
-Start the Vite dev server:
+Copy the example environment file when you need local link or API overrides:
+
+```bash
+cp .env.example .env
+```
+
+Only use public placeholder or canonical URLs in `.env`. Vite exposes `VITE_*`
+variables to the browser build. During local development, requests to `/api` are
+proxied by `vite.config.ts` to `VITE_API_BASE_URL`, defaulting to
+`http://localhost:3000`.
+
+## npm Script Reference
+
+Run scripts from the repository root.
+
+| Command                 | What it does                                                    |
+| ----------------------- | --------------------------------------------------------------- |
+| `npm run dev`           | Starts the Vite dev server at `http://localhost:5173`.          |
+| `npm run build`         | Runs `tsc -b` and then creates a production Vite build.         |
+| `npm run preview`       | Serves the production build locally for review.                 |
+| `npm run lint`          | Runs ESLint across the project.                                 |
+| `npm run test`          | Runs the Vitest suite once for CI-style feedback.               |
+| `npm run test:watch`    | Runs Vitest in watch mode during development.                   |
+| `npm run test:coverage` | Runs Vitest with coverage output.                               |
+| `npm run format:check`  | Checks Prettier formatting for `src` and `docs` without edits.  |
+| `npm run format`        | Applies Prettier formatting to the configured `src` and `docs`. |
+
+Common local loop:
 
 ```bash
 npm run dev
-```
-
-Build the production bundle:
-
-```bash
-npm run build
-```
-
-Run linting:
-
-```bash
 npm run lint
-```
-
-Run tests:
-
-```bash
 npm run test
-```
-
-Run tests in watch mode:
-
-```bash
-npm run test:watch
-```
-
-Run coverage:
-
-```bash
-npm run test:coverage
-```
-
-Check formatting without rewriting files:
-
-```bash
 npm run format:check
-```
-
-Apply formatting:
-
-```bash
 npm run format
+npm run build
 ```
 
 ## Branch Naming
 
-Use short branch names that describe the outcome:
+Use short branch names that describe the type and outcome:
 
-- `docs/component-reference`
-- `fix/address-input-validation`
+- `feature/wallet-connection-state`
 - `test/focus-trap-regression`
-- `ui/mobile-nav-states`
+- `refactor/bond-form-state`
+- `docs/contributing-guide`
 
 Avoid unrelated changes in the same branch. Keep documentation, behavior fixes,
 and visual refactors separate unless the issue asks for them together.
+
+Use Conventional Commits for commit messages:
+
+```text
+docs(contributing): add setup and PR checklist
+fix(bond): preserve amount input validation
+test(dialog): cover escape key focus return
+```
 
 ## Pull Request Workflow
 
@@ -93,6 +101,7 @@ and visual refactors separate unless the issue asks for them together.
 3. Make the smallest cohesive change that satisfies the issue.
 4. Run the relevant checks listed below.
 5. Open a pull request using `.github/pull_request_template.md` when present.
+6. In the PR body, link the issue and list every command you ran.
 
 For documentation-only changes, run at least:
 
@@ -105,15 +114,18 @@ For component or hook changes, run:
 ```bash
 npm run lint
 npm run test
+npx tsc -b
 npm run build
 ```
 
-Include any command that could not be run in the PR body with the reason.
+`npm run build` already runs `tsc -b`; the explicit TypeScript command is useful
+when you want a faster type-check before the full production build. Include any
+command that could not be run in the PR body with the reason.
 
 ## Component Guidelines
 
-Prefer existing primitives before adding new ones. Check `docs/components.md` for
-the current component catalog and expected props.
+Prefer existing primitives before adding new ones. Check `docs/COMPONENTS.md`
+for the current component catalog and expected props.
 
 When updating or adding a shared component:
 
@@ -154,8 +166,13 @@ All component changes should preserve keyboard and assistive technology support:
 ## PR Checklist
 
 - Scope matches the linked issue.
+- Tests were added or updated for changed behavior.
+- `npm run lint` is clean.
+- `npx tsc -b` or `npm run build` is clean.
+- `npm run format:check` is clean.
+- Accessibility and responsive behavior were checked for UI changes.
 - Component props and usage are documented when public.
+- Relevant docs and TSDoc were updated.
 - Design tokens are used instead of one-off visual values.
-- Accessibility behavior is preserved or improved.
 - Relevant tests and checks were run, or skipped checks are explained.
 - Screenshots are included when the change affects UI appearance.

@@ -14,6 +14,8 @@ export interface AmountInputProps extends NativeInputProps {
   onChange: (value: string) => void
   /** Available balance used by the Max button, preset disabled states, and over-balance validation. */
   balance: number
+  /** Optional minimum amount required for a valid bond. */
+  minAmount?: number
   /** Quick-select amounts rendered below the input. */
   presets?: number[]
   /** Currency label shown as the input adornment and in button labels. */
@@ -35,6 +37,7 @@ export default function AmountInput({
   value,
   onChange,
   balance,
+  minAmount,
   presets = [100, 500, 1000],
   currencyLabel = 'USDC',
   error,
@@ -58,15 +61,23 @@ export default function AmountInput({
   }, [value])
 
   const isOverBalance = numericValue > 0 && numericValue > balance
+  const isBelowMinimum =
+    minAmount !== undefined && minAmount > 0 && numericValue > 0 && numericValue < minAmount
 
   // Explicit `error` prop always wins; internal over-balance is the fallback.
-  const activeError = error ?? (isOverBalance ? 'Amount exceeds available balance.' : undefined)
+  const activeError =
+    error ??
+    (isOverBalance
+      ? 'Amount exceeds available balance.'
+      : isBelowMinimum
+        ? `Minimum bond amount is ${formatUSDC(minAmount.toFixed(2))} ${currencyLabel}.`
+        : undefined)
   const isInvalid = Boolean(activeError) || ariaInvalid === 'true'
 
   // Notify caller when internal validity changes.
   useEffect(() => {
-    onValidityChange?.(!isOverBalance)
-  }, [isOverBalance, onValidityChange])
+    onValidityChange?.(!isOverBalance && !isBelowMinimum)
+  }, [isBelowMinimum, isOverBalance, onValidityChange])
 
   const displayValue = useMemo(() => {
     if (isFocused) return value
@@ -96,9 +107,8 @@ export default function AmountInput({
   const maxDisabled = balance <= 0
 
   // Merge any caller-supplied aria-describedby with our internal error id.
-  const describedBy = [ariaDescribedBy, activeError ? errorId : undefined]
-    .filter(Boolean)
-    .join(' ') || undefined
+  const describedBy =
+    [ariaDescribedBy, activeError ? errorId : undefined].filter(Boolean).join(' ') || undefined
 
   return (
     <div className="amountInput" data-invalid={isInvalid ? 'true' : 'false'}>

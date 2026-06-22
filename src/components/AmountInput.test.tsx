@@ -178,7 +178,9 @@ describe('AmountInput', () => {
       const input = screen.getByRole('textbox')
       const errorId = input.getAttribute('aria-describedby')
       expect(errorId).toBeTruthy()
-      expect(document.getElementById(errorId!)).toHaveTextContent('Amount exceeds available balance.')
+      expect(document.getElementById(errorId!)).toHaveTextContent(
+        'Amount exceeds available balance.'
+      )
     })
 
     it('explicit error prop overrides the internal over-balance error', () => {
@@ -196,6 +198,35 @@ describe('AmountInput', () => {
       renderInput({ value: '1.00', balance: 0 })
       expect(screen.getByRole('button', { name: /set max amount/i })).toBeDisabled()
       expect(screen.getByRole('alert')).toHaveTextContent('Amount exceeds available balance.')
+    })
+  })
+
+  describe('minimum amount validation', () => {
+    it('shows an accessible below-minimum error when value is less than minAmount', () => {
+      renderInput({ value: '25.00', balance: 1000, minAmount: 50 })
+      expect(screen.getByRole('alert')).toHaveTextContent('Minimum bond amount is 50.00 USDC.')
+      expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('does not show a below-minimum error when value equals minAmount', () => {
+      renderInput({ value: '50.00', balance: 1000, minAmount: 50 })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('does not show a below-minimum error for empty values', () => {
+      renderInput({ value: '', balance: 1000, minAmount: 50 })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('keeps explicit error prop ahead of the below-minimum error', () => {
+      renderInput({
+        value: '25.00',
+        balance: 1000,
+        minAmount: 50,
+        error: 'Server-side minimum changed',
+      })
+      expect(screen.getByRole('alert')).toHaveTextContent('Server-side minimum changed')
+      expect(screen.queryByText('Minimum bond amount is 50.00 USDC.')).not.toBeInTheDocument()
     })
   })
 
@@ -221,6 +252,18 @@ describe('AmountInput', () => {
     it('calls onValidityChange(true) when value is empty', () => {
       const onValidityChange = vi.fn()
       renderInput({ value: '', balance: 100, onValidityChange })
+      expect(onValidityChange).toHaveBeenCalledWith(true)
+    })
+
+    it('calls onValidityChange(false) when value is below minAmount', () => {
+      const onValidityChange = vi.fn()
+      renderInput({ value: '25.00', balance: 100, minAmount: 50, onValidityChange })
+      expect(onValidityChange).toHaveBeenCalledWith(false)
+    })
+
+    it('calls onValidityChange(true) when value meets minAmount', () => {
+      const onValidityChange = vi.fn()
+      renderInput({ value: '50.00', balance: 100, minAmount: 50, onValidityChange })
       expect(onValidityChange).toHaveBeenCalledWith(true)
     })
   })

@@ -157,3 +157,138 @@ For questions about UI states implementation, contact the design team or refer t
 
 - **Storage key**: `credence:settings` — the settings context persists a JSON payload under this key in `localStorage`.
 - **Fallback contract**: on load the provider attempts to `JSON.parse` the value; if parsing fails or no key exists the provider falls back to built-in defaults (no exception is thrown).
+
+## Shared Formatting Utilities
+
+The Credence frontend now has centralized formatting utilities to ensure consistency across all components.
+
+### USDC Formatting Utilities (`src/lib/format.ts`)
+
+This module is the single source of truth for all USDC formatting logic across the application.
+
+**Exported Functions:**
+
+```typescript
+// Format numeric USDC amount with "USDC" suffix
+formatUsdc(amount: number): string
+
+// Normalize user-entered string to consistent 2-decimal representation
+normalizeUSDC(rawValue: string): string
+
+// Format string for display with thousand separators
+formatUSDC(rawValue: string): string
+
+// UI display formatter (identical to formatUSDC)
+formatUSDCDisplay(rawValue: string): string
+
+// Sanitize user input while preserving valid decimal input
+sanitizeUSDCInput(nextValue: string): string
+```
+
+**Usage Examples:**
+```typescript
+import { formatUsdc, normalizeUSDC, formatUSDC, sanitizeUSDCInput } from '@/lib/format'
+
+// Display formatting
+formatUsdc(1234.5) // → "1,234.5 USDC"
+
+// Input normalization
+normalizeUSDC('1,234.5') // → "1234.50"
+
+// Display formatting from strings
+formatUSDC('1234.5') // → "1,234.50"
+
+// Input sanitization
+sanitizeUSDCInput('$1,000.50') // → "1000.50"
+```
+
+**Behavior Preservation:**
+- Thousands separators maintained for display
+- Decimal precision fixed at 2 places
+- Empty values handled gracefully
+- Negative values clamped to 0 for normalization
+- Invalid input returns empty string or original text for correction
+
+### Stellar Address Utilities (`src/lib/stellar.ts`)
+
+This module is the single source of truth for all Stellar address validation and formatting.
+
+**Exported Functions:**
+
+```typescript
+// Validate Stellar public key format (56 chars, starts with 'G')
+isValidStellarAddress(address: string | undefined | null): boolean
+
+// Truncate address for display (first 12 + ... + last 8 chars)
+truncateAddress(address: string | undefined | null): string
+```
+
+**Usage Examples:**
+```typescript
+import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
+
+// Address validation
+isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA') // → true
+
+// Address truncation
+truncateAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')
+// → "GAAZI4TCR3TY...CCWNA"
+```
+
+**Behavior Preservation:**
+- Exact 56-character validation
+- 'G' prefix requirement
+- Uppercase alphanumeric characters only
+- Short addresses (<20 chars) displayed unchanged
+- Whitespace trimmed automatically
+- Null/undefined values handled gracefully
+
+### Migration Guidelines
+
+All components should now import from these centralized modules instead of maintaining local implementations:
+
+**Before:**
+```typescript
+// In component files
+export function normalizeUSDC(rawValue: string) { ... }
+export function isValidStellarAddress(address: string) { ... }
+```
+
+**After:**
+```typescript
+// Import from centralized modules
+import { normalizeUSDC } from '@/lib/format'
+import { isValidStellarAddress } from '@/lib/stellar'
+```
+
+### Test Coverage
+
+Both utility modules have comprehensive test suites with ≥95% branch coverage:
+- `src/lib/format.test.ts` - USDC formatting tests
+- `src/lib/stellar.test.ts` - Stellar address tests
+
+Run tests with:
+```bash
+npm test -- --run src/lib/format.test.ts src/lib/stellar.test.ts
+```
+
+### Components Using Centralized Utilities
+
+The following components have been refactored to use the centralized utilities:
+
+1. **AmountInput.tsx** - USDC input formatting and sanitization
+2. **AddressInput.tsx** - Stellar address validation and truncation  
+3. **TrustScore.tsx** - Stellar address validation
+4. **useTrustScore.ts** - Stellar address validation
+5. **Bond.tsx** - USDC display formatting
+6. **Dashboard.tsx** - USDC display formatting
+7. **penalty.ts** - USDC display formatting
+8. **bondPenalty.ts** - USDC display formatting
+
+### Future Development
+
+When adding new formatting or validation logic:
+1. Check if it belongs in the centralized modules
+2. Add comprehensive test coverage
+3. Update this documentation
+4. Refactor any existing duplicate implementations

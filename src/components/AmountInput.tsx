@@ -1,5 +1,6 @@
 ﻿import { useEffect, useId, useMemo, useState } from 'react'
 import './AmountInput.css'
+import { normalizeUSDC, formatUSDC, sanitizeUSDCInput } from '@/lib/format'
 
 type NativeInputProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -28,44 +29,6 @@ export interface AmountInputProps extends NativeInputProps {
    * Callers can use this to gate form submission without duplicating the comparison.
    */
   onValidityChange?: (isValid: boolean) => void
-}
-
-const numberFormatter = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-export function normalizeUSDC(rawValue: string) {
-  const trimmed = rawValue.trim()
-  if (!trimmed) return ''
-
-  const normalized = trimmed.replace(/,/g, '')
-  const numericValue = Number(normalized)
-  if (!Number.isFinite(numericValue)) return ''
-
-  const clamped = Math.max(0, numericValue)
-  return clamped.toFixed(2)
-}
-
-export function formatUSDC(rawValue: string) {
-  const trimmed = rawValue.trim()
-  if (!trimmed) return ''
-
-  const normalized = trimmed.replace(/,/g, '')
-  const numericValue = Number(normalized)
-  if (!Number.isFinite(numericValue)) return rawValue
-
-  return numberFormatter.format(numericValue)
-}
-
-export function sanitizeUSDCInput(nextValue: string) {
-  const cleaned = nextValue.replace(/[^\d.]/g, '')
-  const [whole = '', fraction = ''] = cleaned.split('.')
-  const trimmedWhole = whole.replace(/^0+(?=\d)/, '')
-  const trimmedFraction = fraction.slice(0, 2)
-
-  if (cleaned.includes('.')) return `${trimmedWhole || '0'}.${trimmedFraction}`
-  return trimmedWhole
 }
 
 export default function AmountInput({

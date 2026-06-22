@@ -5,7 +5,7 @@ import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
-import AddressInput, { isValidStellarAddress } from '../components/AddressInput'
+import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
@@ -13,6 +13,7 @@ import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
+import { isValidStellarAddress } from '@/lib/stellar'
 
 function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {
   if (error.status === 0) {

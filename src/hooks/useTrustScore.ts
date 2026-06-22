@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import type { TrustScore } from '../api/types'
-import { isValidStellarAddress } from '../components/AddressInput'
+import { isValidStellarAddress } from '@/lib/stellar'
 
 export interface UseTrustScoreResult {
   /** Trust score payload from `GET /trust-score/:address`, or null before/after a failed fetch. */

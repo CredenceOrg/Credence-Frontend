@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
+import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 
 export interface AddressInputProps {
   /** Input id forwarded to FormField for label and description wiring. */
@@ -17,24 +18,6 @@ export interface AddressInputProps {
   disabled?: boolean
   /** Additional class names appended to the wrapper. */
   className?: string
-}
-
-/**
- * Validates Stellar public key format.
- * Valid addresses: 56 characters, starts with 'G'
- */
-export function isValidStellarAddress(address: string): boolean {
-  if (!address) return false
-  // Stellar addresses are 56 characters and start with 'G'
-  return /^G[A-Z0-9]{55}$/.test(address)
-}
-
-/**
- * Truncates address for display: shows first 12 and last 8 characters.
- */
-export function truncateAddress(address: string): string {
-  if (address.length <= 20) return address
-  return `${address.substring(0, 12)}...${address.substring(address.length - 8)}`
 }
 
 /**

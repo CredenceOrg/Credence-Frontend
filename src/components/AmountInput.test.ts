@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatUSDC, normalizeUSDC, sanitizeUSDCInput } from './AmountInput'
+import { formatUSDC, normalizeUSDC, sanitizeUSDCInput } from '@/lib/format'
 
 describe('AmountInput formatting helpers', () => {
   describe('sanitizeUSDCInput', () => {
@@ -61,11 +61,3 @@ if (typeof window !== 'undefined') {
   }
   console.log('Test functions available as window.testAmountInput')
 }
-
-import { describe, test, expect } from 'vitest'
-
-describe('AmountInput Utility', () => {
-  test('manual tests execution wrapper', () => {
-    expect(true).toBe(true)
-  })
-})

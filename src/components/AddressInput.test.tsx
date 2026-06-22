@@ -1,7 +1,8 @@
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import AddressInput, { truncateAddress } from './AddressInput'
+import AddressInput from './AddressInput'
+import { truncateAddress } from '@/lib/stellar'
 
 // A valid 56-character Stellar public key
 const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA' // 56 chars

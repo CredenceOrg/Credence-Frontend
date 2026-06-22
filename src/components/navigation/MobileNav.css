@@ -32,7 +32,8 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
-  animation: mobileNav-fadeIn var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+  animation: mobileNav-fadeIn var(--credence-motion-duration-base)
+    var(--credence-motion-easing-standard);
 }
 
 /* Drawer */
@@ -123,8 +124,12 @@
 }
 
 @keyframes mobileNav-fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Show hamburger + drawer only on mobile */

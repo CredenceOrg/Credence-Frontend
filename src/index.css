@@ -310,7 +310,7 @@ a:hover {
 
 /* Disabled / placeholder link treatment: visually muted and non-interactive */
 .footer-link.footer-link--disabled,
-.footer-link[aria-disabled="true"] {
+.footer-link[aria-disabled='true'] {
   color: var(--credence-text-secondary);
   opacity: 0.65;
   cursor: not-allowed;
@@ -318,7 +318,7 @@ a:hover {
 }
 
 .footer-link.footer-link--disabled:hover,
-.footer-link[aria-disabled="true"]:hover {
+.footer-link[aria-disabled='true']:hover {
   color: var(--credence-text-secondary);
 }
 

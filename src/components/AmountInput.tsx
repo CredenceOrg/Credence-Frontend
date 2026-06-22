@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useEffect, useId, useMemo, useState } from 'react'
 import './AmountInput.css'
 
 type NativeInputProps = Omit<
@@ -7,12 +7,27 @@ type NativeInputProps = Omit<
 >
 
 export interface AmountInputProps extends NativeInputProps {
+  /** Controlled decimal amount string. */
   value: string
+  /** Called with sanitized input while editing and normalized input on blur. */
   onChange: (value: string) => void
+  /** Available balance used by the Max button, preset disabled states, and over-balance validation. */
   balance: number
+  /** Quick-select amounts rendered below the input. */
   presets?: number[]
+  /** Currency label shown as the input adornment and in button labels. */
   currencyLabel?: string
+  /**
+   * Optional validation message that marks the amount control invalid.
+   * When provided, this takes precedence over the internal over-balance error.
+   */
   error?: string
+  /**
+   * Called whenever the internal validity state changes.
+   * `isValid` is `false` when the entered amount exceeds balance; `true` otherwise.
+   * Callers can use this to gate form submission without duplicating the comparison.
+   */
+  onValidityChange?: (isValid: boolean) => void
 }
 
 const numberFormatter = new Intl.NumberFormat(undefined, {
@@ -61,12 +76,34 @@ export default function AmountInput({
   currencyLabel = 'USDC',
   error,
   'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
   onBlur,
   onFocus,
+  onValidityChange,
   ...inputProps
 }: AmountInputProps) {
+  const uid = useId()
+  const errorId = `${uid}-error`
+
   const [isFocused, setIsFocused] = useState(false)
-  const isInvalid = Boolean(error) || ariaInvalid === 'true'
+
+  // Derive over-balance state from the normalized numeric value.
+  const numericValue = useMemo(() => {
+    const normalized = normalizeUSDC(value)
+    if (!normalized) return 0
+    return Number(normalized)
+  }, [value])
+
+  const isOverBalance = numericValue > 0 && numericValue > balance
+
+  // Explicit `error` prop always wins; internal over-balance is the fallback.
+  const activeError = error ?? (isOverBalance ? 'Amount exceeds available balance.' : undefined)
+  const isInvalid = Boolean(activeError) || ariaInvalid === 'true'
+
+  // Notify caller when internal validity changes.
+  useEffect(() => {
+    onValidityChange?.(!isOverBalance)
+  }, [isOverBalance, onValidityChange])
 
   const displayValue = useMemo(() => {
     if (isFocused) return value
@@ -95,6 +132,11 @@ export default function AmountInput({
 
   const maxDisabled = balance <= 0
 
+  // Merge any caller-supplied aria-describedby with our internal error id.
+  const describedBy = [ariaDescribedBy, activeError ? errorId : undefined]
+    .filter(Boolean)
+    .join(' ') || undefined
+
   return (
     <div className="amountInput" data-invalid={isInvalid ? 'true' : 'false'}>
       <div className="amountInput__row">
@@ -105,6 +147,8 @@ export default function AmountInput({
             value={displayValue}
             inputMode="decimal"
             autoComplete="off"
+            aria-invalid={isInvalid ? 'true' : undefined}
+            aria-describedby={describedBy}
             onFocus={handleFocus}
             onBlur={handleBlur}
             onChange={(event) => onChange(sanitizeUSDCInput(event.target.value))}
@@ -142,7 +186,12 @@ export default function AmountInput({
           )
         })}
       </div>
+
+      {activeError && (
+        <span id={errorId} className="amountInput__error" role="alert">
+          ⚠ {activeError}
+        </span>
+      )}
     </div>
   )
 }
-

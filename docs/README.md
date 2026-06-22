@@ -6,23 +6,47 @@ This directory contains comprehensive design specifications and implementation g
 
 ### Available Documents
 
-1. **[UI States Guide](./UI_STATES_GUIDE.md)**
+1. **[Testing Guide](./TESTING.md)**
+   - How to run Vitest and generate coverage
+   - Render helpers, router wrapper, and mock patterns for matchMedia / localStorage / clipboard
+   - File naming conventions and coverage thresholds
+
+2. **Per-route document titles (`useDocumentTitle`)**
+   - `src/hooks/useDocumentTitle.ts` keeps `document.title` in sync with the active route
+   - Each page sets a distinct, branded title (e.g. `Bond · Credence`); the 404 page uses `Page Not Found · Credence`
+   - Why it matters: screen readers announce the title on navigation, and tabs, history, and bookmarks become distinguishable per page
+   - SSR-safe (`typeof document` guard), restores the previous title on unmount, and never double-applies the ` · Credence` brand suffix
+
+   ```tsx
+   import { useDocumentTitle } from '../hooks/useDocumentTitle'
+
+   function Bond() {
+     useDocumentTitle('Bond') // document.title === 'Bond · Credence'
+     return <main>…</main>
+   }
+   ```
+
+3. **[Shared Components Catalog](./COMPONENTS.md)**
+   - Consolidated props, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for shared UI components
+   - Documents severity/variant vocabularies and cross-links focused component docs
+
+4. **[UI States Guide](./UI_STATES_GUIDE.md)**
    - Complete guide for empty states, error states, and loading patterns
    - Microcopy guidelines and tone recommendations
    - When and how to use each state type
    - Validation checklist
 
-2. **[Design Tokens](./DESIGN_TOKENS.md)**
+5. **[Design Tokens](./DESIGN_TOKENS.md)**
    - Canonical `--credence-*` CSS variable reference
    - Color, spacing, radius, typography, and motion scales
    - Guidance for replacing one-off hex values in components
 
-3. **[Motion Guidelines](./motion-guidelines.md)**
+6. **[Motion Guidelines](./motion-guidelines.md)**
    - Motion token strategy and reduced-motion defaults
    - Best practices for animation and transitions
    - Implementation examples for UI micro-interactions
 
-4. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+7. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
    - Visual design specifications
    - Color palette and design tokens
    - Layout measurements and spacing
@@ -30,19 +54,24 @@ This directory contains comprehensive design specifications and implementation g
    - Responsive breakpoints
    - Component organization structure
 
-5. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
+8. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
    - Practical code examples for each page
    - Reusable hooks and patterns
    - Testing examples
    - Accessibility guidelines
    - Performance considerations
 
-6. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
+9. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
    - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
    - Complete implementation guide with code examples
    - Accessibility requirements (WCAG 2.1 AA)
    - Testing guide and troubleshooting
    - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
+
+9. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
+   - Provider tree and routing architecture
+   - Context responsibilities
+   - Theming flow and mock data boundaries
 
 ### Quick Start
 
@@ -123,3 +152,8 @@ Before shipping new states:
 ### Questions?
 
 For questions about UI states implementation, contact the design team or refer to the detailed guides in this directory.
+
+## Settings Storage
+
+- **Storage key**: `credence:settings` — the settings context persists a JSON payload under this key in `localStorage`.
+- **Fallback contract**: on load the provider attempts to `JSON.parse` the value; if parsing fails or no key exists the provider falls back to built-in defaults (no exception is thrown).

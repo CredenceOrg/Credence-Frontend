@@ -12,6 +12,113 @@ interface EmptyStateProps {
   illustration?: 'bond' | 'trust' | 'dispute' | 'attestation' | 'activity'
 }
 
+/**
+ * Inline SVG icons for each illustration variant.
+ * All icons use `currentColor` and `aria-hidden="true"` — the accessible name
+ * comes from the surrounding title/description text, matching Toast.tsx / ThemeToggle.tsx.
+ */
+const ILLUSTRATION_ICONS: Record<
+  NonNullable<EmptyStateProps['illustration']>,
+  { bg: string; svg: ReactNode }
+> = {
+  bond: {
+    bg: 'var(--credence-color-platinum-surface)',
+    svg: (
+      <svg
+        viewBox="0 0 24 24"
+        width="32"
+        height="32"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    ),
+  },
+  trust: {
+    bg: 'var(--credence-color-trust-surface)',
+    svg: (
+      <svg
+        viewBox="0 0 24 24"
+        width="32"
+        height="32"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    ),
+  },
+  dispute: {
+    bg: 'var(--credence-color-danger-surface-strong)',
+    svg: (
+      <svg
+        viewBox="0 0 24 24"
+        width="32"
+        height="32"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="8" y1="6" x2="16" y2="6" />
+        <line x1="12" y1="10" x2="12" y2="14" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+    ),
+  },
+  attestation: {
+    bg: 'var(--credence-color-attestation-surface)',
+    svg: (
+      <svg
+        viewBox="0 0 24 24"
+        width="32"
+        height="32"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    ),
+  },
+  activity: {
+    bg: 'var(--credence-color-bronze-surface)',
+    svg: (
+      <svg
+        viewBox="0 0 24 24"
+        width="32"
+        height="32"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="14" />
+      </svg>
+    ),
+  },
+}
+
 export default function EmptyState({
   icon,
   title,
@@ -19,38 +126,23 @@ export default function EmptyState({
   action,
   illustration,
 }: EmptyStateProps) {
-  const getIllustration = () => {
-    const iconStyle = {
-      width: '64px',
-      height: '64px',
-      borderRadius: 'var(--credence-radius-full)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      margin: '0 auto var(--credence-space-4)',
-      fontSize: '2rem',
-    }
-
-    const illustrations = {
-      bond: { bg: 'var(--credence-color-platinum-surface)', emoji: 'ðŸ”’' },
-      trust: { bg: 'var(--credence-color-trust-surface)', emoji: 'â­' },
-      dispute: { bg: 'var(--credence-color-danger-surface-strong)', emoji: 'âš–ï¸' },
-      attestation: { bg: 'var(--credence-color-attestation-surface)', emoji: 'âœ“' },
-      activity: { bg: 'var(--credence-color-bronze-surface)', emoji: 'ðŸ“Š' },
-    }
-
-    const config = illustration ? illustrations[illustration] : null
-
-    if (icon) {
-      return <div style={iconStyle}>{icon}</div>
-    }
-
-    if (config) {
-      return <div style={{ ...iconStyle, background: config.bg }}>{config.emoji}</div>
-    }
-
-    return null
+  const iconStyle = {
+    width: '64px',
+    height: '64px',
+    borderRadius: 'var(--credence-radius-full)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 auto var(--credence-space-4)',
   }
+
+  const config = illustration ? ILLUSTRATION_ICONS[illustration] : null
+
+  const renderedIcon = icon ? (
+    <div style={iconStyle}>{icon}</div>
+  ) : config ? (
+    <div style={{ ...iconStyle, background: config.bg }}>{config.svg}</div>
+  ) : null
 
   return (
     <div
@@ -61,7 +153,7 @@ export default function EmptyState({
         margin: '0 auto',
       }}
     >
-      {getIllustration()}
+      {renderedIcon}
       <h3
         style={{
           fontSize: 'var(--credence-font-size-lg)',

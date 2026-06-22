@@ -11,9 +11,12 @@ export type BadgeVariant =
   | 'grace-period'
   | 'unknown'
 
-interface BadgeProps {
+export interface BadgeProps {
+  /** Tier or status variant. Unknown strings normalize to the `unknown` style. */
   variant: BadgeVariant | string
+  /** Optional display label override. Defaults to the known variant label. */
   label?: string
+  /** Additional class names appended to the badge root. */
   className?: string
 }
 

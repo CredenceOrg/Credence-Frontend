@@ -80,7 +80,10 @@ interface ToastProps {
 
 export default function Toast({ toast, onDismiss }: ToastProps) {
   return (
-    <div className={`toast toast--${toast.severity}`} role="status">
+    <div
+      className={`toast toast--${toast.severity}`}
+      role={toast.severity === 'danger' ? 'alert' : 'status'}
+    >
       <div className="toast__icon-container" aria-hidden="true">
         {ICONS[toast.severity]}
       </div>

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `src/lib/penalty.ts`: extracted `BondStatus`, `MockBond`, `getPenaltyRate`, and `computeWithdrawBreakdown` into a shared module, making the penalty math the single source of truth for Bond.tsx and ConfirmDialog.
+- `src/lib/penalty.test.ts`: unit tests for all penalty rates and breakdown arithmetic (active/grace-period/locked, zero-penalty path, fractional amounts).
+
+### Changed
+- `Bond.tsx`: imports penalty helpers from `src/lib/penalty.ts`; `slashBannerBreakdown` is now memoized with `useMemo` to avoid recomputing on unrelated renders.
+
 ## [1.0.0] - 2026-04-28
 
 ### Added

@@ -72,6 +72,22 @@ Use the shared skeleton animation token:
 animation: 'var(--credence-motion-skeleton)'
 ```
 
-```}{
+### React / JavaScript components
 
+For components that set inline styles or animate state via JavaScript, query and subscribe to motion preferences using the `useReducedMotion` hook:
+
+```tsx
+import { useReducedMotion } from '../hooks/useReducedMotion'
+
+export default function MyComponent() {
+  const prefersReducedMotion = useReducedMotion()
+
+  return (
+    <div
+      style={{
+        transition: prefersReducedMotion ? 'none' : 'all 0.2s ease',
+      }}
+    />
+  )
+}
 ```

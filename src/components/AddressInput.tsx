@@ -14,6 +14,8 @@ export interface AddressInputProps {
   onChange: (value: string) => void
   /** Receives the current 56-character Stellar public key validation state. */
   onValidationChange?: (isValid: boolean) => void
+  /** Connected Stellar public key used to label a valid self lookup. */
+  selfAddress?: string
   /** Disables both the text input and paste button. */
   disabled?: boolean
   /** Additional class names appended to the wrapper. */
@@ -111,6 +113,7 @@ export default function AddressInput({
   value,
   onChange,
   onValidationChange,
+  selfAddress,
   disabled = false,
   className = '',
 }: AddressInputProps) {
@@ -124,6 +127,10 @@ export default function AddressInput({
   const isEmpty = !value
   const showError = attempted && !isValid && !isEmpty
   const showSuccess = attempted && isValid
+  const isSelfAddress =
+    showSuccess &&
+    Boolean(selfAddress) &&
+    value.trim().toUpperCase() === selfAddress?.trim().toUpperCase()
 
   // Notify parent of validation state change
   React.useEffect(() => {
@@ -206,6 +213,9 @@ export default function AddressInput({
         <div className="address-input-echo">
           <span className="address-input-echo-label">Recognized:</span>
           <code className="address-input-echo-value">{truncateAddress(value)}</code>
+          {isSelfAddress && (
+            <span className="address-input-self-note">This is your connected wallet</span>
+          )}
           <button
             type="button"
             onClick={handleCopy}

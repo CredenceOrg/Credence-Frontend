@@ -152,6 +152,21 @@
   word-break: break-all;
 }
 
+.address-input-self-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 var(--credence-space-2);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-sm);
+  background: var(--credence-surface-page);
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  white-space: nowrap;
+}
+
 /**
  * Copy button: appears inside echo bar, copies full address to clipboard
  */

@@ -86,6 +86,24 @@ describe('TrustScore', () => {
 
     expect(screen.getByRole('button', { name: /connect wallet to continue/i })).toBeInTheDocument()
   })
+
+  it('fills the lookup input with the connected wallet address', () => {
+    mockConnected = true
+    render(<TrustScore />)
+
+    fireEvent.click(screen.getByRole('button', { name: /use my address/i }))
+
+    expect(screen.getByRole('textbox')).toHaveValue(
+      'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    )
+  })
+
+  it('hides the self-address shortcut while disconnected', () => {
+    mockConnected = false
+    render(<TrustScore />)
+
+    expect(screen.queryByRole('button', { name: /use my address/i })).toBeNull()
+  })
 })
 
 describe('TrustScore URL sync', () => {

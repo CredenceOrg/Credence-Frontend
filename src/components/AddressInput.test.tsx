@@ -148,6 +148,40 @@ describe('conditional rendering', () => {
     expect(code?.textContent).toBe(truncateAddress(VALID_KEY))
   })
 
+  it('labels a valid self address as the connected wallet without using the error region', async () => {
+    const user = userEvent.setup()
+    render(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY}
+        selfAddress={VALID_KEY.toLowerCase()}
+        onChange={vi.fn()}
+      />
+    )
+
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+
+    expect(screen.getByText('This is your connected wallet')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('does not label invalid or disconnected addresses as self matches', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <AddressInput id="addr" value="bad" selfAddress={VALID_KEY} onChange={vi.fn()} />
+    )
+
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+    expect(screen.queryByText('This is your connected wallet')).toBeNull()
+
+    rerender(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+    expect(screen.queryByText('This is your connected wallet')).toBeNull()
+  })
+
   it('shows character count while there is input', () => {
     render(<AddressInput id="addr" value="GABC" onChange={vi.fn()} />)
     // Use querySelector on the specific count element to avoid matching ancestor nodes

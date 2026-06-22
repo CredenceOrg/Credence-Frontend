@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { formatUsdc, normalizeUSDC, formatUSDC, formatUSDCDisplay, sanitizeUSDCInput } from './format'
+import {
+  formatUsdc,
+  normalizeUSDC,
+  formatUSDC,
+  formatUSDCDisplay,
+  sanitizeUSDCInput,
+} from './format'
 
 describe('formatUsdc', () => {
   it('formats numeric USDC amounts with suffix', () => {
@@ -13,6 +19,11 @@ describe('formatUsdc', () => {
     expect(formatUsdc(1234.567)).toBe('1,234.57 USDC')
     expect(formatUsdc(0.001)).toBe('0 USDC')
     expect(formatUsdc(0.01)).toBe('0.01 USDC')
+  })
+
+  it('pins the current display behavior for non-finite numeric inputs', () => {
+    expect(formatUsdc(Number.NaN)).toBe('NaN USDC')
+    expect(formatUsdc(Number.POSITIVE_INFINITY)).toBe('∞ USDC')
   })
 })
 
@@ -49,6 +60,12 @@ describe('normalizeUSDC', () => {
     expect(normalizeUSDC('')).toBe('')
     expect(normalizeUSDC('0')).toBe('0.00')
   })
+
+  it('rejects non-finite numeric strings', () => {
+    expect(normalizeUSDC('Infinity')).toBe('')
+    expect(normalizeUSDC('-Infinity')).toBe('')
+    expect(normalizeUSDC('NaN')).toBe('')
+  })
 })
 
 describe('formatUSDC', () => {
@@ -81,6 +98,13 @@ describe('formatUSDC', () => {
     expect(formatUSDC('1000000')).toBe('1,000,000.00')
     expect(formatUSDC('1000000000')).toBe('1,000,000,000.00')
   })
+
+  it('keeps non-finite and empty input available for manual correction', () => {
+    expect(formatUSDC('Infinity')).toBe('Infinity')
+    expect(formatUSDC('-Infinity')).toBe('-Infinity')
+    expect(formatUSDC('NaN')).toBe('NaN')
+    expect(formatUSDC('')).toBe('')
+  })
 })
 
 describe('formatUSDCDisplay', () => {
@@ -91,8 +115,8 @@ describe('formatUSDCDisplay', () => {
   })
 
   it('behaves identically to formatUSDC', () => {
-    const testCases = ['1234.5', '1000', '0.01', '1000000', 'abc', '']
-    testCases.forEach(testCase => {
+    const testCases = ['1234.5', '1000', '0.01', '1000000', 'abc', '', 'Infinity', 'NaN']
+    testCases.forEach((testCase) => {
       expect(formatUSDCDisplay(testCase)).toBe(formatUSDC(testCase))
     })
   })
@@ -133,6 +157,11 @@ describe('sanitizeUSDCInput', () => {
   it('handles multiple decimals by using first one', () => {
     expect(sanitizeUSDCInput('12.34.56')).toBe('12.34')
     expect(sanitizeUSDCInput('100..00')).toBe('100.00')
+  })
+
+  it('preserves a trailing decimal while users are still typing', () => {
+    expect(sanitizeUSDCInput('100.')).toBe('100.')
+    expect(sanitizeUSDCInput('.50')).toBe('0.50')
   })
 
   it('handles negative values by stripping minus sign', () => {

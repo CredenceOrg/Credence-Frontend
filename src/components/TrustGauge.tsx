@@ -56,7 +56,43 @@ export const TIER_CONFIG = {
 const MAX_SCORE = 1000
 
 /** Tier order for progression */
-const TIER_ORDER: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
+export const TIER_ORDER: readonly TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
+
+type TierMarker = {
+  id: TrustTier
+  markerPercentage: number
+  title: string
+}
+
+type TierLegendItem = {
+  id: TrustTier
+  label: string
+  min: number
+  max: number
+  color: string
+}
+
+/** Precomputed tier metadata used by render paths that do not need per-render work. */
+export const TIER_MARKERS: readonly TierMarker[] = TIER_ORDER.map((id) => ({
+  id,
+  markerPercentage: (TIER_CONFIG[id].min / MAX_SCORE) * 100,
+  title: `${TIER_CONFIG[id].label}: ${TIER_CONFIG[id].min}-${TIER_CONFIG[id].max} points`,
+}))
+
+export const TIER_LEGEND_ITEMS: readonly TierLegendItem[] = TIER_ORDER.map((id) => ({
+  id,
+  label: TIER_CONFIG[id].label,
+  min: TIER_CONFIG[id].min,
+  max: TIER_CONFIG[id].max,
+  color: TIER_CONFIG[id].color,
+}))
+
+const NEXT_TIER_BY_TIER: Readonly<Record<TrustTier, TrustTier | null>> = {
+  bronze: 'silver',
+  silver: 'gold',
+  gold: 'platinum',
+  platinum: null,
+}
 
 /**
  * Calculate points remaining to reach the next tier
@@ -65,12 +101,10 @@ const TIER_ORDER: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
  * @returns Points needed to reach next tier (0 if at platinum)
  */
 export function pointsToNextTier(score: number, tier: TrustTier): number {
-  const tierIndex = TIER_ORDER.indexOf(tier)
-  if (tierIndex === TIER_ORDER.length - 1) {
-    // Already at platinum
+  const nextTier = NEXT_TIER_BY_TIER[tier]
+  if (!nextTier) {
     return 0
   }
-  const nextTier = TIER_ORDER[tierIndex + 1]
   return Math.max(0, TIER_CONFIG[nextTier].min - score)
 }
 
@@ -90,6 +124,7 @@ export default function TrustGauge({
   id = 'trust-gauge',
 }: TrustGaugeProps) {
   const percentage = getProgressPercentage(score)
+  const nextTier = NEXT_TIER_BY_TIER[tier]
   const nextTierPoints = pointsToNextTier(score, tier)
   const isAtMax = tier === 'platinum' && score >= TIER_CONFIG.platinum.max
 
@@ -150,24 +185,21 @@ export default function TrustGauge({
 
           {/* Tier threshold markers */}
           <div className="trust-gauge__markers">
-            {TIER_ORDER.map((t, index) => {
-              const markerPercentage = (TIER_CONFIG[t].min / MAX_SCORE) * 100
-              return (
-                <div
-                  key={t}
-                  className={`trust-gauge__marker trust-gauge__marker--${t}`}
-                  style={
-                    {
-                      '--marker-position': `${markerPercentage}%`,
-                    } as React.CSSProperties & { '--marker-position': string }
-                  }
-                  title={`${TIER_CONFIG[t].label}: ${TIER_CONFIG[t].min}-${TIER_CONFIG[t].max} points`}
-                >
-                  {/* Only show label for first marker on mobile, all on desktop */}
-                  {index === 0 && <span className="trust-gauge__marker-label">{t}</span>}
-                </div>
-              )
-            })}
+            {TIER_MARKERS.map((marker, index) => (
+              <div
+                key={marker.id}
+                className={`trust-gauge__marker trust-gauge__marker--${marker.id}`}
+                style={
+                  {
+                    '--marker-position': `${marker.markerPercentage}%`,
+                  } as React.CSSProperties & { '--marker-position': string }
+                }
+                title={marker.title}
+              >
+                {/* Only show label for first marker on mobile, all on desktop */}
+                {index === 0 && <span className="trust-gauge__marker-label">{marker.id}</span>}
+              </div>
+            ))}
           </div>
 
           {/* Current score indicator thumb */}
@@ -200,10 +232,12 @@ export default function TrustGauge({
         <div className="trust-gauge__progress-caption">
           {isAtMax ? (
             <span className="trust-gauge__maxed">Platinum tier — maximum score achieved</span>
-          ) : (
+          ) : nextTier ? (
             <span className="trust-gauge__next-tier">
-              {nextTierPoints} points to {TIER_ORDER[TIER_ORDER.indexOf(tier) + 1]}
+              {nextTierPoints} points to {nextTier}
             </span>
+          ) : (
+            <span className="trust-gauge__next-tier">{nextTierPoints} points to next tier</span>
           )}
         </div>
       </div>
@@ -212,15 +246,15 @@ export default function TrustGauge({
       <div className="trust-gauge__legend">
         <p className="trust-gauge__legend-title">Tier Ranges</p>
         <ul className="trust-gauge__legend-list">
-          {TIER_ORDER.map((t) => (
-            <li key={t} className="trust-gauge__legend-item">
+          {TIER_LEGEND_ITEMS.map((item) => (
+            <li key={item.id} className="trust-gauge__legend-item">
               <span
                 className="trust-gauge__legend-dot"
-                style={{ backgroundColor: TIER_CONFIG[t].color }}
+                style={{ backgroundColor: item.color }}
                 aria-hidden="true"
               />
               <span className="trust-gauge__legend-text">
-                {TIER_CONFIG[t].label}: {TIER_CONFIG[t].min}–{TIER_CONFIG[t].max}
+                {item.label}: {item.min}–{item.max}
               </span>
             </li>
           ))}

@@ -180,10 +180,24 @@ describe('TrustGauge score display', () => {
 describe('TrustGauge tier legend', () => {
   it('renders all four tier range labels', () => {
     render(<TrustGauge score={0} tier="bronze" />)
-    expect(screen.getByText('Bronze: 0–250')).toBeInTheDocument()
-    expect(screen.getByText('Silver: 250–500')).toBeInTheDocument()
-    expect(screen.getByText('Gold: 500–750')).toBeInTheDocument()
-    expect(screen.getByText('Platinum: 750–1000')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        `${TIER_CONFIG.bronze.label}: ${TIER_CONFIG.bronze.min}–${TIER_CONFIG.bronze.max}`
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        `${TIER_CONFIG.silver.label}: ${TIER_CONFIG.silver.min}–${TIER_CONFIG.silver.max}`
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(`${TIER_CONFIG.gold.label}: ${TIER_CONFIG.gold.min}–${TIER_CONFIG.gold.max}`)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        `${TIER_CONFIG.platinum.label}: ${TIER_CONFIG.platinum.min}–${TIER_CONFIG.platinum.max}`
+      )
+    ).toBeInTheDocument()
   })
 })
 

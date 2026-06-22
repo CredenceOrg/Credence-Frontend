@@ -68,10 +68,15 @@ This directory contains comprehensive design specifications and implementation g
    - Testing guide and troubleshooting
    - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 
-9. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
-   - Provider tree and routing architecture
-   - Context responsibilities
-   - Theming flow and mock data boundaries
+10. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
+    - Provider tree and routing architecture
+    - Context responsibilities
+    - Theming flow and mock data boundaries
+
+11. **[State Management](./STATE_MANAGEMENT.md)**
+    - Settings, wallet, and toast provider ownership
+    - `credence:settings` persistence and `data-theme` application
+    - Provider nesting order and guidance for placing new state
 
 ### Quick Start
 

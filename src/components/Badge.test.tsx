@@ -1,85 +1,281 @@
-import { render, screen } from '@testing-library/react'
-import Badge from './Badge'
+import { useRef } from 'react'
+import { render, screen, fireEvent } from '@testing-library/react'
+import Banner from './Banner'
+import type { BannerSeverity } from './Banner'
 
 // Mock the CSS import so Vitest doesn't choke on it
-vi.mock('./Badge.css', () => ({}))
+vi.mock('./Banner.css', () => ({}))
 
-const KNOWN_VARIANTS = [
-  { variant: 'bronze', label: 'Bronze' },
-  { variant: 'silver', label: 'Silver' },
-  { variant: 'gold', label: 'Gold' },
-  { variant: 'platinum', label: 'Platinum' },
-  { variant: 'active', label: 'Active' },
-  { variant: 'locked', label: 'Locked' },
-  { variant: 'slashed', label: 'Slashed' },
-  { variant: 'grace-period', label: 'Grace Period' },
-  { variant: 'unknown', label: 'Unknown' },
-] as const
+// requestAnimationFrame is used by Banner to defer focus-return until after
+// the caller has unmounted the banner. We stub it to invoke synchronously so
+// dismiss/focus assertions are deterministic and don't depend on jsdom's
+// internal rAF-to-setTimeout shim.
+beforeEach(() => {
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(((cb: FrameRequestCallback) => {
+    cb(0)
+    return 0
+  }) as typeof window.requestAnimationFrame)
+})
 
-describe('Badge', () => {
-  describe('known variants', () => {
-    it.each(KNOWN_VARIANTS)(
-      '$variant renders badge--$variant class and default label "$label"',
-      ({ variant, label }) => {
-        render(<Badge variant={variant} />)
-        const el = screen.getByText(label)
-        expect(el).toHaveClass('badge', `badge--${variant}`)
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe('Banner', () => {
+  describe('role mapping by severity', () => {
+    const URGENT: BannerSeverity[] = ['critical', 'warning']
+    const POLITE: BannerSeverity[] = ['info', 'success']
+
+    it.each(URGENT)('%s severity renders role="alert"', (severity) => {
+      render(<Banner severity={severity}>Message</Banner>)
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+      expect(screen.queryByRole('status')).toBeNull()
+    })
+
+    it.each(POLITE)('%s severity renders role="status"', (severity) => {
+      render(<Banner severity={severity}>Message</Banner>)
+      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).toBeNull()
+    })
+
+    it.each([
+      ['info', 'Information banner'],
+      ['success', 'Success banner'],
+      ['warning', 'Warning banner'],
+      ['critical', 'Critical banner'],
+    ] as const)('%s severity sets aria-label "%s"', (severity, expectedLabel) => {
+      render(<Banner severity={severity}>Message</Banner>)
+      expect(screen.getByLabelText(expectedLabel)).toBeInTheDocument()
+    })
+  })
+
+  describe('severity icon selection', () => {
+    // Each severity renders exactly one aria-hidden SVG icon inside the banner
+    // (a second aria-hidden SVG — the arrow — only appears when action.href is set,
+    // so these assertions scope to the icon wrapper to stay unambiguous).
+    it.each(['info', 'success', 'warning', 'critical'] as const)(
+      '%s severity renders an aria-hidden icon',
+      (severity) => {
+        render(<Banner severity={severity}>Message</Banner>)
+        const region = screen.getByRole(severity === 'critical' || severity === 'warning' ? 'alert' : 'status')
+        const icon = region.querySelector('svg[aria-hidden="true"]')
+        expect(icon).not.toBeNull()
+        expect(icon).toHaveAttribute('aria-hidden', 'true')
       }
     )
-  })
 
-  describe('case-insensitive normalization', () => {
-    it('uppercased Gold → badge--gold class and label "Gold"', () => {
-      render(<Badge variant="GOLD" />)
-      const el = screen.getByText('Gold')
-      expect(el).toHaveClass('badge--gold')
-    })
-
-    it('mixed-case Grace-Period → badge--grace-period', () => {
-      render(<Badge variant="Grace-Period" />)
-      const el = screen.getByText('Grace Period')
-      expect(el).toHaveClass('badge--grace-period')
+    it('renders a different icon path for each severity', () => {
+      const paths = (['info', 'success', 'warning', 'critical'] as const).map((severity) => {
+        const { unmount } = render(<Banner severity={severity}>Message</Banner>)
+        const region = screen.getByRole(severity === 'critical' || severity === 'warning' ? 'alert' : 'status')
+        const path = region.querySelector('svg[aria-hidden="true"] path')?.getAttribute('d')
+        unmount()
+        return path
+      })
+      // All four severity icons must be visually distinct
+      expect(new Set(paths).size).toBe(4)
     })
   })
 
-  describe('unknown fallback', () => {
-    it('unrecognized string → badge--unknown class and label "Unknown"', () => {
-      render(<Badge variant="foobar" />)
-      const el = screen.getByText('Unknown')
-      expect(el).toHaveClass('badge--unknown')
-      expect(el).not.toHaveClass('badge--foobar')
+  describe('action prop', () => {
+    it('renders a link when action.href is provided', () => {
+      render(
+        <Banner severity="info" action={{ label: 'Learn more', href: 'https://example.com/docs' }}>
+          Message
+        </Banner>
+      )
+      const link = screen.getByRole('link', { name: 'Learn more' })
+      expect(link).toHaveAttribute('href', 'https://example.com/docs')
+      expect(screen.queryByRole('button', { name: 'Learn more' })).toBeNull()
     })
 
-    it('empty string → badge--unknown', () => {
-      render(<Badge variant="" />)
-      const el = screen.getByText('Unknown')
-      expect(el).toHaveClass('badge--unknown')
+    it('renders a button when action.onClick is provided (no href)', () => {
+      const onActionClick = vi.fn()
+      render(
+        <Banner severity="info" action={{ label: 'Retry', onClick: onActionClick }}>
+          Message
+        </Banner>
+      )
+      const button = screen.getByRole('button', { name: 'Retry' })
+      expect(screen.queryByRole('link', { name: 'Retry' })).toBeNull()
+
+      fireEvent.click(button)
+      expect(onActionClick).toHaveBeenCalledTimes(1)
     })
 
-    it('whitespace-only string → badge--unknown', () => {
-      render(<Badge variant="   " />)
-      const el = screen.getByText('Unknown')
-      expect(el).toHaveClass('badge--unknown')
+    it('renders a link, not a button, when both href and onClick are provided (href wins)', () => {
+      const onActionClick = vi.fn()
+      render(
+        <Banner
+          severity="info"
+          action={{ label: 'Go', href: 'https://example.com', onClick: onActionClick }}
+        >
+          Message
+        </Banner>
+      )
+      expect(screen.getByRole('link', { name: 'Go' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Go' })).toBeNull()
+    })
+
+    it('renders no action element when action is omitted', () => {
+      render(<Banner severity="info">Message</Banner>)
+      expect(screen.queryByRole('link')).toBeNull()
+      // Only the dismiss button could be a 'button'; this banner is not dismissible,
+      // so there should be no buttons at all.
+      expect(screen.queryByRole('button')).toBeNull()
     })
   })
 
-  describe('explicit label override', () => {
-    it('overrides default label for a known variant', () => {
-      render(<Badge variant="gold" label="Custom Gold" />)
-      expect(screen.getByText('Custom Gold')).toHaveClass('badge--gold')
-      expect(screen.queryByText('Gold')).toBeNull()
+  describe('title rendering', () => {
+    it('renders the title when provided', () => {
+      render(
+        <Banner severity="info" title="Heads up">
+          Message body
+        </Banner>
+      )
+      expect(screen.getByText('Heads up')).toBeInTheDocument()
+      expect(screen.getByText('Message body')).toBeInTheDocument()
     })
 
-    it('overrides label even for an unknown variant', () => {
-      render(<Badge variant="foobar" label="My Label" />)
-      expect(screen.getByText('My Label')).toHaveClass('badge--unknown')
+    it('renders no title element when omitted', () => {
+      render(<Banner severity="info">Message body</Banner>)
+      expect(screen.queryByText('Heads up')).toBeNull()
     })
   })
 
-  describe('className passthrough', () => {
-    it('appends extra className to the badge element', () => {
-      render(<Badge variant="active" className="extra-class" />)
-      expect(screen.getByText('Active')).toHaveClass('badge', 'badge--active', 'extra-class')
+  describe('dismissible behavior', () => {
+    it('persistent banner (dismissible omitted) has no close button', () => {
+      render(<Banner severity="info">Message</Banner>)
+      expect(screen.queryByRole('button', { name: 'Dismiss banner' })).toBeNull()
+    })
+
+    it('persistent banner (dismissible=false) has no close button', () => {
+      render(
+        <Banner severity="info" dismissible={false}>
+          Message
+        </Banner>
+      )
+      expect(screen.queryByRole('button', { name: 'Dismiss banner' })).toBeNull()
+    })
+
+    it('dismissible banner renders a close button', () => {
+      render(
+        <Banner severity="info" dismissible>
+          Message
+        </Banner>
+      )
+      expect(screen.getByRole('button', { name: 'Dismiss banner' })).toBeInTheDocument()
+    })
+
+    it('clicking the close button calls onDismiss', () => {
+      const onDismiss = vi.fn()
+      render(
+        <Banner severity="info" dismissible onDismiss={onDismiss}>
+          Message
+        </Banner>
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    })
+
+    it('Escape on the close button calls onDismiss', () => {
+      const onDismiss = vi.fn()
+      render(
+        <Banner severity="info" dismissible onDismiss={onDismiss}>
+          Message
+        </Banner>
+      )
+      const closeBtn = screen.getByRole('button', { name: 'Dismiss banner' })
+      closeBtn.focus()
+      fireEvent.keyDown(closeBtn, { key: 'Escape' })
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    })
+
+    it('a non-Escape key on the close button does not dismiss', () => {
+      const onDismiss = vi.fn()
+      render(
+        <Banner severity="info" dismissible onDismiss={onDismiss}>
+          Message
+        </Banner>
+      )
+      const closeBtn = screen.getByRole('button', { name: 'Dismiss banner' })
+      closeBtn.focus()
+      fireEvent.keyDown(closeBtn, { key: 'Enter' })
+      expect(onDismiss).not.toHaveBeenCalled()
+    })
+
+    it('dismissing via click returns focus to returnFocusRef when provided', () => {
+      function Harness() {
+        const ref = useRef<HTMLButtonElement>(null)
+        return (
+          <>
+            <button ref={ref} type="button">
+              Trigger
+            </button>
+            <Banner severity="info" dismissible returnFocusRef={ref}>
+              Message
+            </Banner>
+          </>
+        )
+      }
+      render(<Harness />)
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
+      expect(screen.getByRole('button', { name: 'Trigger' })).toHaveFocus()
+    })
+
+    it('dismissing via Escape returns focus to returnFocusRef when provided', () => {
+      function Harness() {
+        const ref = useRef<HTMLButtonElement>(null)
+        return (
+          <>
+            <button ref={ref} type="button">
+              Trigger
+            </button>
+            <Banner severity="info" dismissible returnFocusRef={ref}>
+              Message
+            </Banner>
+          </>
+        )
+      }
+      render(<Harness />)
+      const closeBtn = screen.getByRole('button', { name: 'Dismiss banner' })
+      closeBtn.focus()
+      fireEvent.keyDown(closeBtn, { key: 'Escape' })
+      expect(screen.getByRole('button', { name: 'Trigger' })).toHaveFocus()
+    })
+
+    it('dismissing returns focus to document.body when returnFocusRef is not provided', () => {
+      render(
+        <Banner severity="info" dismissible>
+          Message
+        </Banner>
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
+      expect(document.body).toHaveFocus()
+    })
+
+    it('dismissing returns focus to document.body when returnFocusRef.current is null', () => {
+      const nullRef = { current: null }
+      render(
+        <Banner severity="info" dismissible returnFocusRef={nullRef as React.RefObject<HTMLElement>}>
+          Message
+        </Banner>
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
+      expect(document.body).toHaveFocus()
+    })
+
+    it('dismiss works even when onDismiss is not provided (focus still returns)', () => {
+      render(
+        <Banner severity="info" dismissible>
+          Message
+        </Banner>
+      )
+      // Should not throw despite no onDismiss handler
+      expect(() => {
+        fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
+      }).not.toThrow()
+      expect(document.body).toHaveFocus()
     })
   })
 })

@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
+import useCopyToClipboard from '@/hooks/useCopyToClipboard'
 
 export interface AddressInputProps {
   /** Input id forwarded to FormField for label and description wiring. */
@@ -118,7 +119,7 @@ export default function AddressInput({
 
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const { copy, copied } = useCopyToClipboard()
 
   const isValid = isValidStellarAddress(value)
   const isEmpty = !value
@@ -170,14 +171,13 @@ export default function AddressInput({
   }
 
   const handleCopy = useCallback(async () => {
+    if (!value) return
     try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await copy(value)
     } catch {
-      // Clipboard API tidak tersedia — fallback diam
+      // swallow
     }
-  }, [value])
+  }, [copy, value])
 
   const error = showError
     ? 'Invalid address. Stellar public keys are 56 characters starting with G.'

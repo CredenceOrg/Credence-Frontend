@@ -1,6 +1,8 @@
 import React, { createContext, useContext } from 'react'
 import { useSettings } from './SettingsContext'
 import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWallet'
+import { useIdleTimeout } from '../hooks/useIdleTimeout'
+import { useToast } from '../components/ToastProvider'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean
@@ -29,9 +31,21 @@ export function useWallet(): WalletContextValue {
   return useWalletContext()
 }
 
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000
+
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { network } = useSettings()
   const wallet = useWalletState(network)
+  const { addToast } = useToast()
+
+  useIdleTimeout({
+    timeoutMs: wallet.isConnected ? IDLE_TIMEOUT_MS : 0,
+    onIdle: () => {
+      wallet.disconnect()
+      addToast('warning', 'Disconnected after inactivity \u2014 reconnect to continue.')
+    },
+  })
+
   const value = {
     ...wallet,
     connected: wallet.isConnected,

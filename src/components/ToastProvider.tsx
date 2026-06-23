@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
 import { useSettings } from '../context/SettingsContext'
-import Toast, { type ToastData, type ToastSeverity } from './Toast'
+import Toast, { type ToastActionMeta, type ToastData, type ToastSeverity } from './Toast'
 import './Toast.css'
 
 const MAX_TOASTS = 3
@@ -13,7 +13,7 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
 }
 
 interface ToastContextValue {
-  addToast: (severity: ToastSeverity, message: string) => void
+  addToast: (severity: ToastSeverity, message: string, action?: ToastActionMeta) => void
   removeToast: (id: string) => void
   removeAllToasts: () => void
 }
@@ -27,14 +27,14 @@ export function useToast() {
 }
 
 export default function ToastProvider({ children }: { children: ReactNode }) {
-  const { toastsEnabled, autoDismiss } = useSettings()
+  const { toastsEnabled, autoDismiss, network } = useSettings()
 
   /**
    * We use a ref to track the current settings to avoid recreating `addToast`
    * on every setting change, which would cause unnecessary re-renders of consumers.
    */
-  const settingsRef = useRef({ toastsEnabled, autoDismiss })
-  settingsRef.current = { toastsEnabled, autoDismiss }
+  const settingsRef = useRef({ toastsEnabled, autoDismiss, network })
+  settingsRef.current = { toastsEnabled, autoDismiss, network }
 
   const [toasts, setToasts] = useState<ToastData[]>([])
   const idCounter = useRef(0)
@@ -56,14 +56,22 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addToast = useCallback(
-    (severity: ToastSeverity, message: string) => {
-      const { toastsEnabled, autoDismiss } = settingsRef.current
+    (severity: ToastSeverity, message: string, action?: ToastActionMeta) => {
+      const { toastsEnabled, autoDismiss, network } = settingsRef.current
 
       // respect global toast enable setting
       if (!toastsEnabled) return
       const id = String(++idCounter.current)
       setToasts((prev: ToastData[]) => {
-        const next = [...prev, { id, severity, message }]
+        const next = [
+          ...prev,
+          {
+            id,
+            severity,
+            message,
+            action: action ? { ...action, network: action.network ?? network } : undefined,
+          },
+        ]
         return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next
       })
 
@@ -87,7 +95,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         timeoutsMap.current.set(id, timerId)
       }
     },
-    [removeToast, toastsEnabled, autoDismiss]
+    [removeToast, toastsEnabled, autoDismiss, network]
   )
 
   /** Toasts split by politeness: danger → assertive; all others → polite. */

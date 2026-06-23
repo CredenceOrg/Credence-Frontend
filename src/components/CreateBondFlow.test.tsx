@@ -430,6 +430,10 @@ describe('CreateBondFlow – step 4 confirm', () => {
     await user.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: /Confirm & Create Bond/i }))
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+    expect(screen.getByText(/Bond created successfully/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /view on explorer/i }).getAttribute('href')).toContain(
+      '/explorer/public/tx/'
+    )
   })
 })
 

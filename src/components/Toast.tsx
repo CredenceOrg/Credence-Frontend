@@ -1,6 +1,12 @@
+import { useState } from 'react'
 import './Toast.css'
 
 export type ToastSeverity = 'info' | 'success' | 'warning' | 'danger'
+
+export interface ToastActionMeta {
+  hash: string
+  network?: string
+}
 
 const ICONS: Record<ToastSeverity, React.ReactNode> = {
   info: (
@@ -71,6 +77,7 @@ export interface ToastData {
   id: string
   severity: ToastSeverity
   message: string
+  action?: ToastActionMeta
 }
 
 interface ToastProps {
@@ -78,7 +85,36 @@ interface ToastProps {
   onDismiss: (id: string) => void
 }
 
+function truncateHash(hash: string) {
+  if (hash.length <= 18) return hash
+  return `${hash.slice(0, 8)}...${hash.slice(-6)}`
+}
+
+function getExplorerNetwork(network?: string) {
+  if (network === 'testnet' || network === 'futurenet') return network
+  return 'public'
+}
+
+function getExplorerUrl(hash: string, network?: string) {
+  return `https://stellar.expert/explorer/${getExplorerNetwork(network)}/tx/${hash}`
+}
+
 export default function Toast({ toast, onDismiss }: ToastProps) {
+  const [copyMessage, setCopyMessage] = useState('')
+  const transactionHash = toast.action?.hash
+
+  const handleCopyHash = async () => {
+    if (!transactionHash) return
+
+    try {
+      await navigator.clipboard.writeText(transactionHash)
+      setCopyMessage('Copied transaction hash.')
+      setTimeout(() => setCopyMessage(''), 2000)
+    } catch {
+      setCopyMessage('Could not copy transaction hash.')
+    }
+  }
+
   return (
     <div
       className={`toast toast--${toast.severity}`}
@@ -89,6 +125,34 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       </div>
       <div className="toast__content">
         <span className="toast__message">{toast.message}</span>
+        {transactionHash && (
+          <div className="toast__transaction">
+            <code className="toast__hash" title={transactionHash}>
+              {truncateHash(transactionHash)}
+            </code>
+            <div className="toast__transaction-actions">
+              <button
+                type="button"
+                className="toast__copy"
+                onClick={handleCopyHash}
+                aria-label="Copy transaction hash"
+              >
+                Copy
+              </button>
+              <a
+                className="toast__explorer"
+                href={getExplorerUrl(transactionHash, toast.action?.network)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View on explorer
+              </a>
+            </div>
+            <span className="toast__copy-status" aria-live="polite" aria-atomic="true">
+              {copyMessage}
+            </span>
+          </div>
+        )}
       </div>
       <button
         type="button"

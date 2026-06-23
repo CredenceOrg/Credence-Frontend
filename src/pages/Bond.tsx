@@ -7,13 +7,14 @@ import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import EmptyState from '../components/states/EmptyState'
+import type { ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatUsdc } from '../lib/format'
-import { getPenaltyRate, computeWithdrawBreakdown } from '../lib/penalty'
-import type { MockBond } from '../lib/penalty'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
+
+const MOCK_WITHDRAW_TX_HASH = '9f1c4d8a2b6e3a7c5d0f18b2436c9a71e0f5d2c8b4a3916e7c0d5a2f8b9e4c31'
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -217,7 +218,7 @@ export default function Bond() {
         `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
       )
     } else {
-      addToast('success', 'Bond withdrawn successfully.')
+      addToast('success', 'Bond withdrawn successfully.', { hash: MOCK_WITHDRAW_TX_HASH })
     }
     setWithdrawTarget(null)
   }, [withdrawTarget, withdrawBreakdown, addToast])

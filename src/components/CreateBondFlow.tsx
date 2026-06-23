@@ -47,6 +47,8 @@ const calcUnlockDate = (days: number) => {
 // ---------------------------------------------------------------------------
 const ReviewDivider = () => <div className="createBondFlow__reviewDivider" />
 
+const MOCK_CREATE_BOND_TX_HASH = '4c2a90f8e1b7d6c3a5f0918273b4c6d8e0a1f2b3c4d5e6f708192a3b4c5d6e7f'
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -111,7 +113,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   }
 
   const handleConfirm = () => {
-    addToast('success', 'Bond created successfully.')
+    addToast('success', 'Bond created successfully.', { hash: MOCK_CREATE_BOND_TX_HASH })
     if (onComplete) {
       onComplete()
     } else {

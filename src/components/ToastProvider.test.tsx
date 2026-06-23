@@ -18,6 +18,15 @@ function TestComponent() {
     <div>
       <button onClick={() => addToast('info', 'Info Message')}>Add Info</button>
       <button onClick={() => addToast('danger', 'Danger Message')}>Add Danger</button>
+      <button
+        onClick={() =>
+          addToast('success', 'Transaction submitted', {
+            hash: '4c2a90f8e1b7d6c3a5f0918273b4c6d8e0a1f2b3c4d5e6f708192a3b4c5d6e7f',
+          })
+        }
+      >
+        Add Transaction
+      </button>
       <button onClick={removeAllToasts}>Remove All</button>
     </div>
   )
@@ -29,11 +38,14 @@ describe('ToastProvider', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       toastsEnabled: true,
       autoDismiss: '5s',
+      network: 'testnet',
     } as ReturnType<typeof SettingsContextModule.useSettings>)
   })
 
   afterEach(() => {
-    vi.runOnlyPendingTimers()
+    act(() => {
+      vi.runOnlyPendingTimers()
+    })
     vi.useRealTimers()
     vi.clearAllMocks()
   })
@@ -74,6 +86,7 @@ describe('ToastProvider', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       toastsEnabled: false,
       autoDismiss: '5s',
+      network: 'testnet',
     } as ReturnType<typeof SettingsContextModule.useSettings>)
 
     rerender(
@@ -99,6 +112,7 @@ describe('ToastProvider', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       toastsEnabled: true,
       autoDismiss: '3s',
+      network: 'testnet',
     } as ReturnType<typeof SettingsContextModule.useSettings>)
 
     rerender(
@@ -146,6 +160,7 @@ describe('ToastProvider', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       toastsEnabled: true,
       autoDismiss: 'off',
+      network: 'testnet',
     } as ReturnType<typeof SettingsContextModule.useSettings>)
 
     fireEvent.click(screen.getByText('Add Danger'))
@@ -189,5 +204,34 @@ describe('ToastProvider', () => {
     )
 
     expect(screen.getByLabelText('Notifications')).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('renders transaction hash actions without breaking the existing addToast API', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: { writeText },
+    })
+
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByText('Add Transaction'))
+
+    expect(screen.getByText('Transaction submitted')).toBeInTheDocument()
+    expect(screen.getByText('4c2a90f8...5d6e7f')).toBeInTheDocument()
+
+    const explorerLink = screen.getByRole('link', { name: /view on explorer/i })
+    expect(explorerLink.getAttribute('href')).toContain('/explorer/testnet/tx/')
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy transaction hash/i }))
+    })
+
+    expect(writeText).toHaveBeenCalledWith(
+      '4c2a90f8e1b7d6c3a5f0918273b4c6d8e0a1f2b3c4d5e6f708192a3b4c5d6e7f'
+    )
   })
 })

@@ -49,6 +49,25 @@ describe('isValidStellarAddress', () => {
     expect(isValidStellarAddress('1234567890')).toBe(false)
     expect(isValidStellarAddress('G123')).toBe(false)
   })
+
+  it('returns false for a valid-prefix key padded with whitespace', () => {
+    // The regex tests the raw string; leading/trailing spaces break the match.
+    expect(isValidStellarAddress(' ' + VALID_KEY)).toBe(false)
+    expect(isValidStellarAddress(VALID_KEY + ' ')).toBe(false)
+  })
+
+  it('returns false for a key that is exactly 55 characters (one short)', () => {
+    // Strip the last character — still starts with G but length 55 → invalid.
+    const short55 = VALID_KEY.slice(0, 55)
+    expect(short55.length).toBe(55)
+    expect(isValidStellarAddress(short55)).toBe(false)
+  })
+
+  it('returns false for a key that is exactly 57 characters (one long)', () => {
+    const long57 = VALID_KEY + 'A'
+    expect(long57.length).toBe(57)
+    expect(isValidStellarAddress(long57)).toBe(false)
+  })
 })
 
 describe('truncateAddress', () => {
@@ -89,5 +108,23 @@ describe('truncateAddress', () => {
     const mixedCase = 'GaAzI4TcR3Ty5OjHcTjC2A4QsY6CjWjH5IaJtGkIn2Er7LbNvKoCcWnA'
     const truncated = truncateAddress(mixedCase)
     expect(truncated).toBe(`${mixedCase.substring(0, 12)}...${mixedCase.substring(mixedCase.length - 8)}`)
+  })
+
+  it('trims leading and trailing whitespace before length check', () => {
+    // A 20-char address padded with spaces should be returned trimmed and unchanged.
+    const padded = '  ' + 'G'.repeat(20) + '  '
+    expect(truncateAddress(padded)).toBe('G'.repeat(20))
+  })
+
+  it('truncates a whitespace-padded long address after trimming', () => {
+    const padded = '  ' + VALID_KEY + '  '
+    const result = truncateAddress(padded)
+    expect(result).toBe(`${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`)
+  })
+
+  it('produces the correct separator string (three dots, not an ellipsis character)', () => {
+    const result = truncateAddress(VALID_KEY)
+    expect(result).toContain('...')
+    expect(result).not.toContain('…') // U+2026 typographic ellipsis
   })
 })

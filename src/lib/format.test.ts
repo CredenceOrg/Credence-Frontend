@@ -14,6 +14,23 @@ describe('formatUsdc', () => {
     expect(formatUsdc(0.001)).toBe('0 USDC')
     expect(formatUsdc(0.01)).toBe('0.01 USDC')
   })
+
+  it('passes NaN and Infinity through toLocaleString (documents current behavior)', () => {
+    // NOTE: formatUsdc does not guard against non-finite values;
+    // toLocaleString('en-US') renders NaN as "NaN" and Infinity as "∞".
+    // This test documents the current behavior — a future hardening PR
+    // should return "0 USDC" or "" for these inputs instead.
+    expect(formatUsdc(NaN)).toBe('NaN USDC')
+    expect(formatUsdc(Infinity)).toBe('∞ USDC')
+    expect(formatUsdc(-Infinity)).toBe('-∞ USDC')
+  })
+
+  it('documents negative-zero rendering (toLocaleString renders -0 as "-0")', () => {
+    // BUG: toLocaleString('en-US') renders -0 as "-0", producing "-0 USDC".
+    // Callers should ensure they never pass -0; a future hardening PR should
+    // add a `|| 0` guard in formatUsdc to coerce -0 → 0 before formatting.
+    expect(formatUsdc(-0)).toBe('-0 USDC')
+  })
 })
 
 describe('normalizeUSDC', () => {
@@ -49,6 +66,18 @@ describe('normalizeUSDC', () => {
     expect(normalizeUSDC('')).toBe('')
     expect(normalizeUSDC('0')).toBe('0.00')
   })
+
+  it('returns empty string for non-finite string representations', () => {
+    // Number('Infinity') and Number('NaN') are non-finite → guarded by isFinite check.
+    expect(normalizeUSDC('Infinity')).toBe('')
+    expect(normalizeUSDC('-Infinity')).toBe('')
+    expect(normalizeUSDC('NaN')).toBe('')
+  })
+
+  it('handles negative zero string edge case', () => {
+    // '-0' parses to -0 which is finite; Math.max(0, -0) === 0.
+    expect(normalizeUSDC('-0')).toBe('0.00')
+  })
 })
 
 describe('formatUSDC', () => {
@@ -80,6 +109,18 @@ describe('formatUSDC', () => {
     expect(formatUSDC('1000')).toBe('1,000.00')
     expect(formatUSDC('1000000')).toBe('1,000,000.00')
     expect(formatUSDC('1000000000')).toBe('1,000,000,000.00')
+  })
+
+  it('returns non-finite strings unchanged (invalid text path)', () => {
+    // 'Infinity' → Number('Infinity') is not finite → returned unchanged.
+    expect(formatUSDC('Infinity')).toBe('Infinity')
+    expect(formatUSDC('NaN')).toBe('NaN')
+  })
+
+  it('handles negative values by formatting them (no clamping in formatUSDC)', () => {
+    // formatUSDC does not clamp negatives; it just formats the number.
+    expect(formatUSDC('-100')).toBe('-100.00')
+    expect(formatUSDC('-1234.5')).toBe('-1,234.50')
   })
 })
 
@@ -144,5 +185,21 @@ describe('sanitizeUSDCInput', () => {
     expect(sanitizeUSDCInput('')).toBe('')
     expect(sanitizeUSDCInput('   ')).toBe('')
     expect(sanitizeUSDCInput(' 123 ')).toBe('123')
+  })
+
+  it('handles a lone dot (no integer part)', () => {
+    // Dot-only cleans to ".", dotIndex === 0, whole === "" → trimmedWhole → "0", fraction === ""
+    expect(sanitizeUSDCInput('.')).toBe('0.')
+  })
+
+  it('handles input that is purely non-numeric', () => {
+    expect(sanitizeUSDCInput('abc')).toBe('')
+    expect(sanitizeUSDCInput('$€£')).toBe('')
+  })
+
+  it('truncates exactly 2 decimal places (boundary: exactly 2 digits)', () => {
+    expect(sanitizeUSDCInput('1.23')).toBe('1.23')   // at limit — unchanged
+    expect(sanitizeUSDCInput('1.2')).toBe('1.2')     // under limit — unchanged
+    expect(sanitizeUSDCInput('1.230')).toBe('1.23')  // over limit — truncated
   })
 })

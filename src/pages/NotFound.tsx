@@ -1,11 +1,13 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import Button from '../components/Button';
+import { suggestRoute } from '../lib/suggestRoute';
 import './NotFound.css';
 
 export default function NotFound() {
   const navigate = useNavigate();
-
+  const location = useLocation();
+  const suggestion = suggestRoute(location.pathname, ['/', '/bond', '/trust', '/settings']);
   useDocumentTitle('Page Not Found');
 
   return (
@@ -35,8 +37,19 @@ export default function NotFound() {
       <p className="not-found-code">404</p>
       
       <p className="not-found-description">
-        The page you're looking for doesn't exist. It may have been moved or removed.
+        The page at <code>{location.pathname}</code> does not exist. It may have been moved or removed.
       </p>
+      {suggestion.suggestion && (
+        <Button variant="primary" onClick={() => navigate(suggestion.suggestion!)}>
+          Did you mean {suggestion.suggestion}?
+        </Button>
+      )}
+      <div className="not-found-canonical">
+        <Button variant="primary" onClick={() => navigate('/')}>Home</Button>
+        <Button variant="primary" onClick={() => navigate('/bond')}>Bond</Button>
+        <Button variant="primary" onClick={() => navigate('/trust')}>Trust Score</Button>
+        <Button variant="primary" onClick={() => navigate('/settings')}>Settings</Button>
+      </div>
 
       <div className="not-found-actions">
         <Button 

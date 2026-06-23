@@ -43,11 +43,6 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
     (severity: ToastSeverity, message: string) => {
       // respect global toast enable setting
       if (!toastsEnabled) return
-      const id = String(++idCounter.current)
-      setToasts((prev: ToastData[]) => {
-        const next = [...prev, { id, severity, message }]
-        return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next
-      })
 
       // compute timeout: settings `autoDismiss` can override default TIMEOUTS
       let timeout = TIMEOUTS[severity]
@@ -62,11 +57,13 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         // fallback to default
       }
 
-      if (timeout > 0) {
-        setTimeout(() => removeToast(id), timeout)
-      }
+      const id = String(++idCounter.current)
+      setToasts((prev: ToastData[]) => {
+        const next = [...prev, { id, severity, message, durationMs: timeout }]
+        return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next
+      })
     },
-    [removeToast]
+    [toastsEnabled, autoDismiss]
   )
 
   return (

@@ -107,10 +107,12 @@ const triggerRef = useRef<HTMLButtonElement>(null)
 
 | Severity  | Auto-dismiss | Rationale                        |
 | --------- | ------------ | -------------------------------- |
-| `info`    | 5 seconds    | Low urgency, informational       |
-| `success` | 5 seconds    | Confirmation — user can move on  |
-| `warning` | 8 seconds    | Needs attention but not blocking |
+| `info`    | 5 seconds*   | Low urgency, informational       |
+| `success` | 5 seconds*   | Confirmation — user can move on  |
+| `warning` | 8 seconds*   | Needs attention but not blocking |
 | `danger`  | Manual only  | Must be acknowledged explicitly  |
+
+*\* Timers pause while the pointer is hovering over the toast or while keyboard focus is inside it.*
 
 ---
 
@@ -131,6 +133,7 @@ const triggerRef = useRef<HTMLButtonElement>(null)
 - Dismiss buttons have `aria-label` text
 - Icons are marked `aria-hidden="true"` (decorative)
 - Dismiss buttons are keyboard-focusable and respond to Enter/Space
+- Toasts automatically pause their auto-dismiss timer on mouse hover or when keyboard focus moves inside them, satisfying WCAG 2.2.1 (Timing Adjustable)
 - Supports `prefers-reduced-motion` for simplified entrance animations
 
 ## Event → Notification Mapping

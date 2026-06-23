@@ -4,6 +4,7 @@ import ThemeToggle from './ThemeToggle'
 import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import Breadcrumbs from './Breadcrumbs'
 import LINKS from '../config/links'
 import './Layout.css'
 
@@ -39,12 +40,7 @@ export default function Layout() {
       // Ignore while typing inside editable elements
       const target = event.target as HTMLElement
       const tag = target.tagName
-      if (
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT' ||
-        target.isContentEditable
-      ) {
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
         return
       }
       setShortcutsOpen(true)
@@ -100,6 +96,8 @@ export default function Layout() {
           ?
         </button>
       </header>
+
+      <Breadcrumbs />
 
       <main id="main-content" className="appMain">
         <Outlet />

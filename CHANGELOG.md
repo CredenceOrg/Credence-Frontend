@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refactored
+- **`useLocalStorage<T>` hook** (`src/hooks/useLocalStorage.ts`): generic hook that encapsulates the read/parse/fallback pattern for localStorage. SSR-safe (`window` guard), corrupt-JSON-tolerant, and treats falsy-but-valid stored values (`false`, `0`, `""`) correctly. Returns a stable `[value, setValue]` tuple where `setValue` writes through to localStorage synchronously. Pure helpers `resolveStoredValue` and `writeToStorage` are also exported for testing.
+- **`SettingsContext`**: replaced the ad-hoc `loadSavedSettings` + five `useState` lazy-init blocks with a single `useLocalStorage<PersistedSettings>` call so the parse-on-mount happens once. Also extracted a `useMigrateLegacyTheme` hook that runs synchronously (before the first `useLocalStorage` read) to absorb any orphaned `theme` key into `credence:settings`. Public `SettingsState` shape and `STORAGE_KEY` are unchanged.
+
 ### Added
 - `src/lib/penalty.ts`: extracted `BondStatus`, `MockBond`, `getPenaltyRate`, and `computeWithdrawBreakdown` into a shared module, making the penalty math the single source of truth for Bond.tsx and ConfirmDialog.
 - `src/lib/penalty.test.ts`: unit tests for all penalty rates and breakdown arithmetic (active/grace-period/locked, zero-penalty path, fractional amounts).

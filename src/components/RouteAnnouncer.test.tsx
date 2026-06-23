@@ -3,6 +3,16 @@ import { render, screen, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import RouteAnnouncer from './RouteAnnouncer'
 
+function getAnnouncer() {
+  return document.querySelector('[aria-live="polite"]') as HTMLElement
+}
+
+function NavigateTo({ to }: { to: string }) {
+  const navigate = useNavigate()
+  useEffect(() => { navigate(to) }, [navigate, to])
+  return null
+}
+
 describe('RouteAnnouncer Component', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -44,6 +54,7 @@ describe('RouteAnnouncer Component', () => {
     const { rerender } = render(
       <MemoryRouter key="dashboard" initialEntries={['/dashboard']}>
         <RouteAnnouncer />
+        <NavigateTo to="/trust" />
       </MemoryRouter>
     )
 

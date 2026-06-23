@@ -1,0 +1,221 @@
+/* ─── Backdrop ─────────────────────────────────────────────────────────────── */
+
+.shortcuts-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--credence-space-4);
+  background: rgba(15, 23, 42, 0.55);
+  animation: shortcuts-dialog-fade-in var(--credence-motion-duration-fast)
+    var(--credence-motion-easing-decelerate);
+}
+
+[data-theme='dark'] .shortcuts-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* ─── Dialog panel ─────────────────────────────────────────────────────────── */
+
+.shortcuts-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 34rem;
+  max-height: min(90vh, 44rem);
+  overflow: hidden;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  background: var(--credence-surface-card);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+  color: var(--credence-text-primary);
+}
+
+[data-theme='dark'] .shortcuts-dialog {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* ─── Header ───────────────────────────────────────────────────────────────── */
+
+.shortcuts-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--credence-space-5) var(--credence-space-5) var(--credence-space-4);
+  border-bottom: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-card);
+  flex-shrink: 0;
+}
+
+.shortcuts-dialog__title {
+  margin: 0;
+  font-size: var(--credence-font-size-lg);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
+}
+
+.shortcuts-dialog__close {
+  /* Override ghost button defaults for compact icon button */
+  padding: var(--credence-space-2) !important;
+  line-height: 1;
+  font-size: var(--credence-font-size-base);
+  color: var(--credence-text-secondary);
+}
+
+.shortcuts-dialog__close:hover {
+  color: var(--credence-text-primary);
+}
+
+/* ─── Body / shortcut list ─────────────────────────────────────────────────── */
+
+.shortcuts-dialog__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--credence-space-5);
+  display: grid;
+  gap: var(--credence-space-6);
+}
+
+.shortcuts-dialog__group {
+  display: grid;
+  gap: var(--credence-space-3);
+}
+
+.shortcuts-dialog__group-heading {
+  margin: 0;
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--credence-text-secondary);
+}
+
+.shortcuts-dialog__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  overflow: hidden;
+}
+
+.shortcuts-dialog__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--credence-space-4);
+  padding: var(--credence-space-3) var(--credence-space-4);
+  font-size: var(--credence-font-size-sm);
+  border-bottom: 1px solid var(--credence-border-default);
+}
+
+.shortcuts-dialog__item:last-child {
+  border-bottom: none;
+}
+
+.shortcuts-dialog__label {
+  color: var(--credence-text-primary);
+  line-height: var(--credence-line-height-base);
+}
+
+/* ─── kbd styling ──────────────────────────────────────────────────────────── */
+
+.shortcuts-dialog__keys {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-1);
+  flex-shrink: 0;
+}
+
+.shortcuts-dialog__key-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-space-1);
+}
+
+.shortcuts-dialog__key-plus {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-xs);
+  user-select: none;
+}
+
+.shortcuts-dialog__kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  padding: var(--credence-space-1) var(--credence-space-2);
+  border: 1px solid var(--credence-border-default);
+  border-bottom-width: 2px;
+  border-radius: var(--credence-radius-sm);
+  background: var(--credence-surface-page);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-text-primary);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+[data-theme='dark'] .shortcuts-dialog__kbd {
+  background: var(--credence-color-slate-700);
+  border-color: var(--credence-color-slate-600);
+}
+
+/* ─── Footer ───────────────────────────────────────────────────────────────── */
+
+.shortcuts-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--credence-space-3);
+  padding: var(--credence-space-4) var(--credence-space-5) var(--credence-space-5);
+  border-top: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-card);
+  flex-shrink: 0;
+}
+
+/* ─── Entrance animation ───────────────────────────────────────────────────── */
+
+@keyframes shortcuts-dialog-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ─── Mobile: bottom sheet ─────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .shortcuts-dialog__backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .shortcuts-dialog {
+    max-width: none;
+    max-height: 92vh;
+    border-radius: var(--credence-radius-xl) var(--credence-radius-xl) 0 0;
+  }
+
+  .shortcuts-dialog__footer {
+    flex-direction: column;
+  }
+
+  .shortcuts-dialog__footer .credence-button {
+    width: 100%;
+  }
+}
+
+/* ─── Wider screens ────────────────────────────────────────────────────────── */
+
+@media (min-width: 1280px) {
+  .shortcuts-dialog {
+    max-width: 38rem;
+  }
+}

@@ -1,7 +1,9 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle'
 import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
+import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import LINKS from '../config/links'
 import './Layout.css'
 
@@ -21,6 +23,36 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 }
 
 export default function Layout() {
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  // Ref on the header button so focus returns to it after the dialog closes
+  const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
+
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
+  const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
+
+  // Global Shift+? listener — opens the shortcuts dialog from anywhere except
+  // text-entry contexts (input, textarea, contenteditable).
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '?') return
+      // Ignore while typing inside editable elements
+      const target = event.target as HTMLElement
+      const tag = target.tagName
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        target.isContentEditable
+      ) {
+        return
+      }
+      setShortcutsOpen(true)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <div className="appShell">
       <a className="skip-link" href="#main-content">
@@ -55,6 +87,17 @@ export default function Layout() {
         </nav>
 
         <ThemeToggle />
+
+        {/* Keyboard shortcuts help button */}
+        <button
+          ref={shortcutsButtonRef}
+          type="button"
+          className="appHeader-shortcuts-btn"
+          aria-label="Open keyboard shortcuts (Shift+?)"
+          onClick={openShortcuts}
+        >
+          ?
+        </button>
       </header>
 
       <main id="main-content" className="appMain">
@@ -74,6 +117,12 @@ export default function Layout() {
           </div>
         </div>
       </footer>
+
+      <KeyboardShortcutsDialog
+        open={shortcutsOpen}
+        onClose={closeShortcuts}
+        returnFocusRef={shortcutsButtonRef}
+      />
     </div>
   )
 }

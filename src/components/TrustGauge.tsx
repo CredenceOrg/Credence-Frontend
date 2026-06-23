@@ -1,7 +1,7 @@
 import './TrustGauge.css'
 import { useMemo } from 'react'
 
-import { type TrustTier, TIER_THRESHOLDS } from '../lib/tier'
+import { type TrustTier, TIERS, TIER_ORDER, MAX_SCORE } from '../lib/tiers'
 
 export interface TrustGaugeProps {
   /** Current trust score (0-1000) */
@@ -73,11 +73,10 @@ const TIER_INDEX_MAP = TIER_ORDER.reduce((acc, tier, index) => {
 export function pointsToNextTier(score: number, tier: TrustTier): number {
   const tierIndex = TIER_INDEX_MAP[tier]
   if (tierIndex === TIER_ORDER.length - 1) {
-    // Already at platinum
     return 0
   }
   const nextTier = TIER_ORDER[tierIndex + 1]
-  return Math.max(0, TIER_CONFIG[nextTier].min - score)
+  return Math.max(0, TIERS[nextTier].min - score)
 }
 
 /**
@@ -164,7 +163,7 @@ export default function TrustGauge({
           {/* Tier threshold markers */}
           <div className="trust-gauge__markers">
             {TIER_ORDER.map((t, index) => {
-              const markerPercentage = (TIER_CONFIG[t].min / MAX_SCORE) * 100
+              const markerPercentage = (TIERS[t].min / MAX_SCORE) * 100
               return (
                 <div
                   key={t}
@@ -174,7 +173,7 @@ export default function TrustGauge({
                       '--marker-position': `${markerPercentage}%`,
                     } as React.CSSProperties & { '--marker-position': string }
                   }
-                  title={`${TIER_CONFIG[t].label}: ${TIER_CONFIG[t].min}-${TIER_CONFIG[t].max} points`}
+                  title={`${TIERS[t].label}: ${TIERS[t].min}-${TIERS[t].max ?? MAX_SCORE} points`}
                 >
                   {/* Only show label for first marker on mobile, all on desktop */}
                   {index === 0 && <span className="trust-gauge__marker-label">{t}</span>}
@@ -206,7 +205,7 @@ export default function TrustGauge({
 
         <div className="trust-gauge__tier-display">
           <span className="trust-gauge__tier-badge" data-tier={tier}>
-            {TIER_CONFIG[tier].label}
+            {TIERS[tier].label}
           </span>
         </div>
 

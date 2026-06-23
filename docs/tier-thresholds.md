@@ -1,6 +1,6 @@
 # Trust tier thresholds and copy deck
 
-Source of truth for the **How trust is earned** explainer (`TierLadder` on the Trust Score page). The central programmatic source of truth for tier boundaries across the codebase is `TIER_THRESHOLDS` and `tierForScore` in `src/lib/tier.ts`. UI copy and score ranges must stay aligned with these constants.
+Source of truth for the **How trust is earned** explainer (`TierLadder` on the Trust Score page). The central programmatic source of truth for tier boundaries across the codebase is `TIERS` and `tierForScore` in `src/lib/tiers.ts`. UI copy and score ranges must stay aligned with these constants.
 
 ## Score model
 
@@ -87,9 +87,10 @@ Dark mode overrides for tier surfaces and text are defined in `src/index.css` un
 
 ## Change process
 
-When updating thresholds or benefit copy:
+When updating thresholds, colors, or benefit copy:
 
-1. Edit `TIER_THRESHOLDS` in `src/lib/tier.ts` (for boundaries) and `TIER_LADDER` in `src/components/TierLadder.tsx` (for copy)
-2. Mirror changes in this document
-3. Confirm `Badge` variants still match tier `id` values
-4. Run `npm run build` and `npm run lint`
+1. Edit `TIER_THRESHOLDS` in `src/lib/tier.ts` (for boundaries only) — `TIERS` in `src/lib/tiers.ts` imports these automatically; `TrustGauge` and `TierLadder` both derive from `TIERS`
+2. Edit `TIERS` in `src/lib/tiers.ts` for colors and benefit copy
+3. Mirror changes in this document
+4. Confirm `Badge` variants still match tier `id` values
+5. Run `npm run test`, `npm run build`, and `npm run lint`

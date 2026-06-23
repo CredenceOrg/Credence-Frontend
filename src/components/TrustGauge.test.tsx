@@ -154,10 +154,10 @@ describe('TrustGauge tier badge', () => {
   const tiers: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
 
   tiers.forEach((tier) => {
-    it(`renders ${TIER_CONFIG[tier].label} badge for tier=${tier}`, () => {
-      const score = TIER_CONFIG[tier].min
+    it(`renders ${TIERS[tier].label} badge for tier=${tier}`, () => {
+      const score = TIERS[tier].min
       render(<TrustGauge score={score} tier={tier} />)
-      const badge = screen.getByText(TIER_CONFIG[tier].label, { selector: '[data-tier]' })
+      const badge = screen.getByText(TIERS[tier].label, { selector: '[data-tier]' })
       expect(badge).toHaveAttribute('data-tier', tier)
     })
   })
@@ -178,7 +178,7 @@ describe('TrustGauge score display', () => {
 
 // --- Tier legend ---
 describe('TrustGauge tier legend', () => {
-  it('renders all four tier range labels', () => {
+  it('renders all four tier range labels from canonical TIERS', () => {
     render(<TrustGauge score={0} tier="bronze" />)
     expect(screen.getByText(/Bronze: 0.?249/)).toBeInTheDocument()
     expect(screen.getByText(/Silver: 250.?499/)).toBeInTheDocument()

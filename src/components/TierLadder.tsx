@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import './TierLadder.css'
 
-import { type TrustTier, TIER_THRESHOLDS } from '../lib/tier'
+import { type TrustTier, TIERS, TIER_ORDER } from '../lib/tiers'
 
 export type TierId = TrustTier
 
@@ -14,53 +14,17 @@ export interface TierDefinition {
   benefits: string[]
 }
 
-/** Protocol tier ladder — thresholds align with docs/tier-thresholds.md */
-export const TIER_LADDER: TierDefinition[] = [
-  {
-    id: 'bronze',
-    label: 'Bronze',
-    scoreMin: TIER_THRESHOLDS.bronze.min,
-    scoreMax: TIER_THRESHOLDS.bronze.max,
-    benefits: [
-      'Trust score visible in protocol lookups',
-      'Eligible to create and maintain a standard bond',
-      'Attestations count toward your base reputation',
-    ],
-  },
-  {
-    id: 'silver',
-    label: 'Silver',
-    scoreMin: TIER_THRESHOLDS.silver.min,
-    scoreMax: TIER_THRESHOLDS.silver.max,
-    benefits: [
-      'Improved ranking in identity search results',
-      'Extended grace period before bond status warnings',
-      'Higher weight for verified peer attestations',
-    ],
-  },
-  {
-    id: 'gold',
-    label: 'Gold',
-    scoreMin: TIER_THRESHOLDS.gold.min,
-    scoreMax: TIER_THRESHOLDS.gold.max,
-    benefits: [
-      'Priority consideration for attestation requests',
-      'Reduced slashing sensitivity on first-time violations',
-      'Access to advanced trust-score breakdown metrics',
-    ],
-  },
-  {
-    id: 'platinum',
-    label: 'Platinum',
-    scoreMin: TIER_THRESHOLDS.platinum.min,
-    scoreMax: TIER_THRESHOLDS.platinum.max,
-    benefits: [
-      'Maximum attestation and bond-duration weighting',
-      'Eligible for validator and governance reputation signals',
-      'Top-tier visibility across Credence trust surfaces',
-    ],
-  },
-]
+/** Protocol tier ladder built from the canonical TIERS source */
+export const TIER_LADDER: TierDefinition[] = TIER_ORDER.map((id) => {
+  const t = TIERS[id]
+  return {
+    id: t.id,
+    label: t.label,
+    scoreMin: t.min,
+    scoreMax: t.max,
+    benefits: t.benefits,
+  }
+})
 
 function formatThreshold(tier: TierDefinition): string {
   if (tier.scoreMax === null) {

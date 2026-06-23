@@ -75,6 +75,45 @@
   margin-bottom: var(--credence-space-1);
 }
 
+/* ── Shortcuts help button ───────────────────────────────────────────────── */
+
+.appHeader-shortcuts-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-full);
+  background: transparent;
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-bold);
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  flex-shrink: 0;
+}
+
+.appHeader-shortcuts-btn:hover {
+  background: var(--credence-color-slate-100);
+  color: var(--credence-text-primary);
+  border-color: var(--credence-color-slate-400);
+}
+
+.appHeader-shortcuts-btn:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+[data-theme='dark'] .appHeader-shortcuts-btn:hover {
+  background: var(--credence-color-slate-700);
+}
+
 /* Mobile: hide desktop nav, tighten header padding */
 @media (max-width: 639px) {
   .appNav {

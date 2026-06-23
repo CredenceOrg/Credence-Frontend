@@ -36,7 +36,8 @@
   color: var(--credence-text-secondary);
   text-decoration: none;
   border-radius: var(--credence-radius-lg);
-  transition: background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+  transition:
+    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
     color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 
@@ -48,6 +49,11 @@
 .appNav-link--active {
   color: var(--credence-color-primary);
   font-weight: var(--credence-font-weight-bold);
+  /* token-driven underline for active nav */
+  text-decoration: underline;
+  text-decoration-color: var(--credence-color-primary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 .appNav-link:focus-visible {

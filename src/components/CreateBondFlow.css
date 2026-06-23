@@ -1,0 +1,162 @@
+:root {
+  /* no-op: tokens come from src/index.css */
+}
+
+.createBondFlow {
+  display: grid;
+  gap: var(--credence-space-6);
+}
+
+.createBondFlow__stepIndicator {
+  display: flex;
+  gap: var(--credence-space-2);
+  margin-bottom: var(--credence-space-4);
+}
+
+.createBondFlow__stepBar {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--credence-radius-full);
+  background: var(--credence-border-default);
+  transition: background 0.2s ease;
+}
+
+.createBondFlow__stepBar--active {
+  background: var(--credence-color-primary);
+}
+
+.createBondFlow__step {
+  display: grid;
+  gap: var(--credence-space-4);
+}
+
+.createBondFlow__heading {
+  outline: none;
+  color: var(--credence-text-primary);
+}
+
+.createBondFlow__durationRow {
+  display: flex;
+  gap: var(--credence-space-3);
+}
+
+@media (max-width: 480px) {
+  .createBondFlow__durationRow {
+    flex-direction: column;
+  }
+}
+
+.createBondFlow__durationButton {
+  flex: 1;
+  padding: var(--credence-space-4);
+  background: var(--credence-bg-surface-page, var(--bg-page));
+  color: var(--credence-text-primary);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  font-weight: var(--credence-font-weight-semibold);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.createBondFlow__durationButton--active {
+  background: var(--credence-color-primary);
+  color: var(--bg-page);
+}
+
+.createBondFlow__error {
+  color: var(--color-danger);
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+.createBondFlow__reviewCard {
+  padding: var(--credence-space-4);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  background: var(--bg-page);
+  display: grid;
+  gap: var(--credence-space-3);
+}
+
+.createBondFlow__reviewDivider {
+  height: 1px;
+  background: var(--border-default);
+  margin: 0 calc(-1 * var(--credence-space-1));
+}
+
+.createBondFlow__reviewBadgeLabel {
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.createBondFlow__reviewResult {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--credence-space-2) var(--credence-space-3);
+  border-radius: var(--credence-radius-md);
+  background: var(--bg-surface, var(--bg-page));
+  border: 1px solid var(--credence-border-default);
+}
+
+.createBondFlow__ackLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-2);
+  cursor: pointer;
+  color: var(--credence-text-primary);
+  margin-top: var(--credence-space-2);
+}
+
+.createBondFlow__nav {
+  display: flex;
+  gap: var(--credence-space-3);
+  margin-top: var(--credence-space-4);
+}
+
+.createBondFlow__navButton {
+  flex: 1;
+  padding: var(--credence-space-3);
+  border-radius: var(--credence-radius-lg);
+  cursor: pointer;
+}
+
+.createBondFlow__backButton {
+  background: transparent;
+  color: var(--credence-text-primary);
+  border: 1px solid var(--credence-border-default);
+}
+
+.createBondFlow__nextButton {
+  background: var(--credence-color-primary);
+  color: var(--bg-page);
+  border: none;
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+.createBondFlow__confirmButton {
+  background: var(--credence-border-default);
+  color: var(--credence-text-secondary);
+  border: none;
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+.createBondFlow__confirmButton:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.createBondFlow__confirmButton:not(:disabled) {
+  background: var(--credence-color-primary);
+  color: var(--bg-page);
+}
+
+.createBondFlow__cancelButton {
+  padding: var(--credence-space-3) var(--credence-space-4);
+  background: var(--bg-page);
+  color: var(--credence-color-danger);
+  border: 1px solid var(--credence-border-default);
+}
+

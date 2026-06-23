@@ -109,6 +109,16 @@
   color: var(--credence-color-danger-text);
 }
 
+.confirm-dialog__description {
+  padding: var(--credence-space-4);
+  border: 1px solid var(--credence-color-danger-border);
+  border-radius: var(--credence-radius-lg);
+  background: var(--credence-surface-card);
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-base);
+  color: var(--credence-text-primary);
+}
+
 .confirm-dialog__confirm-field label {
   display: block;
   margin-bottom: var(--credence-space-2);

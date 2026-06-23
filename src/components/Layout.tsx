@@ -1,10 +1,12 @@
 import { Outlet, NavLink } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle'
 import MobileNav from './navigation/MobileNav'
+import RouteAnnouncer from './RouteAnnouncer'
 import LINKS from '../config/links'
 import './Layout.css'
 
 const NAV_LINKS = [
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/bond', label: 'Bond' },
   { to: '/trust', label: 'Trust Score' },
   { to: '/settings', label: 'Settings' },
@@ -24,6 +26,10 @@ export default function Layout() {
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
+
+      {/* Screen reader SPA route transition updates manager */}
+      <RouteAnnouncer />
+
       <header className="appHeader">
         {/* Mobile: hamburger toggle (hidden ≥640px via CSS) */}
         <MobileNav />
@@ -38,7 +44,10 @@ export default function Layout() {
             <NavLink
               key={to}
               to={to}
-              className={({ isActive }) => (isActive ? 'appNav-link appNav-link--active' : 'appNav-link')}
+              end
+              className={({ isActive }) =>
+                isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
+              }
             >
               {label}
             </NavLink>

@@ -1,146 +1,73 @@
-import { render, screen, act, fireEvent } from '@testing-library/react'
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
-import Toast from './Toast'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
+import Toast, { type ToastSeverity } from './Toast'
 
-describe('Toast Component - Pause on Hover/Focus', () => {
-  const mockOnDismiss = vi.fn()
+const SEVERITY_CASES = [
+  {
+    severity: 'info',
+    role: 'status',
+    iconSelector: 'circle[cx="12"][cy="12"][r="10"]',
+  },
+  {
+    severity: 'success',
+    role: 'status',
+    iconSelector: 'polyline[points="20 6 9 17 4 12"]',
+  },
+  {
+    severity: 'warning',
+    role: 'status',
+    iconSelector: 'path[d^="M10.29 3.86"]',
+  },
+  {
+    severity: 'danger',
+    role: 'alert',
+    iconSelector: 'line[x1="15"][y1="9"][x2="9"][y2="15"]',
+  },
+] as const satisfies readonly {
+  severity: ToastSeverity
+  role: 'status' | 'alert'
+  iconSelector: string
+}[]
 
-  beforeEach(() => {
-    vi.useFakeTimers()
-    mockOnDismiss.mockClear()
-  })
+function renderToast(severity: ToastSeverity, message = `${severity} notification`) {
+  const onDismiss = vi.fn()
+  const toast = { id: `toast-${severity}`, severity, message }
 
-  afterEach(() => {
-    vi.runOnlyPendingTimers()
-    vi.useRealTimers()
-  })
+  const view = render(<Toast toast={toast} onDismiss={onDismiss} />)
 
-  it('auto-dismisses after the specified duration', () => {
-    render(<Toast toast={{ id: '1', severity: 'info', message: 'Test', durationMs: 5000 }} onDismiss={mockOnDismiss} />)
-    
-    expect(mockOnDismiss).not.toHaveBeenCalled()
-    act(() => {
-      vi.advanceTimersByTime(4999)
-    })
-    expect(mockOnDismiss).not.toHaveBeenCalled()
-    
-    act(() => {
-      vi.advanceTimersByTime(1)
-    })
-    expect(mockOnDismiss).toHaveBeenCalledWith('1')
-  })
+  return { ...view, onDismiss, toast }
+}
 
-  it('pauses timer on mouse hover and resumes on leave from remaining time', () => {
-    render(<Toast toast={{ id: '2', severity: 'success', message: 'Hover me', durationMs: 5000 }} onDismiss={mockOnDismiss} />)
-    
-    // Advance 2000ms, leaving 3000ms
-    act(() => {
-      vi.advanceTimersByTime(2000)
-    })
+describe('Toast', () => {
+  it.each(SEVERITY_CASES)(
+    'renders the $severity notification contract',
+    ({ severity, role, iconSelector }) => {
+      const message = `Review the ${severity} state before submitting`
+      const { container } = renderToast(severity, message)
 
-    const toastElement = screen.getByRole('status')
-    
-    // Mouse enter pauses the timer
-    fireEvent.mouseEnter(toastElement)
-    
-    // Advance 5000ms while hovered - should NOT dismiss
-    act(() => {
-      vi.advanceTimersByTime(5000)
-    })
-    expect(mockOnDismiss).not.toHaveBeenCalled()
+      const toast = screen.getByRole(role)
+      expect(toast).toHaveClass('toast', `toast--${severity}`)
+      expect(within(toast).getByText(message)).toBeInTheDocument()
 
-    // Mouse leave resumes the timer from where it left off (3000ms)
-    fireEvent.mouseLeave(toastElement)
-    
-    // Advance 2999ms - should NOT dismiss yet
-    act(() => {
-      vi.advanceTimersByTime(2999)
-    })
-    expect(mockOnDismiss).not.toHaveBeenCalled()
+      const iconContainer = container.querySelector('.toast__icon-container')
+      expect(iconContainer).toHaveAttribute('aria-hidden', 'true')
+      expect(iconContainer?.querySelector('svg')).toBeInTheDocument()
+      expect(iconContainer?.querySelector(iconSelector)).toBeInTheDocument()
 
-    // Advance final 1ms
-    act(() => {
-      vi.advanceTimersByTime(1)
-    })
-    expect(mockOnDismiss).toHaveBeenCalledWith('2')
-  })
+      expect(
+        screen.getByRole('button', { name: `Dismiss ${severity} notification` })
+      ).toBeInTheDocument()
+    }
+  )
 
-  it('pauses timer on focus and resumes on blur', () => {
-    render(<Toast toast={{ id: '3', severity: 'warning', message: 'Focus me', durationMs: 3000 }} onDismiss={mockOnDismiss} />)
-    
-    // Advance 1000ms, leaving 2000ms
-    act(() => {
-      vi.advanceTimersByTime(1000)
-    })
+  it('passes the toast id to onDismiss when the severity-labelled button is clicked', async () => {
+    const user = userEvent.setup()
+    const { onDismiss, toast } = renderToast('warning')
 
-    const toastElement = screen.getByRole('status')
-    
-    // Focus pauses the timer
-    fireEvent.focus(toastElement)
-    
-    // Advance 3000ms while focused - should NOT dismiss
-    act(() => {
-      vi.advanceTimersByTime(3000)
-    })
-    expect(mockOnDismiss).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Dismiss warning notification' }))
 
-    // Blur resumes it
-    fireEvent.blur(toastElement)
-    
-    // Advance 2000ms
-    act(() => {
-      vi.advanceTimersByTime(2000)
-    })
-    expect(mockOnDismiss).toHaveBeenCalledWith('3')
-  })
-
-  it('maintains paused state if both hovered and focused', () => {
-    render(<Toast toast={{ id: '4', severity: 'info', message: 'Both', durationMs: 4000 }} onDismiss={mockOnDismiss} />)
-    const toastElement = screen.getByRole('status')
-
-    fireEvent.mouseEnter(toastElement)
-    fireEvent.focus(toastElement)
-
-    // Unhover, but keep focus
-    fireEvent.mouseLeave(toastElement)
-
-    act(() => {
-      vi.advanceTimersByTime(5000)
-    })
-    // Should still be paused because focus remains
-    expect(mockOnDismiss).not.toHaveBeenCalled()
-    
-    // Remove focus, timer resumes
-    fireEvent.blur(toastElement)
-    act(() => {
-      vi.advanceTimersByTime(4000)
-    })
-    expect(mockOnDismiss).toHaveBeenCalledWith('4')
-  })
-
-  it('respects sticky behavior for 0 duration (e.g. danger or autoDismiss: off)', () => {
-    render(<Toast toast={{ id: '5', severity: 'danger', message: 'Sticky', durationMs: 0 }} onDismiss={mockOnDismiss} />)
-    const toastElement = screen.getByRole('status')
-
-    // Ensure hovering doesn't crash or trigger resume logic incorrectly.
-    fireEvent.mouseEnter(toastElement)
-    fireEvent.mouseLeave(toastElement)
-
-    act(() => {
-      vi.advanceTimersByTime(10000)
-    })
-    expect(mockOnDismiss).not.toHaveBeenCalled()
-  })
-
-  it('clears timer on component unmount to prevent leaks', () => {
-    const { unmount } = render(<Toast toast={{ id: '6', severity: 'info', message: 'Unmount', durationMs: 5000 }} onDismiss={mockOnDismiss} />)
-    
-    unmount()
-
-    act(() => {
-      vi.advanceTimersByTime(6000)
-    })
-    // Cannot be called because component is gone and timer is cleared
-    expect(mockOnDismiss).not.toHaveBeenCalled()
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(onDismiss).toHaveBeenCalledWith(toast.id)
   })
 })

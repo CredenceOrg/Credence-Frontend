@@ -1,3 +1,5 @@
+import './controls.css'
+
 interface SelectProps {
   id?: string
   value: string
@@ -14,13 +16,6 @@ export default function Select({ id, value, onChange, options, ariaLabel }: Sele
       value={value}
       aria-label={ariaLabel}
       onChange={(e) => onChange(e.target.value)}
-      style={{
-        padding: '0.5rem',
-        borderRadius: '8px',
-        border: '1px solid var(--border-default)',
-        background: 'var(--bg-card)',
-        color: 'var(--text-primary)',
-      }}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>

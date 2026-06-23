@@ -1,9 +1,11 @@
+import { useState, useEffect } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import ThemeToggle from '../components/ThemeToggle'
 import { useToast } from '../components/ToastProvider'
 import { FormField } from '../components/forms/FormField'
 import Toggle from '../components/controls/Toggle'
 import Select from '../components/controls/Select'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import './Settings.css'
 
 export default function Settings() {
@@ -18,8 +20,74 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
+    saveSettings,
   } = useSettings()
   const { addToast } = useToast()
+
+  useDocumentTitle('Settings')
+
+  const [draft, setDraft] = useState({
+    themeMode: themeMode as 'light' | 'dark' | 'system',
+    network,
+    addressDisplay,
+    toastsEnabled,
+    autoDismiss,
+  })
+
+  const isDirty =
+    draft.themeMode !== themeMode ||
+    draft.network !== network ||
+    draft.addressDisplay !== addressDisplay ||
+    draft.toastsEnabled !== toastsEnabled ||
+    draft.autoDismiss !== autoDismiss
+
+  const updateDraft = (key: string, value: string | boolean) => {
+    setDraft((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleSave = () => {
+    if (!isDirty) return
+    const payload = {
+      themeMode: draft.themeMode,
+      network: draft.network,
+      addressDisplay: draft.addressDisplay,
+      toastsEnabled: draft.toastsEnabled,
+      autoDismiss: draft.autoDismiss,
+    }
+    setThemeMode(payload.themeMode)
+    setNetwork(payload.network)
+    setAddressDisplay(payload.addressDisplay)
+    setToastsEnabled(payload.toastsEnabled)
+    setAutoDismiss(payload.autoDismiss)
+    saveSettings(payload)
+    addToast('success', 'Settings saved successfully')
+  }
+
+  const handleCancel = () => {
+    if (isDirty) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Are you sure you want to discard them?'
+      )
+      if (!confirmed) return
+    }
+    setDraft({
+      themeMode: themeMode as 'light' | 'dark' | 'system',
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+    })
+    addToast('info', 'Settings reverted to last saved state')
+  }
+
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
 
   return (
     <div className="settings-page">
@@ -32,15 +100,30 @@ export default function Settings() {
         <FormField id="theme-seg" label="Theme">
           <div role="radiogroup" aria-label="Theme mode" style={{ display: 'flex', gap: '0.5rem' }}>
             <label>
-              <input type="radio" name="theme" checked={themeMode === 'light'} onChange={() => setThemeMode('light')} />{' '}
+              <input
+                type="radio"
+                name="theme"
+                checked={themeMode === 'light'}
+                onChange={() => setThemeMode('light')}
+              />{' '}
               Light
             </label>
             <label>
-              <input type="radio" name="theme" checked={themeMode === 'dark'} onChange={() => setThemeMode('dark')} />{' '}
+              <input
+                type="radio"
+                name="theme"
+                checked={themeMode === 'dark'}
+                onChange={() => setThemeMode('dark')}
+              />{' '}
               Dark
             </label>
             <label>
-              <input type="radio" name="theme" checked={themeMode === 'system'} onChange={() => setThemeMode('system')} />{' '}
+              <input
+                type="radio"
+                name="theme"
+                checked={themeMode === 'system'}
+                onChange={() => setThemeMode('system')}
+              />{' '}
               System
             </label>
           </div>
@@ -49,7 +132,10 @@ export default function Settings() {
         <FormField id="theme-toggle" label="Quick toggle">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <ThemeToggle />
-            <span className="form-hint">Use the quick toggle to flip light/dark immediately.</span>
+            <span className="form-hint">
+              Use the quick toggle to flip light/dark immediately. Theme radio buttons above apply
+              on Save.
+            </span>
           </div>
         </FormField>
       </section>
@@ -59,7 +145,14 @@ export default function Settings() {
         <p className="form-hint">Choose the Stellar network to interact with.</p>
 
         <FormField id="network-select" label="Stellar Network">
-          <Select value={network} onChange={setNetwork} options={[{ value: 'public', label: 'Public (Mainnet)' }, { value: 'test', label: 'Test (Testnet)' }]} />
+          <Select
+            value={network}
+            onChange={setNetwork}
+            options={[
+              { value: 'public', label: 'Public (Mainnet)' },
+              { value: 'test', label: 'Test (Testnet)' },
+            ]}
+          />
         </FormField>
       </section>
 
@@ -72,15 +165,30 @@ export default function Settings() {
           <FormField id="address-display" label="Address format">
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               <label>
-                <input type="radio" name="address" checked={addressDisplay === 'full'} onChange={() => setAddressDisplay('full')} />{' '}
+                <input
+                  type="radio"
+                  name="address"
+                  checked={addressDisplay === 'full'}
+                  onChange={() => setAddressDisplay('full')}
+                />{' '}
                 Full (G...)
               </label>
               <label>
-                <input type="radio" name="address" checked={addressDisplay === 'short'} onChange={() => setAddressDisplay('short')} />{' '}
+                <input
+                  type="radio"
+                  name="address"
+                  checked={addressDisplay === 'short'}
+                  onChange={() => setAddressDisplay('short')}
+                />{' '}
                 Short (G...…)
               </label>
               <label>
-                <input type="radio" name="address" checked={addressDisplay === 'friendly'} onChange={() => setAddressDisplay('friendly')} />{' '}
+                <input
+                  type="radio"
+                  name="address"
+                  checked={addressDisplay === 'friendly'}
+                  onChange={() => setAddressDisplay('friendly')}
+                />{' '}
                 Friendly (when available)
               </label>
             </div>
@@ -93,13 +201,17 @@ export default function Settings() {
         <p className="form-hint">Control toast and notification behavior.</p>
 
         <FormField id="toasts-enabled" label="Enable toasts">
-          <Toggle checked={toastsEnabled} onChange={setToastsEnabled} ariaLabel="Enable toasts" />
+          <Toggle
+            checked={draft.toastsEnabled}
+            onChange={(v) => updateDraft('toastsEnabled', v)}
+            ariaLabel="Enable toasts"
+          />
         </FormField>
 
         <FormField id="auto-dismiss" label="Auto-dismiss duration">
           <Select
-            value={autoDismiss}
-            onChange={setAutoDismiss}
+            value={draft.autoDismiss}
+            onChange={(v) => updateDraft('autoDismiss', v)}
             options={[
               { value: 'off', label: 'Off (require manual dismiss)' },
               { value: '3s', label: '3 seconds' },
@@ -125,10 +237,16 @@ export default function Settings() {
       </section>
 
       <div className="settings-actions">
-        <button type="button" style={{ padding: '0.5rem 0.75rem' }}>
-          Save (spec)
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!isDirty}
+          aria-disabled={!isDirty}
+          style={{ padding: '0.5rem 0.75rem' }}
+        >
+          {isDirty ? 'Save' : 'Saved'}
         </button>
-        <button type="button" style={{ padding: '0.5rem 0.75rem' }} onClick={() => window.history.back()}>
+        <button type="button" onClick={handleCancel} style={{ padding: '0.5rem 0.75rem' }}>
           Cancel
         </button>
       </div>

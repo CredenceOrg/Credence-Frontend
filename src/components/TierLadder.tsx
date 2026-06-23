@@ -2,7 +2,9 @@ import { useId, useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import './TierLadder.css'
 
-export type TierId = 'bronze' | 'silver' | 'gold' | 'platinum'
+import { type TrustTier, TIER_THRESHOLDS } from '../lib/tier'
+
+export type TierId = TrustTier
 
 export interface TierDefinition {
   id: TierId
@@ -17,8 +19,8 @@ export const TIER_LADDER: TierDefinition[] = [
   {
     id: 'bronze',
     label: 'Bronze',
-    scoreMin: 0,
-    scoreMax: 249,
+    scoreMin: TIER_THRESHOLDS.bronze.min,
+    scoreMax: TIER_THRESHOLDS.bronze.max,
     benefits: [
       'Trust score visible in protocol lookups',
       'Eligible to create and maintain a standard bond',
@@ -28,8 +30,8 @@ export const TIER_LADDER: TierDefinition[] = [
   {
     id: 'silver',
     label: 'Silver',
-    scoreMin: 250,
-    scoreMax: 499,
+    scoreMin: TIER_THRESHOLDS.silver.min,
+    scoreMax: TIER_THRESHOLDS.silver.max,
     benefits: [
       'Improved ranking in identity search results',
       'Extended grace period before bond status warnings',
@@ -39,8 +41,8 @@ export const TIER_LADDER: TierDefinition[] = [
   {
     id: 'gold',
     label: 'Gold',
-    scoreMin: 500,
-    scoreMax: 749,
+    scoreMin: TIER_THRESHOLDS.gold.min,
+    scoreMax: TIER_THRESHOLDS.gold.max,
     benefits: [
       'Priority consideration for attestation requests',
       'Reduced slashing sensitivity on first-time violations',
@@ -50,8 +52,8 @@ export const TIER_LADDER: TierDefinition[] = [
   {
     id: 'platinum',
     label: 'Platinum',
-    scoreMin: 750,
-    scoreMax: null,
+    scoreMin: TIER_THRESHOLDS.platinum.min,
+    scoreMax: TIER_THRESHOLDS.platinum.max,
     benefits: [
       'Maximum attestation and bond-duration weighting',
       'Eligible for validator and governance reputation signals',
@@ -91,9 +93,7 @@ export default function TierLadder({ className = '', defaultOpen = false }: Tier
         onClick={() => setIsOpen((open) => !open)}
       >
         <span className="tier-ladder__trigger-label">How trust is earned</span>
-        <span className="tier-ladder__trigger-hint">
-          Tier thresholds and benefits
-        </span>
+        <span className="tier-ladder__trigger-hint">Tier thresholds and benefits</span>
         <svg
           className={`tier-ladder__chevron${isOpen ? ' tier-ladder__chevron--open' : ''}`}
           width="20"
@@ -110,23 +110,15 @@ export default function TierLadder({ className = '', defaultOpen = false }: Tier
         </svg>
       </button>
 
-      <div
-        id={panelId}
-        className="tier-ladder__panel"
-        hidden={!isOpen}
-      >
+      <div id={panelId} className="tier-ladder__panel" hidden={!isOpen}>
         <p className="tier-ladder__intro">
-          Your trust score (0–1000) is computed from bond amount, bond duration, and
-          attestations. Tiers unlock as your score crosses each threshold at epoch
-          settlement.
+          Your trust score (0–1000) is computed from bond amount, bond duration, and attestations.
+          Tiers unlock as your score crosses each threshold at epoch settlement.
         </p>
 
         <ol className="tier-ladder__list">
           {TIER_LADDER.map((tier, index) => (
-            <li
-              key={tier.id}
-              className={`tier-ladder__step tier-ladder__step--${tier.id}`}
-            >
+            <li key={tier.id} className={`tier-ladder__step tier-ladder__step--${tier.id}`}>
               <div className="tier-ladder__rail" aria-hidden="true">
                 <span className="tier-ladder__marker">{index + 1}</span>
                 {index < TIER_LADDER.length - 1 && <span className="tier-ladder__connector" />}

@@ -12,7 +12,8 @@
   background: var(--credence-surface-card);
   color: var(--credence-text-primary);
   cursor: pointer;
-  transition: background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+  transition:
+    background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
     border-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
     color var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
 }

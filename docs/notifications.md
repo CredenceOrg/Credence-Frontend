@@ -129,7 +129,10 @@ const triggerRef = useRef<HTMLButtonElement>(null)
 
 - Banners use `role="alert"` for `warning`/`critical` and `role="status"` for `info`/`success`
 - `aria-label` on the banner root announces severity to screen readers
-- Toast container uses `aria-live="polite"` so screen readers announce new toasts
+- Toast container splits toasts across two sibling live regions to avoid double-announcing:
+  - `aria-live="polite"` (labelled "Notifications") for `info`, `success`, and `warning` — announced when the screen reader is idle
+  - `aria-live="assertive"` (labelled "Error notifications") for `danger` — interrupts and announces immediately, matching the sticky, must-acknowledge nature of error feedback
+- Individual toast elements use `role="alert"` for `danger` and `role="status"` for all other severities
 - Dismiss buttons have `aria-label` text
 - Icons are marked `aria-hidden="true"` (decorative)
 - Dismiss buttons are keyboard-focusable and respond to Enter/Space
@@ -214,3 +217,15 @@ addToast('success', 'Bond created successfully.')
 - Keep toast messages under ~80 characters
 - Persistent banners should only be removed when the underlying condition resolves — never auto-dismiss them
 - Dismissible banners should always restore focus on close
+
+---
+
+## Dev-only Toast QA Harness
+
+`src/pages/ToastTest.tsx` is a manual QA harness for verifying toast appearance and behaviour. It is **not a user-facing page**.
+
+- **Dev access**: navigate to `/dev/toasts` when running the Vite dev server (`npm run dev`).
+- **Production**: the route and module are absent from the production bundle. Vite replaces `import.meta.env.DEV` with `false` at build time; Rollup eliminates the dead branch, so `ToastTest` is never included in `dist/`.
+- **Do not delete**: the harness is useful for checking glassmorphism, SVG icons, stacking, mobile placement, and accessibility during development.
+
+The harness covers the design-verification checklist: glassmorphism, SVG icons, mobile bottom-center placement, 3-toast stack limit, "Dismiss All", and `prefers-reduced-motion`.

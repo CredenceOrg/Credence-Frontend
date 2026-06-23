@@ -36,7 +36,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       ref={ref}
       type={type}
       disabled={isDisabled}
-      className={`credence-button credence-button--${variant} ${fullWidth ? 'credence-button--full-width' : ''} ${className}`}
+      className={[
+        'credence-button',
+        `credence-button--${variant}`,
+        fullWidth ? 'credence-button--full-width' : '',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
       aria-busy={isLoading}
       {...props}
     >

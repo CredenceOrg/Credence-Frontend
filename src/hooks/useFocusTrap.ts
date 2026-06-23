@@ -89,12 +89,5 @@ export function useFocusTrap({
         requestAnimationFrame(() => returnTarget.focus())
       }
     }
-  }, [
-    containerRef,
-    isActive,
-    initialFocusRef,
-    returnFocusRef,
-    onEscape,
-    returnFocusOnDeactivate,
-  ])
+  }, [containerRef, isActive, initialFocusRef, returnFocusRef, onEscape, returnFocusOnDeactivate])
 }

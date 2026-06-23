@@ -433,6 +433,89 @@ Before shipping, validate:
 
 ---
 
+---
+
+## Error Boundary Strategy
+
+### Architecture
+
+Two boundaries protect the app from white-screen crashes:
+
+| Layer            | Component        | Location                         | Catches                                  |
+| ---------------- | ---------------- | -------------------------------- | ---------------------------------------- |
+| Root (outermost) | `ErrorBoundary`  | `main.tsx` wrapping `<App />`    | Provider bootstrap errors                |
+| Route tree       | `ErrorBoundary`  | `App.tsx` wrapping `<Suspense>`  | Lazy-chunk failures, route render errors |
+| Router-level     | `RouteErrorPage` | `errorElement` on root `<Route>` | Loader errors (data-router)              |
+
+### Class ErrorBoundary (`src/components/ErrorBoundary.tsx`)
+
+```tsx
+import ErrorBoundary from './components/ErrorBoundary'
+
+// Default fallback (ErrorState + retry + home link)
+<ErrorBoundary>
+  <SomeSubtree />
+</ErrorBoundary>
+
+// Custom fallback via render prop
+<ErrorBoundary fallback={(error, reset) => (
+  <div>
+    <p>{error.message}</p>
+    <button onClick={reset}>Retry</button>
+  </div>
+)}>
+  <SomeSubtree />
+</ErrorBoundary>
+```
+
+**Retry behaviour:** clicking "Try again" calls `setState({ hasError: false, error: null })`.
+React re-renders the children without a hard reload. If they throw again the boundary
+catches once more.
+
+**Telemetry hook:** `componentDidCatch` currently logs to `console.error`. Replace the
+`console.error` call with your error monitoring SDK (Sentry, Datadog, etc.) before shipping.
+
+### RouteErrorPage (`src/pages/RouteErrorPage.tsx`)
+
+Registered as `errorElement` on the root route. In the current `BrowserRouter` setup this
+serves as forward-compatible scaffolding; it becomes fully active if the app is migrated to
+`createBrowserRouter`. Handles 404 (route miss) and generic router errors with the same
+`ErrorState` visual.
+
+### Accessibility
+
+- The fallback renders an `<h3>` heading from `ErrorState` — screen readers announce the error.
+- A `<a href="/">Go to home page</a>` link ensures keyboard-only users have a navigation escape hatch even if JavaScript is broken.
+- The retry `<button>` is `focus-visible` styled via the shared class.
+
+---
+
+## Bond Row Inline Slash-Exposure Disclosure
+
+Each bond row in the Active Bonds list surfaces penalty exposure inline — before the user commits to withdrawing — via an accessible disclosure.
+
+### States per row
+
+| Bond status | Disclosure control | Panel content |
+|---|---|---|
+| `locked` | "Show penalty" button (`aria-expanded`) | Bond amount, 20% penalty amount, resulting balance |
+| `grace-period` | "Show penalty" button (`aria-expanded`) | Bond amount, 10% penalty amount, resulting balance |
+| `active` | None (no expander) | Static "No early-withdrawal penalty" message |
+
+### Behaviour
+
+- The toggle button carries `aria-expanded="false"` when collapsed and `aria-expanded="true"` when open, pointing to the panel via `aria-controls`.
+- The panel uses `role="region"` with an `aria-label` identifying the bond.
+- The breakdown values (bond amount, penalty %, penalty USDC, resulting balance) are computed by `computeWithdrawBreakdown` — the same function used in the `ConfirmDialog` — so numbers are identical at both stages.
+- Active bonds show a "No early-withdrawal penalty" message in place of the expander to make the safe state explicit.
+- The row layout uses `flexWrap: wrap` so it reflows cleanly on narrow viewports.
+
+### Disclaimer placement
+
+The existing page-level slash-exposure `Banner` remains above the bond list as a summary callout. The per-row disclosure is the detailed, bond-specific complement to that banner — not a replacement.
+
+---
+
 ## Future Enhancements
 
 - Custom illustrations for each empty state

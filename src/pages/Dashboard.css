@@ -1,0 +1,135 @@
+.dashboard {
+  display: grid;
+  gap: var(--credence-space-8);
+}
+
+.dashboard__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--credence-space-6);
+}
+
+.dashboard__title {
+  color: var(--credence-text-primary);
+  line-height: var(--credence-line-height-tight);
+  margin-bottom: var(--credence-space-2);
+}
+
+.dashboard__description {
+  color: var(--credence-text-secondary);
+  max-width: 44rem;
+}
+
+.dashboard__wallet {
+  display: grid;
+  gap: var(--credence-space-1);
+  min-width: 13rem;
+  padding: var(--credence-space-3) var(--credence-space-4);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  background: var(--credence-surface-card);
+}
+
+.dashboard__walletLabel,
+.dashboard__metricLabel,
+.dashboard__bondMeta,
+.dashboard__shortcutDescription {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+}
+
+.dashboard__walletAddress {
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-sm);
+}
+
+.dashboard__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--credence-space-6);
+  align-items: start;
+}
+
+.dashboard__grid--activity {
+  grid-template-columns: minmax(0, 1.4fr) minmax(min(100%, 18rem), 0.6fr);
+}
+
+.dashboard__cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--credence-space-4);
+}
+
+.dashboard__metric {
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-xl);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+}
+
+.dashboard__trustGauge {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+
+.dashboard__bondList {
+  display: grid;
+  list-style: none;
+}
+
+.dashboard__bondRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--credence-space-4);
+  padding-block: var(--credence-space-3);
+  border-bottom: 1px solid var(--credence-border-default);
+}
+
+.dashboard__bondRow:last-child {
+  border-bottom: 0;
+}
+
+.dashboard__bondAmount,
+.dashboard__shortcutLabel {
+  color: var(--credence-text-primary);
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+.dashboard__shortcutList {
+  display: grid;
+  gap: var(--credence-space-3);
+}
+
+.dashboard__shortcut {
+  display: grid;
+  gap: var(--credence-space-1);
+  padding: var(--credence-space-3);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  background: var(--credence-surface-page);
+  color: inherit;
+}
+
+.dashboard__shortcut:hover {
+  color: inherit;
+  border-color: var(--credence-color-primary);
+}
+
+@media (max-width: 767px) {
+  .dashboard__header {
+    display: grid;
+  }
+
+  .dashboard__grid--activity {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard__wallet {
+    width: 100%;
+  }
+}

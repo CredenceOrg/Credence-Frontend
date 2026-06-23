@@ -127,6 +127,15 @@
   cursor: not-allowed;
 }
 
+.amountInput__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--credence-space-1);
+  color: var(--credence-color-danger-text, #dc2626);
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-tight, 1.4);
+}
+
 @media (max-width: 480px) {
   .amountInput__row {
     flex-direction: column;
@@ -137,4 +146,3 @@
     width: 100%;
   }
 }
-

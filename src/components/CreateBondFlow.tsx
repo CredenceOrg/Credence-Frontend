@@ -87,7 +87,6 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
     setAcknowledged(false)
   }
 
-
   const handleNext = () => {
     if (step === 1) {
       if (!amount || Number(amount) <= 0) {
@@ -136,23 +135,13 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   // Step indicator
   // ---------------------------------------------------------------------------
   const StepIndicator = () => (
-    <div
-      style={{
-        display: 'flex',
-        gap: 'var(--credence-space-2)',
-        marginBottom: 'var(--credence-space-4)',
-      }}
-      aria-label={`Step ${step} of 4`}
-    >
+    <div className="createBondFlow__stepIndicator" aria-label={`Step ${step} of 4`}>
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
+          className={`createBondFlow__stepBar${i <= step ? ' createBondFlow__stepBar--active' : ''}`}
           style={{
-            flex: 1,
-            height: '4px',
-            borderRadius: 'var(--credence-radius-full)',
-            background: i <= step ? 'var(--color-primary)' : 'var(--border-default)',
-            transition: prefersReducedMotion ? 'none' : 'background 0.2s ease',
+            transition: prefersReducedMotion ? 'none' : undefined,
           }}
         />
       ))}
@@ -168,12 +157,8 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
 
       {/* ── Step 1: Amount ── */}
       {step === 1 && (
-        <div style={{ display: 'grid', gap: 'var(--credence-space-4)' }}>
-          <h2
-            ref={step1Ref}
-            tabIndex={-1}
-            style={{ outline: 'none', color: 'var(--text-primary)' }}
-          >
+        <div className="createBondFlow__step">
+          <h2 ref={step1Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 1: Enter Bond Amount
           </h2>
 
@@ -198,31 +183,21 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
 
       {/* ── Step 2: Duration ── */}
       {step === 2 && (
-        <div style={{ display: 'grid', gap: 'var(--credence-space-4)' }}>
-          <h2
-            ref={step2Ref}
-            tabIndex={-1}
-            style={{ outline: 'none', color: 'var(--text-primary)' }}
-          >
+        <div className="createBondFlow__step">
+          <h2 ref={step2Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 2: Choose Lock Duration
           </h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
+          <p style={{ color: 'var(--credence-text-secondary)' }}>
             Select how long you want to lock your USDC:
           </p>
 
           {error && (
-            <div
-              role="alert"
-              style={{
-                color: 'var(--color-danger)',
-                fontWeight: 'var(--credence-font-weight-semibold)',
-              }}
-            >
+            <div role="alert" className="createBondFlow__error">
               ⚠ {error}
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 'var(--credence-space-3)', flexWrap: 'wrap' }}>
+          <div className="createBondFlow__durationRow">
             {[30, 90, 180].map((d) => (
               <Button
                 key={d}
@@ -231,16 +206,9 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                   setDuration(d)
                   if (error) setError('')
                 }}
+                className={`createBondFlow__durationButton${duration === d ? ' createBondFlow__durationButton--active' : ''}`}
                 style={{
-                  flex: 1,
-                  padding: 'var(--credence-space-4)',
-                  background: duration === d ? 'var(--color-primary)' : 'var(--bg-page)',
-                  color: duration === d ? 'var(--bg-page)' : 'var(--text-primary)',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--credence-radius-lg)',
-                  fontWeight: 'var(--credence-font-weight-semibold)',
-                  cursor: 'pointer',
-                  transition: prefersReducedMotion ? 'none' : 'all 0.2s ease',
+                  transition: prefersReducedMotion ? 'none' : undefined,
                 }}
               >
                 {d} Days
@@ -252,15 +220,10 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
 
       {/* ── Step 3: Review Terms ── */}
       {step === 3 && (
-        <div style={{ display: 'grid', gap: 'var(--credence-space-4)' }}>
-          <h2
-            ref={step3Ref}
-            tabIndex={-1}
-            style={{ outline: 'none', color: 'var(--text-primary)' }}
-          >
+        <div className="createBondFlow__step">
+          <h2 ref={step3Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 3: Review Terms
           </h2>
-
 
           <Banner severity="warning" title="Early withdrawal — slash exposure">
             Withdrawing before lock maturity incurs a slash penalty on your principal. The figures
@@ -270,25 +233,25 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           {/* ── Bond summary card ── */}
           <div className="createBondFlow__reviewCard">
             {/* Bond amount */}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Bond Amount:</span>
-              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-bond-amount">
+            <div className="createBondFlow__reviewRow">
+              <span className="createBondFlow__reviewLabel">Bond Amount:</span>
+              <strong className="createBondFlow__reviewValue" data-testid="review-bond-amount">
                 {amount} USDC
               </strong>
             </div>
 
             {/* Lock duration */}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Lock Duration:</span>
-              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-duration">
+            <div className="createBondFlow__reviewRow">
+              <span className="createBondFlow__reviewLabel">Lock Duration:</span>
+              <strong className="createBondFlow__reviewValue" data-testid="review-duration">
                 {duration} Days
               </strong>
             </div>
 
             {/* Unlock date */}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Estimated Unlock Date:</span>
-              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-unlock-date">
+            <div className="createBondFlow__reviewRow">
+              <span className="createBondFlow__reviewLabel">Estimated Unlock Date:</span>
+              <strong className="createBondFlow__reviewValue" data-testid="review-unlock-date">
                 {duration ? calcUnlockDate(duration) : ''}
               </strong>
             </div>
@@ -303,14 +266,12 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             {slashBreakdown ? (
               <>
                 {/* Slash penalty % + amount */}
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <span style={{ color: 'var(--text-secondary)' }}>
+                <div className="createBondFlow__penaltyRow">
+                  <span className="createBondFlow__penaltyLabel">
                     Slash Penalty ({slashBreakdown.penaltyPercent}%):
                   </span>
                   <strong
-                    style={{ color: 'var(--color-danger)' }}
+                    className="createBondFlow__penaltyAmount"
                     data-testid="review-penalty-amount"
                   >
                     −{slashBreakdown.penaltyAmount}
@@ -318,34 +279,15 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                 </div>
 
                 {/* Resulting balance */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: 'var(--credence-space-2) var(--credence-space-3)',
-                    borderRadius: 'var(--credence-radius-md)',
-                    background: 'var(--bg-surface, var(--bg-page))',
-                    border: '1px solid var(--border-default)',
-                  }}
-                >
-                  <span
-                    style={{
-                      color: 'var(--text-secondary)',
-                      fontWeight: 'var(--credence-font-weight-semibold)',
-                    }}
-                  >
-                    You would receive:
-                  </span>
+                <div className="createBondFlow__resultPanel">
+                  <span className="createBondFlow__resultLabel">You would receive:</span>
 
                   <strong
-                    style={{
-                      color:
-                        slashBreakdown.resultingUsdc < Number(amount)
-                          ? 'var(--color-danger)'
-                          : 'var(--text-primary)',
-                      fontSize: 'var(--credence-font-size-lg, 1.125rem)',
-                    }}
+                    className={`createBondFlow__resultValue${
+                      slashBreakdown.resultingUsdc < Number(amount)
+                        ? ' createBondFlow__resultValue--danger'
+                        : ' createBondFlow__resultValue--normal'
+                    }`}
                     data-testid="review-resulting-balance"
                   >
                     {slashBreakdown.resultingBalance}
@@ -354,9 +296,9 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
               </>
             ) : (
               /* Fallback: breakdown unavailable (should not normally be reached in step 3) */
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Slash Terms:</span>
-                <strong style={{ color: 'var(--color-danger)' }}>Penalties Apply</strong>
+              <div className="createBondFlow__reviewRow">
+                <span className="createBondFlow__reviewLabel">Slash Terms:</span>
+                <strong style={{ color: 'var(--credence-color-danger)' }}>Penalties Apply</strong>
               </div>
             )}
           </div>
@@ -365,12 +307,8 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
 
       {/* ── Step 4: Confirm ── */}
       {step === 4 && (
-        <div style={{ display: 'grid', gap: 'var(--credence-space-4)' }}>
-          <h2
-            ref={step4Ref}
-            tabIndex={-1}
-            style={{ outline: 'none', color: 'var(--text-primary)' }}
-          >
+        <div className="createBondFlow__step">
+          <h2 ref={step4Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 4: Confirm Bond
           </h2>
 
@@ -390,13 +328,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       )}
 
       {/* ── Navigation ── */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 'var(--credence-space-3)',
-          marginTop: 'var(--credence-space-4)',
-        }}
-      >
+      <div className="createBondFlow__nav">
         {step > 1 && (
           <Button
             type="button"
@@ -429,14 +361,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
         <Button
           type="button"
           onClick={onCancel ?? reset}
-          style={{
-            padding: 'var(--credence-space-3) var(--credence-space-4)',
-            background: 'var(--bg-page)',
-            color: 'var(--color-danger)',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--credence-radius-lg)',
-            cursor: 'pointer',
-          }}
+          className="createBondFlow__navButton createBondFlow__cancelButton"
         >
           Cancel
         </Button>

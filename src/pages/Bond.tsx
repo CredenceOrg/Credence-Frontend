@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import './Bond.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
@@ -72,43 +73,20 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
   const breakdown = useMemo(() => computeWithdrawBreakdown(bond), [bond])
 
   return (
-    <li
-      style={{
-        display: 'grid',
-        gap: 'var(--credence-space-2)',
-        paddingBlock: 'var(--credence-space-3)',
-        borderBottom: '1px solid var(--border-default)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 'var(--credence-space-3)',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--credence-space-1)' }}>
-          <span style={{ fontWeight: 500 }}>{formatUsdc(bond.amountUsdc)}</span>
+    <li className="bond__row">
+      <div className="bond__rowHeader">
+        <div className="bond__amountColumn">
+          <span className="bond__amount">{formatUsdc(bond.amountUsdc)}</span>
           <Badge variant={bond.status as BadgeVariant} />
         </div>
-        <div style={{ display: 'flex', gap: 'var(--credence-space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="bond__actionRow">
           {hasPenalty && (
             <button
               type="button"
               aria-expanded={open}
               aria-controls={panelId}
               onClick={() => setOpen((v) => !v)}
-              style={{
-                background: 'none',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--credence-radius-sm)',
-                padding: 'var(--credence-space-1) var(--credence-space-2)',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                fontSize: '0.8rem',
-              }}
+              className="bond__penaltyToggle"
             >
               {open ? 'Hide penalty' : 'Show penalty'}
             </button>
@@ -130,35 +108,24 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
           role="region"
           aria-label={`Penalty breakdown for bond ${bond.id}`}
           hidden={!open}
-          style={{
-            display: open ? 'grid' : 'none',
-            gap: 'var(--credence-space-1)',
-            padding: 'var(--credence-space-3)',
-            background: 'var(--surface-warning, #fef3c7)',
-            borderRadius: 'var(--credence-radius-sm)',
-            fontSize: '0.85rem',
-            color: 'var(--text-primary)',
-          }}
+          className="bond__penaltyPanel"
+          style={{ display: open ? 'grid' : 'none' }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Bond amount</span><span>{breakdown.bondAmount}</span>
+          <div className="bond__penaltyRow">
+            <span>Bond amount</span>
+            <span>{breakdown.bondAmount}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Penalty ({breakdown.penaltyPercent}%)</span><span>− {breakdown.penaltyAmount}</span>
+          <div className="bond__penaltyRow">
+            <span>Penalty ({breakdown.penaltyPercent}%)</span>
+            <span>− {breakdown.penaltyAmount}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-            <span>You receive</span><span>{breakdown.resultingBalance}</span>
+          <div className="bond__penaltyRowTotal">
+            <span>You receive</span>
+            <span>{breakdown.resultingBalance}</span>
           </div>
         </div>
       ) : (
-        <p
-          id={panelId}
-          style={{
-            margin: 0,
-            fontSize: '0.85rem',
-            color: 'var(--text-success, #15803d)',
-          }}
-        >
+        <p id={panelId} className="bond__noPenaltyNotice">
           No early-withdrawal penalty
         </p>
       )}
@@ -230,10 +197,10 @@ export default function Bond() {
   )
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--credence-space-8)' }}>
-      <div style={{ display: 'grid', gap: 'var(--credence-space-3)' }}>
-        <h1 style={{ color: 'var(--text-primary)' }}>Bond USDC</h1>
-        <p id="bond-desc" style={{ color: 'var(--text-secondary)', maxWidth: '42rem' }}>
+    <div className="bond__container">
+      <div className="bond__headerSection">
+        <h1 className="bond__title">Bond USDC</h1>
+        <p id="bond-desc" className="bond__description">
           Lock USDC into the Credence contract to build your economic reputation.
         </p>
       </div>
@@ -262,16 +229,9 @@ export default function Bond() {
         </Banner>
       )}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 22rem), 1fr))',
-          gap: 'var(--credence-space-6)',
-          alignItems: 'start',
-        }}
-      >
+      <div className="bond__cardGrid">
         <ActionCard title="Create New Bond">
-          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+          <p style={{ color: 'var(--credence-text-secondary)', margin: 0 }}>
             Lock USDC using the guided four-step wizard — set an amount, choose a lock duration,
             review slash terms, and confirm.
           </p>
@@ -292,7 +252,7 @@ export default function Bond() {
               }}
             />
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid' }}>
+            <ul className="bond__listContainer">
               {bonds.map((bond) => (
                 <BondRow
                   key={bond.id}

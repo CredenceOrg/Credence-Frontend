@@ -80,6 +80,11 @@ This directory contains comprehensive design specifications and implementation g
     - Context responsibilities
     - Theming flow and mock data boundaries
 
+12. **[Keyboard Interactions Contract](./keyboard-interactions.md)** ⭐ NEW
+    - Developer-facing matrix of every interactive component and its expected keyboard behavior
+    - Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
+    - Focus-restore contract and checklist for new interactive components
+
 ### Quick Start
 
 To implement UI states in your components:

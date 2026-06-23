@@ -5,25 +5,16 @@ import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import useCopyToClipboard from '@/hooks/useCopyToClipboard'
 
 export interface AddressInputProps {
-  /** Input id forwarded to FormField for label and description wiring. */
   id: string
-  /** Visible field label. Defaults to `Stellar Address`. */
   label?: string
-  /** Controlled Stellar public key value. */
   value: string
-  /** Called with the raw address text whenever the user edits or pastes. */
   onChange: (value: string) => void
-  /** Receives the current 56-character Stellar public key validation state. */
   onValidationChange?: (isValid: boolean) => void
-  /** Disables both the text input and paste button. */
   disabled?: boolean
-  /** Additional class names appended to the wrapper. */
   className?: string
 }
 
-/**
- * Internal component to handle prop injection from FormField
- */
+
 interface AddressInputInnerProps {
   id?: string
   'aria-describedby'?: string
@@ -121,7 +112,8 @@ export default function AddressInput({
   const [attempted, setAttempted] = useState(false)
   const { copy, copied } = useCopyToClipboard()
 
-  const isValid = isValidStellarAddress(value)
+  const debouncedValue = useDebouncedValue(value, 200)
+  const isValid = isValidStellarAddress(debouncedValue)
   const isEmpty = !value
   const showError = attempted && !isValid && !isEmpty
   const showSuccess = attempted && isValid

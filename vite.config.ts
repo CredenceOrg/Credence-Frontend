@@ -19,6 +19,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    pool: 'forks',
     setupFiles: ['./src/test-setup.ts'],
     alias: {
       '@stellar/freighter-api': path.resolve(__dirname, './src/test/__mocks__/freighter-api.stub.ts'),

@@ -1,4 +1,5 @@
 import './TrustGauge.css'
+import { useMemo } from 'react'
 
 import { type TrustTier, TIER_THRESHOLDS } from '../lib/tier'
 
@@ -58,6 +59,11 @@ const MAX_SCORE = 1000
 /** Tier order for progression */
 const TIER_ORDER: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
 
+/** Pre-computed map for O(1) tier index lookups */
+const TIER_INDEX_MAP = TIER_ORDER.reduce((acc, tier, index) => {
+  acc[tier] = index
+  return acc
+}, {} as Record<TrustTier, number>)
 /**
  * Calculate points remaining to reach the next tier
  * @param score Current score
@@ -65,7 +71,7 @@ const TIER_ORDER: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
  * @returns Points needed to reach next tier (0 if at platinum)
  */
 export function pointsToNextTier(score: number, tier: TrustTier): number {
-  const tierIndex = TIER_ORDER.indexOf(tier)
+  const tierIndex = TIER_INDEX_MAP[tier]
   if (tierIndex === TIER_ORDER.length - 1) {
     // Already at platinum
     return 0
@@ -89,9 +95,16 @@ export default function TrustGauge({
   className = '',
   id = 'trust-gauge',
 }: TrustGaugeProps) {
-  const percentage = getProgressPercentage(score)
-  const nextTierPoints = pointsToNextTier(score, tier)
-  const isAtMax = tier === 'platinum' && score >= TIER_CONFIG.platinum.max
+  const { percentage, nextTierPoints, isAtMax, nextTierLabel } = useMemo(() => {
+    const currentTierIndex = TIER_INDEX_MAP[tier]
+    const nextTier = TIER_ORDER[currentTierIndex + 1]
+    return {
+      percentage: getProgressPercentage(score),
+      nextTierPoints: pointsToNextTier(score, tier),
+      isAtMax: tier === 'platinum' && score >= TIER_CONFIG.platinum.max,
+      nextTierLabel: nextTier,
+    }
+  }, [score, tier])
 
   return (
     <div className={`trust-gauge ${className}`} id={id}>
@@ -202,7 +215,7 @@ export default function TrustGauge({
             <span className="trust-gauge__maxed">Platinum tier — maximum score achieved</span>
           ) : (
             <span className="trust-gauge__next-tier">
-              {nextTierPoints} points to {TIER_ORDER[TIER_ORDER.indexOf(tier) + 1]}
+              {nextTierPoints} points to {nextTierLabel}
             </span>
           )}
         </div>

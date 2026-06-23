@@ -59,7 +59,7 @@ export default function Settings() {
     setAddressDisplay(payload.addressDisplay)
     setToastsEnabled(payload.toastsEnabled)
     setAutoDismiss(payload.autoDismiss)
-    saveSettings(payload)
+    saveSettings()
     addToast('success', 'Settings saved successfully')
   }
 

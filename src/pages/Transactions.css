@@ -1,0 +1,146 @@
+.transactions__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--credence-space-4);
+  margin-bottom: var(--credence-space-6);
+}
+
+.transactions__title {
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-xl);
+  font-weight: var(--credence-font-weight-bold);
+}
+
+.transactions__description {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+  margin-bottom: var(--credence-space-6);
+}
+
+.transactions__filterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-3);
+  margin-bottom: var(--credence-space-4);
+}
+
+.transactions__filterLabel {
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+  white-space: nowrap;
+}
+
+.transactions__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--credence-font-size-sm);
+}
+
+.transactions__table th {
+  text-align: left;
+  padding: var(--credence-space-3) var(--credence-space-4);
+  color: var(--credence-text-secondary);
+  font-weight: var(--credence-font-weight-semibold);
+  border-bottom: 1px solid var(--credence-border-default);
+  white-space: nowrap;
+}
+
+.transactions__table td {
+  padding: var(--credence-space-3) var(--credence-space-4);
+  border-bottom: 1px solid var(--credence-border-default);
+  color: var(--credence-text-primary);
+  vertical-align: middle;
+}
+
+.transactions__table tr:last-child td {
+  border-bottom: none;
+}
+
+.transactions__hash {
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  font-size: var(--credence-font-size-xs);
+  color: var(--credence-text-secondary);
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.transactions__explorerLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-space-1);
+  color: var(--credence-color-primary);
+  font-size: var(--credence-font-size-xs);
+  white-space: nowrap;
+}
+
+.transactions__explorerLink:hover {
+  color: var(--credence-color-primary-strong);
+}
+
+.transactions__type {
+  text-transform: capitalize;
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+/* Zero-filter result — distinct from true empty state */
+.transactions__noResults {
+  text-align: center;
+  padding: var(--credence-space-12) var(--credence-space-6);
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+}
+
+@media (max-width: 639px) {
+  .transactions__table,
+  .transactions__table thead,
+  .transactions__table tbody,
+  .transactions__table tr,
+  .transactions__table th,
+  .transactions__table td {
+    display: block;
+  }
+
+  .transactions__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .transactions__table tr {
+    border: 1px solid var(--credence-border-default);
+    border-radius: var(--credence-radius-lg);
+    margin-bottom: var(--credence-space-3);
+    padding: var(--credence-space-3);
+  }
+
+  .transactions__table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .transactions__table td {
+    border-bottom: none;
+    padding: var(--credence-space-1) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--credence-space-2);
+  }
+
+  .transactions__table td::before {
+    content: attr(data-label);
+    font-weight: var(--credence-font-weight-semibold);
+    color: var(--credence-text-secondary);
+    font-size: var(--credence-font-size-xs);
+    min-width: 6rem;
+    flex-shrink: 0;
+  }
+}

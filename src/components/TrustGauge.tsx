@@ -212,18 +212,22 @@ export default function TrustGauge({
       <div className="trust-gauge__legend">
         <p className="trust-gauge__legend-title">Tier Ranges</p>
         <ul className="trust-gauge__legend-list">
-          {TIER_ORDER.map((t) => (
-            <li key={t} className="trust-gauge__legend-item">
-              <span
-                className="trust-gauge__legend-dot"
-                style={{ backgroundColor: TIER_CONFIG[t].color }}
-                aria-hidden="true"
-              />
-              <span className="trust-gauge__legend-text">
-                {TIER_CONFIG[t].label}: {TIER_CONFIG[t].min}–{TIER_CONFIG[t].max}
-              </span>
-            </li>
-          ))}
+          {TIER_ORDER.map((t, idx) => {
+            const nextTier = TIER_ORDER[idx + 1]
+            const upperBound = nextTier ? TIER_CONFIG[nextTier].min : MAX_SCORE
+            return (
+              <li key={t} className="trust-gauge__legend-item">
+                <span
+                  className="trust-gauge__legend-dot"
+                  style={{ backgroundColor: TIER_CONFIG[t].color }}
+                  aria-hidden="true"
+                />
+                <span className="trust-gauge__legend-text">
+                  {`${TIER_CONFIG[t].label}: ${TIER_CONFIG[t].min}–${upperBound}`}
+                </span>
+              </li>
+            )
+          })}
         </ul>
       </div>
     </div>

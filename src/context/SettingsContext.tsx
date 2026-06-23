@@ -19,6 +19,54 @@ interface SettingsState {
 }
 
 const STORAGE_KEY = 'credence:settings'
+const LEGACY_THEME_KEY = 'theme'
+
+const VALID_THEME_MODES = new Set(['light', 'dark', 'system'])
+
+function loadInitialSettings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    const saved = raw ? (JSON.parse(raw) as Record<string, unknown>) : null
+
+    // Read the legacy 'theme' key written by the old ThemeToggle
+    const legacyTheme = localStorage.getItem(LEGACY_THEME_KEY)
+
+    // credence:settings wins if it already exists; otherwise promote the legacy value
+    const themeMode: ThemeMode =
+      ((saved?.themeMode as string | undefined) &&
+        VALID_THEME_MODES.has(saved!.themeMode as string)
+        ? (saved!.themeMode as ThemeMode)
+        : undefined) ??
+      (legacyTheme && VALID_THEME_MODES.has(legacyTheme) ? (legacyTheme as ThemeMode) : undefined) ??
+      'system'
+
+    // Remove the orphan legacy key — it has been folded in
+    try { localStorage.removeItem(LEGACY_THEME_KEY) } catch { /* ignore */ }
+
+    // Persist the migrated value immediately so it becomes the single source of truth
+    if (legacyTheme) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          themeMode,
+          network: (saved?.network as string) || 'public',
+          addressDisplay: (saved?.addressDisplay as string) || 'short',
+          toastsEnabled: typeof saved?.toastsEnabled === 'boolean' ? saved.toastsEnabled : true,
+          autoDismiss: (saved?.autoDismiss as string) || '5s',
+        }))
+      } catch { /* ignore */ }
+    }
+
+    return {
+      themeMode,
+      network: (saved?.network as string) || 'public',
+      addressDisplay: (saved?.addressDisplay as string) || 'short',
+      toastsEnabled: typeof saved?.toastsEnabled === 'boolean' ? saved.toastsEnabled : true,
+      autoDismiss: (saved?.autoDismiss as string) || '5s',
+    }
+  } catch {
+    return null
+  }
+}
 
 const defaultState: SettingsState = {
   themeMode: 'system',
@@ -43,46 +91,21 @@ export function useSettings() {
 }
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  // Load saved settings from localStorage
-  const loadSavedSettings = () => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return null
-      return JSON.parse(raw)
-    } catch {
-      return null
-    }
-  }
+  const initial = loadInitialSettings()
 
-  const savedSettings = loadSavedSettings()
-
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    return (savedSettings?.themeMode as ThemeMode) || 'system'
-  })
-
-  const [network, setNetwork] = useState<string>(() => {
-    return savedSettings?.network || 'public'
-  })
-
-  const [addressDisplay, setAddressDisplay] = useState<string>(() => {
-    return savedSettings?.addressDisplay || 'short'
-  })
-
-  const [toastsEnabled, setToastsEnabled] = useState<boolean>(() => {
-    return typeof savedSettings?.toastsEnabled === 'boolean' ? savedSettings.toastsEnabled : true
-  })
-
-  const [autoDismiss, setAutoDismiss] = useState<string>(() => {
-    return savedSettings?.autoDismiss || '5s'
-  })
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => initial?.themeMode ?? 'system')
+  const [network, setNetwork] = useState<string>(() => initial?.network ?? 'public')
+  const [addressDisplay, setAddressDisplay] = useState<string>(() => initial?.addressDisplay ?? 'short')
+  const [toastsEnabled, setToastsEnabled] = useState<boolean>(() => initial?.toastsEnabled ?? true)
+  const [autoDismiss, setAutoDismiss] = useState<string>(() => initial?.autoDismiss ?? '5s')
 
   // Track the original saved state to detect unsaved changes
   const [originalSettings, setOriginalSettings] = useState(() => ({
-    themeMode,
-    network,
-    addressDisplay,
-    toastsEnabled,
-    autoDismiss,
+    themeMode: initial?.themeMode ?? 'system' as ThemeMode,
+    network: initial?.network ?? 'public',
+    addressDisplay: initial?.addressDisplay ?? 'short',
+    toastsEnabled: initial?.toastsEnabled ?? true,
+    autoDismiss: initial?.autoDismiss ?? '5s',
   }))
 
   // Check if there are unsaved changes
@@ -101,18 +124,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       // ignore
     }
   }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss])
-
-  // One-time migration: the legacy ThemeToggle persisted theme under a separate
-  // 'theme' key. Its value (if any) seeds `themeMode` above and is folded into
-  // credence:settings by the persist effect; here we drop the orphan key so the
-  // theme has exactly one source of truth.
-  useEffect(() => {
-    try {
-      localStorage.removeItem(LEGACY_THEME_KEY)
-    } catch {
-      // ignore
-    }
-  }, [])
 
   // Explicit save function
   const saveSettings = () => {

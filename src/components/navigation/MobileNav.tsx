@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/bond', label: 'Bond' },
   { to: '/trust', label: 'Trust Score' },
+  { to: '/transactions', label: 'Transactions' },
   { to: '/settings', label: 'Settings' },
 ]
 

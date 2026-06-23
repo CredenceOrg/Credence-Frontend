@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeUSDC, formatUSDC, sanitizeUSDCInput } from './AmountInput'
+import { normalizeUSDC, formatUSDC, sanitizeUSDCInput } from '../lib/format'
 
 // --- sanitizeUSDCInput ---
 describe('sanitizeUSDCInput', () => {

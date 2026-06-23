@@ -14,7 +14,7 @@ const defaultWalletState: WalletContextValue = {
   error: null,
   connect: async () => {},
   disconnect: () => {},
-  network: 'public',
+  network: null,
 }
 
 const WalletContext = createContext<WalletContextValue>(defaultWalletState)

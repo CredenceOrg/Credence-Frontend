@@ -1,11 +1,20 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TrustScore from './TrustScore'
 import type { TrustScore as TrustScoreData } from '../api/types'
 
 const mockConnect = vi.fn()
+const mockSetNetwork = vi.fn()
 const mockRefetch = vi.fn()
 let mockConnected = true
+let mockAppNetwork: 'public' | 'test' = 'public'
+let mockWalletNetwork: 'public' | 'test' | null = 'public'
+let mockNetworkMismatch = {
+  mismatch: false,
+  expected: 'Public (Mainnet)',
+  actual: '',
+}
 let mockTrustScoreState: {
   data: TrustScoreData | null
   isLoading: boolean
@@ -27,8 +36,19 @@ vi.mock('../context/WalletContext', () => ({
     disconnect: vi.fn(),
     isConnecting: false,
     error: null,
-    network: 'public',
+    network: mockWalletNetwork,
   }),
+}))
+
+vi.mock('../context/SettingsContext', () => ({
+  useSettings: () => ({
+    network: mockAppNetwork,
+    setNetwork: mockSetNetwork,
+  }),
+}))
+
+vi.mock('../hooks/useNetworkMismatch', () => ({
+  useNetworkMismatch: () => mockNetworkMismatch,
 }))
 
 vi.mock('../hooks/useTrustScore', () => ({
@@ -51,9 +71,17 @@ const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
 describe('TrustScore', () => {
   beforeEach(() => {
     mockConnect.mockClear()
+    mockSetNetwork.mockClear()
     mockRefetch.mockClear()
     mockSetSearchParams.mockClear()
     mockConnected = true
+    mockAppNetwork = 'public'
+    mockWalletNetwork = 'public'
+    mockNetworkMismatch = {
+      mismatch: false,
+      expected: 'Public (Mainnet)',
+      actual: '',
+    }
     mockSearchParams = new URLSearchParams()
     mockTrustScoreState = {
       data: null,
@@ -86,14 +114,56 @@ describe('TrustScore', () => {
 
     expect(screen.getByRole('button', { name: /connect wallet to continue/i })).toBeInTheDocument()
   })
+
+  it('shows a warning banner and disables lookup when the wallet network differs', () => {
+    mockWalletNetwork = 'test'
+    mockNetworkMismatch = {
+      mismatch: true,
+      expected: 'Public (Mainnet)',
+      actual: 'Test (Testnet)',
+    }
+    render(<TrustScore />)
+
+    expect(screen.getByRole('alert', { name: /warning banner/i })).toHaveTextContent(
+      /Credence is set to Public \(Mainnet\), but Freighter is on Test \(Testnet\)/i
+    )
+    expect(screen.getByRole('button', { name: /look up score/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /look up score/i })).toHaveAttribute(
+      'aria-describedby',
+      'trust-score-network-mismatch'
+    )
+    expect(screen.getByRole('button', { name: /switch app to test \(testnet\)/i })).toBeInTheDocument()
+  })
+
+  it('switches the app network to the connected wallet network from the mismatch banner', async () => {
+    const user = userEvent.setup()
+    mockWalletNetwork = 'test'
+    mockNetworkMismatch = {
+      mismatch: true,
+      expected: 'Public (Mainnet)',
+      actual: 'Test (Testnet)',
+    }
+    render(<TrustScore />)
+
+    await user.click(screen.getByRole('button', { name: /switch app to test \(testnet\)/i }))
+    expect(mockSetNetwork).toHaveBeenCalledWith('test')
+  })
 })
 
 describe('TrustScore URL sync', () => {
   beforeEach(() => {
     mockConnect.mockClear()
+    mockSetNetwork.mockClear()
     mockRefetch.mockClear()
     mockSetSearchParams.mockClear()
     mockConnected = true
+    mockAppNetwork = 'public'
+    mockWalletNetwork = 'public'
+    mockNetworkMismatch = {
+      mismatch: false,
+      expected: 'Public (Mainnet)',
+      actual: '',
+    }
     mockSearchParams = new URLSearchParams()
     mockTrustScoreState = { data: null, isLoading: false, error: null }
   })

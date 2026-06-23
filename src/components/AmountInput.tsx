@@ -1,6 +1,7 @@
 ﻿import { useEffect, useId, useMemo, useState } from 'react'
 import './AmountInput.css'
 import { normalizeUSDC, formatUSDC, sanitizeUSDCInput } from '@/lib/format'
+export { normalizeUSDC, formatUSDC, sanitizeUSDCInput } from '@/lib/format'
 
 type NativeInputProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,

@@ -6,12 +6,27 @@ import Bond from './Bond'
 const mockAddToast = vi.fn()
 const mockConnect = vi.fn()
 const mockNavigate = vi.fn()
+const mockSetNetwork = vi.fn()
 
 let mockConnected = true
+let mockAppNetwork: 'public' | 'test' = 'public'
+let mockWalletNetwork: 'public' | 'test' | null = 'public'
+let mockNetworkMismatch = {
+  mismatch: false,
+  expected: 'Public (Mainnet)',
+  actual: '',
+}
 
 vi.mock('../components/ToastProvider', () => ({
   useToast: () => ({
     addToast: mockAddToast,
+  }),
+}))
+
+vi.mock('../context/SettingsContext', () => ({
+  useSettings: () => ({
+    network: mockAppNetwork,
+    setNetwork: mockSetNetwork,
   }),
 }))
 
@@ -23,8 +38,12 @@ vi.mock('../context/WalletContext', () => ({
     disconnect: vi.fn(),
     isConnecting: false,
     error: null,
-    network: 'public',
+    network: mockWalletNetwork,
   }),
+}))
+
+vi.mock('../hooks/useNetworkMismatch', () => ({
+  useNetworkMismatch: () => mockNetworkMismatch,
 }))
 
 vi.mock('react-router-dom', () => ({
@@ -36,7 +55,15 @@ describe('Bond Page', () => {
     mockAddToast.mockClear()
     mockConnect.mockClear()
     mockNavigate.mockClear()
+    mockSetNetwork.mockClear()
     mockConnected = true
+    mockAppNetwork = 'public'
+    mockWalletNetwork = 'public'
+    mockNetworkMismatch = {
+      mismatch: false,
+      expected: 'Public (Mainnet)',
+      actual: '',
+    }
   })
 
   it('renders the page header and description', () => {
@@ -137,5 +164,42 @@ describe('Bond Page', () => {
     expect(
       screen.getByText(/Create bond and withdraw actions require a connected Stellar wallet/i)
     ).toBeInTheDocument()
+  })
+
+  it('shows a warning banner and disables create bond when the wallet network differs', () => {
+    mockWalletNetwork = 'test'
+    mockNetworkMismatch = {
+      mismatch: true,
+      expected: 'Public (Mainnet)',
+      actual: 'Test (Testnet)',
+    }
+    render(<Bond />)
+
+    const mismatchBanner = screen.getAllByRole('alert').find((el) =>
+      el.textContent?.includes('Network mismatch')
+    )
+    expect(mismatchBanner).toHaveTextContent(
+      /Credence is set to Public \(Mainnet\), but Freighter is on Test \(Testnet\)/i
+    )
+    expect(screen.getByRole('button', { name: /^Create bond$/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Create bond$/i })).toHaveAttribute(
+      'aria-describedby',
+      'bond-network-mismatch'
+    )
+    expect(screen.getByRole('button', { name: /switch app to test \(testnet\)/i })).toBeInTheDocument()
+  })
+
+  it('switches the app network to the connected wallet network from the mismatch banner', async () => {
+    const user = userEvent.setup()
+    mockWalletNetwork = 'test'
+    mockNetworkMismatch = {
+      mismatch: true,
+      expected: 'Public (Mainnet)',
+      actual: 'Test (Testnet)',
+    }
+    render(<Bond />)
+
+    await user.click(screen.getByRole('button', { name: /switch app to test \(testnet\)/i }))
+    expect(mockSetNetwork).toHaveBeenCalledWith('test')
   })
 })

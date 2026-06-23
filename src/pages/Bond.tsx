@@ -8,11 +8,12 @@ import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import EmptyState from '../components/states/EmptyState'
+import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
-import { getPenaltyRate, computeWithdrawBreakdown } from '../lib/penalty'
-import type { MockBond } from '../lib/penalty'
+import type { ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
@@ -138,9 +139,12 @@ export default function Bond() {
 
   const navigate = useNavigate()
   const { addToast } = useToast()
-  const { isConnected, connect } = useWallet()
+  const { isConnected, connect, network: walletNetwork } = useWallet()
+  const { setNetwork } = useSettings()
+  const networkMismatch = useNetworkMismatch()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
+  const mismatchBannerId = 'bond-network-mismatch'
 
   const bonds = initialBonds
 
@@ -219,6 +223,23 @@ export default function Bond() {
         </Banner>
       )}
 
+      {networkMismatch.mismatch && (
+        <Banner
+          severity="warning"
+          title="Network mismatch"
+          action={{
+            label: `Switch app to ${networkMismatch.actual}`,
+            onClick: () => setNetwork(walletNetwork === 'test' ? 'test' : 'public'),
+          }}
+        >
+          <span id={mismatchBannerId}>
+            Credence is set to <strong>{networkMismatch.expected}</strong>, but Freighter is on{' '}
+            <strong>{networkMismatch.actual}</strong>. Switch the app to the wallet network before
+            creating or withdrawing a bond.
+          </span>
+        </Banner>
+      )}
+
       {slashBannerBreakdown && slashExposureBond && (
         <Banner severity="warning" title="Slash exposure on early withdrawal">
           Withdrawing {formatUsdc(slashExposureBond.amountUsdc)} while{' '}
@@ -235,7 +256,13 @@ export default function Bond() {
             Lock USDC using the guided four-step wizard — set an amount, choose a lock duration,
             review slash terms, and confirm.
           </p>
-          <Button type="button" onClick={handleCreateBond} fullWidth>
+          <Button
+            type="button"
+            onClick={handleCreateBond}
+            fullWidth
+            disabled={networkMismatch.mismatch}
+            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+          >
             {isConnected ? 'Create bond' : 'Connect wallet to continue'}
           </Button>
         </ActionCard>

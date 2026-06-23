@@ -19,7 +19,7 @@ describe('RouteAnnouncer Component', () => {
       </MemoryRouter>
     );
 
-    const announcerRegion = screen.getByRole('none', { hidden: true });
+    const announcerRegion = document.querySelector('.sr-only') as HTMLElement
     expect(announcerRegion).toHaveAttribute('aria-live', 'polite');
     expect(announcerRegion).toHaveAttribute('aria-atomic', 'true');
   });
@@ -31,7 +31,7 @@ describe('RouteAnnouncer Component', () => {
       </MemoryRouter>
     );
 
-    const announcer = screen.getByRole('none', { hidden: true });
+    const announcer = document.querySelector('.sr-only') as HTMLElement
     expect(announcer.textContent).toBe('');
 
     act(() => {
@@ -48,16 +48,16 @@ describe('RouteAnnouncer Component', () => {
     );
 
     act(() => { vi.advanceTimersByTime(100); });
-    expect(screen.getByRole('none', { hidden: true }).textContent).toBe('Dashboard page loaded');
+    expect(screen.getByText('Dashboard page loaded')).toBeInTheDocument();
 
     rerender(
-      <MemoryRouter initialEntries={['/trust']}>
+      <MemoryRouter key="/trust" initialEntries={['/trust']}>
         <RouteAnnouncer />
       </MemoryRouter>
     );
 
     act(() => { vi.advanceTimersByTime(100); });
-    expect(screen.getByRole('none', { hidden: true }).textContent).toBe('Trust Score page loaded');
+    expect(screen.getByText('Trust Score page loaded')).toBeInTheDocument();
   });
 
   it('falls back gracefully to structural 404 descriptions given unknown routes', () => {
@@ -68,6 +68,6 @@ describe('RouteAnnouncer Component', () => {
     );
 
     act(() => { vi.advanceTimersByTime(100); });
-    expect(screen.getByRole('none', { hidden: true }).textContent).toBe('Page Not Found loaded');
+    expect(screen.getByText('Page Not Found loaded')).toBeInTheDocument();
   });
 });

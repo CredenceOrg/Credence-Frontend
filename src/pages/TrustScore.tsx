@@ -9,8 +9,10 @@ import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
+import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
 import { isValidStellarAddress } from '@/lib/stellar'
@@ -31,7 +33,9 @@ function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validati
 export default function TrustScore() {
   useDocumentTitle('Trust Score')
 
-  const { isConnected, address: walletAddress, connect } = useWallet()
+  const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
+  const { setNetwork } = useSettings()
+  const networkMismatch = useNetworkMismatch()
   const [searchParams, setSearchParams] = useSearchParams()
   const [address, setAddress] = useState<string>(() => {
     const param = searchParams.get('address')?.trim() ?? ''
@@ -104,6 +108,7 @@ export default function TrustScore() {
   }> = []
 
   const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
+  const mismatchBannerId = 'trust-score-network-mismatch'
 
   return (
     <div>
@@ -129,6 +134,23 @@ export default function TrustScore() {
         >
           Connect a wallet to look up your own trust score. You can still type another Stellar
           address for review.
+        </Banner>
+      )}
+
+      {networkMismatch.mismatch && (
+        <Banner
+          severity="warning"
+          title="Network mismatch"
+          action={{
+            label: `Switch app to ${networkMismatch.actual}`,
+            onClick: () => setNetwork(walletNetwork === 'test' ? 'test' : 'public'),
+          }}
+        >
+          <span id={mismatchBannerId}>
+            Credence is set to <strong>{networkMismatch.expected}</strong>, but Freighter is on{' '}
+            <strong>{networkMismatch.actual}</strong>. Switch the app to the wallet network before
+            looking up a trust score.
+          </span>
         </Banner>
       )}
 
@@ -193,7 +215,8 @@ export default function TrustScore() {
             onClick={handleLookup}
             variant="primary"
             fullWidth
-            disabled={isConnected ? !isAddressValid : false}
+            disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
+            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
             className="trustScore__buttonRow"
           >
             {isConnected ? 'Look up score' : 'Connect wallet to continue'}

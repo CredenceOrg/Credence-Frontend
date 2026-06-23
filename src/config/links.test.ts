@@ -9,7 +9,7 @@ describe('LINKS resolution precedence', () => {
   // Helper to set env variables
   const setEnv = (key: string, value: string | undefined) => {
     if (value === undefined) {
-      vi.stubEnv(key, undefined as any)
+      vi.stubEnv(key, undefined as unknown as string)
     } else {
       vi.stubEnv(key, value)
     }

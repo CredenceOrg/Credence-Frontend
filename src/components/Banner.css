@@ -89,6 +89,7 @@
 
 .banner__action {
   margin-top: 0.5rem;
+  min-width: 0;
 }
 
 .banner__link {
@@ -101,6 +102,10 @@
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  word-break: break-word;
 }
 
 .banner__link:hover {
@@ -125,6 +130,24 @@
 
 .banner__link-arrow {
   flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .banner {
+    flex-wrap: wrap;
+  }
+
+  .banner__action {
+    width: 100%;
+  }
+
+  .banner__link {
+    width: 100%;
+  }
+
+  .banner__dismiss {
+    margin-left: auto;
+  }
 }
 
 /* ─── Dismiss button ──────────────────────────────────────────────────────── */

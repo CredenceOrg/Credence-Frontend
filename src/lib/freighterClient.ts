@@ -1,7 +1,8 @@
 /** Official Freighter browser extension install page. */
 export const FREIGHTER_INSTALL_URL = 'https://www.freighter.app/'
 
-export type CredenceNetwork = 'public' | 'test'
+import type { CredenceNetwork } from './networkLabels'
+export type { CredenceNetwork } from './networkLabels'
 
 type FreighterModule = typeof import('@stellar/freighter-api')
 
@@ -15,9 +16,6 @@ async function loadFreighter(): Promise<FreighterModule | null> {
   return freighterModule
 }
 
-/**
- * Maps Freighter network identifiers to Credence settings network values.
- */
 export function mapFreighterNetwork(freighterNetwork: string): CredenceNetwork | null {
   const normalized = freighterNetwork.trim().toUpperCase()
   if (normalized.includes('TEST')) return 'test'

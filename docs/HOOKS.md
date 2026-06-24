@@ -25,6 +25,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useTrustScore`](#usetrustscore)
+  - [`useUsdcBalance`](#useusdcbalance)
   - [`useWallet`](#usewallet)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
@@ -288,6 +289,60 @@ function ConnectButton({ network }: { network: string }) {
 
 ---
 
+### `useUsdcBalance`
+
+Source: [`src/hooks/useUsdcBalance.ts`](../src/hooks/useUsdcBalance.ts) · Built on [`horizon`](#horizon--horizon-api-client)
+
+```ts
+function useUsdcBalance(): UseUsdcBalanceResult
+
+type UseUsdcBalanceStatus = 'idle' | 'loading' | 'ready' | 'error'
+
+interface UseUsdcBalanceResult {
+  balance: number
+  status: UseUsdcBalanceStatus
+  error: Error | null
+  refetch: () => void
+}
+```
+
+Fetches the connected account's USDC balance from the Stellar Horizon API. Reads the
+wallet address from `useWallet()` and the active network from `useSettings()`.
+
+**Behavior notes**
+
+- **Auto-fetches** on mount when a wallet is connected, and re-fetches whenever the
+  connected address or active network changes.
+- Returns `{ balance: 0, status: 'idle' }` when no wallet is connected — does not
+  attempt a Horizon request.
+- **Race-safe:** in-flight requests are aborted when `refetch` is called again, when
+  address/network changes, or on unmount. Stale responses and `AbortError`s are discarded.
+- Returns `0` balance when the account has no USDC trustline (asset not found on Horizon).
+- **SSR-safe / cleanup:** no DOM access during render; the active `AbortController` is
+  aborted on unmount.
+
+```tsx
+import { useUsdcBalance } from '../hooks/useUsdcBalance'
+import { formatUsdc } from '@/lib/format'
+
+function BalanceDisplay() {
+  const { balance, status, error, refetch } = useUsdcBalance()
+
+  if (status === 'idle') return <p>Connect wallet to see balance</p>
+  if (status === 'loading') return <p>Loading balance…</p>
+  if (status === 'error') {
+    return (
+      <p role="alert">
+        Could not load balance. <button onClick={refetch}>Retry</button>
+      </p>
+    )
+  }
+  return <p>Available: {formatUsdc(balance)}</p>
+}
+```
+
+---
+
 ## Utilities (`src/lib/`)
 
 Framework-free helpers — pure functions and a wallet SDK wrapper. No React required.
@@ -429,6 +484,42 @@ import { createWalletWatcher } from '@/lib/freighterClient'
 const watcher = await createWalletWatcher(({ address }) => console.log('now:', address))
 // later…
 watcher?.stop()
+```
+
+### `horizon` — Horizon API client
+
+Source: [`src/lib/horizon.ts`](../src/lib/horizon.ts) · Used by [`useUsdcBalance`](#useusdcbalance).
+
+```ts
+class HorizonError extends Error {
+  readonly status: number
+}
+
+fetchUsdcBalance(
+  address: string,
+  network: CredenceNetwork,
+  signal?: AbortSignal
+): Promise<number>
+```
+
+**Behavior notes:** a lightweight, SSR-safe wrapper around the Stellar Horizon REST API.
+Fetches the USDC balance for a given public key from the correct Horizon server
+(`horizon.stellar.org` for public, `horizon-testnet.stellar.org` for test). Returns `0`
+when the account has no USDC trustline or the account doesn't exist (404). Throws
+`HorizonError` with the HTTP status on other failures. Accepts an optional `AbortSignal`
+for cancellation.
+
+```ts
+import { fetchUsdcBalance, HorizonError } from '@/lib/horizon'
+
+try {
+  const balance = await fetchUsdcBalance('G…', 'public')
+  console.log(`USDC balance: ${balance}`)
+} catch (err) {
+  if (err instanceof HorizonError) {
+    console.error(`Horizon error ${err.status}: ${err.message}`)
+  }
+}
 ```
 
 ---

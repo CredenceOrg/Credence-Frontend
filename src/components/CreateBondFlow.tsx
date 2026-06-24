@@ -20,9 +20,13 @@ import { FormField } from './forms/FormField'
 import Button from './Button'
 import Banner from './Banner'
 import Disclaimer from './Disclaimer'
+import LoadingSkeleton from './states/LoadingSkeleton'
 import { useToast } from './ToastProvider'
+import { useWallet } from '../context/WalletContext'
+import { useUsdcBalance } from '../hooks/useUsdcBalance'
 import { computeBondSlashBreakdown, calcUnlockDate } from '../lib/bondPenalty'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { formatUsdc } from '../lib/format'
 
 import './CreateBondFlow.css'
 
@@ -49,6 +53,9 @@ interface CreateBondFlowProps {
 export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowProps = {}) {
   const prefersReducedMotion = useReducedMotion()
   const { addToast } = useToast()
+  const { isConnected, connect } = useWallet()
+  const { balance, status: balanceStatus, refetch: refetchBalance } =
+    useUsdcBalance()
   const [step, setStep] = useState(1)
   const [amount, setAmount] = useState('')
   const [duration, setDuration] = useState<number | null>(null)
@@ -153,6 +160,47 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           <Banner severity="info">
             Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
           </Banner>
+
+          {/* ── Balance display ── */}
+          <div
+            className="createBondFlow__balanceRow"
+            aria-live="polite"
+            aria-atomic="true"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              minHeight: '1.5rem',
+              marginBottom: 'var(--credence-space-2)',
+            }}
+          >
+            {!isConnected ? (
+              <span style={{ color: 'var(--credence-text-secondary)', fontSize: '0.875rem' }}>
+                Connect your wallet to see your available balance.
+              </span>
+            ) : balanceStatus === 'loading' ? (
+              <LoadingSkeleton variant="text" rows={1} width="12rem" />
+            ) : balanceStatus === 'error' ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
+                  Could not load balance.
+                </span>
+                <Button
+                  type="button"
+                  onClick={refetchBalance}
+                  className="createBondFlow__retryButton"
+                  style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
+                >
+                  Retry
+                </Button>
+              </span>
+            ) : (
+              <span style={{ color: 'var(--credence-text-secondary)', fontSize: '0.875rem' }}>
+                Available: {formatUsdc(balance)}
+              </span>
+            )}
+          </div>
+
           <FormField id="bond-amount" label="Amount (USDC)" error={error}>
             <AmountInput
               value={amount}
@@ -160,12 +208,25 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                 setAmount(next)
                 if (error) setError('')
               }}
-              balance={100000}
+              balance={isConnected ? balance : 0}
               placeholder="0"
               presets={[30, 90, 180]}
               currencyLabel="USDC"
+              disabled={!isConnected}
+              aria-disabled={!isConnected || undefined}
             />
           </FormField>
+
+          {!isConnected && (
+            <Button
+              type="button"
+              onClick={connect}
+              className="createBondFlow__connectButton"
+              style={{ marginTop: 'var(--credence-space-3)' }}
+            >
+              Connect wallet
+            </Button>
+          )}
         </div>
       )}
 

@@ -14,6 +14,8 @@ export interface AddressInputProps {
   className?: string
   /** Parent-provided validation error message. */
   error?: string
+  /** Optional connected wallet address to detect "self" lookups (case-insensitive). */
+  selfAddress?: string
 }
 
 
@@ -108,6 +110,7 @@ export default function AddressInput({
   disabled = false,
   className = '',
   error: externalError,
+  selfAddress,
 }: AddressInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -176,6 +179,13 @@ export default function AddressInput({
 
   const error = externalError || (showError ? 'Invalid address. Stellar public keys are 56 characters starting with G.' : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
+
+  // Detect whether the entered (validated) value matches the connected wallet's address.
+  const isSelf =
+    !!selfAddress &&
+    !!debouncedValue &&
+    isValid &&
+    selfAddress.trim().toLowerCase() === debouncedValue.trim().toLowerCase()
 
   return (
     <div className={`address-input-wrapper ${className}`}>
@@ -251,6 +261,11 @@ export default function AddressInput({
             )}
             {copied && <span className="address-input-copy-feedback">Copied</span>}
           </button>
+          {isSelf && (
+            <span className="address-input-echo-self" aria-hidden="false">
+              This is your connected wallet
+            </span>
+          )}
         </div>
       )}
 

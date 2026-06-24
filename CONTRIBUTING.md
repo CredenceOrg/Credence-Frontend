@@ -1,161 +1,113 @@
 # Contributing to Credence Frontend
 
-Thanks for helping improve Credence Frontend. This guide covers the local workflow,
-branch conventions, quality gates, and pull request expectations for UI and
-component-library contributions.
+Thanks for contributing! This guide covers the workflow for the Credence frontend monorepo.
 
-## Project Shape
-
-Credence Frontend is a Vite + React + TypeScript app. Shared UI primitives live in
-`src/components/`, design guidance lives in `docs/`, and global tokens are
-defined in `src/index.css` and documented in `docs/DESIGN_TOKENS.md`.
-
-Useful directories:
-
-- `src/components/` - shared UI components, forms, controls, navigation, and states.
-- `src/pages/` - route-level page implementations.
-- `src/hooks/` - reusable React hooks.
-- `src/context/` - shared app context.
-- `docs/` - design, motion, accessibility, and implementation references.
-
-## Local Setup
-
-Use a recent Node.js LTS release. Install dependencies once:
+## Quick Start
 
 ```bash
+git clone https://github.com/CredenceOrg/Credence-Frontend.git
+cd Credence-Frontend
 npm install
-```
-
-Start the Vite dev server:
-
-```bash
 npm run dev
 ```
 
-Build the production bundle:
+## Development Workflow
+
+### Branch Naming
+
+- `feat/description` — new features
+- `fix/description` — bug fixes
+- `docs/description` — documentation
+- `refactor/description` — code restructuring
+- `chore/description` — maintenance
+
+### Commit Convention
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat(ui): add dark mode toggle
+fix(api): correct token refresh logic
+docs(readme): update installation steps
+refactor(state): extract auth context
+```
+
+### PR Checklist
+
+- [ ] Branch targets `main`
+- [ ] Code follows ESLint and Prettier config
+- [ ] All existing tests pass: `npm test`
+- [ ] New features include tests
+- [ ] Visual changes include screenshots
+- [ ] No console.log left in code
+- [ ] PR description links related issue
+
+## Local Setup
 
 ```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Run tests
+npm test
+
+# Run lint
+npm run lint
+
+# Build for production
 npm run build
 ```
 
-Run linting:
+### Environment Variables
 
-```bash
-npm run lint
+Copy `.env.example` to `.env` and configure:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_API_URL` | Backend API URL | `http://localhost:3001` |
+| `VITE_NETWORK` | Stellar network | `testnet` |
+| `VITE_RPC_URL` | Soroban RPC endpoint | `https://soroban-testnet.stellar.org` |
+
+## Project Structure
+
+```
+src/
+├── components/    # Reusable UI components
+├── pages/         # Route pages
+├── hooks/         # Custom React hooks
+├── services/      # API and blockchain services
+├── store/         # State management
+├── utils/         # Helper functions
+├── types/         # TypeScript types
+└── assets/        # Static assets
 ```
 
-Run tests:
+## Testing
 
 ```bash
-npm run test
-```
+# Unit tests
+npm test
 
-Run tests in watch mode:
-
-```bash
+# Watch mode
 npm run test:watch
-```
 
-Run coverage:
-
-```bash
+# Coverage report
 npm run test:coverage
 ```
 
-Check formatting without rewriting files:
+## CI/CD
 
-```bash
-npm run format:check
-```
+All PRs trigger GitHub Actions that run:
+1. ESLint check
+2. Prettier format check
+3. Unit tests (Vitest)
+4. Build verification
 
-Apply formatting:
+## Getting Help
 
-```bash
-npm run format
-```
-
-## Branch Naming
-
-Use short branch names that describe the outcome:
-
-- `docs/component-reference`
-- `fix/address-input-validation`
-- `test/focus-trap-regression`
-- `ui/mobile-nav-states`
-
-Avoid unrelated changes in the same branch. Keep documentation, behavior fixes,
-and visual refactors separate unless the issue asks for them together.
-
-## Pull Request Workflow
-
-1. Fork the repository.
-2. Create a topic branch from `main`.
-3. Make the smallest cohesive change that satisfies the issue.
-4. Run the relevant checks listed below.
-5. Open a pull request using `.github/pull_request_template.md` when present.
-
-For documentation-only changes, run at least:
-
-```bash
-npm run format:check
-```
-
-For component or hook changes, run:
-
-```bash
-npm run lint
-npm run test
-npm run build
-```
-
-Include any command that could not be run in the PR body with the reason.
-
-## Component Guidelines
-
-Prefer existing primitives before adding new ones. Check `docs/components.md` for
-the current component catalog and expected props.
-
-When updating or adding a shared component:
-
-- Export prop types when they are useful to consumers.
-- Add TSDoc for public prop fields, especially variants and callbacks.
-- Use `@/...` imports for app modules when a path would otherwise become deeply nested.
-- Use `Button`, `FormField`, `Badge`, and state components before introducing one-off UI.
-- Keep accessible names, roles, keyboard behavior, and focus return behavior explicit.
-- Prefer design tokens from `docs/DESIGN_TOKENS.md` over raw colors, spacing, and radii.
-- Add or update tests for validation, keyboard flow, and visible user-facing states.
-
-## Design Token Usage
-
-Use the `--credence-*` token family for color, spacing, radius, typography, and
-motion. Tokens keep pages consistent across light/dark themes and reduce drift
-from the Figma specs.
-
-Common token categories:
-
-- `--credence-color-*` for semantic colors and tier colors.
-- `--credence-space-*` for layout spacing.
-- `--credence-radius-*` for border radius.
-- `--credence-font-*` and `--credence-line-height-*` for typography.
-- `--credence-motion-*` for transitions and skeleton loading.
-
-Before adding a token, check `docs/DESIGN_TOKENS.md` and nearby component CSS.
-
-## Accessibility Expectations
-
-All component changes should preserve keyboard and assistive technology support:
-
-- Interactive controls need an accessible name.
-- Dialogs must trap focus, close with Escape when appropriate, and restore focus.
-- Status and error content should use semantic roles such as `status` or `alert`.
-- Form controls should connect labels, hints, and errors with ARIA relationships.
-- Visual-only icons should use `aria-hidden="true"`.
-
-## PR Checklist
-
-- Scope matches the linked issue.
-- Component props and usage are documented when public.
-- Design tokens are used instead of one-off visual values.
-- Accessibility behavior is preserved or improved.
-- Relevant tests and checks were run, or skipped checks are explained.
-- Screenshots are included when the change affects UI appearance.
+- Check existing [issues](https://github.com/CredenceOrg/Credence-Frontend/issues)
+- Join the [Credence Discord](https://discord.gg/credence)
+- Tag maintainers in your PR for review

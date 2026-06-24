@@ -1,7 +1,8 @@
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import AddressInput, { truncateAddress } from './AddressInput'
+import AddressInput from './AddressInput'
+import { truncateAddress } from '@/lib/stellar'
 
 // A valid 56-character Stellar public key
 const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA' // 56 chars
@@ -15,7 +16,9 @@ describe('truncateAddress', () => {
 
   it('truncates long addresses correctly', () => {
     const truncated = truncateAddress(VALID_KEY)
-    expect(truncated).toBe(`${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`)
+    expect(truncated).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
   })
 })
 
@@ -35,25 +38,48 @@ describe('isValidStellarAddress', () => {
 
   it('rejects a key one char shorter than VALID_KEY (55 chars)', () => {
     const onV = vi.fn()
-    render(<AddressInput id="addr" value={VALID_KEY.slice(0, 55)} onChange={vi.fn()} onValidationChange={onV} />)
+    render(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY.slice(0, 55)}
+        onChange={vi.fn()}
+        onValidationChange={onV}
+      />
+    )
     expect(onV).toHaveBeenCalledWith(false)
   })
 
   it('rejects a key one char longer than VALID_KEY (57 chars)', () => {
     const onV = vi.fn()
-    render(<AddressInput id="addr" value={VALID_KEY + 'A'} onChange={vi.fn()} onValidationChange={onV} />)
+    render(
+      <AddressInput id="addr" value={VALID_KEY + 'A'} onChange={vi.fn()} onValidationChange={onV} />
+    )
     expect(onV).toHaveBeenCalledWith(false)
   })
 
   it('rejects lowercase characters', () => {
     const onV = vi.fn()
-    render(<AddressInput id="addr" value={VALID_KEY.toLowerCase()} onChange={vi.fn()} onValidationChange={onV} />)
+    render(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY.toLowerCase()}
+        onChange={vi.fn()}
+        onValidationChange={onV}
+      />
+    )
     expect(onV).toHaveBeenCalledWith(false)
   })
 
   it('rejects non-G prefix', () => {
     const onV = vi.fn()
-    render(<AddressInput id="addr" value={'A' + VALID_KEY.slice(1)} onChange={vi.fn()} onValidationChange={onV} />)
+    render(
+      <AddressInput
+        id="addr"
+        value={'A' + VALID_KEY.slice(1)}
+        onChange={vi.fn()}
+        onValidationChange={onV}
+      />
+    )
     expect(onV).toHaveBeenCalledWith(false)
   })
 })
@@ -64,9 +90,11 @@ describe('onValidationChange on typing', () => {
     const user = userEvent.setup()
     const onV = vi.fn()
     let val = ''
-    const onChange = (v: string) => { val = v }
+    const onChange = (v: string) => {
+      val = v
+    }
     const { rerender } = render(
-      <AddressInput id="addr" value={val} onChange={onChange} onValidationChange={onV} />,
+      <AddressInput id="addr" value={val} onChange={onChange} onValidationChange={onV} />
     )
 
     // Type one char — not yet valid
@@ -139,11 +167,11 @@ describe('accessibility', () => {
     const user = userEvent.setup()
     render(<AddressInput id="test-addr" value="invalid" onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
-    
+
     // Blur to trigger error
     await user.click(input)
     await user.tab()
-    
+
     const error = screen.getByRole('alert')
     const errorId = error.getAttribute('id')
     expect(input.getAttribute('aria-describedby')).toContain(errorId)

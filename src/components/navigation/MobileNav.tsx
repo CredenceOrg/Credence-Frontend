@@ -5,8 +5,10 @@ import './MobileNav.css'
 
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/bond', label: 'Bond' },
   { to: '/trust', label: 'Trust Score' },
+  { to: '/transactions', label: 'Transactions' },
   { to: '/settings', label: 'Settings' },
 ]
 
@@ -52,9 +54,7 @@ export default function MobileNav() {
         </svg>
       </button>
 
-      {isOpen && (
-        <div className="mobileNav-backdrop" onClick={close} aria-hidden="true" />
-      )}
+      {isOpen && <div className="mobileNav-backdrop" onClick={close} aria-hidden="true" />}
 
       <nav
         ref={drawerRef}
@@ -64,11 +64,7 @@ export default function MobileNav() {
         aria-hidden={!isOpen}
       >
         <div className="mobileNav-drawerHeader">
-          <button
-            className="mobileNav-close"
-            aria-label="Close navigation menu"
-            onClick={close}
-          >
+          <button className="mobileNav-close" aria-label="Close navigation menu" onClick={close}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
                 d="M4 4l12 12M16 4L4 16"
@@ -89,7 +85,11 @@ export default function MobileNav() {
                 className={({ isActive }) =>
                   `mobileNav-link${isActive ? ' mobileNav-link--active' : ''}`
                 }
-                aria-current={location.pathname === to || (to === '/' && location.pathname === '/') ? 'page' : undefined}
+                aria-current={
+                  location.pathname === to || (to === '/' && location.pathname === '/')
+                    ? 'page'
+                    : undefined
+                }
                 onClick={close}
               >
                 {label}

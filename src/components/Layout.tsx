@@ -1,12 +1,17 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle'
 import MobileNav from './navigation/MobileNav'
+import RouteAnnouncer from './RouteAnnouncer'
+import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import LINKS from '../config/links'
 import './Layout.css'
 
 const NAV_LINKS = [
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/bond', label: 'Bond' },
   { to: '/trust', label: 'Trust Score' },
+  { to: '/transactions', label: 'Transactions' },
   { to: '/settings', label: 'Settings' },
 ]
 
@@ -19,11 +24,45 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 }
 
 export default function Layout() {
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  // Ref on the header button so focus returns to it after the dialog closes
+  const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
+
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
+  const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
+
+  // Global Shift+? listener — opens the shortcuts dialog from anywhere except
+  // text-entry contexts (input, textarea, contenteditable).
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '?') return
+      // Ignore while typing inside editable elements
+      const target = event.target as HTMLElement
+      const tag = target.tagName
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        target.isContentEditable
+      ) {
+        return
+      }
+      setShortcutsOpen(true)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   return (
     <div className="appShell">
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
+
+      {/* Screen reader SPA route transition updates manager */}
+      <RouteAnnouncer />
+
       <header className="appHeader">
         {/* Mobile: hamburger toggle (hidden ≥640px via CSS) */}
         <MobileNav />
@@ -38,7 +77,10 @@ export default function Layout() {
             <NavLink
               key={to}
               to={to}
-              className={({ isActive }) => (isActive ? 'appNav-link appNav-link--active' : 'appNav-link')}
+              end
+              className={({ isActive }) =>
+                isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
+              }
             >
               {label}
             </NavLink>
@@ -46,6 +88,17 @@ export default function Layout() {
         </nav>
 
         <ThemeToggle />
+
+        {/* Keyboard shortcuts help button */}
+        <button
+          ref={shortcutsButtonRef}
+          type="button"
+          className="appHeader-shortcuts-btn"
+          aria-label="Open keyboard shortcuts (Shift+?)"
+          onClick={openShortcuts}
+        >
+          ?
+        </button>
       </header>
 
       <main id="main-content" className="appMain">
@@ -65,6 +118,12 @@ export default function Layout() {
           </div>
         </div>
       </footer>
+
+      <KeyboardShortcutsDialog
+        open={shortcutsOpen}
+        onClose={closeShortcuts}
+        returnFocusRef={shortcutsButtonRef}
+      />
     </div>
   )
 }

@@ -1,0 +1,70 @@
+/*
+ * Controls System: Select & Toggle components
+ * Uses Credence design tokens for theming and accessibility
+ */
+
+/* ── Select ───────────────────────────────────────────── */
+
+.control-select {
+  padding: var(--credence-space-2) var(--credence-space-3);
+  border-radius: var(--credence-radius-lg);
+  border: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-base);
+  line-height: var(--credence-line-height-base);
+  cursor: pointer;
+  transition:
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.control-select:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.control-select:hover {
+  border-color: var(--credence-color-primary);
+}
+
+/* ── Toggle ──────────────────────────────────────────── */
+
+.control-toggle {
+  padding: var(--credence-space-1) var(--credence-space-2);
+  border-radius: var(--credence-radius-full);
+  border: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+  cursor: pointer;
+  min-width: 64px;
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  transition:
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.control-toggle[aria-checked='true'] {
+  background: var(--credence-color-primary);
+  border-color: var(--credence-color-primary);
+  color: var(--credence-color-white);
+}
+
+.control-toggle:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.control-toggle:hover {
+  border-color: var(--credence-color-primary);
+}
+
+.control-toggle[aria-checked='true']:hover {
+  background: var(--credence-color-primary-strong);
+  border-color: var(--credence-color-primary-strong);
+}

@@ -1,0 +1,259 @@
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import TrustScore from './TrustScore'
+import type { TrustScore as TrustScoreData } from '../api/types'
+
+const mockConnect = vi.fn()
+const mockSetNetwork = vi.fn()
+const mockRefetch = vi.fn()
+let mockConnected = true
+let mockAppNetwork: 'public' | 'test' = 'public'
+let mockWalletNetwork: 'public' | 'test' | null = 'public'
+let mockNetworkMismatch = {
+  mismatch: false,
+  expected: 'Public (Mainnet)',
+  actual: '',
+}
+let mockTrustScoreState: {
+  data: TrustScoreData | null
+  isLoading: boolean
+  error: { message: string; status: number } | null
+} = {
+  data: null,
+  isLoading: false,
+  error: null,
+}
+
+const mockSetSearchParams = vi.fn()
+let mockSearchParams = new URLSearchParams()
+
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({
+    isConnected: mockConnected,
+    address: mockConnected ? 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' : '',
+    connect: mockConnect,
+    disconnect: vi.fn(),
+    isConnecting: false,
+    error: null,
+    network: mockWalletNetwork,
+  }),
+}))
+
+vi.mock('../context/SettingsContext', () => ({
+  useSettings: () => ({
+    network: mockAppNetwork,
+    setNetwork: mockSetNetwork,
+  }),
+}))
+
+vi.mock('../hooks/useNetworkMismatch', () => ({
+  useNetworkMismatch: () => mockNetworkMismatch,
+}))
+
+vi.mock('../hooks/useTrustScore', () => ({
+  useTrustScore: () => ({
+    ...mockTrustScoreState,
+    refetch: mockRefetch,
+  }),
+}))
+
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>()
+  return {
+    ...actual,
+    useSearchParams: () => [mockSearchParams, mockSetSearchParams],
+  }
+})
+
+const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
+
+describe('TrustScore', () => {
+  beforeEach(() => {
+    mockConnect.mockClear()
+    mockSetNetwork.mockClear()
+    mockRefetch.mockClear()
+    mockSetSearchParams.mockClear()
+    mockConnected = true
+    mockAppNetwork = 'public'
+    mockWalletNetwork = 'public'
+    mockNetworkMismatch = {
+      mismatch: false,
+      expected: 'Public (Mainnet)',
+      actual: '',
+    }
+    mockSearchParams = new URLSearchParams()
+    mockTrustScoreState = {
+      data: null,
+      isLoading: false,
+      error: null,
+    }
+  })
+
+  it('renders the tier ladder explainer and empty activity state', () => {
+    render(<TrustScore />)
+
+    expect(screen.getByRole('heading', { name: 'Trust Score' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /how trust is earned/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'No recent activity' })).toBeInTheDocument()
+    expect(
+      screen.getByText(/New trust score events will appear here once bonds/i)
+    ).toBeInTheDocument()
+  })
+
+  it('keeps lookup disabled until the address input reports valid input', () => {
+    mockConnected = true
+    render(<TrustScore />)
+
+    expect(screen.getByRole('button', { name: /look up score/i })).toBeDisabled()
+  })
+
+  it('prompts disconnected users to connect before lookup', () => {
+    mockConnected = false
+    render(<TrustScore />)
+
+    expect(screen.getByRole('button', { name: /connect wallet to continue/i })).toBeInTheDocument()
+  })
+
+  it('shows a warning banner and disables lookup when the wallet network differs', () => {
+    mockWalletNetwork = 'test'
+    mockNetworkMismatch = {
+      mismatch: true,
+      expected: 'Public (Mainnet)',
+      actual: 'Test (Testnet)',
+    }
+    render(<TrustScore />)
+
+    expect(screen.getByRole('alert', { name: /warning banner/i })).toHaveTextContent(
+      /Credence is set to Public \(Mainnet\), but Freighter is on Test \(Testnet\)/i
+    )
+    expect(screen.getByRole('button', { name: /look up score/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /look up score/i })).toHaveAttribute(
+      'aria-describedby',
+      'trust-score-network-mismatch'
+    )
+    expect(screen.getByRole('button', { name: /switch app to test \(testnet\)/i })).toBeInTheDocument()
+  })
+
+  it('switches the app network to the connected wallet network from the mismatch banner', async () => {
+    const user = userEvent.setup()
+    mockWalletNetwork = 'test'
+    mockNetworkMismatch = {
+      mismatch: true,
+      expected: 'Public (Mainnet)',
+      actual: 'Test (Testnet)',
+    }
+    render(<TrustScore />)
+
+    await user.click(screen.getByRole('button', { name: /switch app to test \(testnet\)/i }))
+    expect(mockSetNetwork).toHaveBeenCalledWith('test')
+  })
+})
+
+describe('TrustScore URL sync', () => {
+  beforeEach(() => {
+    mockConnect.mockClear()
+    mockSetNetwork.mockClear()
+    mockRefetch.mockClear()
+    mockSetSearchParams.mockClear()
+    mockConnected = true
+    mockAppNetwork = 'public'
+    mockWalletNetwork = 'public'
+    mockNetworkMismatch = {
+      mismatch: false,
+      expected: 'Public (Mainnet)',
+      actual: '',
+    }
+    mockSearchParams = new URLSearchParams()
+    mockTrustScoreState = { data: null, isLoading: false, error: null }
+  })
+
+  it('seeds the address input from a valid ?address= param on mount', () => {
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    render(<TrustScore />)
+    expect(screen.getByRole('textbox')).toHaveValue(VALID_ADDRESS)
+  })
+
+  it('does not seed the address input from an invalid ?address= param', () => {
+    mockSearchParams = new URLSearchParams({ address: 'not-a-valid-stellar-address' })
+    render(<TrustScore />)
+    expect(screen.getByRole('textbox')).toHaveValue('')
+  })
+
+  it('does not crash when ?address= param is absent', () => {
+    render(<TrustScore />)
+    expect(screen.getByRole('textbox')).toHaveValue('')
+  })
+
+  it('enables the lookup button when seeded with a valid address', async () => {
+    mockConnected = true
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    render(<TrustScore />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled()
+    })
+  })
+
+  it('does not enable the lookup button when seeded with an invalid address', () => {
+    mockConnected = true
+    mockSearchParams = new URLSearchParams({ address: 'bad' })
+    render(<TrustScore />)
+
+    expect(screen.getByRole('button', { name: /look up score/i })).toBeDisabled()
+  })
+
+  it('commits the address to the URL with replace semantics on a successful lookup', async () => {
+    mockConnected = true
+    render(<TrustScore />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: VALID_ADDRESS } })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /look up score/i }))
+
+    expect(mockSetSearchParams).toHaveBeenCalledOnce()
+    const [updater, options] = mockSetSearchParams.mock.calls[0] as [
+      (prev: URLSearchParams) => URLSearchParams,
+      { replace: boolean },
+    ]
+    const result = updater(new URLSearchParams())
+    expect(result.get('address')).toBe(VALID_ADDRESS)
+    expect(options).toEqual({ replace: true })
+  })
+
+  it('clears the ?address= param when the address input is cleared', () => {
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    render(<TrustScore />)
+
+    mockSetSearchParams.mockClear()
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+
+    expect(mockSetSearchParams).toHaveBeenCalledOnce()
+    const [updater, options] = mockSetSearchParams.mock.calls[0] as [
+      (prev: URLSearchParams) => URLSearchParams,
+      { replace: boolean },
+    ]
+    const result = updater(new URLSearchParams({ address: VALID_ADDRESS }))
+    expect(result.has('address')).toBe(false)
+    expect(options).toEqual({ replace: true })
+  })
+
+  it('does not write to the URL on partial keystrokes — only on clear or lookup', () => {
+    render(<TrustScore />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'GAAZI4' } })
+
+    expect(mockSetSearchParams).not.toHaveBeenCalled()
+  })
+
+  it('does not loop: seeding from URL does not call setSearchParams', () => {
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    render(<TrustScore />)
+
+    expect(mockSetSearchParams).not.toHaveBeenCalled()
+  })
+})

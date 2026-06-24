@@ -1,5 +1,4 @@
-import { useState, useRef } from 'react'
-import { getExplorerTxUrl } from '../lib/explorer'
+import { useEffect, useRef, useCallback } from 'react'
 import './Toast.css'
 
 export type ToastSeverity = 'info' | 'success' | 'warning' | 'danger'
@@ -73,13 +72,8 @@ export interface ToastData {
   id: string
   severity: ToastSeverity
   message: string
-  txHash?: string
-  network?: string
-}
-
-function truncateHash(hash: string): string {
-  if (hash.length <= 16) return hash
-  return `${hash.substring(0, 8)}...${hash.substring(hash.length - 8)}`
+  /** Resolved auto-dismiss duration. 0 means manual dismiss only. */
+  durationMs?: number
 }
 
 interface ToastProps {
@@ -88,29 +82,83 @@ interface ToastProps {
 }
 
 export default function Toast({ toast, onDismiss }: ToastProps) {
-  const [copied, setCopied] = useState(false)
-  const copyTimeoutRef = useRef<number | null>(null)
+  const { durationMs = 0 } = toast
+  const remainingTimeRef = useRef(durationMs)
+  const lastResumeTimeRef = useRef<number | null>(null)
+  const timerRef = useRef<number | null>(null)
+  
+  const isHoveredRef = useRef(false)
+  const isFocusedRef = useRef(false)
 
-  const handleCopy = async () => {
-    if (!toast.txHash) return
-    try {
-      await navigator.clipboard.writeText(toast.txHash)
-      setCopied(true)
-      
-      if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current)
-      }
-      
-      copyTimeoutRef.current = window.setTimeout(() => {
-        setCopied(false)
-      }, 2000)
-    } catch {
-      // Fallback if clipboard fails silently
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  const startTimer = useCallback(() => {
+    // Bypassed for danger severity or autoDismiss='off'
+    if (durationMs <= 0 || remainingTimeRef.current <= 0) return
+    clearTimer()
+    lastResumeTimeRef.current = Date.now()
+    timerRef.current = window.setTimeout(() => {
+      onDismiss(toast.id)
+    }, remainingTimeRef.current)
+  }, [durationMs, onDismiss, toast.id, clearTimer])
+
+  const pauseTimer = useCallback(() => {
+    if (durationMs <= 0) return
+    clearTimer()
+    if (lastResumeTimeRef.current !== null) {
+      const elapsed = Date.now() - lastResumeTimeRef.current
+      remainingTimeRef.current = Math.max(0, remainingTimeRef.current - elapsed)
+      lastResumeTimeRef.current = null
+    }
+  }, [durationMs, clearTimer])
+
+  const updateTimerState = useCallback(() => {
+    if (isHoveredRef.current || isFocusedRef.current) {
+      pauseTimer()
+    } else {
+      startTimer()
+    }
+  }, [pauseTimer, startTimer])
+
+  // Start the timer on mount
+  useEffect(() => {
+    startTimer()
+    return () => clearTimer()
+  }, [startTimer, clearTimer])
+
+  const handleMouseEnter = () => {
+    isHoveredRef.current = true
+    updateTimerState()
+  }
+
+  const handleMouseLeave = () => {
+    isHoveredRef.current = false
+    updateTimerState()
+  }
+
+  const handleFocus = () => {
+    isFocusedRef.current = true
+    updateTimerState()
+  }
+
+  const handleBlur = (e: React.FocusEvent) => {
+    // Only resume if focus has genuinely left the toast's bounding box
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      isFocusedRef.current = false
+      updateTimerState()
     }
   }
 
   return (
-    <div className={`toast toast--${toast.severity}`} role="status">
+    <div
+      className={`toast toast--${toast.severity}`}
+      role={toast.severity === 'danger' ? 'alert' : 'status'}
+    >
       <div className="toast__icon-container" aria-hidden="true">
         {ICONS[toast.severity]}
       </div>

@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { useLocalStorage } from '../hooks/useLocalStorage'
 
 type ThemeMode = 'light' | 'dark' | 'system'
+
+/** The persisted settings payload (the subset of state written to localStorage). */
+interface SettingsPayload {
+  themeMode: ThemeMode
+  network: string
+  addressDisplay: string
+  toastsEnabled: boolean
+  autoDismiss: string
+}
 
 interface SettingsState {
   themeMode: ThemeMode
@@ -13,96 +23,148 @@ interface SettingsState {
   setAddressDisplay: (s: string) => void
   setToastsEnabled: (b: boolean) => void
   setAutoDismiss: (s: string) => void
+  /**
+   * Persist settings. Pass an explicit payload to save immediately (avoids the
+   * stale-state race when called right after the individual setters); omit it to
+   * persist the current context state.
+   */
+  saveSettings: (next?: SettingsPayload) => void
+  cancelSettings: () => void
+  hasUnsavedChanges: boolean
+}
+
+type PersistedSettings = {
+  themeMode: ThemeMode
+  network: string
+  addressDisplay: string
+  toastsEnabled: boolean
+  autoDismiss: string
 }
 
 const STORAGE_KEY = 'credence:settings'
+const LEGACY_THEME_KEY = 'theme'
 
-const defaultState: SettingsState = {
+function loadLegacyTheme(): ThemeMode | null {
+  try {
+    const legacyTheme = localStorage.getItem(LEGACY_THEME_KEY)
+    if (legacyTheme === 'light' || legacyTheme === 'dark' || legacyTheme === 'system') {
+      return legacyTheme
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+const VALID_THEMES: ThemeMode[] = ['light', 'dark', 'system']
+
+const defaultPersistedSettings: PersistedSettings = {
   themeMode: 'system',
   network: 'public',
   addressDisplay: 'short',
   toastsEnabled: true,
   autoDismiss: '5s',
+}
+
+const defaultState: SettingsState = {
+  ...defaultPersistedSettings,
   setThemeMode: () => {},
   setNetwork: () => {},
   setAddressDisplay: () => {},
   setToastsEnabled: () => {},
   setAutoDismiss: () => {},
+  saveSettings: (_payload?: SettingsBlob) => {},
+  cancelSettings: () => {},
+  hasUnsavedChanges: false,
 }
 
 const SettingsContext = createContext<SettingsState>(defaultState)
+
+const LEGACY_THEME_KEY = 'theme'
 
 export function useSettings() {
   return useContext(SettingsContext)
 }
 
+/**
+ * One-time migration hook: reads the legacy standalone `theme` key (if present), removes
+ * it, and — when no `credence:settings` record exists yet — bootstraps that record with
+ * the legacy value so that `useLocalStorage` picks it up on the very next read.
+ *
+ * Uses a `useState` lazy initializer so the migration runs exactly once per mount,
+ * synchronously, before `useLocalStorage` reads from storage.
+ */
+function useMigrateLegacyTheme(): void {
+  useState<null>(() => {
+    if (typeof window === 'undefined') return null
+
+    const legacyTheme = localStorage.getItem('theme')
+    if (!legacyTheme) return null
+
+    // Always clean up the orphaned key regardless of whether we use its value.
+    localStorage.removeItem('theme')
+
+    if (!VALID_THEMES.includes(legacyTheme as ThemeMode)) return null
+
+    // credence:settings already exists — it is the source of truth; legacy key wins nothing.
+    if (localStorage.getItem(STORAGE_KEY) !== null) return null
+
+    // Bootstrap credence:settings so useLocalStorage reads the migrated theme.
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...defaultPersistedSettings, themeMode: legacyTheme as ThemeMode }),
+    )
+
+    return null
+  })
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return 'system'
-      const parsed = JSON.parse(raw)
-      return (parsed.themeMode as ThemeMode) || 'system'
-    } catch {
-      return 'system'
-    }
-  })
+  // Migrate legacy 'theme' key before useLocalStorage reads from storage.
+  useMigrateLegacyTheme()
 
-  const [network, setNetwork] = useState<string>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return 'public'
-      const parsed = JSON.parse(raw)
-      return parsed.network || 'public'
-    } catch {
-      return 'public'
-    }
-  })
+  // Single localStorage read — replaces five individual JSON.parse calls on every mount.
+  const [persistedSettings, setPersistedSettings] = useLocalStorage<PersistedSettings>(
+    STORAGE_KEY,
+    defaultPersistedSettings,
+  )
 
-  const [addressDisplay, setAddressDisplay] = useState<string>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return 'short'
-      const parsed = JSON.parse(raw)
-      return parsed.addressDisplay || 'short'
-    } catch {
-      return 'short'
-    }
-  })
+  const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
+  const [network, setNetwork] = useState<string>(persistedSettings.network)
+  const [addressDisplay, setAddressDisplay] = useState<string>(persistedSettings.addressDisplay)
+  const [toastsEnabled, setToastsEnabled] = useState<boolean>(persistedSettings.toastsEnabled)
+  const [autoDismiss, setAutoDismiss] = useState<string>(persistedSettings.autoDismiss)
 
-  const [toastsEnabled, setToastsEnabled] = useState<boolean>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return true
-      const parsed = JSON.parse(raw)
-      return typeof parsed.toastsEnabled === 'boolean' ? parsed.toastsEnabled : true
-    } catch {
-      return true
-    }
-  })
+  // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
+  const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)
 
-  const [autoDismiss, setAutoDismiss] = useState<string>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return '5s'
-      const parsed = JSON.parse(raw)
-      return parsed.autoDismiss || '5s'
-    } catch {
-      return '5s'
-    }
-  })
+  const hasUnsavedChanges =
+    themeMode !== originalSettings.themeMode ||
+    network !== originalSettings.network ||
+    addressDisplay !== originalSettings.addressDisplay ||
+    toastsEnabled !== originalSettings.toastsEnabled ||
+    autoDismiss !== originalSettings.autoDismiss
 
-  // persist on changes
+  // Auto-persist any draft change immediately so values survive a page reload.
   useEffect(() => {
-    try {
-      const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
-    } catch {
-      // ignore
-    }
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss])
+    setPersistedSettings({ themeMode, network, addressDisplay, toastsEnabled, autoDismiss })
+  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, setPersistedSettings])
 
-  // apply theme to document
+  const saveSettings = () => {
+    const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
+    setPersistedSettings(payload)
+    setOriginalSettings(payload)
+  }
+
+  const cancelSettings = () => {
+    setThemeMode(originalSettings.themeMode)
+    setNetwork(originalSettings.network)
+    setAddressDisplay(originalSettings.addressDisplay)
+    setToastsEnabled(originalSettings.toastsEnabled)
+    setAutoDismiss(originalSettings.autoDismiss)
+  }
+
+  // Apply theme to document and keep it in sync with the system preference.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const root = window.document.documentElement
@@ -135,6 +197,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setAddressDisplay,
     setToastsEnabled,
     setAutoDismiss,
+    saveSettings,
+    cancelSettings,
+    hasUnsavedChanges,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

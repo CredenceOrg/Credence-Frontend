@@ -1,159 +1,69 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import Button from '../components/Button';
+import { suggestRoute } from '../lib/suggestRoute';
+import './NotFound.css';
 
 export default function NotFound() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const location = useLocation();
+  const suggestion = suggestRoute(location.pathname, ['/', '/bond', '/trust', '/settings']);
+  useDocumentTitle('Page Not Found');
 
   return (
-    <div
-      style={{
-        textAlign: 'center',
-        padding: 'var(--credence-space-12) var(--credence-space-6)',
-        maxWidth: '28rem',
-        margin: '0 auto',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '50vh',
-      }}
-    >
-      {/* 404 Icon */}
-      <div
-        style={{
-          width: '64px',
-          height: '64px',
-          borderRadius: 'var(--credence-radius-full)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto var(--credence-space-4)',
-          fontSize: '2.5rem',
-          background: 'var(--credence-color-danger-surface-strong)',
-        }}
-      >
-        ❌
+    <main className="not-found-container">
+      {/* Accessible SVG replacing raw emoji icon */}
+      <div className="not-found-icon-wrap">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          width="32"
+          height="32"
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
       </div>
 
-      {/* Heading */}
-      <h1
-        style={{
-          fontSize: 'var(--credence-font-size-xl)',
-          fontWeight: 'var(--credence-font-weight-bold)',
-          color: 'var(--credence-text-primary)',
-          marginBottom: 'var(--credence-space-2)',
-        }}
-      >
-        Page Not Found
-      </h1>
+      <h1 className="not-found-title">Page Not Found</h1>
 
-      {/* Subheading */}
-      <p
-        style={{
-          fontSize: 'var(--credence-font-size-lg)',
-          fontWeight: 'var(--credence-font-weight-semibold)',
-          color: 'var(--credence-color-danger-text)',
-          marginBottom: 'var(--credence-space-4)',
-        }}
-      >
-        404
+      <p className="not-found-code">404</p>
+
+      <p className="not-found-description">
+        The page at <code>{location.pathname}</code> does not exist. It may have been moved or removed.
       </p>
+      {suggestion.suggestion && (
+        <Button variant="primary" onClick={() => navigate(suggestion.suggestion!)}>
+          Did you mean {suggestion.suggestion}?
+        </Button>
+      )}
+      <div className="not-found-canonical">
+        <Button variant="primary" onClick={() => navigate('/')}>Home</Button>
+        <Button variant="primary" onClick={() => navigate('/bond')}>Bond</Button>
+        <Button variant="primary" onClick={() => navigate('/trust')}>Trust Score</Button>
+        <Button variant="primary" onClick={() => navigate('/settings')}>Settings</Button>
+      </div>
 
-      {/* Description */}
-      <p
-        style={{
-          color: 'var(--credence-text-secondary)',
-          fontSize: 'var(--credence-font-size-sm)',
-          lineHeight: 'var(--credence-line-height-base)',
-          marginBottom: 'var(--credence-space-6)',
-        }}
-      >
-        The page you're looking for doesn't exist. It may have been moved or removed.
-      </p>
-
-      {/* Recovery Actions */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--credence-space-3)',
-          width: '100%',
-        }}
-      >
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            padding: 'var(--credence-space-3) var(--credence-space-6)',
-            background: 'var(--credence-color-primary-soft)',
-            color: 'var(--credence-color-white)',
-            border: 'none',
-            borderRadius: 'var(--credence-radius-lg)',
-            fontWeight: 'var(--credence-font-weight-semibold)',
-            fontSize: 'var(--credence-font-size-sm)',
-            cursor: 'pointer',
-            transition: 'background 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--credence-color-primary)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--credence-color-primary-soft)'
-          }}
-        >
+      <div className="not-found-actions">
+        <Button variant="primary" onClick={() => navigate('/')}>
           Back to Home
-        </button>
+        </Button>
 
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            padding: 'var(--credence-space-3) var(--credence-space-6)',
-            background: 'transparent',
-            color: 'var(--credence-text-primary)',
-            border: '1px solid var(--credence-border-default)',
-            borderRadius: 'var(--credence-radius-lg)',
-            fontWeight: 'var(--credence-font-weight-semibold)',
-            fontSize: 'var(--credence-font-size-sm)',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--credence-border-default)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'
-          }}
-        >
+        <Button variant="secondary" onClick={() => navigate(-1)}>
           Go Back
-        </button>
+        </Button>
       </div>
 
-      {/* Secondary Help Text */}
-      <p
-        style={{
-          color: 'var(--credence-text-secondary)',
-          fontSize: 'var(--credence-font-size-xs)',
-          lineHeight: 'var(--credence-line-height-sm)',
-          marginTop: 'var(--credence-space-6)',
-        }}
-      >
+      <p className="not-found-footer-text">
         Use the navigation above to find what you're looking for, or{' '}
-        <a
-          href="/"
-          style={{
-            color: 'var(--credence-color-primary)',
-            textDecoration: 'none',
-            fontWeight: 'var(--credence-font-weight-semibold)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.textDecoration = 'underline'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.textDecoration = 'none'
-          }}
-        >
+        <a href="/" className="not-found-link">
           return home
         </a>
         .
       </p>
-    </div>
+    </main>
   )
 }

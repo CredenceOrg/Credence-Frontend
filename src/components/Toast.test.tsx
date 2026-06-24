@@ -1,78 +1,73 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
-import Toast from './Toast'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
+import Toast, { type ToastSeverity } from './Toast'
 
-describe('Toast Component - Transaction Hash Logic', () => {
-  const mockOnDismiss = vi.fn()
+const SEVERITY_CASES = [
+  {
+    severity: 'info',
+    role: 'status',
+    iconSelector: 'circle[cx="12"][cy="12"][r="10"]',
+  },
+  {
+    severity: 'success',
+    role: 'status',
+    iconSelector: 'polyline[points="20 6 9 17 4 12"]',
+  },
+  {
+    severity: 'warning',
+    role: 'status',
+    iconSelector: 'path[d^="M10.29 3.86"]',
+  },
+  {
+    severity: 'danger',
+    role: 'alert',
+    iconSelector: 'line[x1="15"][y1="9"][x2="9"][y2="15"]',
+  },
+] as const satisfies readonly {
+  severity: ToastSeverity
+  role: 'status' | 'alert'
+  iconSelector: string
+}[]
 
-  beforeEach(() => {
-    mockOnDismiss.mockClear()
-    // Reset clipboard mock
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: vi.fn().mockImplementation(() => Promise.resolve()),
-      },
-    })
-  })
+function renderToast(severity: ToastSeverity, message = `${severity} notification`) {
+  const onDismiss = vi.fn()
+  const toast = { id: `toast-${severity}`, severity, message }
 
-  it('renders a standard toast without tx meta', () => {
-    render(<Toast toast={{ id: '1', severity: 'info', message: 'Hello' }} onDismiss={mockOnDismiss} />)
-    
-    expect(screen.getByText('Hello')).toBeInTheDocument()
-    expect(screen.queryByText('View on explorer')).not.toBeInTheDocument()
-  })
+  const view = render(<Toast toast={toast} onDismiss={onDismiss} />)
 
-  it('renders truncated tx hash and explorer link when txHash is provided', () => {
-    const hash = '5e0f72782b2622dbfb5e44a50b38c2084c8a2cc15e8b4e72323e74be8ed01c13'
-    render(<Toast toast={{ id: '2', severity: 'success', message: 'Created', txHash: hash, network: 'testnet' }} onDismiss={mockOnDismiss} />)
-    
-    // Hash should be truncated: first 8 ... last 8
-    const truncated = '5e0f7278...8ed01c13'
-    expect(screen.getByText(truncated)).toBeInTheDocument()
-    
-    const link = screen.getByRole('link', { name: /view on explorer/i })
-    expect(link).toHaveAttribute('href', `https://stellar.expert/explorer/testnet/tx/${hash}`)
-    expect(link).toHaveAttribute('target', '_blank')
-  })
+  return { ...view, onDismiss, toast }
+}
 
-  it('falls back to public network for explorer link if not provided', () => {
-    const hash = 'b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380'
-    render(<Toast toast={{ id: '3', severity: 'success', message: 'Created', txHash: hash }} onDismiss={mockOnDismiss} />)
-    
-    const link = screen.getByRole('link', { name: /view on explorer/i })
-    expect(link).toHaveAttribute('href', `https://stellar.expert/explorer/public/tx/${hash}`)
-  })
+describe('Toast', () => {
+  it.each(SEVERITY_CASES)(
+    'renders the $severity notification contract',
+    ({ severity, role, iconSelector }) => {
+      const message = `Review the ${severity} state before submitting`
+      const { container } = renderToast(severity, message)
 
-  it('copies the hash to clipboard when the copy button is clicked', async () => {
-    const hash = 'b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380'
-    render(<Toast toast={{ id: '4', severity: 'success', message: 'Created', txHash: hash }} onDismiss={mockOnDismiss} />)
-    
-    const copyBtn = screen.getByRole('button', { name: /b6d396a8/i })
-    fireEvent.click(copyBtn)
+      const toast = screen.getByRole(role)
+      expect(toast).toHaveClass('toast', `toast--${severity}`)
+      expect(within(toast).getByText(message)).toBeInTheDocument()
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(hash)
-    
-    await waitFor(() => {
-      expect(screen.getByText('Copied')).toBeInTheDocument()
-    })
-  })
+      const iconContainer = container.querySelector('.toast__icon-container')
+      expect(iconContainer).toHaveAttribute('aria-hidden', 'true')
+      expect(iconContainer?.querySelector('svg')).toBeInTheDocument()
+      expect(iconContainer?.querySelector(iconSelector)).toBeInTheDocument()
 
-  it('fails gracefully if clipboard API throws', async () => {
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: vi.fn().mockImplementation(() => Promise.reject(new Error('Permission denied'))),
-      },
-    })
-    
-    const hash = 'b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380'
-    render(<Toast toast={{ id: '5', severity: 'success', message: 'Created', txHash: hash }} onDismiss={mockOnDismiss} />)
-    
-    const copyBtn = screen.getByRole('button', { name: /b6d396a8/i })
-    fireEvent.click(copyBtn)
+      expect(
+        screen.getByRole('button', { name: `Dismiss ${severity} notification` })
+      ).toBeInTheDocument()
+    }
+  )
 
-    // Wait and verify 'Copied' state does not appear due to catch
-    await waitFor(() => {
-      expect(screen.queryByText('Copied')).not.toBeInTheDocument()
-    })
+  it('passes the toast id to onDismiss when the severity-labelled button is clicked', async () => {
+    const user = userEvent.setup()
+    const { onDismiss, toast } = renderToast('warning')
+
+    await user.click(screen.getByRole('button', { name: 'Dismiss warning notification' }))
+
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(onDismiss).toHaveBeenCalledWith(toast.id)
   })
 })

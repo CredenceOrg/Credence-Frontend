@@ -120,6 +120,7 @@ describe('MobileNav', () => {
   it('shows all nav links when drawer is open', () => {
     renderNav()
     fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /bond/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /trust score/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument()

@@ -1,6 +1,7 @@
 import './TrustGauge.css'
+import { useMemo } from 'react'
 
-export type TrustTier = 'bronze' | 'silver' | 'gold' | 'platinum'
+import { type TrustTier, TIERS, TIER_ORDER, MAX_SCORE } from '../lib/tiers'
 
 export interface TrustGaugeProps {
   /** Current trust score (0-1000) */
@@ -15,36 +16,36 @@ export interface TrustGaugeProps {
 
 /**
  * Tier thresholds and configuration
- * These define the score ranges for each tier
+ * These define the score ranges for each tier using the canonical limits
  */
 export const TIER_CONFIG = {
   bronze: {
-    min: 0,
-    max: 250,
+    min: TIER_THRESHOLDS.bronze.min,
+    max: TIER_THRESHOLDS.bronze.max,
     color: 'var(--credence-color-bronze-border)',
     surfaceColor: 'var(--credence-color-bronze-surface)',
     textColor: 'var(--credence-color-bronze-text)',
     label: 'Bronze',
   },
   silver: {
-    min: 250,
-    max: 500,
+    min: TIER_THRESHOLDS.silver.min,
+    max: TIER_THRESHOLDS.silver.max,
     color: 'var(--credence-color-silver-border)',
     surfaceColor: 'var(--credence-color-silver-surface)',
     textColor: 'var(--credence-color-silver-text)',
     label: 'Silver',
   },
   gold: {
-    min: 500,
-    max: 750,
+    min: TIER_THRESHOLDS.gold.min,
+    max: TIER_THRESHOLDS.gold.max,
     color: 'var(--credence-color-gold-border)',
     surfaceColor: 'var(--credence-color-gold-surface)',
     textColor: 'var(--credence-color-gold-text)',
     label: 'Gold',
   },
   platinum: {
-    min: 750,
-    max: 1000,
+    min: TIER_THRESHOLDS.platinum.min,
+    max: 1000, // Visual maximum for the gauge progress
     color: 'var(--credence-color-platinum-border)',
     surfaceColor: 'var(--credence-color-platinum-surface)',
     textColor: 'var(--credence-color-platinum-text)',
@@ -58,20 +59,24 @@ const MAX_SCORE = 1000
 /** Tier order for progression */
 const TIER_ORDER: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
 
+/** Pre-computed map for O(1) tier index lookups */
+const TIER_INDEX_MAP = TIER_ORDER.reduce((acc, tier, index) => {
+  acc[tier] = index
+  return acc
+}, {} as Record<TrustTier, number>)
 /**
  * Calculate points remaining to reach the next tier
  * @param score Current score
  * @param tier Current tier
  * @returns Points needed to reach next tier (0 if at platinum)
  */
-function pointsToNextTier(score: number, tier: TrustTier): number {
-  const tierIndex = TIER_ORDER.indexOf(tier)
+export function pointsToNextTier(score: number, tier: TrustTier): number {
+  const tierIndex = TIER_INDEX_MAP[tier]
   if (tierIndex === TIER_ORDER.length - 1) {
-    // Already at platinum
     return 0
   }
   const nextTier = TIER_ORDER[tierIndex + 1]
-  return Math.max(0, TIER_CONFIG[nextTier].min - score)
+  return Math.max(0, TIERS[nextTier].min - score)
 }
 
 /**
@@ -79,7 +84,7 @@ function pointsToNextTier(score: number, tier: TrustTier): number {
  * @param score Current score
  * @returns Percentage (0-100)
  */
-function getProgressPercentage(score: number): number {
+export function getProgressPercentage(score: number): number {
   return Math.min((score / MAX_SCORE) * 100, 100)
 }
 
@@ -89,9 +94,16 @@ export default function TrustGauge({
   className = '',
   id = 'trust-gauge',
 }: TrustGaugeProps) {
-  const percentage = getProgressPercentage(score)
-  const nextTierPoints = pointsToNextTier(score, tier)
-  const isAtMax = tier === 'platinum' && score >= TIER_CONFIG.platinum.max
+  const { percentage, nextTierPoints, isAtMax, nextTierLabel } = useMemo(() => {
+    const currentTierIndex = TIER_INDEX_MAP[tier]
+    const nextTier = TIER_ORDER[currentTierIndex + 1]
+    return {
+      percentage: getProgressPercentage(score),
+      nextTierPoints: pointsToNextTier(score, tier),
+      isAtMax: tier === 'platinum' && score >= TIER_CONFIG.platinum.max,
+      nextTierLabel: nextTier,
+    }
+  }, [score, tier])
 
   return (
     <div className={`trust-gauge ${className}`} id={id}>
@@ -151,7 +163,7 @@ export default function TrustGauge({
           {/* Tier threshold markers */}
           <div className="trust-gauge__markers">
             {TIER_ORDER.map((t, index) => {
-              const markerPercentage = (TIER_CONFIG[t].min / MAX_SCORE) * 100
+              const markerPercentage = (TIERS[t].min / MAX_SCORE) * 100
               return (
                 <div
                   key={t}
@@ -161,7 +173,7 @@ export default function TrustGauge({
                       '--marker-position': `${markerPercentage}%`,
                     } as React.CSSProperties & { '--marker-position': string }
                   }
-                  title={`${TIER_CONFIG[t].label}: ${TIER_CONFIG[t].min}-${TIER_CONFIG[t].max} points`}
+                  title={`${TIERS[t].label}: ${TIERS[t].min}-${TIERS[t].max ?? MAX_SCORE} points`}
                 >
                   {/* Only show label for first marker on mobile, all on desktop */}
                   {index === 0 && <span className="trust-gauge__marker-label">{t}</span>}
@@ -193,7 +205,7 @@ export default function TrustGauge({
 
         <div className="trust-gauge__tier-display">
           <span className="trust-gauge__tier-badge" data-tier={tier}>
-            {TIER_CONFIG[tier].label}
+            {TIERS[tier].label}
           </span>
         </div>
 
@@ -202,7 +214,7 @@ export default function TrustGauge({
             <span className="trust-gauge__maxed">Platinum tier — maximum score achieved</span>
           ) : (
             <span className="trust-gauge__next-tier">
-              {nextTierPoints} points to {TIER_ORDER[TIER_ORDER.indexOf(tier) + 1]}
+              {nextTierPoints} points to {nextTierLabel}
             </span>
           )}
         </div>
@@ -212,18 +224,26 @@ export default function TrustGauge({
       <div className="trust-gauge__legend">
         <p className="trust-gauge__legend-title">Tier Ranges</p>
         <ul className="trust-gauge__legend-list">
-          {TIER_ORDER.map((t) => (
-            <li key={t} className="trust-gauge__legend-item">
-              <span
-                className="trust-gauge__legend-dot"
-                style={{ backgroundColor: TIER_CONFIG[t].color }}
-                aria-hidden="true"
-              />
-              <span className="trust-gauge__legend-text">
-                {TIER_CONFIG[t].label}: {TIER_CONFIG[t].min}–{TIER_CONFIG[t].max}
-              </span>
-            </li>
-          ))}
+          {TIER_ORDER.map((t, index) => {
+            // Show each band's upper bound as the next tier's entry threshold
+            // (e.g. Bronze: 0–250), and cap the top tier at the gauge maximum.
+            const upper =
+              index < TIER_ORDER.length - 1
+                ? TIER_CONFIG[TIER_ORDER[index + 1]].min
+                : TIER_CONFIG[t].max
+            return (
+              <li key={t} className="trust-gauge__legend-item">
+                <span
+                  className="trust-gauge__legend-dot"
+                  style={{ backgroundColor: TIER_CONFIG[t].color }}
+                  aria-hidden="true"
+                />
+                <span className="trust-gauge__legend-text">
+                  {TIER_CONFIG[t].label}: {TIER_CONFIG[t].min}–{upper}
+                </span>
+              </li>
+            )
+          })}
         </ul>
       </div>
     </div>

@@ -1,4 +1,4 @@
-# Credence Frontend
+# Credence Frontend [![CI Status](https://github.com/CredenceOrg/Credence-Frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/CredenceOrg/Credence-Frontend/actions/workflows/ci.yml)
 
 Web UI for the Credence economic trust protocol. Connect a Stellar wallet, create or manage USDC bonds, and view trust scores.
 
@@ -25,6 +25,17 @@ npm run dev
 
 App runs at [http://localhost:5173](http://localhost:5173). API requests to `/api` are proxied to the backend (default `http://localhost:3000`).
 
+## Continuous Integration
+
+Every pull request and push to the `main` branch is validated by a GitHub Actions workflow. The quality gate ensures that the code compiles, is correctly formatted, passes all linting rules, and that all tests pass:
+
+- `npm run format:check`
+- `npm run lint`
+- `npm run build`
+- `npm run test`
+
+If any of these steps fail, the CI workflow will fail, and the PR cannot be merged until the issues are resolved.
+
 ## Configuration
 
 Copy `.env.example` to `.env` when you need local link overrides:
@@ -35,26 +46,29 @@ cp .env.example .env
 
 The footer and legal links are resolved in `src/config/links.ts`. Use placeholder or canonical public URLs only; do not add secrets to Vite env files because `VITE_*` values are exposed to the browser build.
 
-| Variable | Legacy alias | Default fallback | Purpose |
-|----------|--------------|------------------|---------|
-| `VITE_DOCS_URL` | `VITE_DOCS` | `/docs` | Documentation link used in the footer. |
-| `VITE_TERMS_URL` | `VITE_TERMS` | `/legal/terms` | Terms of Service link used in the footer. |
-| `VITE_PRIVACY_URL` | `VITE_PRIVACY` | `/legal/privacy` | Privacy Policy link used in the footer. |
+| Variable            | Legacy alias   | Default fallback                                                  | Purpose                                                                     |
+| ------------------- | -------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `VITE_DOCS_URL`     | `VITE_DOCS`    | `/docs`                                                           | Documentation link used in the footer.                                      |
+| `VITE_TERMS_URL`    | `VITE_TERMS`   | `/legal/terms`                                                    | Terms of Service link used in the footer.                                   |
+| `VITE_PRIVACY_URL`  | `VITE_PRIVACY` | `/legal/privacy`                                                  | Privacy Policy link used in the footer.                                     |
+| `VITE_API_BASE_URL` | -              | `/api` in the browser, `http://localhost:3000` for the Vite proxy | Backend origin for local `/api` proxying or a direct API base URL override. |
 
 Precedence is `VITE_*_URL` first, then the legacy `VITE_*` alias, then the default fallback path. For example, `VITE_DOCS_URL` wins over `VITE_DOCS`; if neither is set, the app uses `/docs`.
 
-The Vite dev server also proxies local API requests. Requests from the frontend to `/api` are forwarded to `http://localhost:3000` by `vite.config.ts`, so run the backend on port `3000` when testing API-backed flows locally.
+The Vite dev server also proxies local API requests. Requests from the frontend to `/api` are forwarded to `VITE_API_BASE_URL` by `vite.config.ts`, defaulting to `http://localhost:3000`, so run the backend on port `3000` when testing API-backed flows locally.
+
+Shared API helpers live in `src/api/`. Use `apiFetch<T>()` for JSON requests so pages and hooks get consistent `/api` prefixing, typed `ApiError` failures, and `AbortSignal` cancellation support without coupling the client to React.
 
 The link variable intent and legal handoff notes are also tracked in `docs/footer-link-manifest.md`.
 
 ## Scripts
 
-| Command   | Description          |
-|----------|----------------------|
-| `npm run dev`    | Start Vite dev server |
-| `npm run build`  | TypeScript + production build |
-| `npm run preview`| Preview production build |
-| `npm run lint`   | Run ESLint |
+| Command           | Description                   |
+| ----------------- | ----------------------------- |
+| `npm run dev`     | Start Vite dev server         |
+| `npm run build`   | TypeScript + production build |
+| `npm run preview` | Preview production build      |
+| `npm run lint`    | Run ESLint                    |
 
 ## Tech
 
@@ -63,10 +77,24 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 - Vite
 - React Router
 
+## Documentation
+
+See the [docs/](docs/) directory for detailed project documentation, including:
+
+- [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
+- [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
+
 ## Project layout
 
 - `src/pages/` — Home, Bond, Trust Score
-- `src/components/` — Layout, shared UI
+- `src/components/` — Layout, shared UI; see the [shared components catalog](docs/COMPONENTS.md) for props, accessibility notes, styling ownership, and token usage
 - `src/App.tsx` — Router and routes
+
+### Bond flow routes
+
+| Route       | Component            | Description                                                                                                               |
+| ----------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `/bond`     | `Bond.tsx`           | Overview page — lists active bonds and provides an entry into the creation wizard                                         |
+| `/bond/new` | `CreateBondPage.tsx` | Four-step bond-creation wizard (amount → duration → review → confirm). Navigates back to `/bond` on completion or cancel. |
 
 To add wallet (e.g. Freighter) and contract calls, extend the Bond and Trust Score pages and add a small API client in `src/api/`.

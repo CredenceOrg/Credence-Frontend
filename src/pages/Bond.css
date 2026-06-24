@@ -1,0 +1,146 @@
+/**
+ * @file Bond.css
+ * @description Token-driven styles for the Bond page (src/pages/Bond.tsx).
+ * All values resolve through --credence-* design tokens defined in src/index.css.
+ * This replaces inline style={{}} blocks to enable proper pseudo-class states
+ * (:hover, :focus-visible) and media query overrides.
+ */
+
+/* Main container */
+.bond__container {
+  display: grid;
+  gap: var(--credence-space-8);
+}
+
+/* Header section */
+.bond__headerSection {
+  display: grid;
+  gap: var(--credence-space-3);
+}
+
+.bond__title {
+  margin: 0;
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-xl);
+  font-weight: var(--credence-font-weight-bold);
+}
+
+.bond__description {
+  margin: 0;
+  color: var(--credence-text-secondary);
+  max-width: 42rem;
+  line-height: var(--credence-line-height-relaxed);
+}
+
+/* Action card grid */
+.bond__cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--credence-space-6);
+  align-items: start;
+}
+
+/* Bond list container */
+.bond__listContainer {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+}
+
+/* Individual bond row */
+.bond__row {
+  display: grid;
+  gap: var(--credence-space-2);
+  padding-block: var(--credence-space-3);
+  border-bottom: 1px solid var(--credence-border-default);
+}
+
+.bond__row:last-child {
+  border-bottom: none;
+}
+
+/* Bond row header (amount + status + actions) */
+.bond__rowHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--credence-space-3);
+}
+
+/* Bond amount and badge column */
+.bond__amountColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-1);
+}
+
+.bond__amount {
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-text-primary);
+}
+
+/* Bond action buttons row */
+.bond__actionRow {
+  display: flex;
+  gap: var(--credence-space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Penalty detail toggle button */
+.bond__penaltyToggle {
+  background: none;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-sm);
+  padding: var(--credence-space-1) var(--credence-space-2);
+  cursor: pointer;
+  color: var(--credence-text-secondary);
+  font-size: 0.8rem;
+  transition: all var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+}
+
+.bond__penaltyToggle:hover {
+  background: var(--credence-surface-page);
+  color: var(--credence-text-primary);
+}
+
+.bond__penaltyToggle:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Penalty breakdown panel */
+.bond__penaltyPanel {
+  display: grid;
+  gap: var(--credence-space-1);
+  padding: var(--credence-space-3);
+  background: var(--credence-color-warning-surface);
+  border-radius: var(--credence-radius-sm);
+  font-size: 0.85rem;
+  color: var(--credence-text-primary);
+}
+
+.bond__penaltyPanel[hidden] {
+  display: none;
+}
+
+/* Penalty breakdown row */
+.bond__penaltyRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.bond__penaltyRowTotal {
+  display: flex;
+  justify-content: space-between;
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+/* No penalty notice */
+.bond__noPenaltyNotice {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--credence-color-success-text);
+}

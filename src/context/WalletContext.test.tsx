@@ -14,6 +14,10 @@ vi.mock('../hooks/useWallet', () => ({
   }),
 }))
 
+vi.mock('../components/ToastProvider', () => ({
+  useToast: () => ({ addToast: vi.fn() }),
+}))
+
 function WalletConsumer() {
   const wallet = useWalletContext()
 

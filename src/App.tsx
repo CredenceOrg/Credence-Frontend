@@ -42,13 +42,15 @@ const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) 
 /**
  * Provider order is load-bearing: SettingsProvider must be the outer ancestor
  * because ToastProvider reads toastsEnabled and autoDismiss via useSettings().
+ * ToastProvider sits above WalletProvider so WalletProvider can use useToast()
+ * for idle-disconnect notifications.
  */
 function App() {
   return (
     <BrowserRouter>
       <SettingsProvider>
-        <WalletProvider>
-          <ToastProvider>
+        <ToastProvider>
+          <WalletProvider>
             <ErrorBoundary>
               <Suspense fallback={<div>Loading...</div>}>
                 <Routes>
@@ -70,8 +72,8 @@ function App() {
                 </Routes>
               </Suspense>
             </ErrorBoundary>
-          </ToastProvider>
-        </WalletProvider>
+          </WalletProvider>
+        </ToastProvider>
       </SettingsProvider>
     </BrowserRouter>
   )

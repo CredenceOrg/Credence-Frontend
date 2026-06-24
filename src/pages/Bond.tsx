@@ -63,7 +63,8 @@ export default function Bond() {
   const bonds: MockBond[] = []
 
   const handleCreate = () => {
-    addToast('success', 'Bond created successfully.')
+    const mockHash = '5e0f72782b2622dbfb5e44a50b38c2084c8a2cc15e8b4e72323e74be8ed01c13'
+    addToast('success', 'Bond created successfully.', { txHash: mockHash })
   }
 
   const focusBondCreation = () => {
@@ -91,13 +92,15 @@ export default function Bond() {
     if (!withdrawTarget || !withdrawBreakdown) return
 
     const { penaltyUsdc } = withdrawBreakdown
+    const mockHash = 'b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380'
     if (penaltyUsdc > 0) {
       addToast(
         'warning',
-        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
+        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
+        { txHash: mockHash }
       )
     } else {
-      addToast('success', 'Bond withdrawn successfully.')
+      addToast('success', 'Bond withdrawn successfully.', { txHash: mockHash })
     }
     setWithdrawTarget(null)
   }, [withdrawTarget, withdrawBreakdown, addToast])

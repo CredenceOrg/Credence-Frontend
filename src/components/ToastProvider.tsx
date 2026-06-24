@@ -13,7 +13,7 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
 }
 
 interface ToastContextValue {
-  addToast: (severity: ToastSeverity, message: string) => void
+  addToast: (severity: ToastSeverity, message: string, options?: { txHash?: string; network?: string }) => void
   removeToast: (id: string) => void
   removeAllToasts: () => void
 }
@@ -27,7 +27,7 @@ export function useToast() {
 }
 
 export default function ToastProvider({ children }: { children: ReactNode }) {
-  const { toastsEnabled, autoDismiss } = useSettings()
+  const { toastsEnabled, autoDismiss, network } = useSettings()
   const [toasts, setToasts] = useState<ToastData[]>([])
   const idCounter = useRef(0)
 
@@ -40,12 +40,19 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addToast = useCallback(
-    (severity: ToastSeverity, message: string) => {
+    (severity: ToastSeverity, message: string, options?: { txHash?: string; network?: string }) => {
       // respect global toast enable setting
       if (!toastsEnabled) return
+      
       const id = String(++idCounter.current)
       setToasts((prev: ToastData[]) => {
-        const next = [...prev, { id, severity, message }]
+        const next = [...prev, { 
+          id, 
+          severity, 
+          message,
+          txHash: options?.txHash,
+          network: options?.network || network
+        }]
         return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next
       })
 
@@ -66,7 +73,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         setTimeout(() => removeToast(id), timeout)
       }
     },
-    [removeToast]
+    [toastsEnabled, autoDismiss, network, removeToast]
   )
 
   return (

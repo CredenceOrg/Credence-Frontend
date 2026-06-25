@@ -13,7 +13,7 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
 }
 
 interface ToastContextValue {
-  addToast: (severity: ToastSeverity, message: string) => void
+  addToast: (severity: ToastSeverity, message: string, options?: { txHash?: string; network?: string }) => void
   removeToast: (id: string) => void
   removeAllToasts: () => void
 }

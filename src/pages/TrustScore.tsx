@@ -199,6 +199,7 @@ export default function TrustScore() {
             value={address}
             onChange={handleAddressChange}
             onValidationChange={setIsAddressValid}
+            selfAddress={walletAddress}
           />
           {isConnected && walletAddress && (
             <Button
@@ -208,7 +209,7 @@ export default function TrustScore() {
               fullWidth
               className="trustScore__buttonRow"
             >
-              Use connected wallet
+              Use my address
             </Button>
           )}
           <Button

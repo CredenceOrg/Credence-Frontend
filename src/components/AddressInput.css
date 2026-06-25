@@ -152,6 +152,12 @@
   word-break: break-all;
 }
 
+.address-input-echo-self {
+  margin-left: var(--credence-space-2);
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+}
+
 /**
  * Copy button: appears inside echo bar, copies full address to clipboard
  */

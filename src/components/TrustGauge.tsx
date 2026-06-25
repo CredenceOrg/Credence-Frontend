@@ -1,7 +1,7 @@
 import './TrustGauge.css'
 import { useMemo } from 'react'
 
-import { type TrustTier, TIERS, TIER_ORDER, MAX_SCORE } from '../lib/tiers'
+import { type TrustTier, TIERS, TIER_ORDER, MAX_SCORE, TIER_THRESHOLDS } from '../lib/tiers'
 
 export interface TrustGaugeProps {
   /** Current trust score (0-1000) */
@@ -52,12 +52,6 @@ export const TIER_CONFIG = {
     label: 'Platinum',
   },
 } as const
-
-/** Maximum possible score */
-const MAX_SCORE = 1000
-
-/** Tier order for progression */
-const TIER_ORDER: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
 
 /** Pre-computed map for O(1) tier index lookups */
 const TIER_INDEX_MAP = TIER_ORDER.reduce((acc, tier, index) => {

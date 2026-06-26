@@ -44,17 +44,7 @@ type PersistedSettings = {
 const STORAGE_KEY = 'credence:settings'
 const LEGACY_THEME_KEY = 'theme'
 
-function loadLegacyTheme(): ThemeMode | null {
-  try {
-    const legacyTheme = localStorage.getItem(LEGACY_THEME_KEY)
-    if (legacyTheme === 'light' || legacyTheme === 'dark' || legacyTheme === 'system') {
-      return legacyTheme
-    }
-    return null
-  } catch {
-    return null
-  }
-}
+
 
 const VALID_THEMES: ThemeMode[] = ['light', 'dark', 'system']
 

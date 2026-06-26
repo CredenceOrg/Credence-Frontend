@@ -1,7 +1,15 @@
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
-import TrustGauge, { pointsToNextTier, getProgressPercentage, TIER_CONFIG } from './TrustGauge'
+import { describe, it, expect, vi } from 'vitest'
+import TrustGauge, { pointsToNextTier, getProgressPercentage } from './TrustGauge'
 import type { TrustTier } from '../lib/tier'
+import { TIERS } from '../lib/tiers'
+import { useReducedMotion } from '../hooks/useReducedMotion'
+
+// Default the reduced-motion hook to "no preference" so existing assertions
+// (and any new ones that don't override it) keep behaving as before.
+vi.mock('../hooks/useReducedMotion', () => ({
+  useReducedMotion: vi.fn(() => false),
+}))
 
 // --- pointsToNextTier ---
 describe('pointsToNextTier', () => {
@@ -42,7 +50,7 @@ describe('pointsToNextTier', () => {
   })
 
   it('handles negative score defensively (treats as below-zero offset)', () => {
-    // score is below zero: points = TIER_CONFIG.silver.min - (-50) = 300
+    // score is below zero: points = silver.min (250) - (-50) = 300
     expect(pointsToNextTier(-50, 'bronze')).toBe(300)
   })
 
@@ -212,5 +220,68 @@ describe('TrustGauge accessible heading', () => {
   it('renders the visible heading', () => {
     render(<TrustGauge score={0} tier="bronze" />)
     expect(screen.getByRole('heading', { name: 'Trust Score Gauge' })).toBeInTheDocument()
+  })
+})
+
+// --- prefers-reduced-motion gating ---
+//
+// The TrustGauge applies JS-driven transitions to the progress fill and the
+// current-score thumb (`transition: width ...` and `transition: left ...`).
+// When the user prefers reduced motion, those transitions are overridden to
+// `none` via an inline style so the gauge "snaps" to the new position rather
+// than animating. The CSS @media rule in TrustGauge.css still hides the
+// animation in older paths, but the JS override is the canonical signal for
+// any future JS-driven animation logic.
+describe('TrustGauge – prefers-reduced-motion gating', () => {
+  afterEach(() => {
+    // Reset the mocked hook between tests so the default (`false`) is restored
+    // and assertions in earlier describe blocks that assume non-reduced motion
+    // can not be polluted by a previous test that toggled it to `true`.
+    vi.mocked(useReducedMotion).mockReset()
+  })
+
+  it('does not override the progress transition when reduce is off', () => {
+    vi.mocked(useReducedMotion).mockReturnValue(false)
+    const { container } = render(<TrustGauge score={500} tier="gold" />)
+    const progress = container.querySelector('.trust-gauge__progress') as HTMLElement | null
+    expect(progress).not.toBeNull()
+    // The inline style set should not contain a `transition:` declaration when
+    // there is no reduce preference — the CSS file still drives the duration.
+    expect(progress!.style.transition).toBe('')
+  })
+
+  it('overrides the progress transition to none when reduce is on', () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+    const { container } = render(<TrustGauge score={500} tier="gold" />)
+    const progress = container.querySelector('.trust-gauge__progress') as HTMLElement | null
+    expect(progress).not.toBeNull()
+    expect(progress!.style.transition).toBe('none')
+  })
+
+  it('does not override the thumb transition when reduce is off', () => {
+    vi.mocked(useReducedMotion).mockReturnValue(false)
+    const { container } = render(<TrustGauge score={500} tier="gold" />)
+    const thumb = container.querySelector('.trust-gauge__thumb') as HTMLElement | null
+    expect(thumb).not.toBeNull()
+    expect(thumb!.style.transition).toBe('')
+  })
+
+  it('overrides the thumb transition to none when reduce is on', () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+    const { container } = render(<TrustGauge score={500} tier="gold" />)
+    const thumb = container.querySelector('.trust-gauge__thumb') as HTMLElement | null
+    expect(thumb).not.toBeNull()
+    expect(thumb!.style.transition).toBe('none')
+  })
+
+  it('still renders correctly across all variants during reduced motion', () => {
+    // Spot-check that the component renders fully (ARIA + scoring) regardless
+    // of motion gating — gating is purely visual. Score=400, tier=silver
+    // leaves 100 points to gold (500 - 400).
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+    render(<TrustGauge score={400} tier="silver" />)
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '400')
+    expect(screen.getByText('400')).toBeInTheDocument()
+    expect(screen.getByText('100 points to gold')).toBeInTheDocument()
   })
 })

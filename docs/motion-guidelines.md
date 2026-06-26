@@ -91,3 +91,39 @@ export default function MyComponent() {
   )
 }
 ```
+
+#### TrustGauge integration
+
+The TrustGauge progress fill and current-score thumb use inline-styled transitions to animate the new score into place. The component reads `useReducedMotion` and overrides the inline `transition` to `'none'` when reduced motion is preferred, so the gauge snaps to the new position rather than animating:
+
+```tsx
+const prefersReducedMotion = useReducedMotion()
+const reducedMotionTransition = prefersReducedMotion ? 'none' : undefined
+
+// Later in JSX:
+<div
+  className="trust-gauge__progress"
+  style={{
+    '--progress-width': `${percentage}%`,
+    ...(reducedMotionTransition ? { transition: reducedMotionTransition } : {}),
+  }}
+/>
+```
+
+The CSS `@media (prefers-reduced-motion: reduce)` rule in `TrustGauge.css` remains in place as the safety net for first paint and for any element that does not consume the hook. The JS hook is the canonical signal for any component that drives animation through inline styles (including future imperative animation logic).
+
+#### LoadingSkeleton integration
+
+The LoadingSkeleton sets `animation: var(--credence-motion-skeleton)` on every shimmer block. When `useReducedMotion()` returns `true` the component omits the animation entirely from the inline style, complementing the global CSS override in `src/index.css`:
+
+```tsx
+const prefersReducedMotion = useReducedMotion()
+const baseStyle = {
+  background: 'var(--credence-skeleton-gradient)',
+  backgroundSize: '200% 100%',
+  ...(prefersReducedMotion ? {} : { animation: 'var(--credence-motion-skeleton)' }),
+  borderRadius: 'var(--credence-radius-lg)',
+}
+```
+
+Components covered by the JS-level hook today: `TrustGauge`, `LoadingSkeleton`, `CreateBondFlow`. Components still relying solely on the CSS layer: `MobileNav`, `ThemeToggle`, and the link/footer transitions in `src/index.css` (acceptable because they only swap colors, not transform in space).

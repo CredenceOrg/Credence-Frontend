@@ -10,7 +10,7 @@ import Button from '../components/Button'
 import EmptyState from '../components/states/EmptyState'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSeo } from '../hooks/useSeo'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
 import {
@@ -114,7 +114,10 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
 }
 
 export default function Bond() {
-  useDocumentTitle('Bond')
+  useSeo({
+    title: 'Bond',
+    description: 'Create and manage USDC reputation bonds on the Stellar network.',
+  })
 
   const navigate = useNavigate()
   const { addToast } = useToast()

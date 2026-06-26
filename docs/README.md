@@ -13,12 +13,17 @@ This directory contains comprehensive design specifications and implementation g
    - Decision guide: when to add new state vs. local vs. URL params
    - Mock patterns for testing
 
-2. **[Testing Guide](./TESTING.md)**
+2. **[Accessibility Checklist](./ACCESSIBILITY.md)** ⭐ NEW
+   - Pre-merge verification checklist for axe, screen reader, keyboard, and contrast
+   - How to run automated and manual a11y audits locally
+   - Acceptance criteria for PRs that touch UI
+
+3. **[Testing Guide](./TESTING.md)**
    - How to run Vitest and generate coverage
    - Render helpers, router wrapper, and mock patterns for matchMedia / localStorage / clipboard
    - File naming conventions and coverage thresholds
 
-3. **Per-route document titles (`useDocumentTitle`)**
+4. **Per-route document titles (`useDocumentTitle`)**
    - `src/hooks/useDocumentTitle.ts` keeps `document.title` in sync with the active route
    - Each page sets a distinct, branded title (e.g. `Bond · Credence`); the 404 page uses `Page Not Found · Credence`
    - Why it matters: screen readers announce the title on navigation, and tabs, history, and bookmarks become distinguishable per page
@@ -37,7 +42,7 @@ This directory contains comprehensive design specifications and implementation g
    - Consolidated props, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for shared UI components
    - Documents severity/variant vocabularies and cross-links focused component docs
 
-5. **[UI States Guide](./UI_STATES_GUIDE.md)**
+6. **[UI States Guide](./UI_STATES_GUIDE.md)**
    - Complete guide for empty states, error states, and loading patterns
    - Microcopy guidelines and tone recommendations
    - When and how to use each state type

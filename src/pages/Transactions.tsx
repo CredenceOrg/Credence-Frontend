@@ -4,7 +4,7 @@ import Badge from '../components/Badge'
 import Select from '../components/controls/Select'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSeo } from '../hooks/useSeo'
 import { useTransactions } from '../hooks/useTransactions'
 import { explorerUrl } from '../lib/explorerUrl'
 import { truncateAddress } from '../lib/stellar'
@@ -37,7 +37,10 @@ function relativeTime(isoTimestamp: string): string {
 }
 
 export default function Transactions() {
-  useDocumentTitle('Transactions')
+  useSeo({
+    title: 'Transactions',
+    description: 'View your transaction history and bond activity on the Stellar network.',
+  })
 
   const { network } = useSettings()
   const { data, isLoading, error, refetch } = useTransactions()

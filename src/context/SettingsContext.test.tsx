@@ -369,6 +369,26 @@ describe('SettingsProvider', () => {
       })
     })
 
+    it('persists an explicit saveSettings payload without waiting for state setters', () => {
+      render(
+        <SettingsProvider>
+          <ExplicitSaveProbe />
+        </SettingsProvider>
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'save explicit dark' }))
+
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+      expect(stored).toEqual({
+        themeMode: 'dark',
+        network: 'test',
+        addressDisplay: 'full',
+        toastsEnabled: false,
+        autoDismiss: 'off',
+      })
+      expect(screen.getByTestId('unsaved').textContent).toBe('false')
+    })
+
     it('persists toastsEnabled=false', async () => {
       const user = userEvent.setup()
       renderWithProvider()
@@ -538,6 +558,28 @@ function UnsavedProbe() {
     <div>
       <span data-testid="theme">{s.themeMode}</span>
       <span data-testid="unsaved">{String(s.hasUnsavedChanges)}</span>
+    </div>
+  )
+}
+
+function ExplicitSaveProbe() {
+  const s = useSettings()
+  return (
+    <div>
+      <span data-testid="unsaved">{String(s.hasUnsavedChanges)}</span>
+      <button
+        onClick={() =>
+          s.saveSettings({
+            themeMode: 'dark',
+            network: 'test',
+            addressDisplay: 'full',
+            toastsEnabled: false,
+            autoDismiss: 'off',
+          })
+        }
+      >
+        save explicit dark
+      </button>
     </div>
   )
 }

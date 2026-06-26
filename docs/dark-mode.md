@@ -61,8 +61,10 @@ The theme has exactly **one** owner: `SettingsContext` (`src/context/SettingsCon
   `SettingsContext` and is persisted under the single `credence:settings`
   localStorage key. There is no separate `'theme'` key.
 - **Document attribute**: `SettingsContext` is the _only_ writer of
-  `document.documentElement[data-theme]`. Its effect resolves `'system'` via
-  `matchMedia('(prefers-color-scheme: dark)')` and re-applies on OS changes.
+  `document.documentElement[data-theme]` after React mounts. The small
+  `theme-preference-bootstrap` script in `index.html` applies the same
+  persisted or system-resolved value before React renders, preventing a
+  light/dark flash on first paint.
 - **`ThemeToggle`** (`src/components/ThemeToggle.tsx`) is a pure consumer of
   `useSettings()`. It owns no theme state and writes to no storage key. It:
   - _derives_ the displayed light/dark from `themeMode` (resolving `'system'`

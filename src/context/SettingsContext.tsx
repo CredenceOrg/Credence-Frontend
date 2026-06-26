@@ -1,16 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
-
-type ThemeMode = 'light' | 'dark' | 'system'
+import {
+  defaultSettings,
+  validateAndNormalize,
+  type SettingsBlob,
+  type ThemeMode,
+} from '../lib/settingsSchema'
 
 /** The persisted settings payload (the subset of state written to localStorage). */
-interface SettingsPayload {
-  themeMode: ThemeMode
-  network: string
-  addressDisplay: string
-  toastsEnabled: boolean
-  autoDismiss: string
-}
+type SettingsPayload = SettingsBlob
 
 interface SettingsState {
   themeMode: ThemeMode
@@ -33,28 +31,14 @@ interface SettingsState {
   hasUnsavedChanges: boolean
 }
 
-type PersistedSettings = {
-  themeMode: ThemeMode
-  network: string
-  addressDisplay: string
-  toastsEnabled: boolean
-  autoDismiss: string
-}
+type PersistedSettings = SettingsBlob
 
 const STORAGE_KEY = 'credence:settings'
 const LEGACY_THEME_KEY = 'theme'
 
-
-
 const VALID_THEMES: ThemeMode[] = ['light', 'dark', 'system']
 
-const defaultPersistedSettings: PersistedSettings = {
-  themeMode: 'system',
-  network: 'public',
-  addressDisplay: 'short',
-  toastsEnabled: true,
-  autoDismiss: '5s',
-}
+const defaultPersistedSettings: PersistedSettings = defaultSettings()
 
 const defaultState: SettingsState = {
   ...defaultPersistedSettings,
@@ -70,10 +54,13 @@ const defaultState: SettingsState = {
 
 const SettingsContext = createContext<SettingsState>(defaultState)
 
-
-
 export function useSettings() {
   return useContext(SettingsContext)
+}
+
+function normalizeStoredSettings(raw: unknown): PersistedSettings {
+  const result = validateAndNormalize(raw)
+  return result.ok ? result.data : defaultPersistedSettings
 }
 
 /**
@@ -88,11 +75,11 @@ function useMigrateLegacyTheme(): void {
   useState<null>(() => {
     if (typeof window === 'undefined') return null
 
-    const legacyTheme = localStorage.getItem('theme')
+    const legacyTheme = localStorage.getItem(LEGACY_THEME_KEY)
     if (!legacyTheme) return null
 
     // Always clean up the orphaned key regardless of whether we use its value.
-    localStorage.removeItem('theme')
+    localStorage.removeItem(LEGACY_THEME_KEY)
 
     if (!VALID_THEMES.includes(legacyTheme as ThemeMode)) return null
 
@@ -102,7 +89,7 @@ function useMigrateLegacyTheme(): void {
     // Bootstrap credence:settings so useLocalStorage reads the migrated theme.
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ ...defaultPersistedSettings, themeMode: legacyTheme as ThemeMode }),
+      JSON.stringify({ ...defaultPersistedSettings, themeMode: legacyTheme as ThemeMode })
     )
 
     return null
@@ -114,10 +101,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useMigrateLegacyTheme()
 
   // Single localStorage read — replaces five individual JSON.parse calls on every mount.
-  const [persistedSettings, setPersistedSettings] = useLocalStorage<PersistedSettings>(
+  const [storedSettings, setStoredSettings] = useLocalStorage<unknown>(
     STORAGE_KEY,
-    defaultPersistedSettings,
+    defaultPersistedSettings
   )
+  const setPersistedSettings = useCallback(
+    (next: PersistedSettings) => setStoredSettings(next),
+    [setStoredSettings]
+  )
+  const persistedSettings = normalizeStoredSettings(storedSettings)
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
   const [network, setNetwork] = useState<string>(persistedSettings.network)
@@ -140,8 +132,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setPersistedSettings({ themeMode, network, addressDisplay, toastsEnabled, autoDismiss })
   }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, setPersistedSettings])
 
-  const saveSettings = () => {
-    const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
+  const saveSettings = (next?: SettingsPayload) => {
+    const payload = next ?? { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
+    if (next) {
+      setThemeMode(payload.themeMode)
+      setNetwork(payload.network)
+      setAddressDisplay(payload.addressDisplay)
+      setToastsEnabled(payload.toastsEnabled)
+      setAutoDismiss(payload.autoDismiss)
+    }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
   }

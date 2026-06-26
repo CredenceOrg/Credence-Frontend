@@ -90,6 +90,9 @@ const { themeMode, network, addressDisplay, toastsEnabled, autoDismiss, hasUnsav
 
 The `themeMode` value is applied to the document root as `data-theme`:
 
+- Before React renders, `index.html` runs a tiny `theme-preference-bootstrap`
+  script that reads `credence:settings` and applies the persisted or
+  system-resolved theme to avoid a first-paint flash
 - When `themeMode === 'system'`: reads OS preference via `matchMedia('(prefers-color-scheme: dark)')` and sets `data-theme` to `'light'` or `'dark'`
 - When `themeMode === 'light'` or `'dark'`: sets `data-theme` directly
 - On OS preference change (only when `themeMode === 'system'`), re-evaluates and updates the DOM

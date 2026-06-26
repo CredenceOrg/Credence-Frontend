@@ -13,7 +13,11 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
 }
 
 interface ToastContextValue {
-  addToast: (severity: ToastSeverity, message: string, options?: { txHash?: string; network?: string }) => void
+  addToast: (
+    severity: ToastSeverity,
+    message: string,
+    options?: { txHash?: string; network?: string }
+  ) => void
   removeToast: (id: string) => void
   removeAllToasts: () => void
 }
@@ -61,6 +65,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
 
       // respect global toast enable setting
       if (!toastsEnabled) return
+      const id = String(++idCounter.current)
 
       // compute timeout: settings `autoDismiss` can override default TIMEOUTS
       let timeout = TIMEOUTS[severity]
@@ -81,6 +86,21 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         const timerId = setTimeout(() => removeToast(id), timeout)
         timeoutsMap.current.set(id, timerId)
       }
+
+      setToasts((prev: ToastData[]) => {
+        const next = [...prev, { id, severity, message, durationMs: timeout }]
+        const overflow = next.length - MAX_TOASTS
+        if (overflow <= 0) return next
+
+        for (const toast of next.slice(0, overflow)) {
+          const timerId = timeoutsMap.current.get(toast.id)
+          if (timerId) {
+            clearTimeout(timerId)
+            timeoutsMap.current.delete(toast.id)
+          }
+        }
+        return next.slice(overflow)
+      })
     },
     [removeToast, toastsEnabled, autoDismiss]
   )

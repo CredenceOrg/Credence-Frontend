@@ -18,6 +18,10 @@ function TestComponent() {
     <div>
       <button onClick={() => addToast('info', 'Info Message')}>Add Info</button>
       <button onClick={() => addToast('danger', 'Danger Message')}>Add Danger</button>
+      <button onClick={() => addToast('info', 'Toast One')}>Add Toast One</button>
+      <button onClick={() => addToast('success', 'Toast Two')}>Add Toast Two</button>
+      <button onClick={() => addToast('warning', 'Toast Three')}>Add Toast Three</button>
+      <button onClick={() => addToast('info', 'Toast Four')}>Add Toast Four</button>
       <button onClick={removeAllToasts}>Remove All</button>
     </div>
   )
@@ -159,6 +163,35 @@ describe('ToastProvider', () => {
 
     expect(screen.getAllByText('Danger Message').length).toBe(2)
     expect(screen.getAllByText('Info Message').length).toBe(1)
+  })
+
+  it('dismisses the oldest toast first when the queue exceeds 3 items', () => {
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+      toastsEnabled: true,
+      autoDismiss: 'off',
+    } as ReturnType<typeof SettingsContextModule.useSettings>)
+
+    fireEvent.click(screen.getByText('Add Toast One'))
+    fireEvent.click(screen.getByText('Add Toast Two'))
+    fireEvent.click(screen.getByText('Add Toast Three'))
+
+    expect(screen.getByText('Toast One')).toBeInTheDocument()
+    expect(screen.getByText('Toast Two')).toBeInTheDocument()
+    expect(screen.getByText('Toast Three')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Add Toast Four'))
+
+    expect(screen.queryByText('Toast One')).not.toBeInTheDocument()
+    expect(screen.getByText('Toast Two')).toBeInTheDocument()
+    expect(screen.getByText('Toast Three')).toBeInTheDocument()
+    expect(screen.getByText('Toast Four')).toBeInTheDocument()
+    expect(screen.getAllByRole('status')).toHaveLength(3)
   })
 
   it('clears timeouts when removed early', () => {

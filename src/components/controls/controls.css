@@ -5,6 +5,11 @@
 
 /* ── Select ───────────────────────────────────────────── */
 
+.control-select-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
 .control-select {
   padding: var(--credence-space-2) var(--credence-space-3);
   border-radius: var(--credence-radius-lg);
@@ -25,11 +30,47 @@
   outline-offset: 2px;
 }
 
-.control-select:hover {
+.control-select:hover:not(:disabled) {
   border-color: var(--credence-color-primary);
 }
 
+.control-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--credence-color-slate-50);
+}
+
+[data-theme='dark'] .control-select:disabled {
+  background: var(--credence-color-slate-800);
+}
+
+.control-select--error {
+  border-color: var(--credence-color-danger-border) !important;
+}
+
+.control-select-spinner {
+  position: absolute;
+  right: var(--credence-space-8);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--credence-color-primary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: control-spin 1s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes control-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Toggle ──────────────────────────────────────────── */
+
+.control-toggle-wrapper {
+  display: inline-block;
+}
 
 .control-toggle {
   padding: var(--credence-space-1) var(--credence-space-2);
@@ -60,11 +101,30 @@
   outline-offset: 2px;
 }
 
-.control-toggle:hover {
+.control-toggle:hover:not(:disabled) {
   border-color: var(--credence-color-primary);
 }
 
-.control-toggle[aria-checked='true']:hover {
+.control-toggle[aria-checked='true']:hover:not(:disabled) {
   background: var(--credence-color-primary-strong);
   border-color: var(--credence-color-primary-strong);
+}
+
+.control-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control-toggle--error {
+  border-color: var(--credence-color-danger-border) !important;
+}
+
+.control-toggle-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: control-spin 1s linear infinite;
 }

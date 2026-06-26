@@ -49,6 +49,15 @@
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
+.address-input-container--loading {
+  background: var(--credence-color-slate-50);
+  cursor: wait;
+}
+
+[data-theme='dark'] .address-input-container--loading {
+  background: var(--credence-color-slate-800);
+}
+
 .address-input-field {
   flex: 1;
   min-width: 0;
@@ -109,6 +118,31 @@
 .address-input-paste-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.address-input-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--credence-color-primary);
+  flex-shrink: 0;
+}
+
+.address-input-spinner svg {
+  width: 20px;
+  height: 20px;
+  animation: address-input-spin 1s linear infinite;
+}
+
+@keyframes address-input-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 [data-theme='dark'] .address-input-paste-button {

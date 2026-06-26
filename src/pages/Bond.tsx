@@ -13,7 +13,11 @@ import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
-
+import {
+  type MockBond,
+  getPenaltyRate,
+  computeWithdrawBreakdown,
+} from '../lib/bondPenalty'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 

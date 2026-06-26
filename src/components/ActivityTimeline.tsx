@@ -15,13 +15,13 @@ export interface ActivityItem {
   meta: string
 }
 
-interface ActivityTimelineProps {
+export interface ActivityTimelineProps {
   compact?: boolean
-  /** Timeline events to render. Defaults to the built-in sample data. */
+  /** Timeline events to render. Defaults to sample data. Pass empty array for no data. */
   items?: ActivityItem[]
 }
 
-export const ACTIVITY_ITEMS: ActivityItem[] = [
+export const SAMPLE_ACTIVITY: ActivityItem[] = [
   {
     id: 'evt-001',
     timestamp: 'Apr 28, 14:22 UTC',
@@ -53,6 +53,8 @@ export const ACTIVITY_ITEMS: ActivityItem[] = [
     meta: 'Window +90d',
   },
 ]
+
+export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
 
 export default function ActivityTimeline({
   compact = false,

@@ -8,6 +8,7 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
+import ActivityTimeline, { ActivityItem } from '../components/ActivityTimeline'
 import { TIERS } from '../lib/tiers'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
@@ -17,6 +18,7 @@ import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
 import { isValidStellarAddress } from '@/lib/stellar'
+import { SAMPLE_ACTIVITY } from '../components/ActivityTimeline'
 
 function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {
   if (error.status === 0) {
@@ -101,12 +103,7 @@ export default function TrustScore() {
     setAddress(walletAddress)
   }
 
-  const activity: Array<{
-    id: number
-    action: string
-    date: string
-    status: 'active' | 'slashed'
-  }> = []
+  const activity: ActivityItem[] = SAMPLE_ACTIVITY
 
   const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
   const mismatchBannerId = 'trust-score-network-mismatch'
@@ -226,29 +223,7 @@ export default function TrustScore() {
         </div>
 
         <div className="trustScore__card">
-          <h2 className="trustScore__cardTitle">Recent Activity</h2>
-          {activity.length === 0 ? (
-            <EmptyState
-              illustration="activity"
-              title="No recent activity"
-              description="New trust score events will appear here once bonds, attestations, or score updates occur."
-            />
-          ) : (
-            <ul className="trustScore__activityList">
-              {activity.map((item, index) => (
-                <li
-                  key={item.id}
-                  className={`trustScore__activityRow${index === activity.length - 1 ? ' trustScore__activityRow--last' : ''}`}
-                >
-                  <div>
-                    <div className="trustScore__activityAction">{item.action}</div>
-                    <div className="trustScore__activityDate">{item.date}</div>
-                  </div>
-                  <Badge variant={item.status} />
-                </li>
-              ))}
-            </ul>
-          )}
+          <ActivityTimeline compact items={activity} />
         </div>
       </div>
 

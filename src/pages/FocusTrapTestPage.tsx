@@ -136,7 +136,11 @@ export default function FocusTrapTestPage() {
           <button onFocus={() => handleTrapElementFocus('Button 2')} style={{ margin: '0.5rem' }}>
             Button 2
           </button>
+          <label htmlFor="focus-trap-input-1" className="sr-only">
+            Focus trap input 1
+          </label>
           <input
+            id="focus-trap-input-1"
             type="text"
             placeholder="Input 1"
             onFocus={() => handleTrapElementFocus('Input 1')}
@@ -153,7 +157,11 @@ export default function FocusTrapTestPage() {
           >
             Link 1
           </a>
+          <label htmlFor="focus-trap-input-2" className="sr-only">
+            Focus trap input 2
+          </label>
           <input
+            id="focus-trap-input-2"
             type="text"
             placeholder="Input 2"
             onFocus={() => handleTrapElementFocus('Input 2')}

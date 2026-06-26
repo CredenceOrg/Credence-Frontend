@@ -87,6 +87,17 @@
     .external-button {
       margin: 1rem 0;
     }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
     code {
       background: #f4f4f4;
       padding: 0.2rem 0.4rem;
@@ -133,9 +144,11 @@
       <h3>Inside Focus Trap</h3>
       <button id="trap-btn-1">Button 1</button>
       <button id="trap-btn-2">Button 2</button>
+      <label for="trap-input-1" class="sr-only">Focus trap input 1</label>
       <input type="text" id="trap-input-1" placeholder="Input 1" />
       <button id="trap-btn-3">Button 3</button>
       <a href="#" id="trap-link-1" onclick="return false;">Link 1</a>
+      <label for="trap-input-2" class="sr-only">Focus trap input 2</label>
       <input type="text" id="trap-input-2" placeholder="Input 2" />
       <button id="trap-btn-4">Button 4</button>
     </div>

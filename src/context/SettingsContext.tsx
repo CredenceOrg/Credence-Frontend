@@ -4,7 +4,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage'
 type ThemeMode = 'light' | 'dark' | 'system'
 
 /** The persisted settings payload (the subset of state written to localStorage). */
-interface SettingsPayload {
+export interface SettingsPayload {
   themeMode: ThemeMode
   network: string
   addressDisplay: string
@@ -44,18 +44,6 @@ type PersistedSettings = {
 const STORAGE_KEY = 'credence:settings'
 const LEGACY_THEME_KEY = 'theme'
 
-function loadLegacyTheme(): ThemeMode | null {
-  try {
-    const legacyTheme = localStorage.getItem(LEGACY_THEME_KEY)
-    if (legacyTheme === 'light' || legacyTheme === 'dark' || legacyTheme === 'system') {
-      return legacyTheme
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
 const VALID_THEMES: ThemeMode[] = ['light', 'dark', 'system']
 
 const defaultPersistedSettings: PersistedSettings = {
@@ -73,14 +61,12 @@ const defaultState: SettingsState = {
   setAddressDisplay: () => {},
   setToastsEnabled: () => {},
   setAutoDismiss: () => {},
-  saveSettings: (_payload?: SettingsBlob) => {},
+  saveSettings: (_payload?: SettingsPayload) => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
 }
 
 const SettingsContext = createContext<SettingsState>(defaultState)
-
-const LEGACY_THEME_KEY = 'theme'
 
 export function useSettings() {
   return useContext(SettingsContext)
@@ -98,11 +84,11 @@ function useMigrateLegacyTheme(): void {
   useState<null>(() => {
     if (typeof window === 'undefined') return null
 
-    const legacyTheme = localStorage.getItem('theme')
+    const legacyTheme = localStorage.getItem(LEGACY_THEME_KEY)
     if (!legacyTheme) return null
 
     // Always clean up the orphaned key regardless of whether we use its value.
-    localStorage.removeItem('theme')
+    localStorage.removeItem(LEGACY_THEME_KEY)
 
     if (!VALID_THEMES.includes(legacyTheme as ThemeMode)) return null
 

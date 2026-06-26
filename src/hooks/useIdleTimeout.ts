@@ -3,18 +3,27 @@ import { useEffect, useRef } from 'react'
 export interface UseIdleTimeoutOptions {
   timeoutMs: number
   onIdle: () => void
+  onActivity?: () => void
   setTimeoutImpl?: typeof setTimeout
   clearTimeoutImpl?: typeof clearTimeout
 }
 
+/**
+ * Hook that triggers a callback after a period of inactivity.
+ * Resets on mouse movement, keyboard input, clicks, touches, and scrolls.
+ */
 export function useIdleTimeout({
   timeoutMs,
   onIdle,
+  onActivity,
   setTimeoutImpl = setTimeout,
   clearTimeoutImpl = clearTimeout,
 }: UseIdleTimeoutOptions): void {
   const onIdleRef = useRef(onIdle)
   onIdleRef.current = onIdle
+
+  const onActivityRef = useRef(onActivity)
+  onActivityRef.current = onActivity
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -36,25 +45,29 @@ export function useIdleTimeout({
     }
 
     const handleActivity = () => {
+      onActivityRef.current?.()
       startTimer()
     }
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        startTimer()
+        handleActivity()
       }
     }
 
     startTimer()
 
-    window.addEventListener('mousemove', handleActivity, { passive: true })
-    window.addEventListener('keydown', handleActivity, { passive: true })
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'wheel']
+    events.forEach((event) => {
+      window.addEventListener(event, handleActivity, { passive: true })
+    })
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       clearTimer()
-      window.removeEventListener('mousemove', handleActivity)
-      window.removeEventListener('keydown', handleActivity)
+      events.forEach((event) => {
+        window.removeEventListener(event, handleActivity)
+      })
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [timeoutMs, setTimeoutImpl, clearTimeoutImpl])

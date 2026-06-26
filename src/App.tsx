@@ -5,7 +5,6 @@ import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
-import RouteErrorPage from './pages/RouteErrorPage'
 
 function RouteErrorPage() {
   const error = useRouteError()
@@ -32,6 +31,7 @@ const TrustScore = lazy(() => import('./pages/TrustScore'))
 const Transactions = lazy(() => import('./pages/Transactions'))
 const Settings = lazy(() => import('./pages/Settings'))
 const AmountInputTestPage = lazy(() => import('./pages/AmountInputTestPage'))
+const SignIn = lazy(() => import('./pages/SignIn'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 // import.meta.env.DEV is replaced with `false` at build time by Vite/Rollup,
@@ -64,6 +64,7 @@ function App() {
                     <Route path="transactions" element={<Transactions />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="test-amount-input" element={<AmountInputTestPage />} />
+                    <Route path="signin" element={<SignIn />} />
                     {import.meta.env.DEV && ToastTest && (
                       <Route path="dev/toasts" element={<ToastTest />} />
                     )}

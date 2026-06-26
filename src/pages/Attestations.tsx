@@ -1,41 +1,11 @@
 import { useState } from 'react'
 import AttestationForm from '../components/AttestationForm'
-import { truncateAddress } from '../lib/stellar'
-import '../components/ActivityTimeline.css'
-
-interface AttestationItem {
-  id: string
-  timestamp: string
-  subject: string
-  type: string
-  evidence: string
-  status: string
-  tone: 'success' | 'warning' | 'info'
-}
-
-const INITIAL_ATTESTATIONS: AttestationItem[] = [
-  {
-    id: 'att-001',
-    timestamp: 'Jun 22, 14:22 UTC',
-    subject: 'GD6W6SZB2V6J5OQJZP4B3R4O46YIYTRCYN7E7JDF4NLOV33QZJQH2W42',
-    type: 'identity',
-    evidence: 'Keybase identity verification package: Olmid12@keybase',
-    status: 'Verified',
-    tone: 'success',
-  },
-  {
-    id: 'att-002',
-    timestamp: 'Jun 20, 09:48 UTC',
-    subject: 'GBX62XNZ2PAO46YIYTRCYN7E7JDF4NLOV33QZJQH2W42GD6W6SZB2V6J',
-    type: 'peer-vouch',
-    evidence: 'Vouched for node stability and uptime during Q1 2026.',
-    status: 'Pending Review',
-    tone: 'info',
-  },
-]
+import ActivityTimeline, { ACTIVITY_ITEMS, ActivityItem } from '../components/ActivityTimeline'
+import Select from '../components/controls/Select'
 
 export default function Attestations() {
-  const [attestations, setAttestations] = useState<AttestationItem[]>(INITIAL_ATTESTATIONS)
+  const [items, setItems] = useState<ActivityItem[]>(ACTIVITY_ITEMS)
+  const [filterTone, setFilterTone] = useState<string>('all')
 
   const handleSubmitSuccess = (payload: { subject: string; type: string; evidence: string }) => {
     const formatTimestamp = () => {
@@ -49,18 +19,35 @@ export default function Attestations() {
       }) + ' UTC'
     }
 
-    const newItem: AttestationItem = {
-      id: `att-00${attestations.length + 1}`,
+    const newItem: ActivityItem = {
+      id: `evt-new-${items.length + 1}`,
       timestamp: formatTimestamp(),
-      subject: payload.subject,
-      type: payload.type,
-      evidence: payload.evidence,
-      status: 'Submitted',
+      title: payload.type === 'identity' 
+        ? 'Identity Attestation' 
+        : payload.type === 'peer-vouch' 
+          ? 'Peer Vouch' 
+          : 'Credential Certification',
+      description: payload.evidence,
+      actor: 'Current User',
+      statusLabel: 'Submitted',
       tone: 'success',
+      meta: `Subject: ${payload.subject.substring(0, 8)}...`,
     }
 
-    setAttestations((prev) => [newItem, ...prev])
+    setItems((prev) => [newItem, ...prev])
   }
+
+  const filteredItems = items.filter((item) => {
+    if (filterTone === 'all') return true
+    return item.tone === filterTone
+  })
+
+  const filterOptions = [
+    { value: 'all', label: 'All statuses' },
+    { value: 'success', label: 'Accepted / Submitted' },
+    { value: 'warning', label: 'Needs update' },
+    { value: 'info', label: 'In review' },
+  ]
 
   return (
     <div
@@ -93,58 +80,19 @@ export default function Attestations() {
           <AttestationForm onSubmitSuccess={handleSubmitSuccess} />
         </section>
 
-        <section className="activity-surface" aria-labelledby="timeline-heading">
-          <header className="activity-surface__header">
-            <div>
-              <p className="activity-surface__eyebrow">On-Chain Registry</p>
-              <h2 id="timeline-heading" className="activity-surface__title">
-                Your submitted attestations
-              </h2>
+        <section aria-labelledby="timeline-heading">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--credence-space-4)' }}>
+            <div style={{ width: '200px' }}>
+              <Select
+                id="attestation-filter"
+                ariaLabel="Filter attestations by status"
+                value={filterTone}
+                onChange={setFilterTone}
+                options={filterOptions}
+              />
             </div>
-            <p className="activity-surface__summary">
-              {attestations.length} {attestations.length === 1 ? 'record' : 'records'}
-            </p>
-          </header>
-
-          {attestations.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 'var(--credence-space-8)' }}>
-              <p style={{ color: 'var(--credence-text-secondary)' }}>No attestations submitted yet.</p>
-            </div>
-          ) : (
-            <ul className="activity-timeline" aria-label="Recent submitted attestations">
-              {attestations.map((item) => (
-                <li className="activity-row" key={item.id}>
-                  <div className="activity-row__rail" aria-hidden="true">
-                    <span className={`activity-row__node activity-row__node--${item.tone}`} />
-                    <span className="activity-row__line" />
-                  </div>
-
-                  <time className="activity-row__time">{item.timestamp}</time>
-
-                  <div className="activity-row__content">
-                    <div className="activity-row__title-wrap">
-                      <p className="activity-row__title">
-                        {item.type === 'identity'
-                          ? 'Identity Attestation'
-                          : item.type === 'peer-vouch'
-                            ? 'Peer Vouch'
-                            : 'Credential Certification'}
-                      </p>
-                      <span className={`activity-row__status activity-row__status--${item.tone}`}>
-                        {item.status}
-                      </span>
-                    </div>
-                    <p className="activity-row__description">{item.evidence}</p>
-                    <p className="activity-row__actor">
-                      Subject: <code>{truncateAddress(item.subject)}</code>
-                    </p>
-                  </div>
-
-                  <p className="activity-row__meta">ID: {item.id}</p>
-                </li>
-              ))}
-            </ul>
-          )}
+          </div>
+          <ActivityTimeline items={filteredItems} />
         </section>
       </div>
     </div>

@@ -43,7 +43,11 @@ This directory contains comprehensive design specifications and implementation g
    - When and how to use each state type
    - Validation checklist
 
-6. **[Design Tokens](./DESIGN_TOKENS.md)**
+6. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
+   - Standardized states (Default, Error, Disabled, Loading) for all input components
+   - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
+
+7. **[Design Tokens](./DESIGN_TOKENS.md)**
    - Canonical `--credence-*` CSS variable reference
    - Color, spacing, radius, typography, and motion scales
    - Guidance for replacing one-off hex values in components
@@ -158,7 +162,7 @@ Before shipping new states:
 ### Resources
 
 - **Figma File**: [Link to be added]
-- **Component Storybook**: [Link to be added]
+- **Component Storybook**: Run `npm run storybook` locally
 - **Accessibility Audit**: [Link to be added]
 
 ### Questions?

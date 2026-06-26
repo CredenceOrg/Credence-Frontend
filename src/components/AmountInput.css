@@ -35,6 +35,15 @@
   outline-offset: 2px;
 }
 
+.amountInput--loading .amountInput__input {
+  background: var(--credence-color-slate-50);
+  cursor: wait;
+}
+
+[data-theme='dark'] .amountInput--loading .amountInput__input {
+  background: var(--credence-color-slate-800);
+}
+
 .amountInput[data-invalid='true'] .amountInput__input {
   border-color: var(--credence-color-danger-border);
 }
@@ -48,6 +57,21 @@
   color: var(--credence-text-secondary);
   font-weight: var(--credence-font-weight-semibold);
   pointer-events: none;
+}
+
+.amountInput__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--credence-color-primary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: amountInput-spin 1s linear infinite;
+}
+
+@keyframes amountInput-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .amountInput__maxButton {

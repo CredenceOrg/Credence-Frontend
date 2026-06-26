@@ -3,6 +3,7 @@ import { FormField } from './forms/FormField'
 import './AddressInput.css'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import useCopyToClipboard from '@/hooks/useCopyToClipboard'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 export interface AddressInputProps {
   id: string
@@ -11,13 +12,13 @@ export interface AddressInputProps {
   onChange: (value: string) => void
   onValidationChange?: (isValid: boolean) => void
   disabled?: boolean
+  isLoading?: boolean
   className?: string
   /** Parent-provided validation error message. */
   error?: string
   /** Optional connected wallet address to detect "self" lookups (case-insensitive). */
   selfAddress?: string
 }
-
 
 interface AddressInputInnerProps {
   id?: string
@@ -29,6 +30,7 @@ interface AddressInputInnerProps {
   onBlur: () => void
   onFocus: () => void
   disabled: boolean
+  isLoading?: boolean
   handlePaste: () => void
   focused: boolean
   showError: boolean
@@ -45,14 +47,17 @@ function AddressInputInner({
   onBlur,
   onFocus,
   disabled,
+  isLoading,
   handlePaste,
   focused,
   showError,
   showSuccess,
 }: AddressInputInnerProps) {
+  const isDisabled = disabled || isLoading
+
   return (
     <div
-      className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''}`}
+      className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''} ${isLoading ? 'address-input-container--loading' : ''}`}
     >
       <input
         ref={inputRef}
@@ -60,43 +65,60 @@ function AddressInputInner({
         id={id}
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
-        value={value}
+        value={isLoading ? '' : value}
         onChange={onChange}
         onBlur={onBlur}
         onFocus={onFocus}
-        disabled={disabled}
-        placeholder="Enter Stellar address (G...)"
+        disabled={isDisabled}
+        placeholder={isLoading ? 'Loading...' : 'Enter Stellar address (G...)'}
         className="address-input-field"
         spellCheck="false"
         autoComplete="off"
         autoCapitalize="off"
       />
 
-      <button
-        type="button"
-        onClick={handlePaste}
-        disabled={disabled}
-        className="address-input-paste-button"
-        aria-label="Paste address from clipboard"
-        title="Paste address from clipboard"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
+      {isLoading ? (
+        <div className="address-input-spinner" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="30 60"
+            />
+          </svg>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={handlePaste}
+          disabled={isDisabled}
+          className="address-input-paste-button"
+          aria-label="Paste address from clipboard"
+          title="Paste address from clipboard"
         >
-          <path
-            d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }
@@ -108,6 +130,7 @@ export default function AddressInput({
   onChange,
   onValidationChange,
   disabled = false,
+  isLoading = false,
   className = '',
   error: externalError,
   selfAddress,
@@ -197,6 +220,7 @@ export default function AddressInput({
           onBlur={handleBlur}
           onFocus={handleFocus}
           disabled={disabled}
+          isLoading={isLoading}
           handlePaste={handlePaste}
           focused={focused}
           showError={showError}

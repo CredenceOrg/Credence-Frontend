@@ -73,14 +73,12 @@ const defaultState: SettingsState = {
   setAddressDisplay: () => {},
   setToastsEnabled: () => {},
   setAutoDismiss: () => {},
-  saveSettings: (_payload?: SettingsBlob) => {},
+  saveSettings: (_payload?: SettingsPayload) => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
 }
 
 const SettingsContext = createContext<SettingsState>(defaultState)
-
-const LEGACY_THEME_KEY = 'theme'
 
 export function useSettings() {
   return useContext(SettingsContext)

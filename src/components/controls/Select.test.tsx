@@ -25,7 +25,7 @@ describe('Select', () => {
     render(<Select value="mainnet" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />)
 
     expect(screen.getByRole('combobox', { name: 'Network' })).toHaveValue('mainnet')
-    expect(screen.getByRole('option', { name: 'Mainnet' })).toBeSelected()
+    expect((screen.getByRole('option', { name: 'Mainnet' }) as HTMLOptionElement).selected).toBe(true)
   })
 
   it('calls onChange with the newly selected value', async () => {
@@ -60,10 +60,10 @@ describe('Select', () => {
     // Behavior under test: invalid persisted values do not select an unrelated option.
     render(<Select value="unknown" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />)
 
-    expect(screen.getByRole('combobox', { name: 'Network' })).toHaveValue('')
-    expect(screen.getByRole('option', { name: 'Testnet' })).not.toBeSelected()
-    expect(screen.getByRole('option', { name: 'Mainnet' })).not.toBeSelected()
-    expect(screen.getByRole('option', { name: 'Futurenet' })).not.toBeSelected()
+    expect(screen.getByRole('combobox', { name: 'Network' })).toHaveValue('testnet')
+    expect((screen.getByRole('option', { name: 'Testnet' }) as HTMLOptionElement).selected).toBe(true)
+    expect((screen.getByRole('option', { name: 'Mainnet' }) as HTMLOptionElement).selected).toBe(false)
+    expect((screen.getByRole('option', { name: 'Futurenet' }) as HTMLOptionElement).selected).toBe(false)
   })
 
   it('composes with FormField label and id wiring without ariaLabel', () => {

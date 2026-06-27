@@ -30,6 +30,8 @@ export interface AmountInputProps extends NativeInputProps {
    * Callers can use this to gate form submission without duplicating the comparison.
    */
   onValidityChange?: (isValid: boolean) => void
+  /** Loading state - shows skeleton/spinner and disables interaction */
+  isLoading?: boolean
 }
 
 export default function AmountInput({
@@ -39,11 +41,13 @@ export default function AmountInput({
   presets = [100, 500, 1000],
   currencyLabel = 'USDC',
   error,
+  isLoading = false,
   'aria-invalid': ariaInvalid,
   'aria-describedby': ariaDescribedBy,
   onBlur,
   onFocus,
   onValidityChange,
+  disabled,
   ...inputProps
 }: AmountInputProps) {
   const uid = useId()
@@ -94,30 +98,40 @@ export default function AmountInput({
     onChange(preset.toFixed(2))
   }
 
-  const maxDisabled = balance <= 0
+  const isDisabled = disabled || isLoading
+  const isMaxDisabled = balance <= 0 || isDisabled
 
   // Merge any caller-supplied aria-describedby with our internal error id.
   const describedBy =
     [ariaDescribedBy, activeError ? errorId : undefined].filter(Boolean).join(' ') || undefined
 
   return (
-    <div className="amountInput" data-invalid={isInvalid ? 'true' : 'false'}>
+    <div
+      className={`amountInput ${isLoading ? 'amountInput--loading' : ''}`}
+      data-invalid={isInvalid ? 'true' : 'false'}
+    >
       <div className="amountInput__row">
         <div className="amountInput__control">
           <input
             {...inputProps}
             className={['amountInput__input', inputProps.className].filter(Boolean).join(' ')}
-            value={displayValue}
+            value={isLoading ? '' : displayValue}
             inputMode="decimal"
             autoComplete="off"
+            disabled={isDisabled}
             aria-invalid={isInvalid ? 'true' : undefined}
             aria-describedby={describedBy}
             onFocus={handleFocus}
             onBlur={handleBlur}
             onChange={(event) => onChange(sanitizeUSDCInput(event.target.value))}
+            placeholder={isLoading ? 'Loading...' : inputProps.placeholder}
           />
           <span className="amountInput__adornment" aria-hidden="true">
-            {currencyLabel}
+            {isLoading ? (
+              <span className="amountInput__spinner" />
+            ) : (
+              currencyLabel
+            )}
           </span>
         </div>
 
@@ -125,7 +139,7 @@ export default function AmountInput({
           type="button"
           className="amountInput__maxButton"
           onClick={handleMax}
-          disabled={maxDisabled}
+          disabled={isMaxDisabled}
           aria-label={`Set max amount (${currencyLabel})`}
         >
           Max
@@ -134,14 +148,15 @@ export default function AmountInput({
 
       <div className="amountInput__presets" aria-label="Quick amount presets">
         {presets.map((preset) => {
-          const disabled = preset > balance
+          const isPresetOverBalance = preset > balance
+          const isPresetDisabled = isDisabled || isPresetOverBalance
           return (
             <button
               key={preset}
               type="button"
               className="amountInput__chip"
               onClick={() => handlePreset(preset)}
-              disabled={disabled}
+              disabled={isPresetDisabled}
               aria-label={`Set amount to ${preset} ${currencyLabel}`}
             >
               {preset}

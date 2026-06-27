@@ -1,27 +1,11 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, useRouteError } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { SettingsProvider } from './context/SettingsContext'
 import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
 import RouteErrorPage from './pages/RouteErrorPage'
-
-function RouteErrorPage() {
-  const error = useRouteError()
-  const message = error instanceof Error ? error.message : 'An unexpected error occurred.'
-  return (
-    <div style={{ padding: 'var(--credence-space-8)', textAlign: 'center' }}>
-      <h1>Something went wrong</h1>
-      <p style={{ color: 'var(--credence-text-secondary)', marginTop: 'var(--credence-space-3)' }}>
-        {message}
-      </p>
-      <a href="/" style={{ marginTop: 'var(--credence-space-6)', display: 'inline-block' }}>
-        Go home
-      </a>
-    </div>
-  )
-}
 
 const Home = lazy(() => import('./pages/Home'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))

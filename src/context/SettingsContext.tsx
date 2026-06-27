@@ -70,8 +70,6 @@ const defaultState: SettingsState = {
 
 const SettingsContext = createContext<SettingsState>(defaultState)
 
-
-
 export function useSettings() {
   return useContext(SettingsContext)
 }

@@ -6,3 +6,6 @@ dist
 .env.*
 !.env.example
 coverage
+
+*storybook.log
+storybook-static

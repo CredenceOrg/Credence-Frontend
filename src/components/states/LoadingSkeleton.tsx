@@ -1,3 +1,5 @@
+import { useReducedMotion } from '../../hooks/useReducedMotion'
+
 interface LoadingSkeletonProps {
   variant?: 'text' | 'card' | 'form' | 'table' | 'dashboard'
   rows?: number
@@ -11,10 +13,16 @@ export default function LoadingSkeleton({
   width = '100%',
   height,
 }: LoadingSkeletonProps) {
+  // Honor prefers-reduced-motion at the JS layer: when the user requests reduced
+  // motion we omit the shimmer animation entirely instead of relying on the
+  // global CSS override. Components that control animation via inline styles
+  // need an explicit JS signal so the choice also propagates to any future
+  // imperative animation logic.
+  const prefersReducedMotion = useReducedMotion()
   const baseStyle = {
     background: 'var(--credence-skeleton-gradient)',
     backgroundSize: '200% 100%',
-    animation: 'var(--credence-motion-skeleton)',
+    ...(prefersReducedMotion ? {} : { animation: 'var(--credence-motion-skeleton)' }),
     borderRadius: 'var(--credence-radius-lg)',
   }
 

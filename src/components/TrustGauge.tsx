@@ -1,7 +1,9 @@
 import './TrustGauge.css'
 import { useMemo } from 'react'
 
-import { type TrustTier, TIERS, TIER_ORDER, MAX_SCORE, TIER_THRESHOLDS } from '../lib/tiers'
+import { type TrustTier, TIERS, TIER_ORDER, MAX_SCORE } from '../lib/tiers'
+import { TIER_THRESHOLDS } from '../lib/tier'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 
 export interface TrustGaugeProps {
   /** Current trust score (0-1000) */
@@ -88,6 +90,9 @@ export default function TrustGauge({
   className = '',
   id = 'trust-gauge',
 }: TrustGaugeProps) {
+  const prefersReducedMotion = useReducedMotion()
+  const reducedMotionTransition = prefersReducedMotion ? 'none' : undefined
+
   const { percentage, nextTierPoints, isAtMax, nextTierLabel } = useMemo(() => {
     const currentTierIndex = TIER_INDEX_MAP[tier]
     const nextTier = TIER_ORDER[currentTierIndex + 1]
@@ -148,6 +153,7 @@ export default function TrustGauge({
             style={
               {
                 '--progress-width': `${percentage}%`,
+                ...(reducedMotionTransition ? { transition: reducedMotionTransition } : {}),
               } as React.CSSProperties & { '--progress-width': string }
             }
             role="presentation"
@@ -182,6 +188,7 @@ export default function TrustGauge({
             style={
               {
                 '--thumb-position': `${percentage}%`,
+                ...(reducedMotionTransition ? { transition: reducedMotionTransition } : {}),
               } as React.CSSProperties & { '--thumb-position': string }
             }
             role="presentation"
@@ -219,12 +226,12 @@ export default function TrustGauge({
         <p className="trust-gauge__legend-title">Tier Ranges</p>
         <ul className="trust-gauge__legend-list">
           {TIER_ORDER.map((t, index) => {
-            // Show each band's upper bound as the next tier's entry threshold
-            // (e.g. Bronze: 0–250), and cap the top tier at the gauge maximum.
-            const upper =
-              index < TIER_ORDER.length - 1
-                ? TIER_CONFIG[TIER_ORDER[index + 1]].min
-                : TIER_CONFIG[t].max
+            // Show each band's own upper bound (e.g. Bronze: 0–249, Platinum:
+            // 750–1000). Using TIER_CONFIG[t].max keeps the legend aligned with
+            // the canonical TIER_THRESHOLDS values: Bronze.max=249, Silver.max=499,
+            // etc., so the displayed upper bound is the last inclusive score in
+            // the band (the next band starts at upper+1).
+            const upper = TIER_CONFIG[t].max
             return (
               <li key={t} className="trust-gauge__legend-item">
                 <span

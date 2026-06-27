@@ -3,8 +3,6 @@ import { useSettings } from '../context/SettingsContext'
 import Toast, { type ToastData, type ToastSeverity } from './Toast'
 import './Toast.css'
 
-const MAX_TOASTS = 3
-
 const TIMEOUTS: Record<ToastSeverity, number> = {
   info: 5000,
   success: 5000,
@@ -13,7 +11,7 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
 }
 
 interface ToastContextValue {
-  addToast: (severity: ToastSeverity, message: string, options?: { txHash?: string; network?: string }) => void
+  addToast: (severity: ToastSeverity, message: string) => void
   removeToast: (id: string) => void
   removeAllToasts: () => void
 }
@@ -62,6 +60,11 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
       // respect global toast enable setting
       if (!toastsEnabled) return
 
+      const id = String(++idCounter.current)
+      const newToast: ToastData = { id, severity, message }
+
+      setToasts((prev: ToastData[]) => [...prev, newToast])
+
       // compute timeout: settings `autoDismiss` can override default TIMEOUTS
       let timeout = TIMEOUTS[severity]
       if (timeout > 0) {
@@ -82,7 +85,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         timeoutsMap.current.set(id, timerId)
       }
     },
-    [removeToast, toastsEnabled, autoDismiss]
+    [removeToast]
   )
 
   /** Toasts split by politeness: danger → assertive; all others → polite. */

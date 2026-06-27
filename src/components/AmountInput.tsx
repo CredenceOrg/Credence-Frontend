@@ -55,7 +55,7 @@ export default function AmountInput({
 
   const [isFocused, setIsFocused] = useState(false)
 
-  // Derive over-balance state from the normalized numeric value.
+  // Derive over-balance and below-minimum states from the normalized numeric value.
   const numericValue = useMemo(() => {
     const normalized = normalizeUSDC(value)
     if (!normalized) return 0
@@ -63,9 +63,18 @@ export default function AmountInput({
   }, [value])
 
   const isOverBalance = numericValue > 0 && numericValue > balance
+  const isBelowMin =
+    min !== undefined && numericValue > 0 && numericValue < min
 
-  // Explicit `error` prop always wins; internal over-balance is the fallback.
-  const activeError = error ?? (isOverBalance ? 'Amount exceeds available balance.' : undefined)
+  // Explicit `error` prop always wins; over-balance takes precedence over below-minimum.
+  const activeError =
+    error ??
+    (isOverBalance
+      ? 'Amount exceeds available balance.'
+      : isBelowMin
+        ? `Amount must be at least ${min} ${currencyLabel}.`
+        : undefined)
+
   const isInvalid = Boolean(activeError) || ariaInvalid === 'true'
 
   // Notify caller when internal validity changes.

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import AttestationForm from '../components/AttestationForm'
-import ActivityTimeline, { ACTIVITY_ITEMS, ActivityItem } from '../components/ActivityTimeline'
+import ActivityTimeline, { ActivityItem } from '../components/ActivityTimeline'
+import { ACTIVITY_ITEMS } from '../data/activity'
 import Select from '../components/controls/Select'
 
 export default function Attestations() {

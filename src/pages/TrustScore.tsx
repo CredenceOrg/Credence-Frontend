@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import './TrustScore.css'
 import Banner from '../components/Banner'
@@ -8,9 +8,8 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
-import ActivityTimeline, { ActivityItem } from '../components/ActivityTimeline'
-import { TIERS } from '../lib/tiers'
-import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
+import { ActivityItem } from '../components/ActivityTimeline'
+import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
@@ -18,7 +17,10 @@ import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
 import { isValidStellarAddress } from '@/lib/stellar'
-import { SAMPLE_ACTIVITY } from '../components/ActivityTimeline'
+import { SAMPLE_ACTIVITY } from '../data/activity'
+
+// Lazy load ActivityTimeline + CSS into separate chunk
+const LazyActivityTimeline = lazy(() => import('../components/ActivityTimeline'))
 
 function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {
   if (error.status === 0) {
@@ -223,7 +225,47 @@ export default function TrustScore() {
         </div>
 
         <div className="trustScore__card">
-          <ActivityTimeline compact items={activity} />
+          <Suspense
+            fallback={
+              <div
+                role="status"
+                aria-busy="true"
+                aria-label="Loading recent activity"
+                className="activity-surface"
+                style={{
+                  background: 'var(--credence-surface-card)',
+                  border: '1px solid var(--credence-border-default)',
+                  borderRadius: 'var(--credence-radius-xl)',
+                  padding: 'var(--credence-space-5)',
+                }}
+              >
+                <div style={{ marginBottom: 'var(--credence-space-5)' }}>
+                  <div
+                    style={{
+                      height: '0.75rem',
+                      width: '40%',
+                      background: 'var(--credence-skeleton-gradient)',
+                      backgroundSize: '200% 100%',
+                      borderRadius: 'var(--credence-radius-lg)',
+                      marginBottom: '0.25rem',
+                    }}
+                  />
+                  <div
+                    style={{
+                      height: '1.25rem',
+                      width: '60%',
+                      background: 'var(--credence-skeleton-gradient)',
+                      backgroundSize: '200% 100%',
+                      borderRadius: 'var(--credence-radius-lg)',
+                    }}
+                  />
+                </div>
+                <LoadingSkeleton variant="table" rows={3} />
+              </div>
+            }
+          >
+            <LazyActivityTimeline compact items={activity} />
+          </Suspense>
         </div>
       </div>
 

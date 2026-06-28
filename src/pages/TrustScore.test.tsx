@@ -95,9 +95,10 @@ describe('TrustScore', () => {
 
     expect(screen.getByRole('heading', { name: 'Trust Score' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /how trust is earned/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'No recent activity' })).toBeInTheDocument()
+    // ActivityTimeline renders its own empty state (below the fold, lazy loaded but tests render synchronously)
+    expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
     expect(
-      screen.getByText(/New trust score events will appear here once bonds/i)
+      screen.getByText(/Attestations and events will appear here once activity begins/i)
     ).toBeInTheDocument()
   })
 

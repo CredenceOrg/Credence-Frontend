@@ -14,6 +14,7 @@ import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { formatUsdc } from '../lib/format'
 import {
   type MockBond,
@@ -46,11 +47,12 @@ const MIN_BOND_AMOUNT = 10
 interface BondRowProps {
   bond: MockBond
   isConnected: boolean
+  isOnline: boolean
   onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
   onConnect: () => void
 }
 
-function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
+function BondRow({ bond, isConnected, isOnline, onWithdraw, onConnect }: BondRowProps) {
   const [open, setOpen] = useState(false)
   const panelId = `slash-detail-${bond.id}`
   const penaltyRate = getPenaltyRate(bond.status)
@@ -81,6 +83,8 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
             variant={hasPenalty ? 'danger' : 'secondary'}
             onClick={isConnected ? (event) => onWithdraw(bond, event) : onConnect}
             aria-haspopup={isConnected ? 'dialog' : undefined}
+            disabled={!isOnline}
+            aria-describedby={!isOnline ? 'offline-banner' : undefined}
           >
             {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
           </Button>
@@ -126,6 +130,7 @@ export default function Bond() {
   const { isConnected, connect, network: walletNetwork } = useWallet()
   const { setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
+  const isOnline = useOnlineStatus()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
   const mismatchBannerId = 'bond-network-mismatch'
@@ -198,6 +203,14 @@ export default function Bond() {
         </p>
       </div>
 
+      {!isOnline && (
+        <Banner severity="warning" title="You are offline">
+          <span id="offline-banner">
+            Network connection lost. Bond and withdrawal actions are disabled until you reconnect.
+          </span>
+        </Banner>
+      )}
+
       <Banner severity="info">
         Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
       </Banner>
@@ -262,8 +275,8 @@ export default function Bond() {
               min={MIN_BOND_AMOUNT}
               presets={[100, 500, 1000]}
               currencyLabel="USDC"
-              disabled={networkMismatch.mismatch}
-              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+              disabled={networkMismatch.mismatch || !isOnline}
+              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : !isOnline ? 'offline-banner' : undefined}
             />
           </FormField>
 
@@ -271,8 +284,8 @@ export default function Bond() {
             type="button"
             onClick={handleCreateBond}
             fullWidth
-            disabled={networkMismatch.mismatch}
-            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+            disabled={networkMismatch.mismatch || !isOnline}
+            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : !isOnline ? 'offline-banner' : undefined}
           >
             {isConnected ? 'Create bond' : 'Connect wallet to continue'}
           </Button>
@@ -296,6 +309,7 @@ export default function Bond() {
                   key={bond.id}
                   bond={bond}
                   isConnected={isConnected}
+                  isOnline={isOnline}
                   onWithdraw={requestWithdraw}
                   onConnect={connect}
                 />

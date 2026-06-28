@@ -4,6 +4,8 @@ import ThemeToggle from './ThemeToggle'
 import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import Banner from './Banner'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import LINKS from '../config/links'
 import './Layout.css'
 
@@ -25,6 +27,7 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 }
 
 export default function Layout() {
+  const isOnline = useOnlineStatus()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   // Ref on the header button so focus returns to it after the dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
@@ -103,6 +106,11 @@ export default function Layout() {
       </header>
 
       <main id="main-content" className="appMain">
+        {!isOnline && (
+          <Banner severity="warning" title="You are offline">
+            Network connection lost. Transaction actions are disabled until you reconnect.
+          </Banner>
+        )}
         <Outlet />
       </main>
 

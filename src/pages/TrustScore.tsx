@@ -15,6 +15,7 @@ import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
 import { isValidStellarAddress } from '@/lib/stellar'
@@ -39,6 +40,7 @@ export default function TrustScore() {
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
+  const isOnline = useOnlineStatus()
   const [searchParams, setSearchParams] = useSearchParams()
   const [address, setAddress] = useState<string>(() => {
     const param = searchParams.get('address')?.trim() ?? ''
@@ -120,6 +122,15 @@ export default function TrustScore() {
         Your reputation score is computed from bond amount, duration, and attestations.
       </p>
       <TierLadder />
+
+      {!isOnline && (
+        <Banner severity="warning" title="You are offline">
+          <span id="ts-offline-banner">
+            Network connection lost. Trust score lookup is disabled until you reconnect.
+          </span>
+        </Banner>
+      )}
+
       <Banner severity="info">
         Scores update once per epoch. Recent bond changes may not be reflected immediately.
       </Banner>
@@ -214,8 +225,8 @@ export default function TrustScore() {
             onClick={handleLookup}
             variant="primary"
             fullWidth
-            disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
-            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+            disabled={networkMismatch.mismatch || !isOnline || (isConnected ? !isAddressValid : false)}
+            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : !isOnline ? 'ts-offline-banner' : undefined}
             className="trustScore__buttonRow"
           >
             {isConnected ? 'Look up score' : 'Connect wallet to continue'}

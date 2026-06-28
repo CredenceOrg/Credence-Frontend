@@ -24,6 +24,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/EmptyState      | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/ErrorState      | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
+| SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
 
 ## Shared vocabularies
 
@@ -74,7 +75,7 @@ Source: [`src/components/Button.tsx`](../src/components/Button.tsx). Focused doc
 | `children`          | `ReactNode`                                       | Required                                 |
 | Native button props | `ButtonHTMLAttributes<HTMLButtonElement>`         | Forwarded; `type` defaults to `'button'` |
 
-Accessibility: renders a native `<button>`, disables interaction while `disabled` or `isLoading`, sets `aria-busy` for loading state, hides spinner SVG from assistive tech, and inherits keyboard activation/focus behavior from the platform.
+Accessibility: renders a native `<button>`, disables interaction while `disabled` or `isLoading`, sets `aria-busy` for loading state, hides spinner SVG from assistive tech, and inherits keyboard activation/focus behavior from the platform. Primary CTAs (`variant="primary"`) automatically receive `data-testid="primary-cta"` for test stability, unless overridden via props.
 
 Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-color-info-surface`, `--credence-color-primary*`, `--credence-color-slate-*`, `--credence-color-white`, `--credence-focus-ring`, font, line-height, radius, spacing, surface, and text tokens.
 
@@ -424,4 +425,28 @@ Tokens: inline styles consume `--credence-skeleton-gradient`, `--credence-motion
 
 ```tsx
 <LoadingSkeleton variant="card" rows={2} />
+```
+
+## SessionTimeoutModal
+
+Source: [`src/components/SessionTimeoutModal.tsx`](../src/components/SessionTimeoutModal.tsx).
+
+| Prop              | Type                   | Default  |
+| ----------------- | ---------------------- | -------- |
+| `open`            | `boolean`              | Required |
+| `onStayLoggedIn`  | `() => void`           | Required |
+| `onLogout`        | `() => void`           | Required |
+| `timeLeftSeconds` | `number`               | Required |
+
+Accessibility: uses `ConfirmDialog` primitive.
+
+Tokens: warning color tokens, spacing, radius.
+
+```tsx
+<SessionTimeoutModal
+  open={showWarning}
+  timeLeftSeconds={60}
+  onStayLoggedIn={stay}
+  onLogout={logout}
+/>
 ```

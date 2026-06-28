@@ -1,4 +1,5 @@
 import { ButtonHTMLAttributes, forwardRef, ReactNode } from 'react'
+import { TEST_IDS } from '../config/testIds'
 import './Button.css'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -25,16 +26,19 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
     children,
     className = '',
     type = 'button',
+    'data-testid': dataTestId,
     ...props
   },
   ref
 ) {
   const isDisabled = disabled || isLoading
+  const finalTestId = dataTestId ?? (variant === 'primary' ? TEST_IDS.PRIMARY_CTA : undefined)
 
   return (
     <button
       ref={ref}
       type={type}
+      data-testid={finalTestId}
       disabled={isDisabled}
       className={[
         'credence-button',

@@ -11,7 +11,8 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Bond = lazy(() => import('./pages/Bond'))
 const CreateBondPage = lazy(() => import('./pages/CreateBondPage'))
 const BondDetail = lazy(() => import('./pages/BondDetail'))
-const TrustScore = lazy(() => import('./pages/TrustScore'))
+const TrustScore = lazy(() => import('./pages/TrustScore'));
+const TrustSummary = lazy(() => import('./pages/TrustSummary'))
 const Attestations = lazy(() => import('./pages/Attestations'))
 const Transactions = lazy(() => import('./pages/Transactions'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -46,6 +47,7 @@ function App() {
                     <Route path="bond/new" element={<CreateBondPage />} />
                     <Route path="bond/:id" element={<BondDetail />} />
                     <Route path="trust" element={<TrustScore />} />
+          <Route path="trust/summary" element={<TrustSummary />} />
                     <Route path="attestations" element={<Attestations />} />
                     <Route path="transactions" element={<Transactions />} />
                     <Route path="settings" element={<Settings />} />

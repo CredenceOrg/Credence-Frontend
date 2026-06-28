@@ -321,7 +321,6 @@ export default function Bond() {
 
       <Disclaimer
         context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
-        termsHref="#"
       />
     </div>
   )

@@ -84,8 +84,8 @@ export default function ActivityTimeline({
       {count === 0 ? (
         <EmptyState
           illustration="activity"
-          title="No activity yet"
-          description="Attestations and events will appear here once activity begins."
+          title="No recent activity"
+          description="New trust score events will appear here once bonds"
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">

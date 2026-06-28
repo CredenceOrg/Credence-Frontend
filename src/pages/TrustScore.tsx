@@ -103,7 +103,7 @@ export default function TrustScore() {
     setAddress(walletAddress)
   }
 
-  const activity: ActivityItem[] = SAMPLE_ACTIVITY
+  const activity: ActivityItem[] = []
 
   const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
   const mismatchBannerId = 'trust-score-network-mismatch'
@@ -229,7 +229,6 @@ export default function TrustScore() {
 
       <Disclaimer
         context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments."
-        termsHref="#"
       />
     </div>
   )

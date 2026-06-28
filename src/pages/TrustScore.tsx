@@ -15,6 +15,7 @@ import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
+import { useIsMobile } from '../hooks/useMediaQuery'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
 import { isValidStellarAddress } from '@/lib/stellar'
@@ -36,6 +37,7 @@ function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validati
 export default function TrustScore() {
   useDocumentTitle('Trust Score')
 
+  const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
@@ -223,6 +225,9 @@ export default function TrustScore() {
         </div>
 
         <div className="trustScore__card">
+          <h2 className="trustScore__cardTitle">
+            {isMobile ? 'Recent Activity' : 'Recent Activity Timeline'}
+          </h2>
           <ActivityTimeline compact items={activity} />
         </div>
       </div>

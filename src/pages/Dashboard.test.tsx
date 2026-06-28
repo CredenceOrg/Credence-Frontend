@@ -21,9 +21,9 @@ vi.mock('../context/WalletContext', () => ({
   }),
 }))
 
-function renderDashboard() {
+function renderDashboard(initialEntries = ['/']) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <Dashboard />
     </MemoryRouter>
   )
@@ -59,6 +59,15 @@ describe('Dashboard', () => {
     expect(screen.getByText('4,250 USDC')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /recent activity/i })).toBeInTheDocument()
     expect(screen.getByText(/Attestation submitted/i)).toBeInTheDocument()
+  })
+
+  it('renders only the specified widget when ?widget= parameter is provided', () => {
+    renderDashboard(['/dashboard?widget=active-bonds'])
+
+    expect(screen.getByRole('heading', { name: /active bonds/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Trust Score' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /recent activity/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Shortcuts' })).not.toBeInTheDocument()
   })
 
   it('exposes primary shortcut links', () => {

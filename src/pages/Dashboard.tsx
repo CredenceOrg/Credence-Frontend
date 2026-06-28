@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
 import Badge from '../components/Badge'
@@ -37,7 +37,14 @@ export default function Dashboard() {
   useDocumentTitle('Dashboard')
 
   const { address, connected, connect, isConnecting } = useWallet()
+  const [searchParams] = useSearchParams()
+  const widgetParam = searchParams.get('widget')
   const totalBonded = activeBonds.reduce((total, bond) => total + bond.amountUsdc, 0)
+
+  const showTrustScore = !widgetParam || widgetParam === 'trust-score'
+  const showActiveBonds = !widgetParam || widgetParam === 'active-bonds'
+  const showRecentActivity = !widgetParam || widgetParam === 'recent-activity'
+  const showShortcuts = !widgetParam || widgetParam === 'shortcuts'
 
   return (
     <div className="dashboard">
@@ -81,62 +88,70 @@ export default function Dashboard() {
       {connected && !isConnecting && (
         <>
           <div className="dashboard__grid">
-            <ActionCard title="Trust Score">
-              <div className="dashboard__cardHeader">
-                <div>
-                  <p className="dashboard__metric">{TRUST_SCORE}</p>
-                  <p className="dashboard__metricLabel">Current score</p>
+            {showTrustScore && (
+              <ActionCard title="Trust Score">
+                <div className="dashboard__cardHeader">
+                  <div>
+                    <p className="dashboard__metric">{TRUST_SCORE}</p>
+                    <p className="dashboard__metricLabel">Current score</p>
+                  </div>
+                  <Badge variant={TRUST_TIER} label="Gold Tier" />
                 </div>
-                <Badge variant={TRUST_TIER} label="Gold Tier" />
-              </div>
-              <TrustGauge
-                score={TRUST_SCORE}
-                tier={TRUST_TIER}
-                className="dashboard__trustGauge"
-                id="dashboard-trust-gauge"
-              />
-            </ActionCard>
+                <TrustGauge
+                  score={TRUST_SCORE}
+                  tier={TRUST_TIER}
+                  className="dashboard__trustGauge"
+                  id="dashboard-trust-gauge"
+                />
+              </ActionCard>
+            )}
 
-            <ActionCard title="Active Bonds">
-              <div className="dashboard__cardHeader">
-                <div>
-                  <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
-                  <p className="dashboard__metricLabel">{activeBonds.length} active bonds</p>
+            {showActiveBonds && (
+              <ActionCard title="Active Bonds">
+                <div className="dashboard__cardHeader">
+                  <div>
+                    <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
+                    <p className="dashboard__metricLabel">{activeBonds.length} active bonds</p>
+                  </div>
+                  <Badge variant="active" />
                 </div>
-                <Badge variant="active" />
-              </div>
-              <ul className="dashboard__bondList" aria-label="Active bond summary">
-                {activeBonds.map((bond) => (
-                  <li className="dashboard__bondRow" key={bond.id}>
-                    <div>
-                      <p className="dashboard__bondAmount">{formatUsdc(bond.amountUsdc)}</p>
-                      <p className="dashboard__bondMeta">Unlocks {bond.unlockLabel}</p>
-                    </div>
-                    <Badge variant={bond.status} />
-                  </li>
-                ))}
-              </ul>
-            </ActionCard>
+                <ul className="dashboard__bondList" aria-label="Active bond summary">
+                  {activeBonds.map((bond) => (
+                    <li className="dashboard__bondRow" key={bond.id}>
+                      <div>
+                        <p className="dashboard__bondAmount">{formatUsdc(bond.amountUsdc)}</p>
+                        <p className="dashboard__bondMeta">Unlocks {bond.unlockLabel}</p>
+                      </div>
+                      <Badge variant={bond.status} />
+                    </li>
+                  ))}
+                </ul>
+              </ActionCard>
+            )}
           </div>
 
           <div className="dashboard__grid dashboard__grid--activity">
-            <ActionCard title="Recent Activity">
-              <ActivityTimeline compact />
-            </ActionCard>
+            {showRecentActivity && (
+              <ActionCard title="Recent Activity">
+                <ActivityTimeline compact />
+              </ActionCard>
+            )}
 
-            <ActionCard title="Shortcuts">
-              <div className="dashboard__shortcutList">
-                {shortcuts.map((shortcut) => (
-                  <Link className="dashboard__shortcut" key={shortcut.to} to={shortcut.to}>
-                    <span className="dashboard__shortcutLabel">{shortcut.label}</span>
-                    <span className="dashboard__shortcutDescription">{shortcut.description}</span>
-                  </Link>
-                ))}
-              </div>
-              <Button type="button" variant="secondary" onClick={() => window.scrollTo({ top: 0 })}>
-                Back to summary
-              </Button>
-            </ActionCard>
+            {showShortcuts && (
+              <ActionCard title="Shortcuts">
+                <div className="dashboard__shortcutList">
+                  {shortcuts.map((shortcut) => (
+                    <Link className="dashboard__shortcut" key={shortcut.to} to={shortcut.to}>
+                      <span className="dashboard__shortcutLabel">{shortcut.label}</span>
+                      <span className="dashboard__shortcutDescription">{shortcut.description}</span>
+                    </Link>
+                  ))}
+                </div>
+                <Button type="button" variant="secondary" onClick={() => window.scrollTo({ top: 0 })}>
+                  Back to summary
+                </Button>
+              </ActionCard>
+            )}
           </div>
         </>
       )}

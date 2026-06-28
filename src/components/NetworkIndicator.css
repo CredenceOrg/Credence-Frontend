@@ -1,0 +1,12 @@
+.networkIndicator {
+  display: flex;
+  align-items: center;
+  margin-right: 1rem;
+}
+
+/* Ensure it doesn't overflow or crowd other elements at small viewports */
+@media (max-width: 360px) {
+  .networkIndicator {
+    margin-right: 0.5rem;
+  }
+}

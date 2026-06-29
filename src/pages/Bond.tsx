@@ -16,6 +16,7 @@ import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { formatUsdc } from '../lib/format'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
@@ -48,6 +49,7 @@ const MIN_BOND_AMOUNT = 10
 interface BondRowProps {
   bond: MockBond
   isConnected: boolean
+  isOnline: boolean
   onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
   onConnect: (event: React.MouseEvent<HTMLButtonElement>) => void
 }
@@ -132,6 +134,7 @@ export default function Bond() {
   const { isConnected, network: walletNetwork } = useWallet()
   const { setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
+  const isOnline = useOnlineStatus()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
   const [connectModalOpen, setConnectModalOpen] = useState(false)
@@ -242,6 +245,14 @@ export default function Bond() {
         </p>
       </div>
 
+      {!isOnline && (
+        <Banner severity="warning" title="You are offline">
+          <span id="offline-banner">
+            Network connection lost. Bond and withdrawal actions are disabled until you reconnect.
+          </span>
+        </Banner>
+      )}
+
       <Banner severity="info">
         {t('bond.infoBanner')}
       </Banner>
@@ -308,8 +319,8 @@ export default function Bond() {
               min={MIN_BOND_AMOUNT}
               presets={[100, 500, 1000]}
               currencyLabel="USDC"
-              disabled={networkMismatch.mismatch}
-              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+              disabled={networkMismatch.mismatch || !isOnline}
+              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : !isOnline ? 'offline-banner' : undefined}
             />
           </FormField>
 
@@ -344,6 +355,7 @@ export default function Bond() {
                   key={bond.id}
                   bond={bond}
                   isConnected={isConnected}
+                  isOnline={isOnline}
                   onWithdraw={requestWithdraw}
                   onConnect={openConnectModal}
                 />

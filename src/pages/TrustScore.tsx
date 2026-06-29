@@ -65,6 +65,7 @@ export default function TrustScore() {
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork, addressDisplay } = useSettings()
   const networkMismatch = useNetworkMismatch()
+  const isOnline = useOnlineStatus()
   const [searchParams, setSearchParams] = useSearchParams()
   const [address, setAddress] = useState<string>(() => {
     const param = searchParams.get('address')?.trim() ?? ''
@@ -209,6 +210,15 @@ export default function TrustScore() {
         {t('trustScore.description')}
       </p>
       <TierLadder />
+
+      {!isOnline && (
+        <Banner severity="warning" title="You are offline">
+          <span id="ts-offline-banner">
+            Network connection lost. Trust score lookup is disabled until you reconnect.
+          </span>
+        </Banner>
+      )}
+
       <Banner severity="info">
         {t('trustScore.infoBanner')}
       </Banner>
@@ -337,8 +347,8 @@ export default function TrustScore() {
             onClick={handleLookup}
             variant="primary"
             fullWidth
-            disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
-            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+            disabled={networkMismatch.mismatch || !isOnline || (isConnected ? !isAddressValid : false)}
+            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : !isOnline ? 'ts-offline-banner' : undefined}
             className="trustScore__buttonRow"
           >
             {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}

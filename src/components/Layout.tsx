@@ -157,6 +157,11 @@ export default function Layout() {
       </header>
 
       <main id="main-content" className="appMain">
+        {!isOnline && (
+          <Banner severity="warning" title="You are offline">
+            Network connection lost. Transaction actions are disabled until you reconnect.
+          </Banner>
+        )}
         <Outlet />
       </main>
 

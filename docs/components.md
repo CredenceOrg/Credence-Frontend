@@ -75,7 +75,7 @@ Source: [`src/components/Button.tsx`](../src/components/Button.tsx). Focused doc
 | `children`          | `ReactNode`                                       | Required                                 |
 | Native button props | `ButtonHTMLAttributes<HTMLButtonElement>`         | Forwarded; `type` defaults to `'button'` |
 
-Accessibility: renders a native `<button>`, disables interaction while `disabled` or `isLoading`, sets `aria-busy` for loading state, hides spinner SVG from assistive tech, and inherits keyboard activation/focus behavior from the platform.
+Accessibility: renders a native `<button>`, disables interaction while `disabled` or `isLoading`, sets `aria-busy` for loading state, hides spinner SVG from assistive tech, and inherits keyboard activation/focus behavior from the platform. Primary CTAs (`variant="primary"`) automatically receive `data-testid="primary-cta"` for test stability, unless overridden via props.
 
 Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-color-info-surface`, `--credence-color-primary*`, `--credence-color-slate-*`, `--credence-color-white`, `--credence-focus-ring`, font, line-height, radius, spacing, surface, and text tokens.
 

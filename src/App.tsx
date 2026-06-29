@@ -5,6 +5,7 @@ import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
+import RouteErrorPage from './pages/RouteErrorPage'
 
 const Home = lazy(() => import('./pages/Home'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))

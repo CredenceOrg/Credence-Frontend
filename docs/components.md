@@ -213,7 +213,7 @@ Source: [`src/components/AddressInput.tsx`](../src/components/AddressInput.tsx).
 | `disabled`           | `boolean`                    | `false`             |
 | `className`          | `string`                     | `''`                |
 
-Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste and copy controls are native buttons with explicit aria labels and hidden SVGs. Validation requires a 56-character Stellar public key starting with `G`; invalid feedback is exposed by the FormField alert.
+Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste and copy controls are native buttons with explicit aria labels and hidden SVGs. Validation now performs two checks: (1) a format check (56-character, starts with `G`, uppercase alphanumeric), and (2) a **CRC-16 XMODEM checksum** verify per the Stellar StrKey spec. Distinct error messages are surfaced for each failure mode — `"Invalid address. Stellar public keys are 56 characters starting with G."` for a format error, and `"Invalid address checksum. Please verify the address."` for a checksum mismatch — and both are exposed via `role="alert"` with `aria-invalid="true"` set on the `<input>` when any error is active.
 
 Tokens: border, danger, primary, slate, success, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
 

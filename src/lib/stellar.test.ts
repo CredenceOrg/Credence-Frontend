@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { isValidStellarAddress, truncateAddress } from './stellar'
 
-// A valid 56-character Stellar public key
-const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA' // 56 chars
+// A valid 56-character Stellar public key (passes CRC-16 XMODEM checksum)
+const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H' // 56 chars
 
 describe('isValidStellarAddress', () => {
   it('returns true for valid Stellar public keys', () => {
     expect(isValidStellarAddress(VALID_KEY)).toBe(true)
-    // Another valid key
-    expect(isValidStellarAddress('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H')).toBe(
-      true
+    // Another valid key (also passes checksum)
+    expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(
+      false // this key fails the CRC-16 checksum
     )
   })
 
@@ -39,6 +39,11 @@ describe('isValidStellarAddress', () => {
     expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN!')).toBe(
       false
     ) // special char
+  })
+
+  it('returns false for a format-valid key that fails the CRC-16 checksum', () => {
+    // GAAZI4... is 56 chars, starts with G, uppercase alphanumeric, but fails checksum
+    expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(false)
   })
 
   it('returns false for wrong prefix', () => {

@@ -27,7 +27,7 @@ export const Default: Story = {
 
 export const Filled: Story = {
   args: {
-    value: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA',
+    value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
   },
 };
 
@@ -38,9 +38,17 @@ export const Invalid: Story = {
   },
 };
 
+export const ChecksumError: Story = {
+  args: {
+    // Format-valid but fails CRC-16 checksum – mirrors the real error state
+    value: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA',
+    error: 'Invalid address checksum. Please verify the address.',
+  },
+};
+
 export const Disabled: Story = {
   args: {
-    value: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA',
+    value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
     disabled: true,
   },
 };

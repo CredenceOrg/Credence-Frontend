@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useRef, useState, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Bond.css'
 import Banner from '../components/Banner'
@@ -22,6 +22,11 @@ import {
 } from '../lib/bondPenalty'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
+
+/** Simulates the async round-trip of signing and submitting a Stellar transaction. */
+function submitTransaction(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 1500))
+}
 
 export interface MockBond {
   id: number
@@ -132,16 +137,32 @@ export default function Bond() {
 
   const [bondAmount, setBondAmount] = useState('')
   const [bondAmountError, setBondAmountError] = useState('')
+  const [isPendingCreate, setIsPendingCreate] = useState(false)
+  const [isPendingWithdraw, setIsPendingWithdraw] = useState(false)
+  const [txStatus, setTxStatus] = useState('')
+  const txStatusId = useId()
 
   const bonds = initialBonds
 
-  const handleCreateBond = useCallback(() => {
+  const handleCreateBond = useCallback(async () => {
     if (!isConnected) {
       connect()
       return
     }
-    navigate('/bond/new')
-  }, [isConnected, connect, navigate])
+    if (isPendingCreate) return
+    setIsPendingCreate(true)
+    setTxStatus('Submitting transaction…')
+    try {
+      await submitTransaction()
+      setTxStatus('')
+      navigate('/bond/new')
+    } catch {
+      setTxStatus('')
+      addToast('danger', 'Transaction failed. Please try again.')
+    } finally {
+      setIsPendingCreate(false)
+    }
+  }, [isConnected, connect, navigate, isPendingCreate, addToast])
 
   const withdrawBreakdown = useMemo(
     () => (withdrawTarget ? computeWithdrawBreakdown(withdrawTarget) : null),
@@ -165,22 +186,36 @@ export default function Bond() {
     setWithdrawTarget(null)
   }, [])
 
-  const confirmWithdraw = useCallback(() => {
+  const confirmWithdraw = useCallback(async () => {
     if (!withdrawTarget || !withdrawBreakdown) return
+    if (isPendingWithdraw) return
+
+    setIsPendingWithdraw(true)
+    setTxStatus('Submitting transaction…')
 
     const { penaltyUsdc } = withdrawBreakdown
     const mockHash = 'b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380'
-    if (penaltyUsdc > 0) {
-      addToast(
-        'warning',
-        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
-        { txHash: mockHash }
-      )
-    } else {
-      addToast('success', 'Bond withdrawn successfully.', { txHash: mockHash })
+
+    try {
+      await submitTransaction()
+      setTxStatus('')
+      if (penaltyUsdc > 0) {
+        addToast(
+          'warning',
+          `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
+          { txHash: mockHash }
+        )
+      } else {
+        addToast('success', 'Bond withdrawn successfully.', { txHash: mockHash })
+      }
+      setWithdrawTarget(null)
+    } catch {
+      setTxStatus('')
+      addToast('danger', 'Withdrawal failed. Please try again.')
+    } finally {
+      setIsPendingWithdraw(false)
     }
-    setWithdrawTarget(null)
-  }, [withdrawTarget, withdrawBreakdown, addToast])
+  }, [withdrawTarget, withdrawBreakdown, addToast, isPendingWithdraw])
 
   const slashExposureBond = useMemo(() => bonds.find((b) => getPenaltyRate(b.status) > 0), [bonds])
 
@@ -191,6 +226,17 @@ export default function Bond() {
 
   return (
     <div className="bond__container">
+      {/* aria-live region announces async transaction progress to assistive tech */}
+      <div
+        id={txStatusId}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {txStatus}
+      </div>
+
       <div className="bond__headerSection">
         <h1 className="bond__title">Bond USDC</h1>
         <p id="bond-desc" className="bond__description">
@@ -271,7 +317,8 @@ export default function Bond() {
             type="button"
             onClick={handleCreateBond}
             fullWidth
-            disabled={networkMismatch.mismatch}
+            disabled={networkMismatch.mismatch || isPendingCreate}
+            isLoading={isPendingCreate}
             aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
           >
             {isConnected ? 'Create bond' : 'Connect wallet to continue'}
@@ -315,6 +362,7 @@ export default function Bond() {
             onConfirm={confirmWithdraw}
             onCancel={cancelWithdraw}
             returnFocusRef={withdrawTriggerRef}
+            isSubmitting={isPendingWithdraw}
           />
         </Suspense>
       )}

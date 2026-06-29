@@ -24,6 +24,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/EmptyState      | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/ErrorState      | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
+| SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
 
 ## Shared vocabularies
 
@@ -304,17 +305,26 @@ Source: [`src/components/forms/FormField.tsx`](../src/components/forms/FormField
 | ---------- | -------------------- | ----------- |
 | `id`       | `string`             | Required    |
 | `label`    | `string`             | Required    |
-| `hint`     | `string`             | `undefined` |
-| `error`    | `string`             | `undefined` |
-| `children` | `React.ReactElement` | Required    |
+| `hint`         | `string`             | `undefined` |
+| `error`        | `string`             | `undefined` |
+| `srOnlyLabel`  | `boolean`            | `false`     |
+| `children`     | `React.ReactElement` | Required    |
 
-Accessibility: renders a `<label htmlFor={id}>`, optional hint, clones the child to inject `id`, merged `aria-describedby`, and `aria-invalid` when an error exists. Error text has `role="alert"`.
+Accessibility: renders a `<label htmlFor={id}>`, optional hint, clones the child to inject `id`, merged `aria-describedby`, and `aria-invalid` when an error exists. Error text has `role="alert"`. Set `srOnlyLabel` when the visible UI relies on a placeholder or icon-only affordance but a programmatic label is still required for assistive technology.
 
 Tokens: `--credence-color-danger-text`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-space-2`, `--credence-text-secondary`.
 
 ```tsx
 <FormField id="amount" label="Bond amount" hint="Enter USDC" error={error}>
   <input value={amount} onChange={handleAmountChange} />
+</FormField>
+```
+
+Placeholder-only layouts should still expose an accessible name:
+
+```tsx
+<FormField id="search" label="Search attestations" srOnlyLabel>
+  <input placeholder="Search attestations…" />
 </FormField>
 ```
 
@@ -424,4 +434,28 @@ Tokens: inline styles consume `--credence-skeleton-gradient`, `--credence-motion
 
 ```tsx
 <LoadingSkeleton variant="card" rows={2} />
+```
+
+## SessionTimeoutModal
+
+Source: [`src/components/SessionTimeoutModal.tsx`](../src/components/SessionTimeoutModal.tsx).
+
+| Prop              | Type                   | Default  |
+| ----------------- | ---------------------- | -------- |
+| `open`            | `boolean`              | Required |
+| `onStayLoggedIn`  | `() => void`           | Required |
+| `onLogout`        | `() => void`           | Required |
+| `timeLeftSeconds` | `number`               | Required |
+
+Accessibility: uses `ConfirmDialog` primitive.
+
+Tokens: warning color tokens, spacing, radius.
+
+```tsx
+<SessionTimeoutModal
+  open={showWarning}
+  timeLeftSeconds={60}
+  onStayLoggedIn={stay}
+  onLogout={logout}
+/>
 ```

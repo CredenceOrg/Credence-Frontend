@@ -37,9 +37,9 @@ function computeWithdrawBreakdown(_bond: MockBond) {
 }
 
 const initialBonds: MockBond[] = [
-  { id: 1, amountUsdc: 1000, status: 'locked', durationDays: 30 },
-  { id: 2, amountUsdc: 500, status: 'grace-period', durationDays: 90 },
-  { id: 3, amountUsdc: 750, status: 'active', durationDays: 180 },
+  { id: 1, amountUsdc: 1000, status: 'locked' },
+  { id: 2, amountUsdc: 500, status: 'grace-period' },
+  { id: 3, amountUsdc: 750, status: 'active' },
 ]
 
 /** Minimum USDC required to create a bond. */

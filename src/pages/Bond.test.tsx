@@ -55,6 +55,10 @@ vi.mock('react-router-dom', () => ({
   ),
 }))
 
+vi.mock('../components/ConfirmDialog', () => ({
+  default: vi.fn(() => null),
+}))
+
 describe('Bond Page', () => {
   beforeEach(() => {
     mockAddToast.mockClear()

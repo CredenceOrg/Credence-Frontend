@@ -25,6 +25,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/ErrorState      | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
 | SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
+| BackToTop              | `src/components/BackToTop.css`                                                      | None.                                                                                                                     |
 
 ## Shared vocabularies
 
@@ -449,4 +450,23 @@ Tokens: warning color tokens, spacing, radius.
   onStayLoggedIn={stay}
   onLogout={logout}
 />
+```
+
+## BackToTop
+
+Source: [`src/components/BackToTop.tsx`](../src/components/BackToTop.tsx).
+
+A fixed-position "Back to top" button that appears after the user scrolls more than 800 px. Clicking it smooth-scrolls the page to the top and moves keyboard focus to the first `<h1>` inside `#main-content`. Respects `prefers-reduced-motion` by falling back to an instant scroll.
+
+No props — the component is self-contained and driven by `useScrollToTop`.
+
+Accessibility: native `<button>` with `aria-label="Back to top"`, visible focus ring, and focus management. On mobile (≤ 639 px) the text label is hidden and only the arrow icon is shown; the `aria-label` keeps it usable for screen readers.
+
+Tokens: `--credence-color-primary`, `--credence-color-primary-strong`, `--credence-color-white`, `--credence-focus-ring`, `--credence-font-family-base`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-line-height-tight`, `--credence-motion-duration-fast`, `--credence-motion-easing-standard`, `--credence-radius-full`, `--credence-shadow-toast`, `--credence-space-2`, `--credence-space-3`, `--credence-space-4`, `--credence-space-6`, `--credence-space-8`.
+
+Constant: `BACK_TO_TOP_SCROLL_THRESHOLD = 800` (px) — exported from `src/hooks/useScrollToTop.ts`.
+
+```tsx
+// Rendered automatically by Layout — no manual usage needed.
+<BackToTop />
 ```

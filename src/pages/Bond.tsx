@@ -17,25 +17,14 @@ import {
   type MockBond,
   getPenaltyRate,
   computeWithdrawBreakdown,
-} from '../lib/bondPenalty'
+} from '../lib/penalty'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
-export interface MockBond {
-  id: number
-  amountUsdc: number
-  status: string
-  durationDays: number
-}
-function getPenaltyRate(_status: string) { return 0 }
-function computeWithdrawBreakdown(_bond: MockBond) {
-  return { bondAmount: '0', penaltyPercent: 0, penaltyAmount: '0', resultingBalance: '0', penaltyUsdc: 0 }
-}
-
 const initialBonds: MockBond[] = [
-  { id: 1, amountUsdc: 1000, status: 'locked', durationDays: 30 },
-  { id: 2, amountUsdc: 500, status: 'grace-period', durationDays: 90 },
-  { id: 3, amountUsdc: 750, status: 'active', durationDays: 180 },
+  { id: 1, amountUsdc: 1000, status: 'locked' },
+  { id: 2, amountUsdc: 500, status: 'grace-period' },
+  { id: 3, amountUsdc: 750, status: 'active' },
 ]
 
 interface BondRowProps {

@@ -8,6 +8,8 @@ import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import EmptyState from '../components/states/EmptyState'
+import AmountInput from '../components/AmountInput'
+import { FormField } from '../components/forms/FormField'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
@@ -26,6 +28,9 @@ const initialBonds: MockBond[] = [
   { id: 2, amountUsdc: 500, status: 'grace-period' },
   { id: 3, amountUsdc: 750, status: 'active' },
 ]
+
+/** Minimum USDC required to create a bond. */
+const MIN_BOND_AMOUNT = 10
 
 interface BondRowProps {
   bond: MockBond
@@ -113,6 +118,9 @@ export default function Bond() {
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
   const mismatchBannerId = 'bond-network-mismatch'
+
+  const [bondAmount, setBondAmount] = useState('')
+  const [bondAmountError, setBondAmountError] = useState('')
 
   const bonds = initialBonds
 
@@ -226,6 +234,28 @@ export default function Bond() {
             Lock USDC using the guided four-step wizard — set an amount, choose a lock duration,
             review slash terms, and confirm.
           </p>
+
+          <FormField
+            id="bond-amount-quick"
+            label="Amount (USDC)"
+            hint={`Minimum: ${MIN_BOND_AMOUNT} USDC`}
+            error={bondAmountError}
+          >
+            <AmountInput
+              value={bondAmount}
+              onChange={(next) => {
+                setBondAmount(next)
+                if (bondAmountError) setBondAmountError('')
+              }}
+              balance={0}
+              min={MIN_BOND_AMOUNT}
+              presets={[100, 500, 1000]}
+              currencyLabel="USDC"
+              disabled={networkMismatch.mismatch}
+              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+            />
+          </FormField>
+
           <Button
             type="button"
             onClick={handleCreateBond}

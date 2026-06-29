@@ -121,47 +121,53 @@
   font-weight: var(--credence-font-weight-semibold);
 }
 
-.activity-row__status {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--credence-space-1) var(--credence-space-2);
-  border-radius: var(--credence-radius-full);
-  font-size: var(--credence-font-size-xs);
-  line-height: var(--credence-line-height-tight);
-  font-weight: var(--credence-font-weight-semibold);
+.activity-row__disclosure {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: var(--credence-space-2);
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  font-size: var(--credence-font-size-sm);
+  text-decoration: underline;
+  text-align: left;
 }
 
-.activity-row__status--success {
-  background: var(--credence-color-success-surface);
-  color: var(--credence-color-success-text);
+.activity-row__disclosure:focus-visible {
+  outline: 2px solid var(--credence-color-primary);
+  outline-offset: 2px;
 }
 
-.activity-row__status--warning {
-  background: var(--credence-color-warning-surface);
-  color: var(--credence-color-warning-text);
+.activity-row__detail-panel {
+  margin-top: var(--credence-space-3);
+  padding: var(--credence-space-3);
+  background: var(--credence-surface-hover);
+  border-radius: var(--credence-radius-md);
 }
 
-.activity-row__status--info {
-  background: var(--credence-color-info-surface);
-  color: var(--credence-color-info-text);
-}
-
-.activity-row__description,
-.activity-row__actor,
-.activity-row__meta {
-  font-size: var(--credence-font-size-xs);
-  line-height: var(--credence-line-height-base);
+.activity-row__detail-panel[hidden] {
+  display: none;
 }
 
 .activity-row__description,
 .activity-row__actor {
+  font-size: var(--credence-font-size-xs);
+  line-height: var(--credence-line-height-base);
   color: var(--credence-text-secondary);
 }
 
 .activity-row__meta {
+  font-size: var(--credence-font-size-xs);
+  line-height: var(--credence-line-height-base);
   color: var(--credence-text-secondary);
   white-space: nowrap;
   padding-top: var(--credence-space-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-row__detail-panel {
+    transition: none;
+  }
 }
 
 @media (max-width: 767px) {

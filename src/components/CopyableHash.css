@@ -1,0 +1,48 @@
+.copyable-hash {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-space-2);
+  font-family: inherit;
+}
+
+.copyable-hash__value {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--credence-font-size-xs);
+  background: var(--credence-surface-input);
+  padding: var(--credence-space-1) var(--credence-space-2);
+  border-radius: var(--credence-radius-sm);
+}
+
+.copyable-hash__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--credence-space-1);
+  padding: var(--credence-space-1);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-sm);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--credence-motion-fast), color var(--credence-motion-fast);
+}
+
+.copyable-hash__button:hover {
+  background: var(--credence-surface-hover);
+}
+
+.copyable-hash__button:focus-visible {
+  outline: 2px solid var(--credence-color-primary);
+  outline-offset: 2px;
+}
+
+.copyable-hash__feedback {
+  font-size: var(--credence-font-size-xs);
+  color: var(--credence-color-success-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copyable-hash__button {
+    transition: none;
+  }
+}

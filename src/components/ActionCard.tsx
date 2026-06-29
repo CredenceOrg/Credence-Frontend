@@ -1,35 +1,34 @@
 import type { ReactNode } from 'react'
+import './ActionCard.css'
 
-interface ActionCardProps {
+export interface ActionCardProps {
   title: string
+  /**
+   * The density of the card's padding.
+   * @default 'comfortable'
+   */
+  padding?: 'compact' | 'comfortable'
+  /**
+   * Whether the card is elevated with a drop shadow and a hover transition.
+   * @default false
+   */
+  elevated?: boolean
   children: ReactNode
 }
 
-export default function ActionCard({ title, children }: ActionCardProps) {
+export default function ActionCard({ title, padding = 'comfortable', elevated, children }: ActionCardProps) {
+  const classes = ['actionCard', `actionCard--${padding}`]
+  if (elevated) {
+    classes.push('actionCard--elevated')
+  }
+
   return (
-    <article
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--credence-space-4)',
-        padding: 'var(--credence-space-6)',
-        border: '1px solid var(--credence-border-default)',
-        borderRadius: 'var(--credence-radius-xl)',
-        background: 'var(--credence-surface-card)',
-        color: 'var(--credence-text-primary)',
-      }}
-    >
-      <h2
-        style={{
-          fontSize: 'var(--credence-font-size-xl)',
-          lineHeight: 'var(--credence-line-height-tight)',
-          margin: 0,
-        }}
-      >
+    <article className={classes.join(' ')}>
+      <h2 className="actionCard__title">
         {title}
       </h2>
 
-      <div style={{ display: 'grid', gap: 'var(--credence-space-4)' }}>{children}</div>
+      <div className="actionCard__content">{children}</div>
     </article>
   )
 }

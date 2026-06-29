@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
 import Badge from '../components/Badge'
@@ -19,22 +20,24 @@ const activeBonds = [
   { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
 ] as const
 
-const shortcuts = [
-  { to: '/bond', label: 'Create bond', description: 'Lock more USDC into reputation bonds.' },
-  {
-    to: '/trust',
-    label: 'View trust score',
-    description: 'Look up score details and tier context.',
-  },
-  {
-    to: '/attestations',
-    label: 'Review attestations',
-    description: 'Open recent evidence and claims.',
-  },
-]
 
 export default function Dashboard() {
-  useDocumentTitle('Dashboard')
+  const { t } = useTranslation()
+  useDocumentTitle(t('dashboard.title'))
+
+  const shortcuts = [
+    { to: '/bond', label: t('dashboard.createBond'), description: t('dashboard.createBondDescription') },
+    {
+      to: '/trust',
+      label: t('dashboard.viewTrustScore'),
+      description: t('dashboard.viewTrustScoreDescription'),
+    },
+    {
+      to: '/attestations',
+      label: t('dashboard.reviewAttestations'),
+      description: t('dashboard.reviewAttestationsDescription'),
+    },
+  ]
 
   const { address, connected, connect, isConnecting } = useWallet()
   const totalBonded = activeBonds.reduce((total, bond) => total + bond.amountUsdc, 0)
@@ -43,14 +46,14 @@ export default function Dashboard() {
     <div className="dashboard">
       <header className="dashboard__header">
         <div>
-          <h1 className="dashboard__title">Dashboard</h1>
+          <h1 className="dashboard__title">{t('dashboard.title')}</h1>
           <p className="dashboard__description">
-            Monitor trust score, active bonds, and recent protocol activity from one place.
+            {t('dashboard.description')}
           </p>
         </div>
         {connected && address && (
           <div className="dashboard__wallet" aria-label="Connected wallet">
-            <span className="dashboard__walletLabel">Wallet</span>
+            <span className="dashboard__walletLabel">{t('dashboard.wallet')}</span>
             <code className="dashboard__walletAddress">
               {address.slice(0, 8)}...{address.slice(-6)}
             </code>
@@ -65,13 +68,13 @@ export default function Dashboard() {
       )}
 
       {!connected && !isConnecting && (
-        <ActionCard title="Connect wallet to view dashboard">
+        <ActionCard title={t('dashboard.connectWalletToView')}>
           <EmptyState
             illustration="trust"
-            title="Wallet required"
-            description="Connect Freighter to load your trust score, active bonds, and recent activity."
+            title={t('dashboard.walletRequired')}
+            description={t('dashboard.connectFreighter')}
             action={{
-              label: 'Connect wallet',
+              label: t('dashboard.connectWallet'),
               onClick: connect,
             }}
           />
@@ -81,13 +84,13 @@ export default function Dashboard() {
       {connected && !isConnecting && (
         <>
           <div className="dashboard__grid">
-            <ActionCard title="Trust Score">
+            <ActionCard title={t('dashboard.trustScore')}>
               <div className="dashboard__cardHeader">
                 <div>
                   <p className="dashboard__metric">{TRUST_SCORE}</p>
-                  <p className="dashboard__metricLabel">Current score</p>
+                  <p className="dashboard__metricLabel">{t('dashboard.currentScore')}</p>
                 </div>
-                <Badge variant={TRUST_TIER} label="Gold Tier" />
+                <Badge variant={TRUST_TIER} label={t('dashboard.goldTier')} />
               </div>
               <TrustGauge
                 score={TRUST_SCORE}
@@ -97,11 +100,11 @@ export default function Dashboard() {
               />
             </ActionCard>
 
-            <ActionCard title="Active Bonds">
+            <ActionCard title={t('dashboard.activeBonds')}>
               <div className="dashboard__cardHeader">
                 <div>
                   <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
-                  <p className="dashboard__metricLabel">{activeBonds.length} active bonds</p>
+                  <p className="dashboard__metricLabel">{t('dashboard.activeBondsCount', { count: activeBonds.length })}</p>
                 </div>
                 <Badge variant="active" />
               </div>
@@ -110,7 +113,7 @@ export default function Dashboard() {
                   <li className="dashboard__bondRow" key={bond.id}>
                     <div>
                       <p className="dashboard__bondAmount">{formatUsdc(bond.amountUsdc)}</p>
-                      <p className="dashboard__bondMeta">Unlocks {bond.unlockLabel}</p>
+                      <p className="dashboard__bondMeta">{t('dashboard.unlocks', { date: bond.unlockLabel })}</p>
                     </div>
                     <Badge variant={bond.status} />
                   </li>
@@ -120,11 +123,11 @@ export default function Dashboard() {
           </div>
 
           <div className="dashboard__grid dashboard__grid--activity">
-            <ActionCard title="Recent Activity">
+            <ActionCard title={t('dashboard.recentActivity')}>
               <ActivityTimeline compact />
             </ActionCard>
 
-            <ActionCard title="Shortcuts">
+            <ActionCard title={t('dashboard.shortcuts')}>
               <div className="dashboard__shortcutList">
                 {shortcuts.map((shortcut) => (
                   <Link className="dashboard__shortcut" key={shortcut.to} to={shortcut.to}>
@@ -134,7 +137,7 @@ export default function Dashboard() {
                 ))}
               </div>
               <Button type="button" variant="secondary" onClick={() => window.scrollTo({ top: 0 })}>
-                Back to summary
+                {t('dashboard.backToSummary')}
               </Button>
             </ActionCard>
           </div>
@@ -143,7 +146,7 @@ export default function Dashboard() {
 
       {connected && (
         <Banner severity="info">
-          Dashboard figures are mock protocol data until live account indexing is connected.
+          {t('dashboard.mockDataBanner')}
         </Banner>
       )}
     </div>

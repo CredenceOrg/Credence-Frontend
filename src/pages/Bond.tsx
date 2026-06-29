@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './Bond.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
@@ -15,11 +16,6 @@ import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
-import {
-  type MockBond,
-  getPenaltyRate,
-  computeWithdrawBreakdown,
-} from '../lib/bondPenalty'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
@@ -48,9 +44,10 @@ interface BondRowProps {
   isConnected: boolean
   onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
   onConnect: () => void
+  t: (key: string, params?: Record<string, unknown>) => string
 }
 
-function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
+function BondRow({ bond, isConnected, onWithdraw, onConnect, t }: BondRowProps) {
   const [open, setOpen] = useState(false)
   const panelId = `slash-detail-${bond.id}`
   const penaltyRate = getPenaltyRate(bond.status)
@@ -73,7 +70,7 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
               onClick={() => setOpen((v) => !v)}
               className="bond__penaltyToggle"
             >
-              {open ? 'Hide penalty' : 'Show penalty'}
+              {open ? t('bond.hidePenalty') : t('bond.showPenalty')}
             </button>
           )}
           <Button
@@ -82,7 +79,7 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
             onClick={isConnected ? (event) => onWithdraw(bond, event) : onConnect}
             aria-haspopup={isConnected ? 'dialog' : undefined}
           >
-            {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
+            {isConnected ? t('bond.withdraw') : t('bond.connectToWithdraw')}
           </Button>
         </div>
       </div>
@@ -97,21 +94,21 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
           style={{ display: open ? 'grid' : 'none' }}
         >
           <div className="bond__penaltyRow">
-            <span>Bond amount</span>
+            <span>{t('bond.bondAmount')}</span>
             <span>{breakdown.bondAmount}</span>
           </div>
           <div className="bond__penaltyRow">
-            <span>Penalty ({breakdown.penaltyPercent}%)</span>
+            <span>{t('bond.penalty', { percent: breakdown.penaltyPercent })}</span>
             <span>− {breakdown.penaltyAmount}</span>
           </div>
           <div className="bond__penaltyRowTotal">
-            <span>You receive</span>
+            <span>{t('bond.youReceive')}</span>
             <span>{breakdown.resultingBalance}</span>
           </div>
         </div>
       ) : (
         <p id={panelId} className="bond__noPenaltyNotice">
-          No early-withdrawal penalty
+          {t('bond.noEarlyWithdrawalPenalty')}
         </p>
       )}
     </li>
@@ -119,7 +116,8 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
 }
 
 export default function Bond() {
-  useDocumentTitle('Bond')
+  const { t } = useTranslation()
+  useDocumentTitle(t('bond.title'))
 
   const navigate = useNavigate()
   const { addToast } = useToast()
@@ -169,15 +167,13 @@ export default function Bond() {
     if (!withdrawTarget || !withdrawBreakdown) return
 
     const { penaltyUsdc } = withdrawBreakdown
-    const mockHash = 'b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380'
     if (penaltyUsdc > 0) {
       addToast(
         'warning',
-        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
-        { txHash: mockHash }
+        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
       )
     } else {
-      addToast('success', 'Bond withdrawn successfully.', { txHash: mockHash })
+      addToast('success', 'Bond withdrawn successfully.')
     }
     setWithdrawTarget(null)
   }, [withdrawTarget, withdrawBreakdown, addToast])
@@ -192,64 +188,66 @@ export default function Bond() {
   return (
     <div className="bond__container">
       <div className="bond__headerSection">
-        <h1 className="bond__title">Bond USDC</h1>
+        <h1 className="bond__title">{t('bond.title')}</h1>
         <p id="bond-desc" className="bond__description">
-          Lock USDC into the Credence contract to build your economic reputation.
+          {t('bond.description')}
         </p>
       </div>
 
       <Banner severity="info">
-        Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
+        {t('bond.infoBanner')}
       </Banner>
 
       {!isConnected && (
         <Banner
           severity="warning"
-          title="Connect wallet required"
-          action={{ label: 'Connect wallet', onClick: connect }}
+          title={t('bond.connectRequired')}
+          action={{ label: t('common.connectWallet'), onClick: connect }}
         >
-          Create bond and withdraw actions require a connected Stellar wallet.
+          {t('bond.connectRequiredDescription')}
         </Banner>
       )}
 
       {networkMismatch.mismatch && (
         <Banner
           severity="warning"
-          title="Network mismatch"
+          title={t('bond.networkMismatch')}
           action={{
-            label: `Switch app to ${networkMismatch.actual}`,
+            label: t('bond.switchNetwork', { network: networkMismatch.actual }),
             onClick: () => setNetwork(walletNetwork === 'test' ? 'test' : 'public'),
           }}
         >
           <span id={mismatchBannerId}>
-            Credence is set to <strong>{networkMismatch.expected}</strong>, but Freighter is on{' '}
-            <strong>{networkMismatch.actual}</strong>. Switch the app to the wallet network before
-            creating or withdrawing a bond.
+            {t('bond.networkMismatchDescription', {
+              expected: networkMismatch.expected,
+              actual: networkMismatch.actual
+            })}
           </span>
         </Banner>
       )}
 
       {slashBannerBreakdown && slashExposureBond && (
-        <Banner severity="warning" title="Slash exposure on early withdrawal">
-          Withdrawing {formatUsdc(slashExposureBond.amountUsdc)} while{' '}
-          <strong>{slashExposureBond.status === 'locked' ? 'locked' : 'in grace period'}</strong>{' '}
-          may slash up to {slashBannerBreakdown.penaltyAmount} (
-          {slashBannerBreakdown.penaltyPercent}% penalty). You would receive approximately{' '}
-          {slashBannerBreakdown.resultingBalance}.
+        <Banner severity="warning" title={t('bond.slashExposure')}>
+          {t('bond.slashExposureDescription', {
+            amount: formatUsdc(slashExposureBond.amountUsdc),
+            status: slashExposureBond.status === 'locked' ? 'locked' : 'in grace period',
+            penaltyAmount: slashBannerBreakdown.penaltyAmount,
+            percent: slashBannerBreakdown.penaltyPercent,
+            result: slashBannerBreakdown.resultingBalance
+          })}
         </Banner>
       )}
 
       <div className="bond__cardGrid">
-        <ActionCard title="Create New Bond">
+        <ActionCard title={t('bond.createNewBond')}>
           <p style={{ color: 'var(--credence-text-secondary)', margin: 0 }}>
-            Lock USDC using the guided four-step wizard — set an amount, choose a lock duration,
-            review slash terms, and confirm.
+            {t('bond.createBondDescription')}
           </p>
 
           <FormField
             id="bond-amount-quick"
-            label="Amount (USDC)"
-            hint={`Minimum: ${MIN_BOND_AMOUNT} USDC`}
+            label={t('bond.amount')}
+            hint={t('bond.minimumAmount', { amount: MIN_BOND_AMOUNT })}
             error={bondAmountError}
           >
             <AmountInput
@@ -274,18 +272,18 @@ export default function Bond() {
             disabled={networkMismatch.mismatch}
             aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
           >
-            {isConnected ? 'Create bond' : 'Connect wallet to continue'}
+            {isConnected ? t('bond.createBond') : t('bond.connectToContinue')}
           </Button>
         </ActionCard>
 
-        <ActionCard title="Active Bonds">
+        <ActionCard title={t('bond.activeBonds')}>
           {bonds.length === 0 ? (
             <EmptyState
               illustration="bond"
-              title="No active bonds"
-              description="You do not have any active bonds yet. Create your first bond to start building on-chain reputation."
+              title={t('bond.noActiveBonds')}
+              description={t('bond.noActiveBondsDescription')}
               action={{
-                label: 'Create your first bond',
+                label: t('bond.createFirstBond'),
                 onClick: handleCreateBond,
               }}
             />
@@ -298,6 +296,7 @@ export default function Bond() {
                   isConnected={isConnected}
                   onWithdraw={requestWithdraw}
                   onConnect={connect}
+                  t={t}
                 />
               ))}
             </ul>
@@ -309,8 +308,11 @@ export default function Bond() {
         <Suspense fallback={null}>
           <ConfirmDialog
             open
-            title="Confirm bond withdrawal"
-            subtitle={`You are withdrawing bond #${withdrawTarget.id} (${formatUsdc(withdrawTarget.amountUsdc)}).`}
+            title={t('bond.confirmWithdrawal')}
+            subtitle={t('bond.withdrawalSubtitle', {
+              id: withdrawTarget.id,
+              amount: formatUsdc(withdrawTarget.amountUsdc)
+            })}
             breakdown={withdrawBreakdown}
             onConfirm={confirmWithdraw}
             onCancel={cancelWithdraw}
@@ -320,7 +322,7 @@ export default function Bond() {
       )}
 
       <Disclaimer
-        context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
+        context={t('bond.disclaimerContext')}
         termsHref="#"
       />
     </div>

@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AttestationForm from '../components/AttestationForm'
 import ActivityTimeline, { ACTIVITY_ITEMS, ActivityItem } from '../components/ActivityTimeline'
 import Select from '../components/controls/Select'
 
 export default function Attestations() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<ActivityItem[]>(ACTIVITY_ITEMS)
   const [filterTone, setFilterTone] = useState<string>('all')
 
@@ -23,15 +25,15 @@ export default function Attestations() {
       id: `evt-new-${items.length + 1}`,
       timestamp: formatTimestamp(),
       title: payload.type === 'identity' 
-        ? 'Identity Attestation' 
+        ? t('activityTimeline.identityAttestation') 
         : payload.type === 'peer-vouch' 
-          ? 'Peer Vouch' 
-          : 'Credential Certification',
+          ? t('activityTimeline.peerVouch') 
+          : t('activityTimeline.credentialCertification'),
       description: payload.evidence,
       actor: 'Current User',
-      statusLabel: 'Submitted',
+      statusLabel: t('activityTimeline.submitted'),
       tone: 'success',
-      meta: `Subject: ${payload.subject.substring(0, 8)}...`,
+      meta: t('activityTimeline.subject', { subject: payload.subject.substring(0, 8) }),
     }
 
     setItems((prev) => [newItem, ...prev])
@@ -43,10 +45,10 @@ export default function Attestations() {
   })
 
   const filterOptions = [
-    { value: 'all', label: 'All statuses' },
-    { value: 'success', label: 'Accepted / Submitted' },
-    { value: 'warning', label: 'Needs update' },
-    { value: 'info', label: 'In review' },
+    { value: 'all', label: t('attestations.filter.all') },
+    { value: 'success', label: t('attestations.filter.success') },
+    { value: 'warning', label: t('attestations.filter.warning') },
+    { value: 'info', label: t('attestations.filter.info') },
   ]
 
   return (
@@ -59,9 +61,9 @@ export default function Attestations() {
       }}
     >
       <header>
-        <h1 style={{ marginTop: 0, color: 'var(--credence-text-primary)' }}>Attestations</h1>
+        <h1 style={{ marginTop: 0, color: 'var(--credence-text-primary)' }}>{t('attestations.title')}</h1>
         <p style={{ color: 'var(--credence-text-secondary)', margin: 0 }}>
-          Submit cryptographic evidence and vouches to build your economic trust score.
+          {t('attestations.description')}
         </p>
       </header>
 
@@ -75,7 +77,7 @@ export default function Attestations() {
       >
         <section aria-labelledby="form-heading">
           <h2 id="form-heading" className="sr-only">
-            Submit Attestation Form
+            {t('attestations.submitForm')}
           </h2>
           <AttestationForm onSubmitSuccess={handleSubmitSuccess} />
         </section>
@@ -85,7 +87,7 @@ export default function Attestations() {
             <div style={{ width: '200px' }}>
               <Select
                 id="attestation-filter"
-                ariaLabel="Filter attestations by status"
+                ariaLabel={t('attestations.filterLabel')}
                 value={filterTone}
                 onChange={setFilterTone}
                 options={filterOptions}

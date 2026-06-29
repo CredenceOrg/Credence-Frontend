@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import Button from './Button'
@@ -68,6 +69,7 @@ export default function ConfirmDialog({
   confirmPhrase = DEFAULT_CONFIRM_PHRASE,
   confirmHint = DEFAULT_CONFIRM_HINT,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation()
   const titleId = useId()
   const descId = useId()
   const announcementId = useId()
@@ -114,17 +116,17 @@ export default function ConfirmDialog({
   useEffect(() => {
     if (isConfirmEnabled !== prevConfirmEnabled) {
       if (isConfirmEnabled) {
-        setAnnouncement(`Action enabled. Type ${confirmPhrase} to confirm.`)
+        setAnnouncement(t('confirmDialog.announcements.actionEnabled', { phrase: confirmPhrase }))
         requestAnimationFrame(() => {
           confirmRef.current?.focus()
         })
       } else {
-        setAnnouncement(`Action disabled. Type ${confirmPhrase} to enable.`)
+        setAnnouncement(t('confirmDialog.announcements.actionDisabled', { phrase: confirmPhrase }))
         requestAnimationFrame(() => cancelRef.current?.focus())
       }
       setPrevConfirmEnabled(isConfirmEnabled)
     }
-  }, [isConfirmEnabled, prevConfirmEnabled, confirmPhrase])
+  }, [isConfirmEnabled, prevConfirmEnabled, confirmPhrase, t])
 
   const handleConfirm = () => {
     if (!isConfirmEnabled) return
@@ -165,15 +167,15 @@ export default function ConfirmDialog({
           {breakdown ? (
             <dl className="confirm-dialog__breakdown">
               <div className="confirm-dialog__breakdown-row">
-                <dt>Bond amount</dt>
+                <dt>{t('confirmDialog.breakdown.bondAmount')}</dt>
                 <dd>{breakdown.bondAmount}</dd>
               </div>
               <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--penalty">
-                <dt>Slash penalty ({breakdown.penaltyPercent}%)</dt>
+                <dt>{t('confirmDialog.breakdown.slashPenalty', { percent: breakdown.penaltyPercent })}</dt>
                 <dd>−{breakdown.penaltyAmount}</dd>
               </div>
               <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--total">
-                <dt>You receive</dt>
+                <dt>{t('confirmDialog.breakdown.youReceive')}</dt>
                 <dd>{breakdown.resultingBalance}</dd>
               </div>
             </dl>
@@ -187,8 +189,7 @@ export default function ConfirmDialog({
             <label htmlFor={`${titleId}-confirm-input`}>
               {confirmInputLabel || (
                 <>
-                  Type <strong>{confirmPhrase}</strong> to enable{' '}
-                  {confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal'}
+                  {t('confirmDialog.typeToConfirm', { phrase: confirmPhrase, action: confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal' })}
                 </>
               )}
             </label>
@@ -210,7 +211,7 @@ export default function ConfirmDialog({
 
         <footer className="confirm-dialog__footer">
           <Button ref={cancelRef} type="button" variant="secondary" onClick={handleCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             ref={confirmRef}

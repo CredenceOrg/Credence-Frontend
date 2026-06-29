@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle'
+import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
@@ -89,6 +90,7 @@ export default function Layout() {
         </nav>
 
         <ThemeToggle />
+        <NetworkIndicator />
 
         {/* Keyboard shortcuts help button */}
         <button

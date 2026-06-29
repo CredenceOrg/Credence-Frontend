@@ -12,7 +12,7 @@ export interface SettingsPayload {
   autoDismiss: string
 }
 
-interface SettingsState {
+export interface SettingsState {
   themeMode: ThemeMode
   network: string
   addressDisplay: string

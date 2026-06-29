@@ -3,6 +3,7 @@ import { FormField } from './forms/FormField'
 import './AddressInput.css'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import useCopyToClipboard from '@/hooks/useCopyToClipboard'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 export interface AddressInputProps {
   id: string

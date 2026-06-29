@@ -49,6 +49,12 @@ export interface ConfirmDialogProps {
    * Defaults to the wallet/funds hint used for bond withdrawals.
    */
   confirmHint?: string
+  /**
+   * When `true`, the dialog is mid-submission: the confirm button enters its
+   * loading state, the cancel button is disabled, and backdrop-click is ignored.
+   * Reset to `false` once the async operation settles (success or error).
+   */
+  isSubmitting?: boolean
 }
 
 export default function ConfirmDialog({
@@ -67,6 +73,7 @@ export default function ConfirmDialog({
   variant = 'danger',
   confirmPhrase = DEFAULT_CONFIRM_PHRASE,
   confirmHint = DEFAULT_CONFIRM_HINT,
+  isSubmitting = false,
 }: ConfirmDialogProps) {
   const titleId = useId()
   const descId = useId()
@@ -132,6 +139,7 @@ export default function ConfirmDialog({
   }
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (isSubmitting) return
     if (event.target === event.currentTarget) {
       handleCancel()
     }
@@ -209,16 +217,23 @@ export default function ConfirmDialog({
         </div>
 
         <footer className="confirm-dialog__footer">
-          <Button ref={cancelRef} type="button" variant="secondary" onClick={handleCancel}>
+          <Button
+            ref={cancelRef}
+            type="button"
+            variant="secondary"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button
             ref={confirmRef}
             type="button"
             variant={variant === 'danger' ? 'danger' : 'primary'}
-            disabled={!isConfirmEnabled}
+            disabled={!isConfirmEnabled || isSubmitting}
+            isLoading={isSubmitting}
             onClick={handleConfirm}
-            aria-disabled={!isConfirmEnabled}
+            aria-disabled={!isConfirmEnabled || isSubmitting}
           >
             {confirmLabel}
           </Button>

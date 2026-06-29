@@ -1,5 +1,6 @@
 import './Disclaimer.css'
 import LINKS from '../config/links'
+import { isExternalUrl } from '../lib/isExternalUrl'
 
 interface DisclaimerProps {
   /** Page-specific risk note prepended before the standard non-financial-advice line */
@@ -15,6 +16,7 @@ interface DisclaimerProps {
  */
 export default function Disclaimer({ context, termsHref = LINKS.terms }: DisclaimerProps) {
   const isPlaceholder = !termsHref || termsHref === '#'
+  const isExternal = isExternalUrl(termsHref)
 
   return (
     <aside className="disclaimer" aria-label="Risk disclaimer">
@@ -32,7 +34,11 @@ export default function Disclaimer({ context, termsHref = LINKS.terms }: Disclai
             Full terms &amp; conditions
           </span>
         ) : (
-          <a href={termsHref} aria-label="Read full terms and conditions">
+          <a
+            href={termsHref}
+            aria-label="Read full terms and conditions"
+            {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+          >
             Full terms &amp; conditions
           </a>
         )}

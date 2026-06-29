@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import type { ReactNode } from 'react'
+import { isExternalUrl } from '../lib/isExternalUrl'
 import './Banner.css'
 
 export type BannerSeverity = 'info' | 'success' | 'warning' | 'critical'
@@ -119,7 +120,11 @@ export default function Banner({
         {action && (
           <div className="banner__action">
             {action.href ? (
-              <a href={action.href} className="banner__link">
+              <a
+                href={action.href}
+                className="banner__link"
+                {...(isExternalUrl(action.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              >
                 {action.label}
                 <svg
                   width="12"

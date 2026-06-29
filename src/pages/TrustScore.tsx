@@ -66,7 +66,10 @@ export default function TrustScore() {
     const param = searchParams.get('address')?.trim() ?? ''
     return isValidStellarAddress(param) ? param : ''
   })
-  const [isAddressValid, setIsAddressValid] = useState(false)
+  const [isAddressValid, setIsAddressValid] = useState(() => {
+    const param = searchParams.get('address')?.trim() ?? ''
+    return isValidStellarAddress(param)
+  })
   const [hasAttemptedLookup, setHasAttemptedLookup] = useState(false)
   const [lookupAddress, setLookupAddress] = useState('')
   const pendingLookupRef = useRef(false)

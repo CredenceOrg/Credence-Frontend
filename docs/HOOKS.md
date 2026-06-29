@@ -25,6 +25,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useMediaQuery`](#usemediaquery)
   - [`useReducedMotion`](#usereducedmotion)
+  - [`useScrollToTop`](#usescrolltotop)
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
   - [`useWallet`](#usewallet)
@@ -222,6 +223,31 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 function Banner() {
   const reduceMotion = useReducedMotion()
   return <div className={reduceMotion ? 'no-anim' : 'slide-in'}>…</div>
+}
+```
+
+---
+
+### `useScrollToTop`
+
+Source: [`src/hooks/useScrollToTop.ts`](../src/hooks/useScrollToTop.ts)
+
+```ts
+function useScrollToTop(): boolean
+```
+
+Returns `true` when the page has been scrolled more than `BACK_TO_TOP_SCROLL_THRESHOLD` (800 px) from the top, and `false` otherwise. Used by [`BackToTop`](../src/components/BackToTop.tsx) to decide when to render the affordance.
+
+**Exported constant:** `BACK_TO_TOP_SCROLL_THRESHOLD = 800` — the pixel threshold at which the button becomes visible.
+
+**Cleanup:** removes the passive `scroll` listener on unmount.
+
+```tsx
+import { useScrollToTop } from '../hooks/useScrollToTop'
+
+function MyComponent() {
+  const showButton = useScrollToTop()
+  return showButton ? <button>↑</button> : null
 }
 ```
 

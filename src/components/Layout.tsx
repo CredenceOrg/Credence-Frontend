@@ -5,6 +5,7 @@ import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import BackToTop from './BackToTop'
 import LINKS from '../config/links'
 import { isExternalUrl } from '../lib/isExternalUrl'
 import './Layout.css'
@@ -134,6 +135,8 @@ export default function Layout() {
         onClose={closeShortcuts}
         returnFocusRef={shortcutsButtonRef}
       />
+
+      <BackToTop />
     </div>
   )
 }

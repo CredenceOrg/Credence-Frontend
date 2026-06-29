@@ -52,6 +52,7 @@ export default function MobileNav() {
             strokeLinecap="round"
           />
         </svg>
+        <span className="sr-only">Open navigation menu</span>
       </button>
 
       {isOpen && <div className="mobileNav-backdrop" onClick={close} aria-hidden="true" />}
@@ -73,6 +74,7 @@ export default function MobileNav() {
                 strokeLinecap="round"
               />
             </svg>
+            <span className="sr-only">Close navigation menu</span>
           </button>
         </div>
 

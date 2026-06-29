@@ -98,7 +98,8 @@ export default function Layout() {
           aria-label="Open keyboard shortcuts (Shift+?)"
           onClick={openShortcuts}
         >
-          ?
+          <span aria-hidden="true">?</span>
+          <span className="sr-only">Open keyboard shortcuts (Shift+?)</span>
         </button>
       </header>
 

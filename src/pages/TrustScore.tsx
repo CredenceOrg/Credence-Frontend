@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import './TrustScore.css'
 import Banner from '../components/Banner'
@@ -18,8 +18,28 @@ import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
-import { isValidStellarAddress } from '@/lib/stellar'
+import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import { SAMPLE_ACTIVITY } from '../components/ActivityTimeline'
+import { useLocalStorage } from '../hooks/useLocalStorage'
+
+export interface RecentLookupItem {
+  address: string
+  timestamp: number
+}
+
+function formatAddress(addr: string, addressDisplay: string, walletAddress?: string): string {
+  if (addressDisplay === 'full') {
+    return addr
+  }
+  if (addressDisplay === 'friendly') {
+    if (walletAddress && addr.toLowerCase() === walletAddress.toLowerCase()) {
+      return 'My Wallet'
+    }
+    return truncateAddress(addr)
+  }
+  // Default is 'short'
+  return truncateAddress(addr)
+}
 
 function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {
   if (error.status === 0) {
@@ -39,7 +59,7 @@ export default function TrustScore() {
 
   const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
-  const { setNetwork } = useSettings()
+  const { setNetwork, addressDisplay } = useSettings()
   const networkMismatch = useNetworkMismatch()
   const [searchParams, setSearchParams] = useSearchParams()
   const [address, setAddress] = useState<string>(() => {
@@ -51,6 +71,22 @@ export default function TrustScore() {
   const [lookupAddress, setLookupAddress] = useState('')
   const pendingLookupRef = useRef(false)
 
+  const [history, setHistory] = useLocalStorage<RecentLookupItem[]>(
+    'credence:recent-lookups',
+    []
+  )
+
+  const safeHistory = useMemo(() => {
+    if (!Array.isArray(history)) return []
+    return history.filter(
+      (item): item is RecentLookupItem =>
+        item &&
+        typeof item === 'object' &&
+        typeof item.address === 'string' &&
+        isValidStellarAddress(item.address)
+    )
+  }, [history])
+
   const { data, isLoading, error, refetch } = useTrustScore(lookupAddress)
 
   useEffect(() => {
@@ -60,6 +96,24 @@ export default function TrustScore() {
     pendingLookupRef.current = false
     refetch()
   }, [lookupAddress, refetch])
+
+  useEffect(() => {
+    if (!isLoading && !error && data && lookupAddress) {
+      if (isValidStellarAddress(lookupAddress)) {
+        setHistory((prev) => {
+          const current = Array.isArray(prev) ? prev : []
+          const filtered = current.filter(
+            (item) => item && typeof item === 'object' && item.address.toLowerCase() !== lookupAddress.toLowerCase()
+          )
+          const newItem: RecentLookupItem = {
+            address: lookupAddress,
+            timestamp: Date.now(),
+          }
+          return [newItem, ...filtered].slice(0, 5)
+        })
+      }
+    }
+  }, [isLoading, error, data, lookupAddress, setHistory])
 
   const commitAddressParam = (value: string) => {
     setSearchParams(
@@ -98,6 +152,32 @@ export default function TrustScore() {
     const trimmed = address.trim()
     setLookupAddress(trimmed)
     commitAddressParam(trimmed)
+  }
+
+  const handleSelectRecent = (recentAddress: string) => {
+    setAddress(recentAddress)
+    setIsAddressValid(true)
+    setHasAttemptedLookup(true)
+    pendingLookupRef.current = true
+    setLookupAddress(recentAddress)
+    commitAddressParam(recentAddress)
+
+    // Move to top of history immediately
+    setHistory((prev) => {
+      const current = Array.isArray(prev) ? prev : []
+      const filtered = current.filter(
+        (item) => item && typeof item === 'object' && item.address.toLowerCase() !== recentAddress.toLowerCase()
+      )
+      const newItem: RecentLookupItem = {
+        address: recentAddress,
+        timestamp: Date.now(),
+      }
+      return [newItem, ...filtered].slice(0, 5)
+    })
+  }
+
+  const handleClearHistory = () => {
+    setHistory([])
   }
 
   const useConnectedAddress = () => {
@@ -200,6 +280,40 @@ export default function TrustScore() {
             onValidationChange={setIsAddressValid}
             selfAddress={walletAddress}
           />
+          {safeHistory.length > 0 && (
+            <div className="trustScore__recentLookups" data-testid="recent-lookups">
+              <div className="trustScore__recentLookupsHeader">
+                <span id="recent-lookups-heading" className="trustScore__recentLookupsTitle">
+                  Recent Lookups
+                </span>
+                <button
+                  type="button"
+                  className="trustScore__clearButton"
+                  onClick={handleClearHistory}
+                  aria-label="Clear lookup history"
+                >
+                  Clear history
+                </button>
+              </div>
+              <ul className="trustScore__recentList" aria-labelledby="recent-lookups-heading">
+                {safeHistory.map((item) => {
+                  const displayLabel = formatAddress(item.address, addressDisplay, walletAddress)
+                  return (
+                    <li key={item.address} className="trustScore__recentListItem">
+                      <button
+                        type="button"
+                        className="trustScore__recentItemBtn"
+                        onClick={() => handleSelectRecent(item.address)}
+                        aria-label={`Look up address ${displayLabel}`}
+                      >
+                        {displayLabel}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
           {isConnected && walletAddress && (
             <Button
               type="button"

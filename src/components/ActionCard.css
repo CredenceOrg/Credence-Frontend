@@ -1,0 +1,57 @@
+.actionCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-4);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+  /* Default padding */
+  padding: var(--credence-space-6);
+  transition: transform var(--credence-motion-duration-fast, 0.2s) ease, box-shadow var(--credence-motion-duration-fast, 0.2s) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actionCard {
+    transition: none;
+  }
+}
+
+.actionCard--compact {
+  padding: var(--credence-space-4);
+}
+
+.actionCard--comfortable {
+  padding: var(--credence-space-6);
+}
+
+.actionCard--elevated {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.actionCard--elevated:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Dark mode flips tokens */
+[data-theme="dark"] .actionCard--elevated {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .actionCard--elevated:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
+.actionCard__title {
+  font-size: var(--credence-font-size-xl);
+  line-height: var(--credence-line-height-tight);
+  margin: 0;
+  /* Wrap long titles without breaking layout */
+  word-break: break-word;
+}
+
+.actionCard__content {
+  display: grid;
+  gap: var(--credence-space-4);
+}

@@ -25,6 +25,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/ErrorState      | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
 | SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
+| WhatsNewDialog         | `src/components/WhatsNewDialog.css`                                                 | None.                                                                                                                     |
 
 ## Shared vocabularies
 
@@ -448,5 +449,33 @@ Tokens: warning color tokens, spacing, radius.
   timeLeftSeconds={60}
   onStayLoggedIn={stay}
   onLogout={logout}
+/>
+```
+
+## WhatsNewDialog
+
+Source: [`src/components/WhatsNewDialog.tsx`](../src/components/WhatsNewDialog.tsx). Data: [`src/data/productUpdates.ts`](../src/data/productUpdates.ts). Hook: [`useProductUpdates`](../src/hooks/useProductUpdates.ts).
+
+A modal dialog that surfaces recent product updates ("What's New" changelog). Rendered by `Layout` and triggered by the star (✦) button in the app header. On mobile it slides up as a bottom sheet.
+
+Opening the dialog automatically calls `markAllRead()`, clearing the unread-count badge on the trigger button.
+
+| Prop             | Type                             | Default  |
+| ---------------- | -------------------------------- | -------- |
+| `open`           | `boolean`                        | Required |
+| `onClose`        | `() => void`                     | Required |
+| `returnFocusRef` | `RefObject<HTMLElement \| null>` | —        |
+
+Accessibility: `role="dialog"` with `aria-modal="true"` and `aria-labelledby` pointing to the heading. Focus is trapped while open via `useFocusTrap`; restored to `returnFocusRef` (or the previously focused element) on close. Escape key and backdrop click both close the dialog.
+
+Tokens: `--credence-border-default`, `--credence-color-info-*`, `--credence-color-success-*`, `--credence-color-warning-*`, `--credence-font-*`, `--credence-line-height-*`, `--credence-motion-duration-fast`, `--credence-motion-easing-decelerate`, `--credence-radius-full`, `--credence-radius-xl`, `--credence-space-*`, `--credence-surface-card`, `--credence-text-*`.
+
+**Adding an update**: prepend a new entry to `PRODUCT_UPDATES` in `src/data/productUpdates.ts`. The dialog and the header badge update automatically.
+
+```tsx
+<WhatsNewDialog
+  open={whatsNewOpen}
+  onClose={closeWhatsNew}
+  returnFocusRef={whatsNewButtonRef}
 />
 ```

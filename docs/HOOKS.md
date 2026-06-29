@@ -24,6 +24,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useReducedMotion`](#usereducedmotion)
+  - [`useProductUpdates`](#useproductupdates)
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
   - [`useWallet`](#usewallet)
@@ -178,6 +179,46 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 function Banner() {
   const reduceMotion = useReducedMotion()
   return <div className={reduceMotion ? 'no-anim' : 'slide-in'}>…</div>
+}
+```
+
+---
+
+### `useProductUpdates`
+
+Source: [`src/hooks/useProductUpdates.ts`](../src/hooks/useProductUpdates.ts) · Data: [`src/data/productUpdates.ts`](../src/data/productUpdates.ts)
+
+```ts
+function useProductUpdates(): UseProductUpdatesResult
+
+interface UseProductUpdatesResult {
+  updates: readonly ProductUpdate[]
+  unreadCount: number
+  markAllRead: () => void
+}
+
+// Exported constant
+const PRODUCT_UPDATES_STORAGE_KEY = 'credence:last-seen-update-id'
+```
+
+Tracks which product updates the user has already seen, persisting the last-seen update ID in localStorage. Used by `WhatsNewDialog` and the `Layout` header badge.
+
+**`unreadCount`** equals the number of entries in `PRODUCT_UPDATES` that are newer than the last-seen update. For a first-time visitor (nothing in storage) it equals the full list length.
+
+**`markAllRead`** stores `LATEST_UPDATE_ID` (the newest entry's `id`) to localStorage, collapsing `unreadCount` to `0`.
+
+**SSR-safe / cleanup:** delegates all storage access to `useLocalStorage`; no DOM listeners.
+
+```tsx
+import { useProductUpdates } from '../hooks/useProductUpdates'
+
+function Header() {
+  const { unreadCount, markAllRead } = useProductUpdates()
+  return (
+    <button onClick={markAllRead} aria-label={`What's New (${unreadCount} unread)`}>
+      ✦ {unreadCount > 0 && <span>{unreadCount}</span>}
+    </button>
+  )
 }
 ```
 

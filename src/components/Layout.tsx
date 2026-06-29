@@ -6,6 +6,7 @@ import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import LINKS from '../config/links'
+import { isExternalUrl } from '../lib/isExternalUrl'
 import './Layout.css'
 
 const NAV_LINKS = [
@@ -18,8 +19,13 @@ const NAV_LINKS = [
 ]
 
 function FooterLink({ label, href }: { label: string; href: string }) {
+  const isExternal = isExternalUrl(href)
   return (
-    <a href={href} className="footer-link" target="_blank" rel="noopener noreferrer">
+    <a
+      href={href}
+      className="footer-link"
+      {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+    >
       {label}
     </a>
   )

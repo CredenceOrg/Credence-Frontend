@@ -23,6 +23,7 @@ behavior notes, and a minimal usage example linking to source.
 - [Hooks (`src/hooks/`)](#hooks-srchooks)
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
+  - [`useMediaQuery`](#usemediaquery)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
@@ -148,6 +149,49 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 function Bond() {
   useDocumentTitle('Bond') // document.title === 'Bond · Credence'
   return <main>…</main>
+}
+```
+
+---
+
+### `useMediaQuery`
+
+Source: [`src/hooks/useMediaQuery.ts`](../src/hooks/useMediaQuery.ts)
+
+```ts
+function useMediaQuery(query: string): boolean
+function useIsMobile(): boolean  // shorthand: (max-width: 767px)
+```
+
+Subscribes to a CSS media query and returns whether it currently matches. The exported
+breakpoint helper `useIsMobile` wraps the 768 px mobile threshold used throughout the app.
+
+**Parameters**
+
+| Parameter | Required | Description                                         |
+| --------- | :------: | --------------------------------------------------- |
+| `query`   |    ✓     | A valid CSS media query string, e.g. `'(max-width: 767px)'`. |
+
+**Behavior notes**
+
+- Returns `false` during SSR or when `window.matchMedia` is unavailable — no crash.
+- Uses a lazy `useState` initializer to read the initial match synchronously on first render,
+  eliminating any flash of wrong state.
+- Subscribes via `addEventListener('change', …)` with optional chaining, mirroring the
+  pattern in `SettingsContext`.
+- **SSR-safe / cleanup:** all DOM work is guarded; the `change` listener is removed on unmount
+  or when the query string changes.
+
+```tsx
+import { useMediaQuery, useIsMobile } from '../hooks/useMediaQuery'
+
+// Generic usage
+const isWide = useMediaQuery('(min-width: 1024px)')
+
+// Breakpoint helper
+function ActivityCard() {
+  const isMobile = useIsMobile()
+  return <h2>{isMobile ? 'Recent Activity' : 'Recent Activity Timeline'}</h2>
 }
 ```
 

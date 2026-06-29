@@ -8,7 +8,11 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
   success: 5000,
   warning: 8000,
   danger: 0,
-}
+};
+
+// Maximum number of toasts displayed simultaneously
++const MAX_TOASTS = 3;
+
 
 interface ToastContextValue {
   addToast: (severity: ToastSeverity, message: string) => void
@@ -63,7 +67,22 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
       const id = String(++idCounter.current)
       const newToast: ToastData = { id, severity, message }
 
-      setToasts((prev: ToastData[]) => [...prev, newToast])
+      // Enforce max toast limit: remove oldest if needed
+      setToasts((prev: ToastData[]) => {
+        const updated = [...prev]
+        if (updated.length >= MAX_TOASTS) {
+          const oldest = updated.shift()
+          if (oldest) {
+            const timerId = timeoutsMap.current.get(oldest.id)
+            if (timerId) {
+              clearTimeout(timerId)
+              timeoutsMap.current.delete(oldest.id)
+            }
+          }
+        }
+        updated.push(newToast)
+        return updated
+      })
 
       // compute timeout: settings `autoDismiss` can override default TIMEOUTS
       let timeout = TIMEOUTS[severity]

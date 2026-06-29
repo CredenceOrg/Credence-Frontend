@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import ActivityTimeline, { ActivityItem } from './ActivityTimeline'
 
 const makeItem = (overrides: Partial<ActivityItem> = {}): ActivityItem => ({
@@ -135,9 +135,11 @@ describe('ActivityTimeline', () => {
       expect(container.querySelector('.activity-row__rail')).toHaveAttribute('aria-hidden', 'true')
     })
 
-    it('renders actor prefixed with "By"', () => {
+    it('renders actor label', () => {
       render(<ActivityTimeline items={[makeItem({ actor: 'Node 99' })]} />)
-      expect(screen.getByText('By Node 99')).toBeInTheDocument()
+      const button = screen.getByText('Show details')
+      fireEvent.click(button)
+      expect(screen.getByText(/Node 99/)).toBeInTheDocument()
     })
   })
 })

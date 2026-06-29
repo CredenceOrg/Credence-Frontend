@@ -1,0 +1,142 @@
+/* ─── Backdrop ─────────────────────────────────────────────────────────────── */
+
+.connect-wallet-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--credence-space-4);
+  background: rgba(15, 23, 42, 0.55);
+  animation: connect-wallet-fade-in var(--credence-motion-duration-fast)
+    var(--credence-motion-easing-decelerate);
+}
+
+[data-theme='dark'] .connect-wallet-modal__backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* ─── Dialog panel ─────────────────────────────────────────────────────────── */
+
+.connect-wallet-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 24rem;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  background: var(--credence-surface-card);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+  color: var(--credence-text-primary);
+  animation: connect-wallet-slide-up var(--credence-motion-duration-base)
+    var(--credence-motion-easing-decelerate);
+}
+
+[data-theme='dark'] .connect-wallet-modal {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* ─── Header ───────────────────────────────────────────────────────────────── */
+
+.connect-wallet-modal__header {
+  padding: var(--credence-space-5) var(--credence-space-5) var(--credence-space-4);
+  border-bottom: 1px solid var(--credence-border-default);
+}
+
+.connect-wallet-modal__title {
+  margin: 0;
+  font-size: var(--credence-font-size-lg);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
+}
+
+/* ─── Body ─────────────────────────────────────────────────────────────────── */
+
+.connect-wallet-modal__body {
+  padding: var(--credence-space-5);
+  display: grid;
+  gap: var(--credence-space-4);
+}
+
+.connect-wallet-modal__description {
+  margin: 0;
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-base);
+  color: var(--credence-text-secondary);
+}
+
+.connect-wallet-modal__error {
+  padding: var(--credence-space-3) var(--credence-space-4);
+  border: 1px solid var(--credence-color-danger-border);
+  border-radius: var(--credence-radius-md);
+  background: var(--credence-color-danger-surface);
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-base);
+  color: var(--credence-color-danger-text);
+}
+
+/* ─── Footer ───────────────────────────────────────────────────────────────── */
+
+.connect-wallet-modal__footer {
+  display: flex;
+  gap: var(--credence-space-3);
+  padding: var(--credence-space-4) var(--credence-space-5) var(--credence-space-5);
+  border-top: 1px solid var(--credence-border-default);
+}
+
+.connect-wallet-modal__footer .credence-button {
+  flex: 1;
+}
+
+/* ─── Entrance animations ──────────────────────────────────────────────────── */
+
+@keyframes connect-wallet-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes connect-wallet-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(var(--credence-space-4));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .connect-wallet-modal__backdrop,
+  .connect-wallet-modal {
+    animation: none;
+  }
+}
+
+/* ─── Mobile: bottom sheet ─────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .connect-wallet-modal__backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .connect-wallet-modal {
+    max-width: none;
+    border-radius: var(--credence-radius-xl) var(--credence-radius-xl) 0 0;
+  }
+
+  .connect-wallet-modal__footer {
+    flex-direction: column-reverse;
+  }
+}

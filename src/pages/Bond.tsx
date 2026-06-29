@@ -10,6 +10,7 @@ import Button from '../components/Button'
 import EmptyState from '../components/states/EmptyState'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
+import ConnectWalletModal from '../components/ConnectWalletModal'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
@@ -52,7 +53,7 @@ interface BondRowProps {
   bond: MockBond
   isConnected: boolean
   onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
-  onConnect: () => void
+  onConnect: (event: React.MouseEvent<HTMLButtonElement>) => void
 }
 
 function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
@@ -85,7 +86,7 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
             type="button"
             variant={hasPenalty ? 'danger' : 'secondary'}
             onClick={isConnected ? (event) => onWithdraw(bond, event) : onConnect}
-            aria-haspopup={isConnected ? 'dialog' : undefined}
+            aria-haspopup="dialog"
           >
             {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
           </Button>
@@ -132,11 +133,13 @@ export default function Bond() {
 
   const navigate = useNavigate()
   const { addToast } = useToast()
-  const { isConnected, connect, network: walletNetwork } = useWallet()
+  const { isConnected, network: walletNetwork } = useWallet()
   const { setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
+  const [connectModalOpen, setConnectModalOpen] = useState(false)
+  const connectTriggerRef = useRef<HTMLElement | null>(null)
   const mismatchBannerId = 'bond-network-mismatch'
 
   const [bondAmount, setBondAmount] = useState('')
@@ -175,15 +178,10 @@ export default function Bond() {
 
   const requestWithdraw = useCallback(
     (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => {
-      if (!isConnected) {
-        connect()
-        return
-      }
-
       withdrawTriggerRef.current = event.currentTarget
       setWithdrawTarget(bond)
     },
-    [isConnected, connect]
+    []
   )
 
   const cancelWithdraw = useCallback(() => {
@@ -256,7 +254,7 @@ export default function Bond() {
         <Banner
           severity="warning"
           title="Connect wallet required"
-          action={{ label: 'Connect wallet', onClick: connect }}
+          action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
         >
           Create bond and withdraw actions require a connected Stellar wallet.
         </Banner>
@@ -319,11 +317,12 @@ export default function Bond() {
 
           <Button
             type="button"
-            onClick={handleCreateBond}
+            onClick={(e) => handleCreateBond(e)}
             fullWidth
             disabled={networkMismatch.mismatch || isPendingCreate}
             isLoading={isPendingCreate}
             aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+            aria-haspopup={!isConnected ? 'dialog' : undefined}
           >
             {isConnected ? 'Create bond' : 'Connect wallet to continue'}
           </Button>
@@ -348,7 +347,7 @@ export default function Bond() {
                   bond={bond}
                   isConnected={isConnected}
                   onWithdraw={requestWithdraw}
-                  onConnect={connect}
+                  onConnect={openConnectModal}
                 />
               ))}
             </ul>
@@ -370,6 +369,12 @@ export default function Bond() {
           />
         </Suspense>
       )}
+
+      <ConnectWalletModal
+        open={connectModalOpen}
+        onClose={() => setConnectModalOpen(false)}
+        returnFocusRef={connectTriggerRef}
+      />
 
       <Disclaimer
         context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."

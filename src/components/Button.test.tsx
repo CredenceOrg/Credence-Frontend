@@ -50,7 +50,7 @@ describe('Button – default rendering', () => {
   it('wraps children in a content span (always present)', () => {
     const { container } = render(<Button>Content</Button>)
     const btn = container.querySelector('button')
-    const contentSpan = btn?.querySelector('span:not(.credence-button__spinner)')
+    const contentSpan = btn?.querySelector('span:not(.credence-button__spinner):not(.sr-only)')
     expect(contentSpan).toBeInTheDocument()
     expect(contentSpan?.textContent).toBe('Content')
   })
@@ -246,6 +246,20 @@ describe('Button – isLoading state', () => {
     const { container } = render(<Button isLoading>Loading</Button>)
     const spinner = container.querySelector('.credence-button__spinner')
     expect(spinner).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('announces "Sending…" to screen readers when isLoading=true', () => {
+    const { container } = render(<Button isLoading>Loading</Button>)
+    const liveRegion = container.querySelector('.sr-only[aria-live="polite"]')
+    expect(liveRegion).toBeInTheDocument()
+    expect(liveRegion?.textContent).toBe('Sending…')
+  })
+
+  it('does not announce "Sending…" when isLoading is false', () => {
+    const { container } = render(<Button isLoading={false}>Loading</Button>)
+    const liveRegion = container.querySelector('.sr-only[aria-live="polite"]')
+    expect(liveRegion).toBeInTheDocument()
+    expect(liveRegion?.textContent).toBe('')
   })
 
   it('renders the spinner SVG with the correct class', () => {

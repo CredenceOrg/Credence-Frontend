@@ -79,6 +79,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
           </svg>
         </span>
       )}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {isLoading ? 'Sending…' : ''}
+      </span>
       <span className={isLoading ? 'credence-button__content--loading' : ''}>{children}</span>
     </button>
   )

@@ -165,6 +165,7 @@ export default function Banner({
               clipRule="evenodd"
             />
           </svg>
+          <span className="sr-only">Dismiss banner</span>
         </button>
       )}
     </div>

@@ -103,6 +103,7 @@ export default function ThemeToggle() {
       title={`Switch to ${nextTheme} mode`}
     >
       {resolved === 'light' ? <MoonIcon /> : <SunIcon />}
+      <span className="sr-only">{`Switch to ${nextTheme} mode`}</span>
     </button>
   )
 }

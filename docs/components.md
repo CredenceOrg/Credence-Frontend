@@ -4,6 +4,8 @@ This catalog is the source-facing reference for shared UI under `src/components/
 
 Related focused docs: [button system](./button-system.md), [notifications](./notifications.md), [design tokens](./DESIGN_TOKENS.md), [dark mode](./dark-mode.md), [focus patterns](./focus-patterns.md), [UI states](./UI_STATES_GUIDE.md), [TrustGauge quick reference](./TRUST_GAUGE_QUICK_REFERENCE.md), and [tier thresholds](./tier-thresholds.md).
 
+> **Per-route SEO metadata** — Use the [`useSeo`](../src/hooks/useSeo.ts) hook (documented in [HOOKS.md](./HOOKS.md#useseo)) to set `document.title` and `<meta name="description">` on a per-route basis. Every route-level page component should call `useSeo` with a descriptive `description` so search engines and social-card scrapers receive page-specific context rather than the static fallback in `index.html`.
+
 ## Styling ownership snapshot
 
 | Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |

@@ -7,7 +7,7 @@ import Button from '../components/Button'
 import TrustGauge from '../components/TrustGauge'
 import { EmptyState, LoadingSkeleton } from '../components/states'
 import { useWallet } from '../context/WalletContext'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
 import './Dashboard.css'
 
@@ -34,7 +34,11 @@ const shortcuts = [
 ]
 
 export default function Dashboard() {
-  useDocumentTitle('Dashboard')
+  useSeo({
+    title: 'Dashboard',
+    description:
+      'Monitor your Credence trust score, active USDC bonds, and recent protocol activity from one place.',
+  })
 
   const { address, connected, connect, isConnecting } = useWallet()
   const [searchParams] = useSearchParams()

@@ -87,21 +87,25 @@ Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-co
 
 ## Badge
 
-Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx).
+Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx). Contrast audit: [badge-contrast-audit.md](./badge-contrast-audit.md).
 
 | Prop        | Type                     | Default             |
 | ----------- | ------------------------ | ------------------- |
 | `variant`   | `BadgeVariant \| string` | Required            |
 | `label`     | `string`                 | Known variant label |
 | `className` | `string`                 | `''`                |
+| `srPrefix`  | `string`                 | —                   |
 
-Accessibility: renders text in a `<span>`; consumers should provide surrounding context when the badge alone is not descriptive.
+**`srPrefix`** renders an `.sr-only` `<span>` _before_ the visible label so assistive technology can announce the badge in context (e.g. `srPrefix="Bond status:"` causes a screen reader to read `"Bond status: Slashed"` rather than just `"Slashed"`). No extra DOM is inserted when the prop is omitted.
+
+Accessibility: renders text in a `<span>` with a `title` attribute matching the display label (provides a tooltip on truncation). Status badges (`slashed`, `grace-period`, `locked`) carry safety-relevant meaning — the visible label is always non-empty so meaning is never communicated by color alone. Use `srPrefix` when a badge appears inside a list row or table cell where a screen reader needs additional context to interpret the label.
 
 Tokens: tier/status color tokens, `--credence-font-size-xs`, `--credence-font-weight-semibold`, `--credence-radius-full`, `--credence-space-2`.
 
 ```tsx
 <Badge variant="gold" />
 <Badge variant="grace-period" label="Grace" />
+<Badge variant="slashed" srPrefix="Bond status:" />
 ```
 
 ## Banner

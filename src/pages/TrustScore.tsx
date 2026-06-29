@@ -13,7 +13,7 @@ import { TIERS } from '../lib/tiers'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSeo } from '../hooks/useSeo'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
@@ -34,7 +34,11 @@ function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validati
 }
 
 export default function TrustScore() {
-  useDocumentTitle('Trust Score')
+  useSeo({
+    title: 'Trust Score',
+    description:
+      'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
+  })
 
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork } = useSettings()

@@ -7,7 +7,7 @@ import Toggle from '../components/controls/Toggle'
 import Select from '../components/controls/Select'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { ErrorState } from '../components/states'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSeo } from '../hooks/useSeo'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
 import './Settings.css'
 
@@ -46,7 +46,10 @@ export default function Settings() {
   } = useSettings()
   const { addToast } = useToast()
 
-  useDocumentTitle('Settings')
+  useSeo({
+    title: 'Settings',
+    description: 'Configure your Credence app preferences: theme, network, address display, and toast notifications.',
+  })
 
   const [draft, setDraft] = useState({
     themeMode: themeMode as 'light' | 'dark' | 'system',

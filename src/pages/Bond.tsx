@@ -12,7 +12,7 @@ import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSeo } from '../hooks/useSeo'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
 import {
@@ -119,7 +119,11 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
 }
 
 export default function Bond() {
-  useDocumentTitle('Bond')
+  useSeo({
+    title: 'Bond',
+    description:
+      'Lock USDC into the Credence contract to build your on-chain economic reputation. Create bonds, track penalties, and manage withdrawals.',
+  })
 
   const navigate = useNavigate()
   const { addToast } = useToast()

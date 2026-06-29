@@ -23,6 +23,7 @@ behavior notes, and a minimal usage example linking to source.
 - [Hooks (`src/hooks/`)](#hooks-srchooks)
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
+  - [`useSeo`](#useseo)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
@@ -147,6 +148,49 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 
 function Bond() {
   useDocumentTitle('Bond') // document.title === 'Bond · Credence'
+  return <main>…</main>
+}
+```
+
+---
+
+### `useSeo`
+
+Source: [`src/hooks/useSeo.ts`](../src/hooks/useSeo.ts)
+
+```ts
+function useSeo(options: UseSeoOptions): void
+
+interface UseSeoOptions {
+  title: string
+  description?: string
+  brandSuffix?: boolean      // default: true — append ` · Credence`
+  restoreOnUnmount?: boolean // default: true — restore prior values on unmount
+}
+```
+
+Sets both `document.title` and the `<meta name="description">` tag for the calling
+component's lifetime, restoring the previous values on unmount. This is the preferred
+hook for route-level SEO metadata — a drop-in superset of `useDocumentTitle` that adds
+per-route description control so search engines and social-card scrapers receive page-specific
+descriptions rather than the static fallback in `index.html`.
+
+**Behavior notes**
+
+- Creates the `<meta name="description">` element if one is absent; updates `content` if it
+  already exists; restores or removes it on unmount (governed by `restoreOnUnmount`).
+- Title semantics are identical to `useDocumentTitle` (no double-suffix, empty → `Credence`).
+- **SSR-safe / cleanup:** all DOM access is guarded by `typeof document === 'undefined'` and
+  deferred to effects; both effects clean up their mutations on unmount.
+
+```tsx
+import { useSeo } from '../hooks/useSeo'
+
+function Bond() {
+  useSeo({
+    title: 'Bond',
+    description: 'Lock USDC into the Credence contract to build your on-chain economic reputation.',
+  })
   return <main>…</main>
 }
 ```

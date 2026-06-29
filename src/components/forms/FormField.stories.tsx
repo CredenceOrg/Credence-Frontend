@@ -40,3 +40,21 @@ export const WithHintAndError: Story = {
     error: 'Special characters are not allowed.',
   },
 };
+
+export const SrOnlyLabel: Story = {
+  args: {
+    srOnlyLabel: true,
+    label: 'Search attestations',
+    children: (
+      <input
+        style={{
+          padding: '8px',
+          border: '1px solid #ccc',
+          borderRadius: '4px',
+          width: '100%',
+        }}
+        placeholder="Search attestations…"
+      />
+    ),
+  },
+};

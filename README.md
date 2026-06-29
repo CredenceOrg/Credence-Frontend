@@ -57,18 +57,25 @@ Precedence is `VITE_*_URL` first, then the legacy `VITE_*` alias, then the defau
 
 The Vite dev server also proxies local API requests. Requests from the frontend to `/api` are forwarded to `VITE_API_BASE_URL` by `vite.config.ts`, defaulting to `http://localhost:3000`, so run the backend on port `3000` when testing API-backed flows locally.
 
-Shared API helpers live in `src/api/`. Use `apiFetch<T>()` for JSON requests so pages and hooks get consistent `/api` prefixing, typed `ApiError` failures, and `AbortSignal` cancellation support without coupling the client to React.
+Shared API helpers live in `src/api/`. All request and response types are generated from the OpenAPI spec at [`openapi.yaml`](./openapi.yaml):
+
+```bash
+npm run generate:api   # regenerate src/api/generated.ts after spec changes
+```
+
+Use `apiFetch<T>()` for JSON requests so pages and hooks get consistent `/api` prefixing, typed `ApiError` failures, and `AbortSignal` cancellation support without coupling the client to React. Import named types from `src/api/types.ts`; for spec-verified operation types use `ApiResponse<operations['myOp']>`. See [docs/API_TYPES.md](./docs/API_TYPES.md) for the full codegen workflow.
 
 The link variable intent and legal handoff notes are also tracked in `docs/footer-link-manifest.md`.
 
 ## Scripts
 
-| Command           | Description                   |
-| ----------------- | ----------------------------- |
-| `npm run dev`     | Start Vite dev server         |
-| `npm run build`   | TypeScript + production build |
-| `npm run preview` | Preview production build      |
-| `npm run lint`    | Run ESLint                    |
+| Command                  | Description                                        |
+| ------------------------ | -------------------------------------------------- |
+| `npm run dev`            | Start Vite dev server                              |
+| `npm run build`          | TypeScript + production build                      |
+| `npm run preview`        | Preview production build                           |
+| `npm run generate:api`   | Regenerate `src/api/generated.ts` from `openapi.yaml` |
+| `npm run lint`           | Run ESLint                                         |
 
 ## Tech
 
@@ -89,13 +96,14 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 ## Project layout
 
 - `src/pages/` — Home, Bond, Trust Score
-- `src/components/` — Layout, shared UI; see the [shared components catalog](docs/COMPONENTS.md) for props, accessibility notes, styling ownership, and token usage
+- `src/components/` — Layout, shared UI; see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
 - `src/App.tsx` — Router and routes
 
 ### Bond flow routes
 
 | Route       | Component            | Description                                                                                                               |
 | ----------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `/dashboard`| `Dashboard.tsx`      | Overview of user activity. Supports `?widget=<slug>` (e.g., `trust-score`, `active-bonds`) for deep-linking exact views.  |
 | `/bond`     | `Bond.tsx`           | Overview page — lists active bonds and provides an entry into the creation wizard                                         |
 | `/bond/new` | `CreateBondPage.tsx` | Four-step bond-creation wizard (amount → duration → review → confirm). Navigates back to `/bond` on completion or cancel. |
 

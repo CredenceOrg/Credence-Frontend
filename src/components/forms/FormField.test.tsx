@@ -110,4 +110,38 @@ describe('FormField Accessibility', () => {
     )
     expect(input).toHaveAttribute('aria-invalid', 'true')
   })
+
+  it('renders a visually hidden sr-only label when srOnlyLabel is true', () => {
+    render(
+      <FormField id="search-field" label="Search" srOnlyLabel>
+        <input placeholder="Search attestations…" />
+      </FormField>
+    )
+
+    const label = screen.getByText('Search')
+    expect(label.tagName).toBe('LABEL')
+    expect(label).toHaveClass('sr-only')
+    expect(label).toHaveAttribute('for', 'search-field')
+  })
+
+  it('associates sr-only label with the control for screen reader accessible name', () => {
+    render(
+      <FormField id="search-field" label="Search" srOnlyLabel>
+        <input placeholder="Search attestations…" />
+      </FormField>
+    )
+
+    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveAttribute('id', 'search-field')
+  })
+
+  it('does not apply sr-only class to the label by default', () => {
+    render(
+      <FormField id="test-field" label="Test Label">
+        <input />
+      </FormField>
+    )
+
+    const label = screen.getByText('Test Label')
+    expect(label).not.toHaveClass('sr-only')
+  })
 })

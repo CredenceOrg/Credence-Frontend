@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { CSP } from './src/config/security'
 
 const apiProxyTarget = process.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
@@ -12,6 +13,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    headers: {
+      'Content-Security-Policy': CSP,
+    },
     proxy: {
       '/api': { target: apiProxyTarget, changeOrigin: true },
     },

@@ -63,7 +63,7 @@ Switch control for boolean settings.
 A structural wrapper for inputs to provide labels, hints, and error messages.
 - **Source**: `src/components/forms/FormField.tsx`
 - **Story**: `Components/Forms/FormField`
-- **Accessibility**: Ensures proper ARIA wiring between labels, hints, errors, and the child input.
+- **Accessibility**: Ensures proper ARIA wiring between labels, hints, errors, and the child input. Use `srOnlyLabel` when the visible UI relies on a placeholder but a hidden `<label>` linked via `htmlFor`/`id` is still required for assistive technology.
 
 ---
 

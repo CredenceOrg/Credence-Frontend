@@ -1,0 +1,199 @@
+/* ─── Backdrop ─────────────────────────────────────────────────────────────── */
+
+.whats-new-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--credence-space-4);
+  background: rgba(15, 23, 42, 0.55);
+  animation: whats-new-dialog-fade-in var(--credence-motion-duration-fast)
+    var(--credence-motion-easing-decelerate);
+}
+
+[data-theme='dark'] .whats-new-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* ─── Dialog panel ─────────────────────────────────────────────────────────── */
+
+.whats-new-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 36rem;
+  max-height: min(90vh, 48rem);
+  overflow: hidden;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  background: var(--credence-surface-card);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+  color: var(--credence-text-primary);
+}
+
+[data-theme='dark'] .whats-new-dialog {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* ─── Header ───────────────────────────────────────────────────────────────── */
+
+.whats-new-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--credence-space-5) var(--credence-space-5) var(--credence-space-4);
+  border-bottom: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-card);
+  flex-shrink: 0;
+}
+
+.whats-new-dialog__title {
+  margin: 0;
+  font-size: var(--credence-font-size-lg);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
+}
+
+.whats-new-dialog__close {
+  padding: var(--credence-space-2) !important;
+  line-height: 1;
+  font-size: var(--credence-font-size-base);
+  color: var(--credence-text-secondary);
+}
+
+.whats-new-dialog__close:hover {
+  color: var(--credence-text-primary);
+}
+
+/* ─── Update list ──────────────────────────────────────────────────────────── */
+
+.whats-new-dialog__list {
+  flex: 1;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: var(--credence-space-4) var(--credence-space-5);
+  display: grid;
+  gap: var(--credence-space-5);
+}
+
+.whats-new-dialog__item {
+  display: grid;
+  gap: var(--credence-space-1);
+  padding-bottom: var(--credence-space-5);
+  border-bottom: 1px solid var(--credence-border-default);
+}
+
+.whats-new-dialog__item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.whats-new-dialog__item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-3);
+}
+
+.whats-new-dialog__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--credence-space-1) var(--credence-space-2);
+  border-radius: var(--credence-radius-full);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: 1;
+}
+
+.whats-new-dialog__tag--feature {
+  background: var(--credence-color-info-surface);
+  color: var(--credence-color-info-text);
+}
+
+.whats-new-dialog__tag--improvement {
+  background: var(--credence-color-success-surface);
+  color: var(--credence-color-success-text);
+}
+
+.whats-new-dialog__tag--fix {
+  background: var(--credence-color-warning-surface);
+  color: var(--credence-color-warning-text);
+}
+
+.whats-new-dialog__date {
+  font-size: var(--credence-font-size-xs);
+  color: var(--credence-text-secondary);
+}
+
+.whats-new-dialog__item-title {
+  margin: 0;
+  font-size: var(--credence-font-size-base);
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-text-primary);
+  line-height: var(--credence-line-height-tight);
+}
+
+.whats-new-dialog__item-description {
+  margin: 0;
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+  line-height: var(--credence-line-height-relaxed);
+}
+
+/* ─── Footer ───────────────────────────────────────────────────────────────── */
+
+.whats-new-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--credence-space-3);
+  padding: var(--credence-space-4) var(--credence-space-5) var(--credence-space-5);
+  border-top: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-card);
+  flex-shrink: 0;
+}
+
+/* ─── Entrance animation ───────────────────────────────────────────────────── */
+
+@keyframes whats-new-dialog-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ─── Mobile: bottom sheet ─────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .whats-new-dialog__backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .whats-new-dialog {
+    max-width: none;
+    max-height: 92vh;
+    border-radius: var(--credence-radius-xl) var(--credence-radius-xl) 0 0;
+  }
+
+  .whats-new-dialog__footer {
+    flex-direction: column;
+  }
+
+  .whats-new-dialog__footer .credence-button {
+    width: 100%;
+  }
+}
+
+/* ─── Wider screens ────────────────────────────────────────────────────────── */
+
+@media (min-width: 1280px) {
+  .whats-new-dialog {
+    max-width: 40rem;
+  }
+}

@@ -117,6 +117,7 @@ function AddressInputInner({
               strokeLinejoin="round"
             />
           </svg>
+          <span className="sr-only">Paste address from clipboard</span>
         </button>
       )}
     </div>
@@ -284,6 +285,7 @@ export default function AddressInput({
               </svg>
             )}
             {copied && <span className="address-input-copy-feedback">Copied</span>}
+            <span className="sr-only">Copy address to clipboard</span>
           </button>
           {isSelf && (
             <span className="address-input-echo-self" aria-hidden="false">

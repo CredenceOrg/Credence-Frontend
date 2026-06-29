@@ -23,7 +23,9 @@ behavior notes, and a minimal usage example linking to source.
 - [Hooks (`src/hooks/`)](#hooks-srchooks)
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
+  - [`useMediaQuery`](#usemediaquery)
   - [`useReducedMotion`](#usereducedmotion)
+  - [`useScrollToTop`](#usescrolltotop)
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
   - [`useWallet`](#usewallet)
@@ -153,6 +155,49 @@ function Bond() {
 
 ---
 
+### `useMediaQuery`
+
+Source: [`src/hooks/useMediaQuery.ts`](../src/hooks/useMediaQuery.ts)
+
+```ts
+function useMediaQuery(query: string): boolean
+function useIsMobile(): boolean  // shorthand: (max-width: 767px)
+```
+
+Subscribes to a CSS media query and returns whether it currently matches. The exported
+breakpoint helper `useIsMobile` wraps the 768 px mobile threshold used throughout the app.
+
+**Parameters**
+
+| Parameter | Required | Description                                         |
+| --------- | :------: | --------------------------------------------------- |
+| `query`   |    ✓     | A valid CSS media query string, e.g. `'(max-width: 767px)'`. |
+
+**Behavior notes**
+
+- Returns `false` during SSR or when `window.matchMedia` is unavailable — no crash.
+- Uses a lazy `useState` initializer to read the initial match synchronously on first render,
+  eliminating any flash of wrong state.
+- Subscribes via `addEventListener('change', …)` with optional chaining, mirroring the
+  pattern in `SettingsContext`.
+- **SSR-safe / cleanup:** all DOM work is guarded; the `change` listener is removed on unmount
+  or when the query string changes.
+
+```tsx
+import { useMediaQuery, useIsMobile } from '../hooks/useMediaQuery'
+
+// Generic usage
+const isWide = useMediaQuery('(min-width: 1024px)')
+
+// Breakpoint helper
+function ActivityCard() {
+  const isMobile = useIsMobile()
+  return <h2>{isMobile ? 'Recent Activity' : 'Recent Activity Timeline'}</h2>
+}
+```
+
+---
+
 ### `useReducedMotion`
 
 Source: [`src/hooks/useReducedMotion.ts`](../src/hooks/useReducedMotion.ts) · See also: [motion-guidelines.md](motion-guidelines.md)
@@ -178,6 +223,31 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 function Banner() {
   const reduceMotion = useReducedMotion()
   return <div className={reduceMotion ? 'no-anim' : 'slide-in'}>…</div>
+}
+```
+
+---
+
+### `useScrollToTop`
+
+Source: [`src/hooks/useScrollToTop.ts`](../src/hooks/useScrollToTop.ts)
+
+```ts
+function useScrollToTop(): boolean
+```
+
+Returns `true` when the page has been scrolled more than `BACK_TO_TOP_SCROLL_THRESHOLD` (800 px) from the top, and `false` otherwise. Used by [`BackToTop`](../src/components/BackToTop.tsx) to decide when to render the affordance.
+
+**Exported constant:** `BACK_TO_TOP_SCROLL_THRESHOLD = 800` — the pixel threshold at which the button becomes visible.
+
+**Cleanup:** removes the passive `scroll` listener on unmount.
+
+```tsx
+import { useScrollToTop } from '../hooks/useScrollToTop'
+
+function MyComponent() {
+  const showButton = useScrollToTop()
+  return showButton ? <button>↑</button> : null
 }
 ```
 

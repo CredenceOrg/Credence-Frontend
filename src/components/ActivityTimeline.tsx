@@ -111,20 +111,10 @@ export default function ActivityTimeline({
 
                   <button
                     type="button"
+                    className="activity-row__toggle"
                     aria-expanded={isExpanded}
                     aria-controls={`details-${item.id}`}
                     onClick={() => toggleExpand(item.id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      marginTop: 'var(--credence-space-2)',
-                      color: 'var(--credence-text-secondary)',
-                      cursor: 'pointer',
-                      fontSize: 'var(--credence-font-size-sm)',
-                      textDecoration: 'underline',
-                      textAlign: 'left',
-                    }}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
@@ -135,7 +125,7 @@ export default function ActivityTimeline({
                       style={{
                         marginTop: 'var(--credence-space-3)',
                         padding: 'var(--credence-space-3)',
-                        background: 'var(--credence-color-surface-hover)',
+                        background: 'var(--credence-surface-page)',
                         borderRadius: 'var(--credence-radius-md)',
                       }}
                     >

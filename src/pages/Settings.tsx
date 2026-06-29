@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useSettings } from '../context/SettingsContext'
+import { useSettings, defaultPersistedSettings } from '../context/SettingsContext'
 import ThemeToggle from '../components/ThemeToggle'
 import { useToast } from '../components/ToastProvider'
 import { FormField } from '../components/forms/FormField'
@@ -42,6 +42,7 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
+    resetToDefaults,
     saveSettings,
   } = useSettings()
   const { addToast } = useToast()
@@ -84,7 +85,7 @@ export default function Settings() {
     setAddressDisplay(payload.addressDisplay)
     setToastsEnabled(payload.toastsEnabled)
     setAutoDismiss(payload.autoDismiss)
-    saveSettings()
+    saveSettings(payload)
     addToast('success', 'Settings saved successfully')
   }
 
@@ -115,10 +116,12 @@ export default function Settings() {
   }, [isDirty])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const resetTriggerRef = useRef<HTMLButtonElement>(null)
   const [importPreview, setImportPreview] = useState<SettingsBlob | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [importConfirmOpen, setImportConfirmOpen] = useState(false)
   const [importFileName, setImportFileName] = useState<string | null>(null)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   const resetImportState = useCallback(() => {
     setImportPreview(null)
@@ -201,7 +204,7 @@ export default function Settings() {
     setAddressDisplay(importPreview.addressDisplay)
     setToastsEnabled(importPreview.toastsEnabled)
     setAutoDismiss(importPreview.autoDismiss)
-    saveSettings()
+    saveSettings(importPreview)
     addToast('success', 'Settings imported successfully')
     resetImportState()
   }, [importPreview, setThemeMode, setNetwork, setAddressDisplay, setToastsEnabled, setAutoDismiss, saveSettings, addToast, resetImportState])
@@ -210,6 +213,29 @@ export default function Settings() {
     resetImportState()
     addToast('info', 'Import cancelled')
   }, [resetImportState, addToast])
+
+  const handleResetRequest = useCallback(() => {
+    setResetConfirmOpen(true)
+  }, [])
+
+  const handleResetConfirm = useCallback(() => {
+    const nextDraft = {
+      themeMode: defaultPersistedSettings.themeMode as 'light' | 'dark' | 'system',
+      network: defaultPersistedSettings.network,
+      addressDisplay: defaultPersistedSettings.addressDisplay,
+      toastsEnabled: defaultPersistedSettings.toastsEnabled,
+      autoDismiss: defaultPersistedSettings.autoDismiss,
+    }
+
+    setDraft(nextDraft)
+    resetToDefaults()
+    setResetConfirmOpen(false)
+    addToast('success', 'Settings reset to defaults.')
+  }, [resetToDefaults, addToast])
+
+  const handleResetCancel = useCallback(() => {
+    setResetConfirmOpen(false)
+  }, [])
 
   const diffs = importPreview ? computeDiff(currentSettings, importPreview) : []
 
@@ -453,7 +479,30 @@ export default function Settings() {
         <button type="button" onClick={handleCancel} style={{ padding: '0.5rem 0.75rem' }}>
           Cancel
         </button>
+        <button
+          ref={resetTriggerRef}
+          type="button"
+          onClick={handleResetRequest}
+          style={{ padding: '0.5rem 0.75rem' }}
+          aria-label="Reset settings to defaults"
+        >
+          Reset to defaults
+        </button>
       </div>
+
+      <ConfirmDialog
+        open={resetConfirmOpen}
+        title="Reset settings?"
+        subtitle="This will restore every setting to the default values."
+        description={<p>This action cannot be undone and will overwrite your current preferences.</p>}
+        confirmPhrase="RESET"
+        confirmLabel="Reset settings"
+        confirmHint="Type RESET to confirm restoring the default settings."
+        variant="danger"
+        onConfirm={handleResetConfirm}
+        onCancel={handleResetCancel}
+        returnFocusRef={resetTriggerRef}
+      />
 
       <ConfirmDialog
         open={importConfirmOpen}

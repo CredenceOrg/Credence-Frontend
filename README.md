@@ -96,6 +96,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 
 | Route       | Component            | Description                                                                                                               |
 | ----------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `/dashboard`| `Dashboard.tsx`      | Overview of user activity. Supports `?widget=<slug>` (e.g., `trust-score`, `active-bonds`) for deep-linking exact views.  |
 | `/bond`     | `Bond.tsx`           | Overview page — lists active bonds and provides an entry into the creation wizard                                         |
 | `/bond/new` | `CreateBondPage.tsx` | Four-step bond-creation wizard (amount → duration → review → confirm). Navigates back to `/bond` on completion or cancel. |
 

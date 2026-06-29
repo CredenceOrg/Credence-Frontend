@@ -2,27 +2,33 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 
 type ThemeMode = 'light' | 'dark' | 'system'
+/** Network option literal union */
+export type NetworkOption = 'public' | 'test'
+/** Address display option literal union */
+export type AddressDisplayOption = 'full' | 'short' | 'friendly'
+/** Auto dismiss option literal union */
+export type AutoDismissOption = 'off' | '3s' | '5s' | '8s'
 
 /** The persisted settings payload (the subset of state written to localStorage). */
 export interface SettingsPayload {
   themeMode: ThemeMode
-  network: string
-  addressDisplay: string
+  network: NetworkOption
+  addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
-  autoDismiss: string
+  autoDismiss: AutoDismissOption
 }
 
 export interface SettingsState {
   themeMode: ThemeMode
-  network: string
-  addressDisplay: string
+  network: NetworkOption
+  addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
-  autoDismiss: string
+  autoDismiss: AutoDismissOption
   setThemeMode: (m: ThemeMode) => void
-  setNetwork: (n: string) => void
-  setAddressDisplay: (s: string) => void
+  setNetwork: (n: NetworkOption) => void
+  setAddressDisplay: (s: AddressDisplayOption) => void
   setToastsEnabled: (b: boolean) => void
-  setAutoDismiss: (s: string) => void
+  setAutoDismiss: (s: AutoDismissOption) => void
   /**
    * Persist settings. Pass an explicit payload to save immediately (avoids the
    * stale-state race when called right after the individual setters); omit it to
@@ -35,10 +41,10 @@ export interface SettingsState {
 
 type PersistedSettings = {
   themeMode: ThemeMode
-  network: string
-  addressDisplay: string
+  network: NetworkOption
+  addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
-  autoDismiss: string
+  autoDismiss: AutoDismissOption
 }
 
 const STORAGE_KEY = 'credence:settings'
@@ -110,16 +116,35 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useMigrateLegacyTheme()
 
   // Single localStorage read — replaces five individual JSON.parse calls on every mount.
-  const [persistedSettings, setPersistedSettings] = useLocalStorage<PersistedSettings>(
+  const [persistedSettingsRaw, setPersistedSettings] = useLocalStorage<PersistedSettings>(
     STORAGE_KEY,
     defaultPersistedSettings,
   )
 
+  // Validation helpers for persisted values
+  const VALID_NETWORKS: NetworkOption[] = ['public', 'test']
+  const VALID_ADDRESS_DISPLAYS: AddressDisplayOption[] = ['full', 'short', 'friendly']
+  const VALID_AUTO_DISMISSES: AutoDismissOption[] = ['off', '3s', '5s', '8s']
+
+  const coerceNetwork = (v: string): NetworkOption =>
+    (VALID_NETWORKS.includes(v as NetworkOption) ? v : defaultPersistedSettings.network) as NetworkOption
+  const coerceAddressDisplay = (v: string): AddressDisplayOption =>
+    (VALID_ADDRESS_DISPLAYS.includes(v as AddressDisplayOption) ? v : defaultPersistedSettings.addressDisplay) as AddressDisplayOption
+  const coerceAutoDismiss = (v: string): AutoDismissOption =>
+    (VALID_AUTO_DISMISSES.includes(v as AutoDismissOption) ? v : defaultPersistedSettings.autoDismiss) as AutoDismissOption
+
+  const persistedSettings: PersistedSettings = {
+    ...persistedSettingsRaw,
+    network: coerceNetwork(persistedSettingsRaw.network as unknown as string),
+    addressDisplay: coerceAddressDisplay(persistedSettingsRaw.addressDisplay as unknown as string),
+    autoDismiss: coerceAutoDismiss(persistedSettingsRaw.autoDismiss as unknown as string),
+  }
+
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
-  const [network, setNetwork] = useState<string>(persistedSettings.network)
-  const [addressDisplay, setAddressDisplay] = useState<string>(persistedSettings.addressDisplay)
+  const [network, setNetwork] = useState<NetworkOption>(persistedSettings.network)
+  const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(persistedSettings.addressDisplay)
   const [toastsEnabled, setToastsEnabled] = useState<boolean>(persistedSettings.toastsEnabled)
-  const [autoDismiss, setAutoDismiss] = useState<string>(persistedSettings.autoDismiss)
+  const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(persistedSettings.autoDismiss)
 
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
   const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)

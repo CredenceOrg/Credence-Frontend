@@ -30,6 +30,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
 | Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
 | ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
+| ConnectWalletModal     | `src/components/ConnectWalletModal.css`                                             | None.                                                                                                                     |
 | KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
@@ -476,6 +477,45 @@ Tokens: warning color tokens, spacing, radius.
   timeLeftSeconds={60}
   onStayLoggedIn={stay}
   onLogout={logout}
+/>
+```
+
+## ConnectWalletModal
+
+Source: [`src/components/ConnectWalletModal.tsx`](../src/components/ConnectWalletModal.tsx). Focused docs: [focus patterns](./focus-patterns.md).
+
+| Prop             | Type                                    | Default     |
+| ---------------- | --------------------------------------- | ----------- |
+| `open`           | `boolean`                               | Required    |
+| `onClose`        | `() => void`                            | Required    |
+| `returnFocusRef` | `React.RefObject<HTMLElement \| null>`  | `undefined` |
+
+Accessibility: portal-rendered modal with `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby` and `aria-describedby`. Focus is trapped while open, with initial focus placed on the **Cancel** button (the safe/destructure-free action) so the first Tab press is deliberate. Escape and backdrop click both call `onClose`. Focus is restored to `returnFocusRef` on close, or to the previously active element when `returnFocusRef` is omitted. Trigger buttons that open the modal should carry `aria-haspopup="dialog"`.
+
+Tokens: `--credence-surface-card`, `--credence-border-default`, `--credence-radius-xl`, `--credence-text-primary/secondary`, `--credence-color-danger-*`, `--credence-space-*`, `--credence-font-size-*`, `--credence-motion-duration-*`, `--credence-motion-easing-decelerate`.
+
+Reduced motion: entrance animations (backdrop fade-in, panel slide-up) are disabled when `prefers-reduced-motion: reduce` is active.
+
+Error states: displays a `role="alert"` message for `not_installed` (Freighter extension missing), `rejected` (user declined in Freighter), or any generic error from `useWallet()`.
+
+```tsx
+const triggerRef = useRef<HTMLButtonElement>(null)
+
+<button
+  ref={triggerRef}
+  aria-haspopup="dialog"
+  onClick={(e) => {
+    connectTriggerRef.current = e.currentTarget
+    setConnectModalOpen(true)
+  }}
+>
+  Connect wallet
+</button>
+
+<ConnectWalletModal
+  open={connectModalOpen}
+  onClose={() => setConnectModalOpen(false)}
+  returnFocusRef={triggerRef}
 />
 ```
 

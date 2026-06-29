@@ -89,7 +89,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 ## Project layout
 
 - `src/pages/` — Home, Bond, Trust Score
-- `src/components/` — Layout, shared UI; see the [shared components catalog](docs/COMPONENTS.md) for props, accessibility notes, styling ownership, and token usage
+- `src/components/` — Layout, shared UI; see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
 - `src/App.tsx` — Router and routes
 
 ### Bond flow routes

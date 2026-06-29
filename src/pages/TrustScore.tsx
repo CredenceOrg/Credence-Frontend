@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
@@ -199,43 +200,43 @@ export default function TrustScore() {
   return (
     <div>
       <div className="trustScore__headerRow">
-        <h1 className="trustScore__title">Trust Score</h1>
+        <h1 className="trustScore__title">{t('trustScore.title')}</h1>
         {data && lookupAddress === address.trim() && (
           <Badge variant={data.tier} label={tierLabel} className="tier-badge" />
         )}
       </div>
       <p id="trust-desc" className="trustScore__description">
-        Your reputation score is computed from bond amount, duration, and attestations.
+        {t('trustScore.description')}
       </p>
       <TierLadder />
       <Banner severity="info">
-        Scores update once per epoch. Recent bond changes may not be reflected immediately.
+        {t('trustScore.infoBanner')}
       </Banner>
 
       {!isConnected && (
         <Banner
           severity="warning"
-          title="Connect wallet required"
-          action={{ label: 'Connect wallet', onClick: () => void connect() }}
+          title={t('trustScore.connectRequired')}
+          action={{ label: t('common.connectWallet'), onClick: () => void connect() }}
         >
-          Connect a wallet to look up your own trust score. You can still type another Stellar
-          address for review.
+          {t('trustScore.connectRequiredDescription')}
         </Banner>
       )}
 
       {networkMismatch.mismatch && (
         <Banner
           severity="warning"
-          title="Network mismatch"
+          title={t('trustScore.networkMismatch')}
           action={{
-            label: `Switch app to ${networkMismatch.actual}`,
+            label: t('trustScore.switchNetwork', { network: networkMismatch.actual }),
             onClick: () => setNetwork(walletNetwork === 'test' ? 'test' : 'public'),
           }}
         >
           <span id={mismatchBannerId}>
-            Credence is set to <strong>{networkMismatch.expected}</strong>, but Freighter is on{' '}
-            <strong>{networkMismatch.actual}</strong>. Switch the app to the wallet network before
-            looking up a trust score.
+            {t('trustScore.networkMismatchDescription', {
+              expected: networkMismatch.expected,
+              actual: networkMismatch.actual
+            })}
           </span>
         </Banner>
       )}
@@ -243,12 +244,12 @@ export default function TrustScore() {
       {hasAttemptedLookup && (
         <section aria-labelledby="trust-score-results-heading" className="trustScore__results">
           <h2 id="trust-score-results-heading" className="sr-only">
-            Trust score results
+            {t('trustScore.results')}
           </h2>
 
           {isLoading && (
             <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading trust score">
-              <p className="sr-only">Loading trust score…</p>
+              <p className="sr-only">{t('trustScore.loading')}</p>
               <LoadingSkeleton variant="card" />
             </div>
           )}
@@ -257,9 +258,9 @@ export default function TrustScore() {
             <div role="alert">
               <ErrorState
                 type={trustScoreErrorType(error)}
-                title="Unable to load trust score"
+                title={t('trustScore.unableToLoad')}
                 message={error.message}
-                action={{ label: 'Try again', onClick: refetch }}
+                action={{ label: t('common.tryAgain'), onClick: refetch }}
               />
             </div>
           )}
@@ -277,10 +278,10 @@ export default function TrustScore() {
 
       <div className="trustScore__grid">
         <div className="trustScore__card">
-          <h2 className="trustScore__cardTitle">Lookup Identity</h2>
+          <h2 className="trustScore__cardTitle">{t('trustScore.lookupIdentity')}</h2>
           <AddressInput
             id="wallet-address"
-            label="Stellar Address"
+            label={t('trustScore.stellarAddress')}
             value={address}
             onChange={handleAddressChange}
             onValidationChange={setIsAddressValid}
@@ -328,7 +329,7 @@ export default function TrustScore() {
               fullWidth
               className="trustScore__buttonRow"
             >
-              Use my address
+              {t('trustScore.useMyAddress')}
             </Button>
           )}
           <Button
@@ -340,7 +341,7 @@ export default function TrustScore() {
             aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
             className="trustScore__buttonRow"
           >
-            {isConnected ? 'Look up score' : 'Connect wallet to continue'}
+            {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
           </Button>
         </div>
 

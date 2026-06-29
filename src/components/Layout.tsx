@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import ThemeToggle from './ThemeToggle'
 import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
@@ -10,14 +11,6 @@ import LINKS from '../config/links'
 import { isExternalUrl } from '../lib/isExternalUrl'
 import './Layout.css'
 
-const NAV_LINKS = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/bond', label: 'Bond' },
-  { to: '/trust', label: 'Trust Score' },
-  { to: '/attestations', label: 'Attestations' },
-  { to: '/transactions', label: 'Transactions' },
-  { to: '/settings', label: 'Settings' },
-]
 
 function FooterLink({ label, href }: { label: string; href: string }) {
   const isExternal = isExternalUrl(href)
@@ -33,6 +26,7 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 }
 
 export default function Layout() {
+  const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   // Refs so focus returns to the triggering button after each dialog closes
@@ -40,6 +34,15 @@ export default function Layout() {
   const whatsNewButtonRef = useRef<HTMLButtonElement>(null)
 
   const { unreadCount } = useProductUpdates()
+
+  const NAV_LINKS = [
+    { to: '/dashboard', label: t('nav.dashboard') },
+    { to: '/bond', label: t('nav.bond') },
+    { to: '/trust', label: t('nav.trustScore') },
+    { to: '/attestations', label: t('nav.attestations') },
+    { to: '/transactions', label: t('nav.transactions') },
+    { to: '/settings', label: t('nav.settings') },
+  ]
 
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
@@ -73,7 +76,7 @@ export default function Layout() {
   return (
     <div className="appShell">
       <a className="skip-link" href="#main-content">
-        Skip to main content
+        {t('layout.skipToMainContent')}
       </a>
 
       {/* Screen reader SPA route transition updates manager */}
@@ -84,7 +87,7 @@ export default function Layout() {
         <MobileNav />
 
         <NavLink to="/" className="appBrand">
-          Credence
+          {t('layout.brand')}
         </NavLink>
 
         {/* Desktop: inline nav (hidden <640px via CSS) */}
@@ -145,7 +148,7 @@ export default function Layout() {
           ref={shortcutsButtonRef}
           type="button"
           className="appHeader-shortcuts-btn"
-          aria-label="Open keyboard shortcuts (Shift+?)"
+          aria-label={t('layout.keyboardShortcuts')}
           onClick={openShortcuts}
         >
           <span aria-hidden="true">?</span>
@@ -160,13 +163,13 @@ export default function Layout() {
       <footer className="app-footer">
         <div className="container footer-content">
           <div>
-            <p className="appFooterTitle">Credence</p>
-            <p>© 2026 Credence Protocol. Built on Stellar.</p>
+            <p className="appFooterTitle">{t('layout.brand')}</p>
+            <p>{t('layout.footer.copyright')}</p>
           </div>
           <div className="footer-links">
-            <FooterLink label="Documentation" href={LINKS.docs} />
-            <FooterLink label="Terms of Service" href={LINKS.terms} />
-            <FooterLink label="Privacy Policy" href={LINKS.privacy} />
+            <FooterLink label={t('layout.footer.documentation')} href={LINKS.docs} />
+            <FooterLink label={t('layout.footer.termsOfService')} href={LINKS.terms} />
+            <FooterLink label={t('layout.footer.privacyPolicy')} href={LINKS.privacy} />
           </div>
         </div>
       </footer>

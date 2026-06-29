@@ -19,19 +19,6 @@ const activeBonds = [
   { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
 ] as const
 
-const shortcuts = [
-  { to: '/bond', label: 'Create bond', description: 'Lock more USDC into reputation bonds.' },
-  {
-    to: '/trust',
-    label: 'View trust score',
-    description: 'Look up score details and tier context.',
-  },
-  {
-    to: '/attestations',
-    label: 'Review attestations',
-    description: 'Open recent evidence and claims.',
-  },
-]
 
 export default function Dashboard() {
   useSeo({
@@ -54,14 +41,14 @@ export default function Dashboard() {
     <div className="dashboard">
       <header className="dashboard__header">
         <div>
-          <h1 className="dashboard__title">Dashboard</h1>
+          <h1 className="dashboard__title">{t('dashboard.title')}</h1>
           <p className="dashboard__description">
-            Monitor trust score, active bonds, and recent protocol activity from one place.
+            {t('dashboard.description')}
           </p>
         </div>
         {connected && address && (
           <div className="dashboard__wallet" aria-label="Connected wallet">
-            <span className="dashboard__walletLabel">Wallet</span>
+            <span className="dashboard__walletLabel">{t('dashboard.wallet')}</span>
             <code className="dashboard__walletAddress">
               {address.slice(0, 8)}...{address.slice(-6)}
             </code>
@@ -76,13 +63,13 @@ export default function Dashboard() {
       )}
 
       {!connected && !isConnecting && (
-        <ActionCard title="Connect wallet to view dashboard">
+        <ActionCard title={t('dashboard.connectWalletToView')}>
           <EmptyState
             illustration="trust"
-            title="Wallet required"
-            description="Connect Freighter to load your trust score, active bonds, and recent activity."
+            title={t('dashboard.walletRequired')}
+            description={t('dashboard.connectFreighter')}
             action={{
-              label: 'Connect wallet',
+              label: t('dashboard.connectWallet'),
               onClick: connect,
             }}
           />
@@ -162,7 +149,7 @@ export default function Dashboard() {
 
       {connected && (
         <Banner severity="info">
-          Dashboard figures are mock protocol data until live account indexing is connected.
+          {t('dashboard.mockDataBanner')}
         </Banner>
       )}
     </div>

@@ -107,17 +107,50 @@ const ActivityRow = memo(function ActivityRow({ item, isExpanded, onToggle }: Ac
   )
 })
 
+/**
+ * Attestation evidence detail panel component.
+ * Displays full evidence details including actor, status badge, and meta.
+ *
+ * Implements accessible disclosure pattern with:
+ * - aria-expanded/aria-controls wiring
+ * - Enter/Space toggle activation
+ * - Escape key to close and return focus
+ * - Focus management on open/close
+ */
 export default function ActivityTimeline({
   compact = false,
   items = ACTIVITY_ITEMS,
 }: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  const expandedIdRef = useRef<string | null>(null)
+
   const count = items.length
   const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
 
-  const toggleExpand = (id: string) => {
+  // Keep the ref in sync with state
+  expandedIdRef.current = expandedId
+
+  const closePanel = useCallback(() => {
+    setExpandedId(null)
+  }, [])
+
+  const toggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
-  }
+  }, [])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'Escape' && expandedIdRef.current !== null) {
+        const triggerElement = triggerRefs.current.get(expandedIdRef.current)
+        closePanel()
+        if (triggerElement) {
+          triggerElement.focus()
+        }
+      }
+    },
+    [closePanel]
+  )
 
   return (
     <section
@@ -142,6 +175,8 @@ export default function ActivityTimeline({
         <ul className="activity-timeline" aria-label="Recent timeline events">
           {items.map((item) => {
             const isExpanded = expandedId === item.id
+            const panelId = `details-${item.id}`
+            const buttonId = `trigger-${item.id}`
             return (
               <li className="activity-row" key={item.id}>
                 <div className="activity-row__rail" aria-hidden="true">
@@ -154,9 +189,7 @@ export default function ActivityTimeline({
                 <div className="activity-row__content">
                   <div className="activity-row__title-wrap">
                     <p className="activity-row__title">{item.title}</p>
-                    <span className={`activity-row__status activity-row__status--${item.tone}`}>
-                      {item.statusLabel}
-                    </span>
+                    <Badge variant={toneToBadgeVariant(item.tone)} label={item.statusLabel} />
                   </div>
                   <p className="activity-row__description">{item.description}</p>
 
@@ -164,7 +197,7 @@ export default function ActivityTimeline({
                     type="button"
                     className="activity-row__toggle"
                     aria-expanded={isExpanded}
-                    aria-controls={`details-${item.id}`}
+                    aria-controls={panelId}
                     onClick={() => toggleExpand(item.id)}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}

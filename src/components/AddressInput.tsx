@@ -201,7 +201,8 @@ export default function AddressInput({
     }
   }, [copy, value])
 
-  const error = externalError || (showError ? 'Invalid address. Stellar public keys are 56 characters starting with G.' : undefined)
+  const isChecksumError = showError && /^G[A-Z0-9]{55}$/.test(debouncedValue)
+  const error = externalError || (showError ? (isChecksumError ? 'Invalid address checksum. Please verify the address.' : 'Invalid address. Stellar public keys are 56 characters starting with G.') : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
 
   // Detect whether the entered (validated) value matches the connected wallet's address.

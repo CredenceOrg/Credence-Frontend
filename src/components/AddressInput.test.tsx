@@ -3,8 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import AddressInput from './AddressInput'
 
-// A valid 56-character Stellar public key
-const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA' // 56 chars
+// A valid 56-character Stellar public key (passes CRC-16 XMODEM checksum)
+const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H' // 56 chars
+// A 56-char G-prefixed uppercase alphanumeric key that fails the CRC-16 checksum
+const INVALID_CHECKSUM_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
 
 // --- useDebouncedValue mocking ---
 
@@ -137,6 +139,16 @@ describe('conditional rendering', () => {
     await user.tab()
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('Invalid address')
+  })
+
+  it('shows checksum error after blur with format-valid but bad-checksum address', async () => {
+    const user = userEvent.setup()
+    render(<AddressInput id="addr" value={INVALID_CHECKSUM_KEY} onChange={vi.fn()} />)
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+    const alert = screen.getByRole('alert')
+    expect(alert).toBeInTheDocument()
+    expect(alert).toHaveTextContent('checksum')
   })
 
   it('does not show error when value is empty after blur', async () => {

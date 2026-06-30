@@ -95,7 +95,7 @@
   font-size: var(--credence-font-size-sm);
 }
 
-@media (max-width: 639px) {
+@media (max-width: 640px) {
   .transactions__table,
   .transactions__table thead,
   .transactions__table tbody,
@@ -142,5 +142,23 @@
     font-size: var(--credence-font-size-xs);
     min-width: 6rem;
     flex-shrink: 0;
+  }
+}
+
+/* Very small screens (360px): ensure table content fits without overflow */
+@media (max-width: 360px) {
+  .transactions__table td::before {
+    min-width: 5rem;
+    font-size: 0.7rem;
+  }
+
+  .transactions__hash {
+    max-width: 10ch;
+    font-size: 0.65rem;
+  }
+
+  .transactions__header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

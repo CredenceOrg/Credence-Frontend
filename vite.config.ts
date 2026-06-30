@@ -40,6 +40,7 @@ export default defineConfig({
         'src/components/Badge.tsx',
         'src/hooks/useLocalStorage.ts',
         'src/hooks/useReducedMotion.ts',
+        'src/lib/bondPenalty.ts',
       ],
       reporter: ['text', 'lcov'],
       thresholds: {
@@ -47,6 +48,7 @@ export default defineConfig({
         'src/components/Badge.tsx': { branches: 95 },
         'src/hooks/useLocalStorage.ts': { lines: 95, branches: 95 },
         'src/hooks/useReducedMotion.ts': { branches: 90 },
+        'src/lib/bondPenalty.ts': { lines: 95, branches: 95, functions: 95 },
       },
     },
   },

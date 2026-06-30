@@ -25,6 +25,29 @@ interface BoundaryState {
 export default class ErrorBoundary extends Component<Props, BoundaryState> {
   state: BoundaryState = { hasError: false, error: null }
 
+  private isChunkLoadError(error: Error): boolean {
+    const message = error.message.toLowerCase()
+    const errorName = error.name.toLowerCase()
+
+    return (
+      message.includes('chunk') ||
+      message.includes('load') ||
+      message.includes('failed to load') ||
+      message.includes('loading chunk') ||
+      message.includes('loading module') ||
+      errorName === 'chunksloaderror' ||
+      message.includes('network error') ||
+      message.includes('chunk-load')
+    )
+  }
+
+  private getErrorType(error: Error): 'network' | 'backend' | 'validation' | 'generic' {
+    if (this.isChunkLoadError(error)) {
+      return 'network'
+    }
+    return 'generic'
+  }
+
   static getDerivedStateFromError(error: Error): BoundaryState {
     return { hasError: true, error }
   }
@@ -56,7 +79,10 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
             padding: 'var(--credence-space-6)',
           }}
         >
-          <ErrorState type="generic" action={{ label: 'Try again', onClick: this.handleReset }} />
+          <ErrorState
+            type={this.getErrorType(error)}
+            action={{ label: 'Try again', onClick: this.handleReset }}
+          />
           <a
             href="/"
             style={{

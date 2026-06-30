@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import './Transactions.css'
 import Badge from '../components/Badge'
 import AddressDisplay from '../components/AddressDisplay'
@@ -12,12 +13,6 @@ import type { Transaction } from '../api/types'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
 
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'failed', label: 'Failed' },
-]
 
 const STATUS_BADGE_MAP: Record<Transaction['status'], string> = {
   pending: 'locked',
@@ -25,19 +20,28 @@ const STATUS_BADGE_MAP: Record<Transaction['status'], string> = {
   failed: 'slashed',
 }
 
-function relativeTime(isoTimestamp: string): string {
-  const diff = Date.now() - new Date(isoTimestamp).getTime()
-  const minutes = Math.floor(diff / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}
 
 export default function Transactions() {
-  useDocumentTitle('Transactions')
+  const { t } = useTranslation()
+  useDocumentTitle(t('transactions.title'))
+
+  const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+    { value: 'all', label: t('transactions.status.all') },
+    { value: 'pending', label: t('transactions.status.pending') },
+    { value: 'confirmed', label: t('transactions.status.confirmed') },
+    { value: 'failed', label: t('transactions.status.failed') },
+  ]
+
+  function relativeTime(isoTimestamp: string): string {
+    const diff = Date.now() - new Date(isoTimestamp).getTime()
+    const minutes = Math.floor(diff / 60_000)
+    if (minutes < 1) return t('transactions.relativeTime.justNow')
+    if (minutes < 60) return t('transactions.relativeTime.minutesAgo', { count: minutes })
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return t('transactions.relativeTime.hoursAgo', { count: hours })
+    const days = Math.floor(hours / 24)
+    return t('transactions.relativeTime.daysAgo', { count: days })
+  }
 
   const { network } = useSettings()
   const { data, isLoading, error, refetch } = useTransactions()
@@ -53,15 +57,15 @@ export default function Transactions() {
   return (
     <div>
       <div className="transactions__header">
-        <h1 className="transactions__title">Transaction History</h1>
+        <h1 className="transactions__title">{t('transactions.title')}</h1>
       </div>
       <p className="transactions__description">
-        A durable record of your bond, withdrawal, and attestation events.
+        {t('transactions.description')}
       </p>
 
       {isLoading && (
         <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading transactions">
-          <p className="sr-only">Loading transactions…</p>
+          <p className="sr-only">{t('transactions.loading')}</p>
           <LoadingSkeleton variant="table" rows={5} />
         </div>
       )}
@@ -70,9 +74,9 @@ export default function Transactions() {
         <div role="alert">
           <ErrorState
             type={error.status === 0 ? 'network' : error.status >= 500 ? 'backend' : 'generic'}
-            title="Unable to load transactions"
+            title={t('transactions.unableToLoad')}
             message={error.message}
-            action={{ label: 'Try again', onClick: refetch }}
+            action={{ label: t('common.tryAgain'), onClick: refetch }}
           />
         </div>
       )}
@@ -80,8 +84,8 @@ export default function Transactions() {
       {hasData && data.length === 0 && (
         <EmptyState
           illustration="activity"
-          title="No transactions yet"
-          description="Your bond, withdrawal, and attestation events will appear here once you start transacting."
+          title={t('transactions.noTransactions')}
+          description={t('transactions.noTransactionsDescription')}
         />
       )}
 
@@ -89,30 +93,30 @@ export default function Transactions() {
         <>
           <div className="transactions__filterRow">
             <label htmlFor="tx-status-filter" className="transactions__filterLabel">
-              Status
+              {t('transactions.filterLabel')}
             </label>
             <Select
               id="tx-status-filter"
               value={filter}
               onChange={(v) => setFilter(v as StatusFilter)}
               options={STATUS_OPTIONS}
-              ariaLabel="Filter by status"
+              ariaLabel={t('transactions.filterAriaLabel')}
             />
           </div>
 
           {filtered.length === 0 ? (
             <p className="transactions__noResults">
-              No {filter} transactions. Try a different filter.
+              {t('transactions.noResults', { filter })}
             </p>
           ) : (
             <table className="transactions__table" aria-label="Transaction history">
               <thead>
                 <tr>
-                  <th scope="col">Type</th>
-                  <th scope="col">Amount</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">When</th>
-                  <th scope="col">Transaction</th>
+                  <th scope="col">{t('transactions.table.type')}</th>
+                  <th scope="col">{t('transactions.table.amount')}</th>
+                  <th scope="col">{t('transactions.table.status')}</th>
+                  <th scope="col">{t('transactions.table.when')}</th>
+                  <th scope="col">{t('transactions.table.transaction')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,9 +141,9 @@ export default function Transactions() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="transactions__explorerLink"
-                        aria-label={`View transaction ${tx.hash} on Stellar explorer`}
+                        aria-label={t('transactions.table.viewOnExplorer', { hash: truncateAddress(tx.hash) })}
                       >
-                        View ↗
+                        {t('transactions.table.viewLink')}
                       </a>
                     </td>
                   </tr>

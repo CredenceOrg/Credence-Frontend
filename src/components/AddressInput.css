@@ -69,7 +69,11 @@
   font-weight: var(--credence-font-weight-regular);
   line-height: var(--credence-line-height-base);
   padding: 0;
-  outline: none;
+}
+
+.address-input-field:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
 }
 
 .address-input-field::placeholder {

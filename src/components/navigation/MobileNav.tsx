@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
 import './MobileNav.css'
@@ -16,6 +16,7 @@ export default function MobileNav() {
   const [isOpen, setIsOpen] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const hamburgerRef = useRef<HTMLButtonElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
   const location = useLocation()
 
   // Close on route change
@@ -25,9 +26,24 @@ export default function MobileNav() {
     if (isOpen) setIsOpen(false)
   }
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setIsOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen])
+
   useFocusTrap({
     containerRef: drawerRef,
     isActive: isOpen,
+    initialFocusRef: closeButtonRef,
     returnFocusRef: hamburgerRef,
     onEscape: () => setIsOpen(false),
   })
@@ -38,6 +54,7 @@ export default function MobileNav() {
     <>
       <button
         ref={hamburgerRef}
+        type="button"
         className="mobileNav-hamburger"
         aria-label="Open navigation menu"
         aria-expanded={isOpen}
@@ -52,6 +69,7 @@ export default function MobileNav() {
             strokeLinecap="round"
           />
         </svg>
+        <span className="sr-only">Open navigation menu</span>
       </button>
 
       {isOpen && <div className="mobileNav-backdrop" onClick={close} aria-hidden="true" />}
@@ -62,9 +80,17 @@ export default function MobileNav() {
         className={`mobileNav-drawer${isOpen ? ' mobileNav-drawer--open' : ''}`}
         aria-label="Mobile navigation"
         aria-hidden={!isOpen}
+        role="dialog"
+        aria-modal="true"
       >
         <div className="mobileNav-drawerHeader">
-          <button className="mobileNav-close" aria-label="Close navigation menu" onClick={close}>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            className="mobileNav-close"
+            aria-label="Close navigation menu"
+            onClick={close}
+          >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
                 d="M4 4l12 12M16 4L4 16"
@@ -73,6 +99,7 @@ export default function MobileNav() {
                 strokeLinecap="round"
               />
             </svg>
+            <span className="sr-only">Close navigation menu</span>
           </button>
         </div>
 

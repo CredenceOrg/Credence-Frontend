@@ -1,37 +1,49 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * Returns a debounced version of the input value.
+ * Returns a debounced copy of `value` that only updates after the input has
+ * remained stable for `delayMs` milliseconds.
  *
- * The debounced value will only update after the input value has remained
- * unchanged for the specified delay. This helps reduce unnecessary re-renders
- * and computations when dealing with rapid input changes.
+ * The hook clears any pending timer on:
+ * - a new `value` (restarting the delay)
+ * - unmount (preventing state updates on an unmounted component)
  *
- * @param value - The value to debounce
- * @param delayMs - Delay in milliseconds before updating the debounced value
- * @returns The debounced value
+ * **`delayMs <= 0`** disables debouncing entirely — the raw `value` is returned
+ * synchronously on every render.
+ *
+ * @typeParam T — The value type. Referential identity of the returned value is
+ * preserved when the input is unchanged.
+ *
+ * @param value  The source value to debounce.
+ * @param delayMs  Debounce window in milliseconds. `<= 0` means no debounce.
+ *
+ * @returns The debounced (or raw, when `delayMs <= 0`) value.
  *
  * @example
  * ```tsx
  * function SearchInput() {
- *   const [searchTerm, setSearchTerm] = useState('')
- *   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300)
+ *   const [query, setQuery] = useState('')
+ *   const debouncedQuery = useDebouncedValue(query, 300)
  *
  *   useEffect(() => {
- *     // Only search after user stops typing for 300ms
- *     searchAPI(debouncedSearchTerm)
- *   }, [debouncedSearchTerm])
+ *     if (debouncedQuery) searchAPI(debouncedQuery)
+ *   }, [debouncedQuery])
  *
- *   return <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+ *   return <input value={query} onChange={e => setQuery(e.target.value)} />
  * }
  * ```
  */
 export function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (timeoutRef.current) {
+    if (delayMs <= 0) {
+      setDebouncedValue(value)
+      return
+    }
+
+    if (timeoutRef.current !== null) {
       clearTimeout(timeoutRef.current)
     }
 
@@ -40,11 +52,11 @@ export function useDebouncedValue<T>(value: T, delayMs: number): T {
     }, delayMs)
 
     return () => {
-      if (timeoutRef.current) {
+      if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current)
       }
     }
   }, [value, delayMs])
 
-  return debouncedValue
+  return delayMs <= 0 ? value : debouncedValue
 }

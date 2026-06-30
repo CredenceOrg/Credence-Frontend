@@ -34,7 +34,7 @@ This directory contains comprehensive design specifications and implementation g
    ```
 
 4. **[Shared Components Catalog](./COMPONENTS.md)**
-   - Consolidated props, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for shared UI components
+   - Consolidated props, Storybook story paths and variants, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for all public shared UI components
    - Documents severity/variant vocabularies and cross-links focused component docs
 
 5. **[UI States Guide](./UI_STATES_GUIDE.md)**

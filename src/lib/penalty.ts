@@ -9,7 +9,6 @@
  */
 
 import { formatUsdc } from './format'
-import type { ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 
 /** Lifecycle state of a bond, which determines its early-withdrawal penalty rate. */
 export type BondStatus = 'active' | 'locked' | 'grace-period'
@@ -61,7 +60,13 @@ export function getPenaltyRate(status: BondStatus): number {
  */
 export function computeWithdrawBreakdown(
   bond: MockBond
-): ConfirmDialogPenaltyBreakdown & { penaltyUsdc: number } {
+): {
+  bondAmount: string
+  penaltyAmount: string
+  penaltyPercent: number
+  resultingBalance: string
+  penaltyUsdc: number
+} {
   const rate = getPenaltyRate(bond.status)
   const penaltyPercent = Math.round(rate * 100)
   const penaltyUsdc = bond.amountUsdc * rate

@@ -39,36 +39,36 @@ describe('ToastProvider', () => {
   })
 
   it('adds and auto-dismisses a toast according to autoDismiss setting', () => {
-    render(
+    const { container } = render(
       <ToastProvider>
         <TestComponent />
       </ToastProvider>
     )
 
     fireEvent.click(screen.getByText('Add Info'))
-    expect(screen.getByText('Info Message')).toBeInTheDocument()
+    expect(container.querySelector('.toast')).toHaveTextContent('Info Message')
 
     // autoDismiss is 5s
     act(() => {
       vi.advanceTimersByTime(4999)
     })
-    expect(screen.getByText('Info Message')).toBeInTheDocument()
+    expect(container.querySelector('.toast')).toHaveTextContent('Info Message')
 
     act(() => {
       vi.advanceTimersByTime(1)
     })
-    expect(screen.queryByText('Info Message')).not.toBeInTheDocument()
+    expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
 
   it('respects toastsEnabled changes mid-session', () => {
-    const { rerender } = render(
+    const { rerender, container } = render(
       <ToastProvider>
         <TestComponent />
       </ToastProvider>
     )
 
     fireEvent.click(screen.getByText('Add Info'))
-    expect(screen.getByText('Info Message')).toBeInTheDocument()
+    expect(container.querySelector('.toast')).toHaveTextContent('Info Message')
 
     // Disable toasts mid-session
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
@@ -85,11 +85,11 @@ describe('ToastProvider', () => {
     // Fire another toast
     fireEvent.click(screen.getByText('Add Danger'))
     // Danger message should not appear
-    expect(screen.queryByText('Danger Message')).not.toBeInTheDocument()
+    expect(container.querySelector('.toast--danger')).not.toBeInTheDocument()
   })
 
   it('respects autoDismiss changes mid-session', () => {
-    const { rerender } = render(
+    const { rerender, container } = render(
       <ToastProvider>
         <TestComponent />
       </ToastProvider>
@@ -108,35 +108,35 @@ describe('ToastProvider', () => {
     )
 
     fireEvent.click(screen.getByText('Add Info'))
-    expect(screen.getByText('Info Message')).toBeInTheDocument()
+    expect(container.querySelector('.toast')).toHaveTextContent('Info Message')
 
     act(() => {
       vi.advanceTimersByTime(3000)
     })
 
     // Should be dismissed now
-    expect(screen.queryByText('Info Message')).not.toBeInTheDocument()
+    expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
 
   it('danger toasts stay sticky (0 timeout)', () => {
-    render(
+    const { container } = render(
       <ToastProvider>
         <TestComponent />
       </ToastProvider>
     )
 
     fireEvent.click(screen.getByText('Add Danger'))
-    expect(screen.getByText('Danger Message')).toBeInTheDocument()
+    expect(container.querySelector('.toast--danger')).toHaveTextContent('Danger Message')
 
     act(() => {
       vi.advanceTimersByTime(100000)
     })
 
-    expect(screen.getByText('Danger Message')).toBeInTheDocument()
+    expect(container.querySelector('.toast--danger')).toHaveTextContent('Danger Message')
   })
 
   it('enforces maximum 3 toasts', () => {
-    render(
+    const { container } = render(
       <ToastProvider>
         <TestComponent />
       </ToastProvider>
@@ -152,28 +152,28 @@ describe('ToastProvider', () => {
     fireEvent.click(screen.getByText('Add Danger'))
     fireEvent.click(screen.getByText('Add Danger'))
 
-    expect(screen.getAllByText('Danger Message').length).toBe(3)
+    expect(container.querySelectorAll('.toast--danger').length).toBe(3)
 
     // Add a 4th one, should drop the first one
     fireEvent.click(screen.getByText('Add Info'))
 
-    expect(screen.getAllByText('Danger Message').length).toBe(2)
-    expect(screen.getAllByText('Info Message').length).toBe(1)
+    expect(container.querySelectorAll('.toast--danger').length).toBe(2)
+    expect(container.querySelectorAll('.toast--info').length).toBe(1)
   })
 
   it('clears timeouts when removed early', () => {
-    render(
+    const { container } = render(
       <ToastProvider>
         <TestComponent />
       </ToastProvider>
     )
 
     fireEvent.click(screen.getByText('Add Info'))
-    expect(screen.getByText('Info Message')).toBeInTheDocument()
+    expect(container.querySelector('.toast')).toHaveTextContent('Info Message')
 
     // remove all manually
     fireEvent.click(screen.getByText('Remove All'))
-    expect(screen.queryByText('Info Message')).not.toBeInTheDocument()
+    expect(container.querySelector('.toast')).not.toBeInTheDocument()
 
     // advance timers, should not error or cause updates on unmounted/removed toasts
     act(() => {
@@ -181,13 +181,27 @@ describe('ToastProvider', () => {
     })
   })
 
-  it('has aria-live="polite" region', () => {
-    render(
+  it('has visually hidden aria-live regions for reliable announcements', () => {
+    const { container } = render(
       <ToastProvider>
         <TestComponent />
       </ToastProvider>
     )
 
-    expect(screen.getByLabelText('Notifications')).toHaveAttribute('aria-live', 'polite')
+    expect(container.querySelector('.sr-only[aria-live="polite"]')).toBeInTheDocument()
+    expect(container.querySelector('.sr-only[aria-live="assertive"]')).toBeInTheDocument()
+  })
+
+  it('mirrors toast messages to the visually hidden aria-live region', () => {
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByText('Add Info'))
+    
+    const politeRegion = container.querySelector('.sr-only[aria-live="polite"]')
+    expect(politeRegion).toHaveTextContent('Info Message')
   })
 })

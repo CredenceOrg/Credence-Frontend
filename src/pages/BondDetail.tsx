@@ -9,6 +9,7 @@ import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatUsdc } from '../lib/format'
 import ConfirmDialog from '../components/ConfirmDialog'
+import ConnectWalletModal from '../components/ConnectWalletModal'
 import {
   computeWithdrawBreakdown,
   calcUnlockDate,
@@ -26,8 +27,10 @@ export default function BondDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { addToast } = useToast()
-  const { isConnected, connect } = useWallet()
+  const { isConnected } = useWallet()
   const withdrawTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const [connectModalOpen, setConnectModalOpen] = useState(false)
+  const connectTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   const bondId = Number(id)
   useDocumentTitle(`Bond #${bondId || 'Detail'}`)
@@ -81,7 +84,8 @@ export default function BondDetail() {
 
   const handleWithdrawClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (!isConnected) {
-      connect()
+      connectTriggerRef.current = event.currentTarget
+      setConnectModalOpen(true)
       return
     }
     withdrawTriggerRef.current = event.currentTarget
@@ -117,7 +121,7 @@ export default function BondDetail() {
         <Banner
           severity="warning"
           title="Connect wallet required"
-          action={{ label: 'Connect wallet', onClick: connect }}
+          action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
         >
           Withdrawal and lock extensions require a connected Stellar wallet.
         </Banner>
@@ -177,8 +181,8 @@ export default function BondDetail() {
                 ref={withdrawTriggerRef}
                 type="button"
                 variant={breakdown.penaltyUsdc > 0 ? 'danger' : 'primary'}
-                onClick={isConnected ? handleWithdrawClick : connect}
-                aria-haspopup={isConnected ? 'dialog' : undefined}
+                onClick={handleWithdrawClick}
+                aria-haspopup="dialog"
               >
                 {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
               </Button>
@@ -221,6 +225,12 @@ export default function BondDetail() {
           returnFocusRef={withdrawTriggerRef}
         />
       )}
+
+      <ConnectWalletModal
+        open={connectModalOpen}
+        onClose={() => setConnectModalOpen(false)}
+        returnFocusRef={connectTriggerRef}
+      />
     </main>
   )
 }

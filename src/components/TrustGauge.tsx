@@ -225,7 +225,7 @@ export default function TrustGauge({
       <div className="trust-gauge__legend">
         <p className="trust-gauge__legend-title">Tier Ranges</p>
         <ul className="trust-gauge__legend-list">
-          {TIER_ORDER.map((t, index) => {
+          {TIER_ORDER.map((t) => {
             // Show each band's own upper bound (e.g. Bronze: 0–249, Platinum:
             // 750–1000). Using TIER_CONFIG[t].max keeps the legend aligned with
             // the canonical TIER_THRESHOLDS values: Bronze.max=249, Silver.max=499,

@@ -66,8 +66,8 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
 
     if (!evidence.trim()) {
       newErrors.evidence = 'Evidence is required.'
-    } else if (evidence.length > 500) {
-      newErrors.evidence = 'Evidence cannot exceed 500 characters.'
+    } else if (new TextEncoder().encode(evidence).length > 28) {
+      newErrors.evidence = 'Evidence cannot exceed 28 bytes.'
     }
 
     setErrors(newErrors)
@@ -134,7 +134,7 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
           <FormField
             id="evidence-input"
             label="Evidence"
-            hint="Add supporting proof or description (max 500 characters)"
+            hint="Add supporting proof or description (max 28 bytes)"
             error={errors.evidence}
           >
             <textarea
@@ -144,7 +144,6 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
               disabled={disabled}
               placeholder="Provide proof or verification details..."
               rows={4}
-              maxLength={500}
               style={{
                 width: '100%',
                 padding: 'var(--credence-space-3)',
@@ -169,7 +168,7 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
             }}
             aria-live="polite"
           >
-            {evidence.length} / 500 characters
+            {new TextEncoder().encode(evidence).length} / 28 bytes
           </div>
         </div>
 

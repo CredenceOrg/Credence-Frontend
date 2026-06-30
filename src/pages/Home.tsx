@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSeo } from '../hooks/useSeo'
 import './Home.css'
 
 export default function Home() {
-  useDocumentTitle('Home')
+  useSeo({
+    title: 'Home',
+    description:
+      'Credence — on-chain economic identity on Stellar. Stake USDC as a programmable reputation bond and build verifiable trust.',
+  })
 
   return (
     <div className="home">

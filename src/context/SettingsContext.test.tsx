@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -230,6 +231,7 @@ function SettingsConsumer() {
       <button onClick={() => s.setAddressDisplay('full')}>set full</button>
       <button onClick={() => s.setToastsEnabled(false)}>disable toasts</button>
       <button onClick={() => s.setAutoDismiss('3s')}>set 3s</button>
+      <button onClick={() => s.resetToDefaults()}>reset defaults</button>
       <button onClick={() => s.saveSettings()}>save</button>
     </div>
   )
@@ -387,6 +389,32 @@ describe('SettingsProvider', () => {
 
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
       expect(stored.autoDismiss).toBe('3s')
+    })
+
+    it('resetToDefaults restores all settings and persists the defaults', async () => {
+      const user = userEvent.setup()
+      renderWithProvider()
+      await user.click(screen.getByRole('button', { name: 'set dark' }))
+      await user.click(screen.getByRole('button', { name: 'set testnet' }))
+      await user.click(screen.getByRole('button', { name: 'set full' }))
+      await user.click(screen.getByRole('button', { name: 'disable toasts' }))
+      await user.click(screen.getByRole('button', { name: 'set 3s' }))
+      await user.click(screen.getByRole('button', { name: 'reset defaults' }))
+
+      expect(screen.getByTestId('theme').textContent).toBe('system')
+      expect(screen.getByTestId('network').textContent).toBe('public')
+      expect(screen.getByTestId('address').textContent).toBe('short')
+      expect(screen.getByTestId('toasts').textContent).toBe('true')
+      expect(screen.getByTestId('dismiss').textContent).toBe('5s')
+
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+      expect(stored).toEqual({
+        themeMode: 'system',
+        network: 'public',
+        addressDisplay: 'short',
+        toastsEnabled: true,
+        autoDismiss: '5s',
+      })
     })
   })
 

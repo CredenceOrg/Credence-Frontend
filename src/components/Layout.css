@@ -75,6 +75,67 @@
   margin-bottom: var(--credence-space-1);
 }
 
+/* ── What's New button ───────────────────────────────────────────────────── */
+
+.appHeader-whats-new-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-full);
+  background: transparent;
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  flex-shrink: 0;
+}
+
+.appHeader-whats-new-btn:hover {
+  background: var(--credence-color-slate-100);
+  color: var(--credence-text-primary);
+  border-color: var(--credence-color-slate-400);
+}
+
+.appHeader-whats-new-btn:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+[data-theme='dark'] .appHeader-whats-new-btn:hover {
+  background: var(--credence-color-slate-700);
+}
+
+.appHeader-whats-new-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.appHeader-whats-new-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 var(--credence-space-1);
+  background: var(--credence-color-primary);
+  color: var(--credence-color-white);
+  border-radius: var(--credence-radius-full);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: 1;
+  pointer-events: none;
+}
+
 /* ── Shortcuts help button ───────────────────────────────────────────────── */
 
 .appHeader-shortcuts-btn {

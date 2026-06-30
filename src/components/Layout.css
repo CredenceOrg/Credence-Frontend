@@ -176,12 +176,23 @@
 }
 
 /* Mobile: hide desktop nav, tighten header padding */
-@media (max-width: 639px) {
+@media (max-width: 640px) {
   .appNav {
     display: none;
   }
 
   .appHeader {
     padding: var(--credence-space-3) var(--credence-space-4);
+  }
+}
+
+/* Very small screens (360px): further tighten header padding */
+@media (max-width: 360px) {
+  .appHeader {
+    padding: var(--credence-space-2) var(--credence-space-3);
+  }
+
+  .appBrand {
+    font-size: var(--credence-font-size-lg);
   }
 }

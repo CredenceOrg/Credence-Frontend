@@ -322,7 +322,8 @@ a:hover {
   color: var(--credence-text-secondary);
 }
 
-@media (max-width: 767px) {
+/* Tablet and smaller (768px): stack footer content vertically */
+@media (max-width: 768px) {
   .footer-content {
     flex-direction: column;
   }

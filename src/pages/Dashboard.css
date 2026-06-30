@@ -120,7 +120,7 @@
   border-color: var(--credence-color-primary);
 }
 
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .dashboard__header {
     display: grid;
   }
@@ -131,5 +131,21 @@
 
   .dashboard__wallet {
     width: 100%;
+  }
+}
+
+/* Very small screens (360px): ensure dashboard content fits without overflow */
+@media (max-width: 360px) {
+  .dashboard__header {
+    gap: var(--credence-space-4);
+  }
+
+  .dashboard__wallet {
+    min-width: auto;
+    padding: var(--credence-space-2) var(--credence-space-3);
+  }
+
+  .dashboard__shortcut {
+    padding: var(--credence-space-2);
   }
 }

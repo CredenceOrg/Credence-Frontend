@@ -150,6 +150,18 @@
   }
 }
 
+/* Very small screens (360px): ensure banner content fits without overflow */
+@media (max-width: 360px) {
+  .banner {
+    padding: var(--credence-space-2) var(--credence-space-3);
+    font-size: var(--credence-font-size-xs);
+  }
+
+  .banner__link {
+    font-size: var(--credence-font-size-xs);
+  }
+}
+
 /* ─── Dismiss button ──────────────────────────────────────────────────────── */
 
 .banner__dismiss {

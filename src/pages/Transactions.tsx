@@ -2,13 +2,13 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import './Transactions.css'
 import Badge from '../components/Badge'
+import AddressDisplay from '../components/AddressDisplay'
 import Select from '../components/controls/Select'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useTransactions } from '../hooks/useTransactions'
 import { explorerUrl } from '../lib/explorerUrl'
-import { truncateAddress } from '../lib/stellar'
 import type { Transaction } from '../api/types'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
@@ -135,9 +135,7 @@ export default function Transactions() {
                       <time dateTime={tx.timestamp}>{relativeTime(tx.timestamp)}</time>
                     </td>
                     <td data-label="Transaction">
-                      <span className="transactions__hash" title={tx.hash}>
-                        {truncateAddress(tx.hash)}
-                      </span>{' '}
+                      <AddressDisplay address={tx.hash} className="transactions__hash" />{' '}
                       <a
                         href={explorerUrl(network, tx.hash)}
                         target="_blank"

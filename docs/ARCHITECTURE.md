@@ -26,7 +26,7 @@ graph TD
 ### Context Responsibilities
 
 1. **`SettingsProvider`**: Manages global user preferences (theme mode, network, address display) and application settings (toast toggles and auto-dismiss timing). It must sit high in the tree because it reads from `localStorage` and applies the data-theme immediately.
-2. **`WalletProvider`**: Manages Stellar wallet connection state, exposed address, and connect/disconnect functionality. Depends on `SettingsProvider` for network preferences.
+2. **`WalletProvider`**: Manages Stellar wallet connection state, exposed address, and connect/disconnect functionality. Depends on `SettingsProvider` for network preferences. See [Wallet Integration](./WALLET_INTEGRATION.md) for details on the wallet state machine and UX contract.
 3. **`ToastProvider`**: Exposes `addToast` and `removeToast` functions for global notifications. **Must be placed inside `SettingsProvider`**, because the toast component reads `toastsEnabled` and `autoDismiss` preferences via `useSettings()` to calculate timeout bounds and global mute states.
 
 ### The Route Table & Layout Shell

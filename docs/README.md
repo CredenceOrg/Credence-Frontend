@@ -13,12 +13,17 @@ This directory contains comprehensive design specifications and implementation g
    - Decision guide: when to add new state vs. local vs. URL params
    - Mock patterns for testing
 
-2. **[Testing Guide](./TESTING.md)**
+2. **[Wallet Integration](./WALLET_INTEGRATION.md)** ⭐ NEW
+   - Overview of Freighter client and `useWallet` hook
+   - Connection state machine and UX contracts
+   - Implementation examples
+
+3. **[Testing Guide](./TESTING.md)**
    - How to run Vitest and generate coverage
    - Render helpers, router wrapper, and mock patterns for matchMedia / localStorage / clipboard
    - File naming conventions and coverage thresholds
 
-3. **Per-route document titles (`useDocumentTitle`)**
+4. **Per-route document titles (`useDocumentTitle`)**
    - `src/hooks/useDocumentTitle.ts` keeps `document.title` in sync with the active route
    - Each page sets a distinct, branded title (e.g. `Bond · Credence`); the 404 page uses `Page Not Found · Credence`
    - Why it matters: screen readers announce the title on navigation, and tabs, history, and bookmarks become distinguishable per page
@@ -33,58 +38,58 @@ This directory contains comprehensive design specifications and implementation g
    }
    ```
 
-4. **[Shared Components Catalog](./COMPONENTS.md)**
+5. **[Shared Components Catalog](./COMPONENTS.md)**
    - Consolidated props, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for shared UI components
    - Documents severity/variant vocabularies and cross-links focused component docs
 
-5. **[UI States Guide](./UI_STATES_GUIDE.md)**
+6. **[UI States Guide](./UI_STATES_GUIDE.md)**
    - Complete guide for empty states, error states, and loading patterns
    - Microcopy guidelines and tone recommendations
    - When and how to use each state type
    - Validation checklist
 
-6. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
+7. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
    - Standardized states (Default, Error, Disabled, Loading) for all input components
    - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
 
-7. **[Design Tokens](./DESIGN_TOKENS.md)**
+8. **[Design Tokens](./DESIGN_TOKENS.md)**
    - Canonical `--credence-*` CSS variable reference
    - Color, spacing, radius, typography, and motion scales
    - Guidance for replacing one-off hex values in components
 
-7. **[Motion Guidelines](./motion-guidelines.md)**
+9. **[Motion Guidelines](./motion-guidelines.md)**
    - Motion token strategy and reduced-motion defaults
    - Best practices for animation and transitions
    - Implementation examples for UI micro-interactions
 
-8. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
-   - Visual design specifications
-   - Color palette and design tokens
-   - Layout measurements and spacing
-   - Animation specifications
-   - Responsive breakpoints
-   - Component organization structure
+10. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+    - Visual design specifications
+    - Color palette and design tokens
+    - Layout measurements and spacing
+    - Animation specifications
+    - Responsive breakpoints
+    - Component organization structure
 
-9. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
-   - Practical code examples for each page
-   - Reusable hooks and patterns
-   - Testing examples
-   - Accessibility guidelines
-   - Performance considerations
+11. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
+    - Practical code examples for each page
+    - Reusable hooks and patterns
+    - Testing examples
+    - Accessibility guidelines
+    - Performance considerations
 
-10. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
+12. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
     - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
     - Complete implementation guide with code examples
     - Accessibility requirements (WCAG 2.1 AA)
     - Testing guide and troubleshooting
     - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 
-11. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
+13. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
     - Provider tree and routing architecture
     - Context responsibilities
     - Theming flow and mock data boundaries
 
-12. **[Keyboard Interactions Contract](./keyboard-interactions.md)** ⭐ NEW
+14. **[Keyboard Interactions Contract](./keyboard-interactions.md)** ⭐ NEW
     - Developer-facing matrix of every interactive component and its expected keyboard behavior
     - Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
     - Focus-restore contract and checklist for new interactive components

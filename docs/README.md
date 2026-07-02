@@ -52,12 +52,12 @@ This directory contains comprehensive design specifications and implementation g
    - Color, spacing, radius, typography, and motion scales
    - Guidance for replacing one-off hex values in components
 
-7. **[Motion Guidelines](./motion-guidelines.md)**
+8. **[Motion Guidelines](./motion-guidelines.md)**
    - Motion token strategy and reduced-motion defaults
    - Best practices for animation and transitions
    - Implementation examples for UI micro-interactions
 
-8. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+9. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
    - Visual design specifications
    - Color palette and design tokens
    - Layout measurements and spacing
@@ -65,29 +65,35 @@ This directory contains comprehensive design specifications and implementation g
    - Responsive breakpoints
    - Component organization structure
 
-9. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
-   - Practical code examples for each page
-   - Reusable hooks and patterns
-   - Testing examples
-   - Accessibility guidelines
-   - Performance considerations
+10. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
+    - Practical code examples for each page
+    - Reusable hooks and patterns
+    - Testing examples
+    - Accessibility guidelines
+    - Performance considerations
 
-10. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
+11. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
     - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
     - Complete implementation guide with code examples
     - Accessibility requirements (WCAG 2.1 AA)
     - Testing guide and troubleshooting
     - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 
-11. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
+12. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
     - Provider tree and routing architecture
     - Context responsibilities
     - Theming flow and mock data boundaries
 
-12. **[Keyboard Interactions Contract](./keyboard-interactions.md)** ⭐ NEW
-    - Developer-facing matrix of every interactive component and its expected keyboard behavior
-    - Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
-    - Focus-restore contract and checklist for new interactive components
+13. [Keyboard Interactions Contract](./keyboard-interactions.md) ⭐ NEW
+
+- Developer-facing matrix of every interactive component and its expected keyboard behavior
+- Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
+- Focus-restore contract and checklist for new interactive components
+
+13. [Wallet Integration](./WALLET_INTEGRATION.md) ⭐ NEW
+    - `useWallet` API documentation
+    - Connection state machine and UX contract for connection/network states
+    - Usage guide and network mismatch handling
 
 ### Quick Start
 

@@ -1,47 +1,53 @@
-export type BondStatus = 'active' | 'pending' | 'settled' | 'slashed' | 'cancelled'
+/**
+ * Public type surface for the Credence API.
+ *
+ * All types are derived from the OpenAPI spec at `/openapi.yaml`.
+ * Run `npm run generate:api` to regenerate `generated.ts` after spec changes,
+ * then re-run `npm run build` to catch any drift between the spec and this file.
+ */
 
-export type TrustTier = 'bronze' | 'silver' | 'gold' | 'platinum'
+import type { components } from './generated'
 
-export interface TrustScore {
-  address: string
-  score: number
-  tier: TrustTier
-  attestations: number
-  updatedAt: string
-}
+// Re-export the raw generated interfaces so callers that need path/operation
+// metadata can import them directly from here.
+export type { components, operations, paths } from './generated'
 
-export interface Bond {
-  id: string
-  borrower: string
-  lender?: string
-  amount: string
-  asset: string
-  status: BondStatus
-  createdAt: string
-  maturesAt?: string
-}
+// ── Named type aliases (backwards-compatible public surface) ────────────────
 
-export interface ApiListResponse<T> {
-  items: T[]
-  nextCursor?: string
-}
+export type BondStatus = components['schemas']['BondStatus']
+export type TrustTier = components['schemas']['TrustTier']
+export type TrustScore = components['schemas']['TrustScore']
+export type Bond = components['schemas']['Bond']
+export type Transaction = components['schemas']['Transaction']
+export type ApiMessageResponse = components['schemas']['ApiMessageResponse']
 
-/** A single protocol transaction event visible on the Transactions history page. */
-export interface Transaction {
-  /** Unique stable identifier for this record. */
-  id: string
-  /** Protocol action that produced this transaction. */
-  type: 'bond' | 'withdraw' | 'attestation'
-  /** USDC amount involved, if applicable. */
-  amountUsdc?: number
-  /** ISO-8601 timestamp of the event. */
-  timestamp: string
-  /** Settlement state of the on-chain operation. */
-  status: 'pending' | 'confirmed' | 'failed'
-  /** On-chain transaction hash for the explorer link. */
-  hash: string
-}
+/**
+ * Cursor-paginated list envelope.
+ *
+ * OpenAPI does not support generics, so the spec defines a concrete
+ * `TransactionList` schema. This generic alias lets the rest of the codebase
+ * work with any item type while remaining structurally identical to the
+ * generated schema.
+ */
+export type ApiListResponse<T> = { items: T[]; nextCursor?: string }
 
-export interface ApiMessageResponse {
-  message: string
-}
+// ── Operation-level helpers ─────────────────────────────────────────────────
+
+/**
+ * Extracts the `application/json` response body type for the HTTP 200 case
+ * of a given named operation.
+ *
+ * @example
+ * ```ts
+ * import { apiFetch } from './client'
+ * import type { operations, ApiResponse } from './types'
+ *
+ * // Type is inferred from the spec — no manual annotation needed.
+ * const score = await apiFetch<ApiResponse<operations['getTrustScore']>>(
+ *   `/trust-score/${address}`
+ * )
+ * ```
+ */
+export type ApiResponse<
+  Op extends { responses: { 200: { content: { 'application/json': unknown } } } },
+> = Op['responses'][200]['content']['application/json']

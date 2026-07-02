@@ -132,10 +132,26 @@ afterEach(() => vi.restoreAllMocks())
 
 ```ts
 beforeEach(() => {
-  vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+  const mockFn = vi.fn()
+  // Use Object.defineProperty so the component's handlePaste sees our mock
+  Object.defineProperty(navigator, 'clipboard', {
+    writable: true,
+    configurable: true,
+    value: { readText: mockFn },
+  })
 })
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  // Ensure navigator.clipboard is restored
+  delete (navigator as any).clipboard
+})
+
+// **AddressInput-specific pattern**
+// In AddressInput.test.tsx, extract the mock into a top-level variable
+// for use in both paste-success and paste-fallback tests:
+//   let clipboardReadTextMock: ReturnType<typeof vi.fn>
+//   beforeEach(() => { clipboardReadTextMock = vi.fn(); ... })
 ```
 
 ### `requestAnimationFrame`

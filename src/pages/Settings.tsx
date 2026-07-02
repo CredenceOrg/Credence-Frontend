@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useSettings } from '../context/SettingsContext'
+import { useSettings, defaultPersistedSettings } from '../context/SettingsContext'
 import ThemeToggle from '../components/ThemeToggle'
 import { useToast } from '../components/ToastProvider'
 import { FormField } from '../components/forms/FormField'
@@ -7,17 +7,10 @@ import Toggle from '../components/controls/Toggle'
 import Select from '../components/controls/Select'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { ErrorState } from '../components/states'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSeo } from '../hooks/useSeo'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
 import './Settings.css'
 
-const FIELD_LABELS: Record<string, string> = {
-  themeMode: 'Theme',
-  network: 'Network',
-  addressDisplay: 'Address display',
-  toastsEnabled: 'Toasts enabled',
-  autoDismiss: 'Auto-dismiss',
-}
 
 function computeDiff(current: Omit<SettingsBlob, keyof unknown>, incoming: SettingsBlob): { key: string; from: string; to: string }[] {
   const diffs: { key: string; from: string; to: string }[] = []
@@ -31,6 +24,7 @@ function computeDiff(current: Omit<SettingsBlob, keyof unknown>, incoming: Setti
 }
 
 export default function Settings() {
+  const { t } = useTranslation()
   const {
     themeMode,
     setThemeMode,
@@ -42,11 +36,15 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
+    resetToDefaults,
     saveSettings,
   } = useSettings()
   const { addToast } = useToast()
 
-  useDocumentTitle('Settings')
+  useSeo({
+    title: 'Settings',
+    description: 'Configure your Credence app preferences: theme, network, address display, and toast notifications.',
+  })
 
   const [draft, setDraft] = useState({
     themeMode: themeMode as 'light' | 'dark' | 'system',
@@ -81,14 +79,14 @@ export default function Settings() {
     setAddressDisplay(payload.addressDisplay)
     setToastsEnabled(payload.toastsEnabled)
     setAutoDismiss(payload.autoDismiss)
-    saveSettings()
+    saveSettings(payload)
     addToast('success', 'Settings saved successfully')
   }
 
   const handleCancel = () => {
     if (isDirty) {
       const confirmed = window.confirm(
-        'You have unsaved changes. Are you sure you want to discard them?'
+        t('settings.actions.cancel')
       )
       if (!confirmed) return
     }
@@ -99,7 +97,7 @@ export default function Settings() {
       toastsEnabled,
       autoDismiss,
     })
-    addToast('info', 'Settings reverted to last saved state')
+    addToast('info', t('settings.toasts.reverted'))
   }
 
   useEffect(() => {
@@ -112,10 +110,12 @@ export default function Settings() {
   }, [isDirty])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const resetTriggerRef = useRef<HTMLButtonElement>(null)
   const [importPreview, setImportPreview] = useState<SettingsBlob | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [importConfirmOpen, setImportConfirmOpen] = useState(false)
   const [importFileName, setImportFileName] = useState<string | null>(null)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   const resetImportState = useCallback(() => {
     setImportPreview(null)
@@ -148,7 +148,7 @@ export default function Settings() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    addToast('success', 'Settings exported successfully')
+    addToast('success', t('settings.toasts.exported'))
   }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, addToast])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,7 +163,7 @@ export default function Settings() {
     reader.onload = (evt) => {
       const text = evt.target?.result
       if (typeof text !== 'string') {
-        setImportError('Failed to read file')
+        setImportError(t('settings.backup.invalidFile'))
         return
       }
 
@@ -171,7 +171,7 @@ export default function Settings() {
       try {
         parsed = JSON.parse(text)
       } catch {
-        setImportError('File does not contain valid JSON')
+        setImportError(t('settings.backup.invalidFile'))
         return
       }
 
@@ -185,7 +185,7 @@ export default function Settings() {
       setImportConfirmOpen(true)
     }
     reader.onerror = () => {
-      setImportError('Failed to read file')
+      setImportError(t('settings.backup.invalidFile'))
     }
     reader.readAsText(file)
   }, [])
@@ -198,15 +198,38 @@ export default function Settings() {
     setAddressDisplay(importPreview.addressDisplay)
     setToastsEnabled(importPreview.toastsEnabled)
     setAutoDismiss(importPreview.autoDismiss)
-    saveSettings()
+    saveSettings(importPreview)
     addToast('success', 'Settings imported successfully')
     resetImportState()
   }, [importPreview, setThemeMode, setNetwork, setAddressDisplay, setToastsEnabled, setAutoDismiss, saveSettings, addToast, resetImportState])
 
   const handleImportCancel = useCallback(() => {
     resetImportState()
-    addToast('info', 'Import cancelled')
+    addToast('info', t('settings.toasts.importCancelled'))
   }, [resetImportState, addToast])
+
+  const handleResetRequest = useCallback(() => {
+    setResetConfirmOpen(true)
+  }, [])
+
+  const handleResetConfirm = useCallback(() => {
+    const nextDraft = {
+      themeMode: defaultPersistedSettings.themeMode as 'light' | 'dark' | 'system',
+      network: defaultPersistedSettings.network,
+      addressDisplay: defaultPersistedSettings.addressDisplay,
+      toastsEnabled: defaultPersistedSettings.toastsEnabled,
+      autoDismiss: defaultPersistedSettings.autoDismiss,
+    }
+
+    setDraft(nextDraft)
+    resetToDefaults()
+    setResetConfirmOpen(false)
+    addToast('success', 'Settings reset to defaults.')
+  }, [resetToDefaults, addToast])
+
+  const handleResetCancel = useCallback(() => {
+    setResetConfirmOpen(false)
+  }, [])
 
   const diffs = importPreview ? computeDiff(currentSettings, importPreview) : []
 
@@ -214,18 +237,18 @@ export default function Settings() {
     if (!importPreview) return null
 
     if (diffs.length === 0) {
-      return <p>Imported settings match your current settings. No changes will be made.</p>
+      return <p>{t('settings.importDialog.noChanges')}</p>
     }
 
     return (
       <div>
-        <p>The following settings from <strong>{importFileName || 'file'}</strong> will be applied:</p>
+        <p>{t('settings.importDialog.changesIntro', { file: importFileName || 'file' })}</p>
         <table style={{ marginTop: '0.75rem', borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>Setting</th>
-              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>Current</th>
-              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>Imported</th>
+              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>{t('settings.importDialog.setting')}</th>
+              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>{t('settings.importDialog.current')}</th>
+              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>{t('settings.importDialog.imported')}</th>
             </tr>
           </thead>
           <tbody>
@@ -244,13 +267,13 @@ export default function Settings() {
 
   return (
     <div className="settings-page">
-      <h1 style={{ marginTop: 0 }}>Settings</h1>
+      <h1 style={{ marginTop: 0 }}>{t('settings.title')}</h1>
 
       <section className="settings-section" aria-labelledby="appearance-heading">
-        <h2 id="appearance-heading">Appearance</h2>
-        <p className="form-hint">Controls for theme and visual preferences.</p>
+        <h2 id="appearance-heading">{t('settings.appearance.heading')}</h2>
+        <p className="form-hint">{t('settings.appearance.description')}</p>
 
-        <FormField id="theme-seg" label="Theme">
+        <FormField id="theme-seg" label={t('settings.appearance.theme')}>
           <div role="radiogroup" aria-label="Theme mode" style={{ display: 'flex', gap: '0.5rem' }}>
             <label>
               <input
@@ -259,7 +282,7 @@ export default function Settings() {
                 checked={themeMode === 'light'}
                 onChange={() => setThemeMode('light')}
               />{' '}
-              Light
+              {t('settings.appearance.light')}
             </label>
             <label>
               <input
@@ -268,7 +291,7 @@ export default function Settings() {
                 checked={themeMode === 'dark'}
                 onChange={() => setThemeMode('dark')}
               />{' '}
-              Dark
+              {t('settings.appearance.dark')}
             </label>
             <label>
               <input
@@ -277,45 +300,44 @@ export default function Settings() {
                 checked={themeMode === 'system'}
                 onChange={() => setThemeMode('system')}
               />{' '}
-              System
+              {t('settings.appearance.system')}
             </label>
           </div>
         </FormField>
 
-        <FormField id="theme-toggle" label="Quick toggle">
+        <FormField id="theme-toggle" label={t('settings.appearance.quickToggle')}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <ThemeToggle />
             <span className="form-hint">
-              Use the quick toggle to flip light/dark immediately. Theme radio buttons above apply
-              on Save.
+              {t('settings.appearance.quickToggleHint')}
             </span>
           </div>
         </FormField>
       </section>
 
       <section className="settings-section" aria-labelledby="network-heading">
-        <h2 id="network-heading">Network</h2>
-        <p className="form-hint">Choose the Stellar network to interact with.</p>
+        <h2 id="network-heading">{t('settings.network.heading')}</h2>
+        <p className="form-hint">{t('settings.network.description')}</p>
 
-        <FormField id="network-select" label="Stellar Network">
+        <FormField id="network-select" label={t('settings.network.stellarNetwork')}>
           <Select
             value={network}
             onChange={setNetwork}
             options={[
-              { value: 'public', label: 'Public (Mainnet)' },
-              { value: 'test', label: 'Test (Testnet)' },
+              { value: 'public', label: t('settings.network.public') },
+              { value: 'test', label: t('settings.network.test') },
             ]}
           />
         </FormField>
       </section>
 
       <section className="settings-section" aria-labelledby="display-heading">
-        <h2 id="display-heading">Display</h2>
-        <p className="form-hint">How addresses and identifiers are presented in the UI.</p>
+        <h2 id="display-heading">{t('settings.display.heading')}</h2>
+        <p className="form-hint">{t('settings.display.description')}</p>
 
         <fieldset style={{ border: 'none', padding: 0 }}>
-          <legend className="sr-only">Address display format</legend>
-          <FormField id="address-display" label="Address format">
+          <legend className="sr-only">{t('settings.display.addressFormat')}</legend>
+          <FormField id="address-display" label={t('settings.display.addressFormat')}>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               <label>
                 <input
@@ -324,7 +346,7 @@ export default function Settings() {
                   checked={addressDisplay === 'full'}
                   onChange={() => setAddressDisplay('full')}
                 />{' '}
-                Full (G...)
+                {t('settings.display.full')}
               </label>
               <label>
                 <input
@@ -333,7 +355,7 @@ export default function Settings() {
                   checked={addressDisplay === 'short'}
                   onChange={() => setAddressDisplay('short')}
                 />{' '}
-                Short (G...…)
+                {t('settings.display.short')}
               </label>
               <label>
                 <input
@@ -342,7 +364,7 @@ export default function Settings() {
                   checked={addressDisplay === 'friendly'}
                   onChange={() => setAddressDisplay('friendly')}
                 />{' '}
-                Friendly (when available)
+                {t('settings.display.friendly')}
               </label>
             </div>
           </FormField>
@@ -350,57 +372,57 @@ export default function Settings() {
       </section>
 
       <section className="settings-section" aria-labelledby="notifications-heading">
-        <h2 id="notifications-heading">Notifications</h2>
-        <p className="form-hint">Control toast and notification behavior.</p>
+        <h2 id="notifications-heading">{t('settings.notifications.heading')}</h2>
+        <p className="form-hint">{t('settings.notifications.description')}</p>
 
-        <FormField id="toasts-enabled" label="Enable toasts">
+        <FormField id="toasts-enabled" label={t('settings.notifications.enableToasts')}>
           <Toggle
             checked={draft.toastsEnabled}
             onChange={(v) => updateDraft('toastsEnabled', v)}
-            ariaLabel="Enable toasts"
+            ariaLabel={t('settings.notifications.enableToasts')}
           />
         </FormField>
 
-        <FormField id="auto-dismiss" label="Auto-dismiss duration">
+        <FormField id="auto-dismiss" label={t('settings.notifications.autoDismissDuration')}>
           <Select
             value={draft.autoDismiss}
             onChange={(v) => updateDraft('autoDismiss', v)}
             options={[
-              { value: 'off', label: 'Off (require manual dismiss)' },
-              { value: '3s', label: '3 seconds' },
-              { value: '5s', label: '5 seconds' },
-              { value: '8s', label: '8 seconds' },
+              { value: 'off', label: t('settings.notifications.off') },
+              { value: '3s', label: t('settings.notifications.3seconds') },
+              { value: '5s', label: t('settings.notifications.5seconds') },
+              { value: '8s', label: t('settings.notifications.8seconds') },
             ]}
           />
         </FormField>
 
-        <FormField id="toast-preview" label="Preview">
+        <FormField id="toast-preview" label={t('settings.notifications.preview')}>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
               type="button"
               onClick={() => addToast('info', 'This is a preview notification')}
               style={{ padding: '0.5rem 0.75rem' }}
-              aria-label="Show preview toast"
+              aria-label={t('settings.notifications.showPreview')}
             >
-              Show preview
+              {t('settings.notifications.showPreview')}
             </button>
-            <span className="form-hint">Preview respects current toast settings.</span>
+            <span className="form-hint">{t('settings.notifications.previewHint')}</span>
           </div>
         </FormField>
       </section>
 
       <section className="settings-section" aria-labelledby="backup-heading">
-        <h2 id="backup-heading">Backup &amp; Restore</h2>
-        <p className="form-hint">Export your settings as a JSON file, or import settings from a previous export.</p>
+        <h2 id="backup-heading">{t('settings.backup.heading')}</h2>
+        <p className="form-hint">{t('settings.backup.description')}</p>
 
         <div className="settings-backup-row">
           <button
             type="button"
             onClick={handleExport}
             style={{ padding: '0.5rem 0.75rem' }}
-            aria-label="Export settings to JSON file"
+            aria-label={t('settings.backup.exportSettings')}
           >
-            Export settings
+            {t('settings.backup.exportSettings')}
           </button>
 
           <input
@@ -416,9 +438,9 @@ export default function Settings() {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             style={{ padding: '0.5rem 0.75rem' }}
-            aria-label="Import settings from JSON file"
+            aria-label={t('settings.backup.importSettings')}
           >
-            Import settings
+            {t('settings.backup.importSettings')}
           </button>
         </div>
 
@@ -426,10 +448,10 @@ export default function Settings() {
           <div role="alert" style={{ marginTop: '0.75rem' }}>
             <ErrorState
               type="validation"
-              title="Invalid settings file"
+              title={t('settings.backup.invalidFile')}
               message={importError}
               action={{
-                label: 'Clear error',
+                label: t('settings.backup.clearError'),
                 onClick: resetImportState,
               }}
             />
@@ -445,21 +467,44 @@ export default function Settings() {
           aria-disabled={!isDirty}
           style={{ padding: '0.5rem 0.75rem' }}
         >
-          {isDirty ? 'Save' : 'Saved'}
+          {isDirty ? t('settings.actions.save') : t('settings.actions.saved')}
         </button>
         <button type="button" onClick={handleCancel} style={{ padding: '0.5rem 0.75rem' }}>
-          Cancel
+          {t('settings.actions.cancel')}
+        </button>
+        <button
+          ref={resetTriggerRef}
+          type="button"
+          onClick={handleResetRequest}
+          style={{ padding: '0.5rem 0.75rem' }}
+          aria-label="Reset settings to defaults"
+        >
+          Reset to defaults
         </button>
       </div>
 
       <ConfirmDialog
+        open={resetConfirmOpen}
+        title="Reset settings?"
+        subtitle="This will restore every setting to the default values."
+        description={<p>This action cannot be undone and will overwrite your current preferences.</p>}
+        confirmPhrase="RESET"
+        confirmLabel="Reset settings"
+        confirmHint="Type RESET to confirm restoring the default settings."
+        variant="danger"
+        onConfirm={handleResetConfirm}
+        onCancel={handleResetCancel}
+        returnFocusRef={resetTriggerRef}
+      />
+
+      <ConfirmDialog
         open={importConfirmOpen}
-        title="Import Settings"
-        subtitle={diffs.length > 0 ? 'Review the changes below before applying.' : undefined}
+        title={t('settings.importDialog.title')}
+        subtitle={diffs.length > 0 ? t('settings.importDialog.subtitle') : undefined}
         description={confirmDescription}
         confirmPhrase="IMPORT"
-        confirmHint="This will overwrite your current settings with the imported values."
-        confirmLabel="Import settings"
+        confirmHint={t('settings.importDialog.confirmHint')}
+        confirmLabel={t('settings.importDialog.confirmLabel')}
         onConfirm={handleImportConfirm}
         onCancel={handleImportCancel}
       />

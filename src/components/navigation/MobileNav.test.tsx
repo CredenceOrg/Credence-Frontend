@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import MobileNav from './MobileNav'
 
@@ -47,6 +47,15 @@ describe('MobileNav', () => {
     expect(getDrawer()).toHaveClass('mobileNav-drawer--open')
   })
 
+  it('moves focus to the close button when the drawer opens', async () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /close navigation menu/i })).toHaveFocus()
+    })
+  })
+
   // --- close ---
 
   it('closes the drawer when close button is clicked', () => {
@@ -71,6 +80,13 @@ describe('MobileNav', () => {
     renderNav()
     fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
     fireEvent.keyDown(getDrawer(), { key: 'Escape' })
+    expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('closes the drawer when Escape is pressed at the window level', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    fireEvent.keyDown(window, { key: 'Escape' })
     expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
   })
 

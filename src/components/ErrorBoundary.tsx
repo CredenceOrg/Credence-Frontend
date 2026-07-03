@@ -31,11 +31,13 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
 
     return (
       message.includes('chunk') ||
-      message.includes('load') ||
       message.includes('failed to load') ||
       message.includes('loading chunk') ||
       message.includes('loading module') ||
       errorName === 'chunksloaderror' ||
+      message.includes('dynamically imported') ||
+      message.includes('failed to fetch') ||
+      message.includes('import(') ||
       message.includes('network error') ||
       message.includes('chunk-load')
     )

@@ -18,6 +18,13 @@ export interface BadgeProps {
   label?: string
   /** Additional class names appended to the badge root. */
   className?: string
+  /**
+   * Optional screen-reader-only prefix rendered before the visible label so
+   * assistive technology can announce the badge in context (e.g. `"Bond status:"`
+   * produces `"Bond status: Slashed"` when read aloud). No extra DOM is added
+   * when this prop is omitted.
+   */
+  srPrefix?: string
 }
 
 const DEFAULT_LABELS: Record<string, string> = {
@@ -32,11 +39,19 @@ const DEFAULT_LABELS: Record<string, string> = {
   unknown: 'Unknown',
 }
 
-export default function Badge({ variant, label, className = '' }: BadgeProps) {
+export default function Badge({ variant, label, className = '', srPrefix }: BadgeProps) {
   const normalizedVariant =
     variant.toLowerCase() in DEFAULT_LABELS ? variant.toLowerCase() : 'unknown'
 
   const displayLabel = label || DEFAULT_LABELS[normalizedVariant] || variant
 
-  return <span className={`badge badge--${normalizedVariant} ${className}`}>{displayLabel}</span>
+  return (
+    <span
+      className={`badge badge--${normalizedVariant} ${className}`.trim()}
+      title={displayLabel}
+    >
+      {srPrefix && <span className="sr-only">{srPrefix} </span>}
+      {displayLabel}
+    </span>
+  )
 }

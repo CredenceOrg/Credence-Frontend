@@ -1,0 +1,283 @@
+{
+  "layout": {
+    "skipToMainContent": "Skip to main content",
+    "brand": "Credence",
+    "keyboardShortcuts": "Open keyboard shortcuts (Shift+?)",
+    "footer": {
+      "copyright": "© 2026 Credence Protocol. Built on Stellar.",
+      "documentation": "Documentation",
+      "termsOfService": "Terms of Service",
+      "privacyPolicy": "Privacy Policy"
+    }
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "bond": "Bond",
+    "trustScore": "Trust Score",
+    "attestations": "Attestations",
+    "transactions": "Transactions",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Monitor trust score, active bonds, and recent protocol activity from one place.",
+    "wallet": "Wallet",
+    "connectWalletToView": "Connect wallet to view dashboard",
+    "walletRequired": "Wallet required",
+    "connectFreighter": "Connect Freighter to load your trust score, active bonds, and recent activity.",
+    "connectWallet": "Connect wallet",
+    "trustScore": "Trust Score",
+    "currentScore": "Current score",
+    "goldTier": "Gold Tier",
+    "activeBonds": "Active Bonds",
+    "activeBondsCount": "{{count}} active bonds",
+    "unlocks": "Unlocks {{date}}",
+    "recentActivity": "Recent Activity",
+    "shortcuts": "Shortcuts",
+    "createBond": "Create bond",
+    "createBondDescription": "Lock more USDC into reputation bonds.",
+    "viewTrustScore": "View trust score",
+    "viewTrustScoreDescription": "Look up score details and tier context.",
+    "reviewAttestations": "Review attestations",
+    "reviewAttestationsDescription": "Open recent evidence and claims.",
+    "backToSummary": "Back to summary",
+    "mockDataBanner": "Dashboard figures are mock protocol data until live account indexing is connected."
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": {
+      "heading": "Appearance",
+      "description": "Controls for theme and visual preferences.",
+      "theme": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System",
+      "quickToggle": "Quick toggle",
+      "quickToggleHint": "Use the quick toggle to flip light/dark immediately. Theme radio buttons above apply on Save."
+    },
+    "network": {
+      "heading": "Network",
+      "description": "Choose the Stellar network to interact with.",
+      "stellarNetwork": "Stellar Network",
+      "public": "Public (Mainnet)",
+      "test": "Test (Testnet)"
+    },
+    "display": {
+      "heading": "Display",
+      "description": "How addresses and identifiers are presented in the UI.",
+      "addressFormat": "Address format",
+      "full": "Full (G...)",
+      "short": "Short (G...…)",
+      "friendly": "Friendly (when available)"
+    },
+    "notifications": {
+      "heading": "Notifications",
+      "description": "Control toast and notification behavior.",
+      "enableToasts": "Enable toasts",
+      "autoDismissDuration": "Auto-dismiss duration",
+      "off": "Off (require manual dismiss)",
+      "3seconds": "3 seconds",
+      "5seconds": "5 seconds",
+      "8seconds": "8 seconds",
+      "preview": "Preview",
+      "showPreview": "Show preview",
+      "previewHint": "Preview respects current toast settings."
+    },
+    "backup": {
+      "heading": "Backup & Restore",
+      "description": "Export your settings as a JSON file, or import settings from a previous export.",
+      "exportSettings": "Export settings",
+      "importSettings": "Import settings",
+      "invalidFile": "Invalid settings file",
+      "clearError": "Clear error"
+    },
+    "actions": {
+      "save": "Save",
+      "saved": "Saved",
+      "cancel": "Cancel"
+    },
+    "importDialog": {
+      "title": "Import Settings",
+      "subtitle": "Review the changes below before applying.",
+      "noChanges": "Imported settings match your current settings. No changes will be made.",
+      "changesIntro": "The following settings from {{file}} will be applied:",
+      "setting": "Setting",
+      "current": "Current",
+      "imported": "Imported",
+      "confirmHint": "This will overwrite your current settings with the imported values.",
+      "confirmLabel": "Import settings"
+    },
+    "toasts": {
+      "saved": "Settings saved successfully",
+      "reverted": "Settings reverted to last saved state",
+      "exported": "Settings exported successfully",
+      "imported": "Settings imported successfully",
+      "importCancelled": "Import cancelled"
+    }
+  },
+  "bond": {
+    "title": "Bond USDC",
+    "description": "Lock USDC into the Credence contract to build your economic reputation.",
+    "infoBanner": "Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.",
+    "connectRequired": "Connect wallet required",
+    "connectRequiredDescription": "Create bond and withdraw actions require a connected Stellar wallet.",
+    "networkMismatch": "Network mismatch",
+    "networkMismatchDescription": "Credence is set to {{expected}}, but Freighter is on {{actual}}. Switch the app to the wallet network before creating or withdrawing a bond.",
+    "switchNetwork": "Switch app to {{network}}",
+    "slashExposure": "Slash exposure on early withdrawal",
+    "slashExposureDescription": "Withdrawing {{amount}} while {{status}} may slash up to {{penaltyAmount}} ({{percent}}% penalty). You would receive approximately {{result}}.",
+    "createNewBond": "Create New Bond",
+    "createBondDescription": "Lock USDC using the guided four-step wizard — set an amount, choose a lock duration, review slash terms, and confirm.",
+    "amount": "Amount (USDC)",
+    "minimumAmount": "Minimum: {{amount}} USDC",
+    "createBond": "Create bond",
+    "connectToContinue": "Connect wallet to continue",
+    "activeBonds": "Active Bonds",
+    "noActiveBonds": "No active bonds",
+    "noActiveBondsDescription": "You do not have any active bonds yet. Create your first bond to start building on-chain reputation.",
+    "createFirstBond": "Create your first bond",
+    "hidePenalty": "Hide penalty",
+    "showPenalty": "Show penalty",
+    "withdraw": "Withdraw",
+    "connectToWithdraw": "Connect wallet to withdraw",
+    "bondAmount": "Bond amount",
+    "penalty": "Penalty ({{percent}}%)",
+    "youReceive": "You receive",
+    "noEarlyWithdrawalPenalty": "No early-withdrawal penalty",
+    "confirmWithdrawal": "Confirm bond withdrawal",
+    "withdrawalSubtitle": "You are withdrawing bond #{{id}} ({{amount}}).",
+    "disclaimerContext": "Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
+  },
+  "trustScore": {
+    "title": "Trust Score",
+    "description": "Your reputation score is computed from bond amount, duration, and attestations.",
+    "infoBanner": "Scores update once per epoch. Recent bond changes may not be reflected immediately.",
+    "connectRequired": "Connect wallet required",
+    "connectRequiredDescription": "Connect a wallet to look up your own trust score. You can still type another Stellar address for review.",
+    "networkMismatch": "Network mismatch",
+    "networkMismatchDescription": "Credence is set to {{expected}}, but Freighter is on {{actual}}. Switch the app to the wallet network before looking up a trust score.",
+    "switchNetwork": "Switch app to {{network}}",
+    "results": "Trust score results",
+    "loading": "Loading trust score…",
+    "unableToLoad": "Unable to load trust score",
+    "tryAgain": "Try again",
+    "lookupIdentity": "Lookup Identity",
+    "stellarAddress": "Stellar Address",
+    "useMyAddress": "Use my address",
+    "lookup": "Look up score",
+    "connectToContinue": "Connect wallet to continue",
+    "disclaimerContext": "Trust scores are protocol metrics only and do not constitute creditworthiness assessments."
+  },
+  "attestations": {
+    "title": "Attestations",
+    "description": "Submit cryptographic evidence and vouches to build your economic trust score.",
+    "submitForm": "Submit Attestation Form",
+    "timeline": "Activity Timeline",
+    "filterLabel": "Filter attestations by status",
+    "filter": {
+      "all": "All statuses",
+      "success": "Accepted / Submitted",
+      "warning": "Needs update",
+      "info": "In review"
+    }
+  },
+  "transactions": {
+    "title": "Transaction History",
+    "description": "A durable record of your bond, withdrawal, and attestation events.",
+    "loading": "Loading transactions…",
+    "unableToLoad": "Unable to load transactions",
+    "tryAgain": "Try again",
+    "noTransactions": "No transactions yet",
+    "noTransactionsDescription": "Your bond, withdrawal, and attestation events will appear here once you start transacting.",
+    "filterLabel": "Status",
+    "filterAriaLabel": "Filter by status",
+    "noResults": "No {{filter}} transactions. Try a different filter.",
+    "table": {
+      "type": "Type",
+      "amount": "Amount",
+      "status": "Status",
+      "when": "When",
+      "transaction": "Transaction",
+      "viewOnExplorer": "View transaction {{hash}} on Stellar explorer",
+      "viewLink": "View ↗"
+    },
+    "status": {
+      "all": "All",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "failed": "Failed"
+    },
+    "relativeTime": {
+      "justNow": "just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "connectWallet": "Connect wallet",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "dismiss": "Dismiss",
+    "tryAgain": "Try again",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "copy": "Copy",
+    "copied": "Copied!"
+  },
+  "banner": {
+    "severity": {
+      "info": "Information",
+      "success": "Success",
+      "warning": "Warning",
+      "critical": "Critical"
+    },
+    "dismiss": "Dismiss banner"
+  },
+  "confirmDialog": {
+    "defaultConfirmPhrase": "CONFIRM",
+    "defaultConfirmHint": "This action cannot be undone. Funds will be sent to your connected wallet.",
+    "typeToConfirm": "Type <strong>{{phrase}}</strong> to enable {{action}}",
+    "confirmHint": "This will overwrite your current settings with the imported values.",
+    "breakdown": {
+      "bondAmount": "Bond amount",
+      "slashPenalty": "Slash penalty ({{percent}}%)",
+      "youReceive": "You receive"
+    },
+    "announcements": {
+      "actionEnabled": "Action enabled. Type {{phrase}} to confirm.",
+      "actionDisabled": "Action disabled. Type {{phrase}} to enable."
+    }
+  },
+  "activityTimeline": {
+    "identityAttestation": "Identity Attestation",
+    "peerVouch": "Peer Vouch",
+    "credentialCertification": "Credential Certification",
+    "submitted": "Submitted",
+    "subject": "Subject: {{subject}}"
+  },
+  "badge": {
+    "variants": {
+      "active": "Active",
+      "locked": "Locked",
+      "slashed": "Slashed",
+      "gold": "Gold",
+      "silver": "Silver",
+      "bronze": "Bronze"
+    }
+  },
+  "errors": {
+    "network": "Network error",
+    "backend": "Backend error",
+    "validation": "Validation error",
+    "generic": "An error occurred"
+  }
+}

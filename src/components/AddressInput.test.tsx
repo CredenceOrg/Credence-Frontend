@@ -2,27 +2,35 @@ import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import AddressInput from './AddressInput'
-import { truncateAddress } from '@/lib/stellar'
 
 // A valid 56-character Stellar public key
 const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA' // 56 chars
 
-// --- truncateAddress ---
-describe('truncateAddress', () => {
-  it('returns short addresses unchanged', () => {
-    expect(truncateAddress('GABC')).toBe('GABC')
-    expect(truncateAddress('G'.repeat(20))).toBe('G'.repeat(20))
-  })
+// --- useDebouncedValue mocking ---
 
-  it('truncates long addresses correctly', () => {
-    const truncated = truncateAddress(VALID_KEY)
-    expect(truncated).toBe(
-      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
-    )
+function mockDebouncedValue<T>(value: T, _delayMs?: number): T {
+  return value
+}
+
+vi.mock('@/hooks/useDebouncedValue', () => ({
+  useDebouncedValue: mockDebouncedValue,
+}))
+
+// --- Clipboard mocking helper ---
+
+let clipboardReadTextMock: ReturnType<typeof vi.fn>
+
+beforeEach(() => {
+  clipboardReadTextMock = vi.fn()
+  Object.defineProperty(navigator, 'clipboard', {
+    writable: true,
+    configurable: true,
+    value: { readText: clipboardReadTextMock },
   })
 })
 
-// --- isValidStellarAddress (observed via onValidationChange) ---
+// --- Validation tests ---
+
 describe('isValidStellarAddress', () => {
   it('passes a valid 56-character key', () => {
     const onV = vi.fn()
@@ -52,7 +60,12 @@ describe('isValidStellarAddress', () => {
   it('rejects a key one char longer than VALID_KEY (57 chars)', () => {
     const onV = vi.fn()
     render(
-      <AddressInput id="addr" value={VALID_KEY + 'A'} onChange={vi.fn()} onValidationChange={onV} />
+      <AddressInput
+        id="addr"
+        value={VALID_KEY + 'A'}
+        onChange={vi.fn()}
+        onValidationChange={onV}
+      />
     )
     expect(onV).toHaveBeenCalledWith(false)
   })
@@ -145,7 +158,7 @@ describe('conditional rendering', () => {
     expect(screen.getByText('Recognized:')).toBeInTheDocument()
     // truncateAddress: first 12 + ... + last 8 chars
     const code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
-    expect(code?.textContent).toBe(truncateAddress(VALID_KEY))
+    expect(code?.textContent).toBe(`${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`)
   })
 
   it('shows character count while there is input', () => {
@@ -188,20 +201,8 @@ describe('accessibility', () => {
 
 // --- Paste button ---
 describe('paste button', () => {
-  let readTextMock: ReturnType<typeof vi.fn>
-
-  beforeEach(() => {
-    readTextMock = vi.fn()
-    // Use Object.defineProperty so the component's handlePaste sees our mock
-    Object.defineProperty(navigator, 'clipboard', {
-      writable: true,
-      configurable: true,
-      value: { readText: readTextMock },
-    })
-  })
-
   it('reads clipboard, trims whitespace, and calls onChange', async () => {
-    readTextMock.mockResolvedValue(`  ${VALID_KEY}  `)
+    clipboardReadTextMock.mockResolvedValue(`  ${VALID_KEY}  `)
     const onChange = vi.fn()
     render(<AddressInput id="addr" value="" onChange={onChange} />)
 
@@ -210,12 +211,12 @@ describe('paste button', () => {
       fireEvent.click(screen.getByRole('button', { name: /paste address from clipboard/i }))
     })
 
-    expect(readTextMock).toHaveBeenCalled()
+    expect(clipboardReadTextMock).toHaveBeenCalled()
     expect(onChange).toHaveBeenCalledWith(VALID_KEY)
   })
 
   it('focuses input as fallback when clipboard access throws', async () => {
-    readTextMock.mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
+    clipboardReadTextMock.mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
     render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
 
     const input = screen.getByRole('textbox')

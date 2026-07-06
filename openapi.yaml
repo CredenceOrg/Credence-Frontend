@@ -1,0 +1,262 @@
+openapi: "3.1.0"
+info:
+  title: Credence API
+  version: "0.1.0"
+  description: >
+    Backend REST API for the Credence economic trust protocol (Stellar / USDC).
+    The frontend proxies all requests under /api to this service via the Vite
+    dev server; in production VITE_API_BASE_URL points directly at the backend
+    origin.
+
+servers:
+  - url: /api
+    description: Vite dev proxy (see vite.config.ts)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Reusable components
+# ─────────────────────────────────────────────────────────────────────────────
+
+components:
+  schemas:
+
+    # ── Enumerations ──────────────────────────────────────────────────────────
+
+    BondStatus:
+      type: string
+      enum: [active, pending, settled, slashed, cancelled]
+      description: Lifecycle state of a USDC bond.
+
+    TrustTier:
+      type: string
+      enum: [bronze, silver, gold, platinum]
+      description: Credence trust tier derived from the on-chain score.
+
+    TransactionType:
+      type: string
+      enum: [bond, withdraw, attestation]
+      description: Protocol action that produced a transaction record.
+
+    TransactionStatus:
+      type: string
+      enum: [pending, confirmed, failed]
+      description: Settlement state of the on-chain operation.
+
+    # ── Domain objects ────────────────────────────────────────────────────────
+
+    TrustScore:
+      type: object
+      description: Trust-score snapshot for a single Stellar address.
+      required: [address, score, tier, attestations, updatedAt]
+      properties:
+        address:
+          type: string
+          description: Stellar public key (G...) of the scored account.
+          example: GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        score:
+          type: integer
+          description: Numeric trust score (higher is better).
+          minimum: 0
+          example: 840
+        tier:
+          $ref: "#/components/schemas/TrustTier"
+        attestations:
+          type: integer
+          description: Count of verified attestations backing this score.
+          minimum: 0
+          example: 12
+        updatedAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the last score update.
+          example: "2026-06-29T10:00:00Z"
+
+    Bond:
+      type: object
+      description: A USDC bond registered in the Credence protocol.
+      required: [id, borrower, amount, asset, status, createdAt]
+      properties:
+        id:
+          type: string
+          description: Stable unique identifier for this bond record.
+        borrower:
+          type: string
+          description: Stellar public key of the bond creator.
+        lender:
+          type: string
+          description: Stellar public key of the counter-party, if assigned.
+        amount:
+          type: string
+          description: >
+            Bond amount as a decimal string (avoids float precision issues),
+            denominated in the asset field.
+          example: "1000.00"
+        asset:
+          type: string
+          description: Asset code locked in the bond (e.g. USDC).
+          example: USDC
+        status:
+          $ref: "#/components/schemas/BondStatus"
+        createdAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the bond was created.
+        maturesAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the bond lock expires, if set.
+
+    Transaction:
+      type: object
+      description: A single protocol transaction event visible in the history feed.
+      required: [id, type, timestamp, status, hash]
+      properties:
+        id:
+          type: string
+          description: Unique stable identifier for this record.
+        type:
+          $ref: "#/components/schemas/TransactionType"
+        amountUsdc:
+          type: number
+          description: USDC amount involved in the transaction, if applicable.
+          example: 500.00
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the event.
+        status:
+          $ref: "#/components/schemas/TransactionStatus"
+        hash:
+          type: string
+          description: On-chain transaction hash for the Stellar explorer.
+          example: b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380
+
+    # ── Paginated list wrappers ───────────────────────────────────────────────
+
+    TransactionList:
+      type: object
+      description: Cursor-paginated list of Transaction records.
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        nextCursor:
+          type: string
+          description: >
+            Opaque pagination cursor. Include as the `cursor` query parameter
+            in the next request to retrieve the following page. Absent when
+            there are no more results.
+
+    # ── Generic helpers ───────────────────────────────────────────────────────
+
+    ApiMessageResponse:
+      type: object
+      description: Simple message envelope returned for errors and confirmations.
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: Human-readable message describing the outcome.
+          example: Address not found.
+
+  # ── Reusable parameters ────────────────────────────────────────────────────
+
+  parameters:
+
+    StellarAddress:
+      name: address
+      in: path
+      required: true
+      description: Stellar public key (56-character base32 G... string).
+      schema:
+        type: string
+      example: GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+    CursorParam:
+      name: cursor
+      in: query
+      required: false
+      description: Pagination cursor returned by a previous list response.
+      schema:
+        type: string
+
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      description: Maximum number of items per page (1–100, default 20).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  # ── Reusable responses ─────────────────────────────────────────────────────
+
+  responses:
+
+    BadRequest:
+      description: The request was malformed or contained invalid parameters.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiMessageResponse"
+
+    NotFound:
+      description: The requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiMessageResponse"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+paths:
+
+  /trust-score/{address}:
+    get:
+      operationId: getTrustScore
+      summary: Retrieve trust score for a Stellar address
+      description: >
+        Returns the current Credence trust score and tier for the given Stellar
+        public key. The score is recomputed on-chain whenever a new attestation
+        is submitted or a bond matures.
+      tags: [Trust]
+      parameters:
+        - $ref: "#/components/parameters/StellarAddress"
+      responses:
+        "200":
+          description: Trust score returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrustScore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /transactions:
+    get:
+      operationId: listTransactions
+      summary: List recent protocol transactions
+      description: >
+        Returns a cursor-paginated list of transaction events across all
+        protocol actions (bond creation, withdrawal, attestation) visible to
+        the authenticated wallet. Results are ordered newest-first.
+      tags: [Transactions]
+      parameters:
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Paginated transaction list returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionList"
+        "400":
+          $ref: "#/components/responses/BadRequest"

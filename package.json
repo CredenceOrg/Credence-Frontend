@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "generate:api": "openapi-typescript openapi.yaml -o src/api/generated.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
@@ -17,8 +18,11 @@
   },
   "dependencies": {
     "@stellar/freighter-api": "^6.0.1",
+    "i18next": "^23.7.0",
+    "i18next-browser-languagedetector": "^7.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-i18next": "^13.5.0",
     "react-router-dom": "^6.22.0"
   },
   "devDependencies": {
@@ -40,6 +44,7 @@
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
     "jsdom": "^26.1.0",
+    "openapi-typescript": "^6.7.6",
     "prettier": "^3.2.5",
     "storybook": "^8.6.18",
     "typescript": "~5.2.2",

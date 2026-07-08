@@ -1,6 +1,5 @@
 import { lazy, Suspense, useCallback, useMemo, useRef, useState, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import './Bond.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
@@ -17,6 +16,7 @@ import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
+import { getPenaltyRate, computeWithdrawBreakdown, type MockBond } from '../lib/bondPenalty'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
@@ -25,16 +25,6 @@ function submitTransaction(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 1500))
 }
 
-export interface MockBond {
-  id: number
-  amountUsdc: number
-  status: string
-  durationDays: number
-}
-function getPenaltyRate(_status: string) { return 0 }
-function computeWithdrawBreakdown(_bond: MockBond) {
-  return { bondAmount: '0', penaltyPercent: 0, penaltyAmount: '0', resultingBalance: '0', penaltyUsdc: 0 }
-}
 
 const initialBonds: MockBond[] = [
   { id: 1, amountUsdc: 1000, status: 'locked' },

@@ -11,7 +11,7 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
 };
 
 // Maximum number of toasts displayed simultaneously
-+const MAX_TOASTS = 3;
+const MAX_TOASTS = 3;
 
 
 interface ToastContextValue {

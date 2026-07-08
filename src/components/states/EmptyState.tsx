@@ -8,6 +8,7 @@ interface EmptyStateProps {
     label: string
     onClick: () => void
     variant?: 'primary' | 'secondary'
+    isLoading?: boolean
   }
   illustration?: 'bond' | 'trust' | 'dispute' | 'attestation' | 'activity'
 }
@@ -178,6 +179,8 @@ export default function EmptyState({
         <button
           onClick={action.onClick}
           className="focus-visible"
+          disabled={action.isLoading}
+          aria-busy={action.isLoading}
           style={{
             padding: 'var(--credence-space-3) var(--credence-space-6)',
             background:
@@ -191,11 +194,12 @@ export default function EmptyState({
             border: 'none',
             borderRadius: 'var(--credence-radius-lg)',
             fontWeight: 'var(--credence-font-weight-semibold)',
-            cursor: 'pointer',
+            cursor: action.isLoading ? 'default' : 'pointer',
+            opacity: action.isLoading ? 0.6 : 1,
             fontSize: 'var(--credence-font-size-sm)',
           }}
         >
-          {action.label}
+          {action.isLoading ? 'Connecting…' : action.label}
         </button>
       )}
     </div>

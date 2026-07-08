@@ -72,6 +72,7 @@ export default function Dashboard() {
             action={{
               label: t('dashboard.connectWallet'),
               onClick: connect,
+              isLoading: isConnecting,
             }}
           />
         </ActionCard>

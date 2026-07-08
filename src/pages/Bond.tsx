@@ -52,7 +52,8 @@ interface BondRowProps {
   onConnect: (event: React.MouseEvent<HTMLButtonElement>) => void
 }
 
-function BondRow({ bond, isConnected, onWithdraw, onConnect, t }: BondRowProps) {
+function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const panelId = `slash-detail-${bond.id}`
   const penaltyRate = getPenaltyRate(bond.status)
@@ -121,6 +122,7 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect, t }: BondRowProps) 
 }
 
 export default function Bond() {
+  const { t } = useTranslation()
   useSeo({
     title: 'Bond',
     description:
@@ -129,7 +131,7 @@ export default function Bond() {
 
   const navigate = useNavigate()
   const { addToast } = useToast()
-  const { isConnected, network: walletNetwork } = useWallet()
+  const { isConnected, isConnecting, connect, network: walletNetwork } = useWallet()
   const { setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
@@ -317,8 +319,8 @@ export default function Bond() {
             type="button"
             onClick={(e) => handleCreateBond(e)}
             fullWidth
-            disabled={networkMismatch.mismatch || isPendingCreate}
-            isLoading={isPendingCreate}
+            disabled={networkMismatch.mismatch || (isConnected ? isPendingCreate : isConnecting)}
+            isLoading={isConnected ? isPendingCreate : isConnecting}
             aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
             aria-haspopup={!isConnected ? 'dialog' : undefined}
           >
@@ -345,7 +347,7 @@ export default function Bond() {
                   bond={bond}
                   isConnected={isConnected}
                   onWithdraw={requestWithdraw}
-                  onConnect={openConnectModal}
+                    onConnect={() => setConnectModalOpen(true)}
                 />
               ))}
             </ul>

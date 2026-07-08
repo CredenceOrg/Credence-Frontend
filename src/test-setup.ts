@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
+import './i18n/config'
 
 // Guard against Node-environment test files (e.g. useLocalStorage.node.test.ts)
 // that run without a DOM — they use the same global setup file but don't have window.

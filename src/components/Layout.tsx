@@ -10,7 +10,7 @@ import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
-import Banner from './Banner'
+import SpeedDial from './SpeedDial'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
@@ -205,6 +205,9 @@ export default function Layout() {
       />
 
       <BackToTop />
+
+      {/* Mobile speed-dial – only visible on screens ≤768px */}
+      <SpeedDial />
     </div>
   )
 }

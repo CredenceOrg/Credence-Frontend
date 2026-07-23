@@ -29,6 +29,14 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/ErrorState      | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
 | SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
+| ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
+| Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
+| ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
+| KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
+| AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
+| CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
+| ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
+| SpeedDial              | `src/components/SpeedDial.css`                                                      | None.                                                                                                                     |
 
 ## Shared vocabularies
 
@@ -519,3 +527,209 @@ Tokens: warning color tokens, spacing, radius.
   onLogout={logout}
 />
 ```
+
+## ActionCard
+
+Source: [`src/components/ActionCard.tsx`](../src/components/ActionCard.tsx).
+
+| Prop       | Type        | Default  |
+| ---------- | ----------- | -------- |
+| `title`    | `string`    | Required |
+| `children` | `ReactNode` | Required |
+
+Accessibility: renders as a semantic `<article>` with the title in an `<h2>`. No additional ARIA attributes are needed; place inside a `<main>` or named landmark so context is clear.
+
+Tokens: `--credence-border-default`, `--credence-radius-xl`, `--credence-space-4`, `--credence-space-6`, `--credence-surface-card`, `--credence-text-primary`, `--credence-font-size-xl`, `--credence-line-height-tight`.
+
+```tsx
+<ActionCard title="Create bond">
+  <AmountInput value={amount} onChange={setAmount} balance={balance} />
+  <Button onClick={submit}>Submit</Button>
+</ActionCard>
+```
+
+## Disclaimer
+
+Source: [`src/components/Disclaimer.tsx`](../src/components/Disclaimer.tsx).
+
+| Prop        | Type     | Default        |
+| ----------- | -------- | -------------- |
+| `context`   | `string` | `undefined`    |
+| `termsHref` | `string` | `LINKS.terms`  |
+
+Accessibility: renders as `<aside aria-label="Risk disclaimer">`. The terms link has an explicit `aria-label="Read full terms and conditions"`. When `termsHref` resolves to a placeholder (`'#'` or empty), a `<span aria-disabled="true">` is rendered instead of an anchor so the element is inert for keyboard and AT users.
+
+Tokens: secondary text and spacing tokens via `Disclaimer.css`.
+
+```tsx
+<Disclaimer context="Early withdrawal forfeits accrued rewards." />
+```
+
+## ThemeToggle
+
+Source: [`src/components/ThemeToggle.tsx`](../src/components/ThemeToggle.tsx). Focused docs: [dark mode](./dark-mode.md).
+
+No external props. Reads `themeMode` from `SettingsContext` and writes the explicit opposite on click; never exposes a prop API.
+
+Accessibility: native `<button>` with `aria-label="Switch to {nextTheme} mode"` and `aria-pressed` reflecting whether the resolved theme is dark. Both icons are `aria-hidden`. Tracks the OS `prefers-color-scheme` media query while `themeMode` is `'system'` so `aria-pressed` and `aria-label` stay in sync with the document's `data-theme`.
+
+Tokens: `--credence-focus-ring`, spacing, and icon sizing via `ThemeToggle.css`.
+
+```tsx
+<ThemeToggle />
+```
+
+## KeyboardShortcutsDialog
+
+Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx). Focused docs: [keyboard interactions](./keyboard-interactions.md).
+
+| Prop             | Type                              | Default     |
+| ---------------- | --------------------------------- | ----------- |
+| `open`           | `boolean`                         | Required    |
+| `onClose`        | `() => void`                      | Required    |
+| `returnFocusRef` | `React.RefObject<HTMLElement \| null>` | `undefined` |
+
+Accessibility: portal-rendered modal with `role="dialog"`, `aria-modal="true"`, and a generated `aria-labelledby`. Focus is trapped while open. Escape and backdrop click both call `onClose`. Focus is restored to `returnFocusRef` on close, or to the previously active element when `returnFocusRef` is omitted. Shortcuts are grouped by category with visible section headings.
+
+Tokens: border, surface, text, font, spacing, radius, and focus tokens via `KeyboardShortcutsDialog.css`.
+
+```tsx
+const triggerRef = useRef<HTMLButtonElement>(null)
+
+<button ref={triggerRef} onClick={() => setOpen(true)}>Keyboard shortcuts</button>
+<KeyboardShortcutsDialog open={open} onClose={() => setOpen(false)} returnFocusRef={triggerRef} />
+```
+
+## AttestationForm
+
+Source: [`src/components/AttestationForm.tsx`](../src/components/AttestationForm.tsx).
+
+| Prop              | Type                                                                   | Default     |
+| ----------------- | ---------------------------------------------------------------------- | ----------- |
+| `onSubmitSuccess` | `(payload: { subject: string; type: string; evidence: string }) => void` | `undefined` |
+| `disabled`        | `boolean`                                                              | `false`     |
+
+Accessibility: all form fields are wrapped in `FormField` so each has a `<label>`, hint, and error wired through `aria-describedby` and `aria-invalid`. The type selector uses `controls/Select` (native `<select>`). The evidence textarea has a live character counter associated via `aria-describedby`. Submission is confirmed via `ConfirmDialog` before calling `onSubmitSuccess`; success is announced via a toast.
+
+Tokens: inherits tokens from `AddressInput`, `Select`, `FormField`, and `Button`.
+
+```tsx
+<AttestationForm
+  onSubmitSuccess={({ subject, type, evidence }) => recordAttestation(subject, type, evidence)}
+/>
+```
+
+## CreateBondFlow
+
+Source: [`src/components/CreateBondFlow.tsx`](../src/components/CreateBondFlow.tsx).
+
+| Prop         | Type         | Default     |
+| ------------ | ------------ | ----------- |
+| `onComplete` | `() => void` | `undefined` |
+| `onCancel`   | `() => void` | `undefined` |
+
+A four-step wizard: **amount → duration → review → confirm**. Fetches the connected wallet's USDC balance and calculates early-withdrawal penalty in-flight. The final step uses `ConfirmDialog` for confirmation.
+
+Accessibility: each step manages focus on mount so keyboard users advance through the wizard without losing context. Reduced motion is respected via `useReducedMotion`. Success is announced via a toast; `onComplete` is called after the toast fires.
+
+Tokens: `CreateBondFlow.css` consumes border, radius, spacing, surface, text, font, and motion tokens.
+
+```tsx
+<CreateBondFlow onComplete={() => navigate('/bond')} onCancel={() => navigate('/bond')} />
+```
+
+## ErrorBoundary
+
+Source: [`src/components/ErrorBoundary.tsx`](../src/components/ErrorBoundary.tsx).
+
+| Prop       | Type                                         | Default                        |
+| ---------- | -------------------------------------------- | ------------------------------ |
+| `children` | `ReactNode`                                  | Required                       |
+| `fallback` | `(error: Error, reset: () => void) => ReactNode` | `undefined` (uses `ErrorState`) |
+
+Class component that catches render and lifecycle errors in its subtree. The default fallback renders a branded `ErrorState` with a "Retry" action (re-mounts the subtree without a full reload) and a "Go home" link. Supply `fallback` to override with custom error UI.
+
+Wire telemetry in `componentDidCatch` (currently logs to console) before shipping to production.
+
+Accessibility: no additional ARIA attributes; inherits accessibility from `ErrorState` or the custom `fallback` render.
+
+Tokens: none directly; delegates to `ErrorState`.
+
+```tsx
+<ErrorBoundary>
+  <BondPage />
+</ErrorBoundary>
+
+{/* Custom fallback */}
+<ErrorBoundary fallback={(err, reset) => <button onClick={reset}>Retry: {err.message}</button>}>
+  <TrustScorePage />
+</ErrorBoundary>
+```
+
+## SpeedDial
+
+Source: [`src/components/SpeedDial.tsx`](../src/components/SpeedDial.tsx).
+
+Mobile-only floating action button that expands to reveal **Send**, **Receive**, and **Swap** shortcuts. Hidden on screens wider than 768 px (CSS `display: none` outside the `@media (max-width: 768px)` block).
+
+| Prop      | Type                  | Default                       |
+| --------- | --------------------- | ----------------------------- |
+| `actions` | `SpeedDialAction[]`   | `SPEED_DIAL_DEFAULT_ACTIONS`  |
+
+### `SpeedDialAction`
+
+| Field       | Type            | Notes                                      |
+| ----------- | --------------- | ------------------------------------------ |
+| `id`        | `string`        | React key; must be unique across the list. |
+| `label`     | `string`        | Pill label next to the icon button.        |
+| `to`        | `string`        | Route passed to `useNavigate()` on click.  |
+| `icon`      | `React.ReactNode` | SVG rendered inside the mini button.     |
+| `ariaLabel` | `string?`       | Overrides `label` for the button's accessible name. |
+
+### Default actions
+
+| Action  | Route                          |
+| ------- | ------------------------------ |
+| Send    | `/transactions?action=send`    |
+| Receive | `/transactions?action=receive` |
+| Swap    | `/transactions?action=swap`    |
+
+### Accessibility contract
+
+- The whole widget is a `<nav>` with `aria-label="Quick actions"` so screen-reader users can navigate to or skip it.
+- The FAB has `aria-expanded` (reflects open/closed state) and `aria-controls="speed-dial-actions"` pointing to the action list.
+- When the menu opens, focus moves to the first action button.
+- **Escape** closes the menu and returns focus to the FAB.
+- **Tab / Shift+Tab** cycles within the open menu (FAB + action buttons) without leaking focus to the rest of the page.
+- Action buttons are `tabindex="-1"` while the menu is closed so they are not reachable by keyboard when invisible.
+- No `display: none` toggle in JS—CSS handles visibility so reduced-motion users see a static state without animation jank.
+
+### Tokens consumed
+
+`--credence-border-default`, `--credence-color-primary`, `--credence-color-primary-strong`, `--credence-color-slate-*`, `--credence-color-white`, `--credence-focus-ring`, `--credence-motion-duration-*`, `--credence-motion-easing-standard`, `--credence-radius-full`, `--credence-shadow-toast`, `--credence-space-*`, `--credence-surface-card`, `--credence-text-primary`.
+
+### Styling ownership
+
+`src/components/SpeedDial.css` — no inline styles.
+
+### Usage
+
+```tsx
+{/* Default — shows Send / Receive / Swap */}
+<SpeedDial />
+
+{/* Custom actions */}
+<SpeedDial
+  actions={[
+    {
+      id: 'bond',
+      label: 'New Bond',
+      to: '/bond/new',
+      icon: <BondIcon />,
+      ariaLabel: 'Create a new bond',
+    },
+  ]}
+/>
+```
+
+The component is mounted in `Layout.tsx` so it appears on every route automatically. It is invisible on desktop and becomes visible only when the viewport is ≤ 768 px.

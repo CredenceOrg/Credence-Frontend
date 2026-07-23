@@ -7,6 +7,7 @@ import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import BackToTop from './BackToTop'
+import SpeedDial from './SpeedDial'
 import LINKS from '../config/links'
 import { isExternalUrl } from '../lib/isExternalUrl'
 import './Layout.css'
@@ -181,6 +182,9 @@ export default function Layout() {
       />
 
       <BackToTop />
+
+      {/* Mobile speed-dial – only visible on screens ≤768px */}
+      <SpeedDial />
     </div>
   )
 }

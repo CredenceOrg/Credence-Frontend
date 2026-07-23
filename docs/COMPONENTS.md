@@ -34,6 +34,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
 | ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
+| SpeedDial              | `src/components/SpeedDial.css`                                                      | None.                                                                                                                     |
 
 ## Shared vocabularies
 
@@ -616,3 +617,71 @@ Tokens: none directly; delegates to `ErrorState`.
   <TrustScorePage />
 </ErrorBoundary>
 ```
+
+## SpeedDial
+
+Source: [`src/components/SpeedDial.tsx`](../src/components/SpeedDial.tsx).
+
+Mobile-only floating action button that expands to reveal **Send**, **Receive**, and **Swap** shortcuts. Hidden on screens wider than 768 px (CSS `display: none` outside the `@media (max-width: 768px)` block).
+
+| Prop      | Type                  | Default                       |
+| --------- | --------------------- | ----------------------------- |
+| `actions` | `SpeedDialAction[]`   | `SPEED_DIAL_DEFAULT_ACTIONS`  |
+
+### `SpeedDialAction`
+
+| Field       | Type            | Notes                                      |
+| ----------- | --------------- | ------------------------------------------ |
+| `id`        | `string`        | React key; must be unique across the list. |
+| `label`     | `string`        | Pill label next to the icon button.        |
+| `to`        | `string`        | Route passed to `useNavigate()` on click.  |
+| `icon`      | `React.ReactNode` | SVG rendered inside the mini button.     |
+| `ariaLabel` | `string?`       | Overrides `label` for the button's accessible name. |
+
+### Default actions
+
+| Action  | Route                          |
+| ------- | ------------------------------ |
+| Send    | `/transactions?action=send`    |
+| Receive | `/transactions?action=receive` |
+| Swap    | `/transactions?action=swap`    |
+
+### Accessibility contract
+
+- The whole widget is a `<nav>` with `aria-label="Quick actions"` so screen-reader users can navigate to or skip it.
+- The FAB has `aria-expanded` (reflects open/closed state) and `aria-controls="speed-dial-actions"` pointing to the action list.
+- When the menu opens, focus moves to the first action button.
+- **Escape** closes the menu and returns focus to the FAB.
+- **Tab / Shift+Tab** cycles within the open menu (FAB + action buttons) without leaking focus to the rest of the page.
+- Action buttons are `tabindex="-1"` while the menu is closed so they are not reachable by keyboard when invisible.
+- No `display: none` toggle in JS—CSS handles visibility so reduced-motion users see a static state without animation jank.
+
+### Tokens consumed
+
+`--credence-border-default`, `--credence-color-primary`, `--credence-color-primary-strong`, `--credence-color-slate-*`, `--credence-color-white`, `--credence-focus-ring`, `--credence-motion-duration-*`, `--credence-motion-easing-standard`, `--credence-radius-full`, `--credence-shadow-toast`, `--credence-space-*`, `--credence-surface-card`, `--credence-text-primary`.
+
+### Styling ownership
+
+`src/components/SpeedDial.css` — no inline styles.
+
+### Usage
+
+```tsx
+{/* Default — shows Send / Receive / Swap */}
+<SpeedDial />
+
+{/* Custom actions */}
+<SpeedDial
+  actions={[
+    {
+      id: 'bond',
+      label: 'New Bond',
+      to: '/bond/new',
+      icon: <BondIcon />,
+      ariaLabel: 'Create a new bond',
+    },
+  ]}
+/>
+```
+
+The component is mounted in `Layout.tsx` so it appears on every route automatically. It is invisible on desktop and becomes visible only when the viewport is ≤ 768 px.

@@ -110,3 +110,38 @@ export function truncateAddress(address: string | undefined | null): string {
   if (trimmed.length <= 20) return trimmed
   return `${trimmed.substring(0, 12)}...${trimmed.substring(trimmed.length - 8)}`
 }
+
+export type AddressSanitizationError = {
+  type: 'SUSPICIOUS_CHARACTERS'
+  message: string
+}
+
+export type AddressSanitizationResult =
+  | { ok: true; value: string }
+  | { ok: false; error: AddressSanitizationError; fallbackValue: string }
+
+/**
+ * Sanitizes an input string intended to be a Stellar address.
+ * Strips whitespace, common prefixes like 'stellar:', and detects suspicious characters.
+ */
+export function sanitizeAddressInput(input: string): AddressSanitizationResult {
+  let sanitized = input.trim()
+  
+  if (sanitized.toLowerCase().startsWith('stellar:')) {
+    sanitized = sanitized.slice(8)
+  }
+
+  // Detect non-ASCII printable characters (common in homograph/injection attacks)
+  if (/[^\x20-\x7E]/.test(sanitized)) {
+    return {
+      ok: false,
+      error: {
+        type: 'SUSPICIOUS_CHARACTERS',
+        message: 'Suspicious characters detected in address.',
+      },
+      fallbackValue: sanitized,
+    }
+  }
+
+  return { ok: true, value: sanitized }
+}

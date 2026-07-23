@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
-import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
+import { isValidStellarAddress, truncateAddress, sanitizeAddressInput, AddressSanitizationError } from '@/lib/stellar'
 import useCopyToClipboard from '@/hooks/useCopyToClipboard'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
@@ -140,6 +140,7 @@ export default function AddressInput({
 
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  const [sanitizationError, setSanitizationError] = useState<AddressSanitizationError | null>(null)
   const { copy, copied } = useCopyToClipboard()
 
   const debouncedValue = useDebouncedValue(value, 200)
@@ -154,8 +155,16 @@ export default function AddressInput({
   }, [isValid, onValidationChange])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    onChange(newValue)
+    const rawValue = e.target.value
+    const result = sanitizeAddressInput(rawValue)
+    
+    onChange(result.ok ? result.value : result.fallbackValue)
+    
+    if (!result.ok) {
+      setSanitizationError(result.error)
+    } else {
+      setSanitizationError(null)
+    }
 
     // Mark as attempted if user starts typing
     if (!attempted) {
@@ -175,8 +184,15 @@ export default function AddressInput({
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText()
-      const trimmedText = text.trim()
-      onChange(trimmedText)
+      const result = sanitizeAddressInput(text)
+      
+      onChange(result.ok ? result.value : result.fallbackValue)
+      
+      if (!result.ok) {
+        setSanitizationError(result.error)
+      } else {
+        setSanitizationError(null)
+      }
       setAttempted(true)
 
       // Focus the input after paste
@@ -202,7 +218,9 @@ export default function AddressInput({
   }, [copy, value])
 
   const isChecksumError = showError && /^G[A-Z0-9]{55}$/.test(debouncedValue)
-  const error = externalError || (showError ? (isChecksumError ? 'Invalid address checksum. Please verify the address.' : 'Invalid address. Stellar public keys are 56 characters starting with G.') : undefined)
+  const error = externalError || 
+    (sanitizationError ? sanitizationError.message : undefined) || 
+    (showError ? (isChecksumError ? 'Invalid address checksum. Please verify the address.' : 'Invalid address. Stellar public keys are 56 characters starting with G.') : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
 
   // Detect whether the entered (validated) value matches the connected wallet's address.

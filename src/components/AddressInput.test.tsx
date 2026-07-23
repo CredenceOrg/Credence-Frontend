@@ -1,3 +1,4 @@
+import React, { useState } from 'react'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
@@ -237,5 +238,29 @@ describe('paste button', () => {
     })
 
     expect(document.activeElement).toBe(input)
+  })
+
+  it('strips stellar: prefix and warns on suspicious characters', async () => {
+    const user = userEvent.setup()
+    
+    function TestComponent() {
+      const [val, setVal] = useState('')
+      return <AddressInput id="addr" value={val} onChange={setVal} />
+    }
+    
+    render(<TestComponent />)
+    const input = screen.getByRole('textbox')
+    
+    await user.click(input)
+    // Paste with stellar: prefix and a suspicious non-ASCII character
+    await user.paste('stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+    
+    // The value should be updated without "stellar:"
+    expect(input).toHaveValue('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+    
+    // And it should show a warning
+    const alert = screen.getByRole('alert')
+    expect(alert).toBeInTheDocument()
+    expect(alert).toHaveTextContent(/suspicious characters/i)
   })
 })

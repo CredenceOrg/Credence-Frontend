@@ -212,6 +212,30 @@
       "minutesAgo": "{{count}}m ago",
       "hoursAgo": "{{count}}h ago",
       "daysAgo": "{{count}}d ago"
+    },
+    "bulk": {
+      "selectLabel": "Select transaction {{id}}",
+      "selectAll": "Select all transactions",
+      "selectedOne": "{{count}} selected",
+      "selectedOther": "{{count}} selected",
+      "actionsLabel": "Bulk actions",
+      "export": "Export",
+      "delete": "Delete",
+      "clear": "Clear selection",
+      "deleteConfirm": {
+        "title": "Delete transactions?",
+        "subtitle": "You are about to remove {{count}} transaction from this list.",
+        "subtitle_other": "You are about to remove {{count}} transactions from this list.",
+        "phrase": "DELETE",
+        "hint": "Removing entries from this view does not affect on-chain records.",
+        "confirm": "Delete transactions",
+        "successOne": "1 transaction removed from view",
+        "successOther": "{{count}} transactions removed from view"
+      },
+      "exportToast": {
+        "successOne": "1 transaction exported",
+        "successOther": "{{count}} transactions exported"
+      }
     }
   },
   "common": {

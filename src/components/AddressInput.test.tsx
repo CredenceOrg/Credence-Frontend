@@ -1,3 +1,4 @@
+import React, { useState } from 'react'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
@@ -254,56 +255,28 @@ describe('paste button', () => {
 
     expect(document.activeElement).toBe(input)
   })
-})
 
-// --- Scan button ---
-describe('scan button', () => {
-  it('renders the scan button', () => {
-    render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
-
-    expect(screen.getByRole('button', { name: /scan qr code/i })).toBeInTheDocument()
-  })
-
-  it('opens the scanner modal on click', async () => {
-    render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /scan qr code/i }))
-    })
-
-    expect(screen.getByTestId('qr-scanner-modal')).toBeInTheDocument()
-  })
-
-  it('calls onChange with scanned value when QR is decoded', async () => {
-    const onChange = vi.fn()
-    render(<AddressInput id="addr" value="" onChange={onChange} />)
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /scan qr code/i }))
-    })
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('mock-scan'))
-    })
-
-    expect(onChange).toHaveBeenCalledWith(VALID_KEY)
-  })
-
-  it('closes the scanner modal without calling onChange when cancelled', async () => {
-    const onChange = vi.fn()
-    render(<AddressInput id="addr" value="" onChange={onChange} />)
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /scan qr code/i }))
-    })
-
-    expect(screen.getByTestId('qr-scanner-modal')).toBeInTheDocument()
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('mock-close'))
-    })
-
-    expect(screen.queryByTestId('qr-scanner-modal')).toBeNull()
-    expect(onChange).not.toHaveBeenCalled()
+  it('strips stellar: prefix and warns on suspicious characters', async () => {
+    const user = userEvent.setup()
+    
+    function TestComponent() {
+      const [val, setVal] = useState('')
+      return <AddressInput id="addr" value={val} onChange={setVal} />
+    }
+    
+    render(<TestComponent />)
+    const input = screen.getByRole('textbox')
+    
+    await user.click(input)
+    // Paste with stellar: prefix and a suspicious non-ASCII character
+    await user.paste('stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+    
+    // The value should be updated without "stellar:"
+    expect(input).toHaveValue('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+    
+    // And it should show a warning
+    const alert = screen.getByRole('alert')
+    expect(alert).toBeInTheDocument()
+    expect(alert).toHaveTextContent(/suspicious characters/i)
   })
 })

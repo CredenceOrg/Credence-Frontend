@@ -32,6 +32,11 @@ export interface UseWalletState {
   network: CredenceNetwork | null
 }
 
+function parseNetwork(s: string): CredenceNetwork | null {
+  if (s === 'public' || s === 'test') return s
+  return null
+}
+
 /**
  * Manages Freighter wallet connection state for the Credence dApp.
  *
@@ -42,7 +47,7 @@ export interface UseWalletState {
  */
 export function useWallet(_settingsNetwork: string): UseWalletState {
   const [address, setAddress] = useState('')
-  const [network, setNetwork] = useState<CredenceNetwork | null>(null)
+  const [network, setNetwork] = useState<CredenceNetwork | null>(parseNetwork(_settingsNetwork))
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<WalletError | null>(null)
   const watcherStopRef = useRef<(() => void) | null>(null)
@@ -94,7 +99,17 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       }
 
       setAddress(result.address)
-      await syncNetwork()
+      const freighterNetwork = await syncNetwork()
+
+      if (freighterNetwork && parseNetwork(_settingsNetwork) && freighterNetwork !== parseNetwork(_settingsNetwork)) {
+        setAddress('')
+        setError({
+          code: 'network_mismatch',
+          message: `Wallet is on ${freighterNetwork} network, expected ${_settingsNetwork}.`,
+        })
+        return
+      }
+
       await startWatcher()
     } catch {
       setError({
@@ -104,7 +119,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
     } finally {
       setIsConnecting(false)
     }
-  }, [startWatcher, syncNetwork])
+  }, [startWatcher, syncNetwork, _settingsNetwork])
 
   const disconnect = useCallback(() => {
     stopWatcher()

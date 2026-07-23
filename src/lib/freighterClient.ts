@@ -43,11 +43,15 @@ export function mapFreighterNetwork(freighterNetwork: string): CredenceNetwork |
  * @returns `true` only when the SDK loads (browser) and reports a healthy connection.
  */
 export async function checkFreighterInstalled(): Promise<boolean> {
-  const freighter = await loadFreighter()
-  if (!freighter) return false
+  try {
+    const freighter = await loadFreighter()
+    if (!freighter) return false
 
-  const result = await freighter.isConnected()
-  return result.isConnected === true && !result.error
+    const result = await freighter.isConnected()
+    return result.isConnected === true && !result.error
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -154,6 +158,58 @@ export async function createWalletWatcher(
 
   return {
     stop: () => watcher.stop(),
+  }
+}
+
+/**
+ * Prompts the user (via Freighter) to sign a Stellar transaction XDR.
+ *
+ * Never throws — failures are returned as a discriminated result so callers can map them
+ * to UI state. The `code` distinguishes a missing extension from a user rejection and
+ * any other failure.
+ *
+ * @param xdr - The transaction envelope XDR to sign.
+ * @param opts - Optional network passphrase or address hint.
+ * @returns `{ ok: true, signedTxXdr }` on success, otherwise `{ ok: false, code, message }`.
+ */
+export async function signFreighterTransaction(
+  xdr: string,
+  opts?: { networkPassphrase?: string; address?: string }
+): Promise<
+  | { ok: true; signedTxXdr: string }
+  | { ok: false; code: 'not_installed' | 'rejected' | 'unknown'; message: string }
+> {
+  const freighter = await loadFreighter()
+  if (!freighter) {
+    return {
+      ok: false,
+      code: 'not_installed',
+      message: 'Freighter is not available in this environment.',
+    }
+  }
+
+  try {
+    const result = await freighter.signTransaction(xdr, opts)
+    if (result.error) {
+      const message = result.error || 'Signing request was rejected.'
+      const rejected =
+        result.error.toLowerCase().includes('reject') ||
+        result.error.toLowerCase().includes('denied') ||
+        result.error.toLowerCase().includes('cancel')
+      return { ok: false, code: rejected ? 'rejected' : 'unknown', message }
+    }
+
+    if (!result.signedTxXdr) {
+      return { ok: false, code: 'unknown', message: 'Freighter did not return a signed transaction.' }
+    }
+
+    return { ok: true, signedTxXdr: result.signedTxXdr }
+  } catch {
+    return {
+      ok: false,
+      code: 'unknown',
+      message: 'Unable to sign the transaction. Please try again.',
+    }
   }
 }
 

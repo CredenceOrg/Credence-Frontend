@@ -13,6 +13,7 @@
     }
   },
   "nav": {
+    "home": "Home",
     "dashboard": "Dashboard",
     "bond": "Bond",
     "trustScore": "Trust Score",

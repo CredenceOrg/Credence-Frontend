@@ -212,3 +212,10 @@
     font-size: var(--credence-font-size-lg);
   }
 }
+
+/* Safe area: prevent content from being obscured by the fixed BottomNav */
+@media (max-width: 768px) {
+  .appMain {
+    padding-bottom: calc(var(--credence-space-16, 4rem) + var(--credence-space-4));
+  }
+}

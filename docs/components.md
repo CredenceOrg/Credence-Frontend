@@ -10,6 +10,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 
 | Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |
 | ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| BottomNav              | `src/components/navigation/BottomNav.css`                                           | None.                                                                                                                     |
 | Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
 | Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
 | Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
@@ -498,144 +499,26 @@ Tokens: warning color tokens, spacing, radius.
 />
 ```
 
-## ActionCard
+## BottomNav
 
-Source: [`src/components/ActionCard.tsx`](../src/components/ActionCard.tsx).
+Source: [`src/components/navigation/BottomNav.tsx`](../src/components/navigation/BottomNav.tsx).
 
-| Prop            | Type        | Default       |
-| --------------- | ----------- | ------------- |
-| `title`         | `string`    | Required      |
-| `padding`       | `'compact' \| 'comfortable'` | `'comfortable'` |
-| `elevated`      | `boolean`   | `false`       |
-| `shareableLink` | `string`    | `undefined`   |
-| `isEarlyAccess` | `boolean`   | `false`       |
-| `children`      | `ReactNode` | Required      |
+Fixed bottom navigation bar showing the 5 primary routes. Visible on viewports ≤ `BREAKPOINTS.MD` (768 px); hidden at wider widths via `display: none` in CSS.
 
-Accessibility: renders as a semantic `<article>` with the title in an `<h2>`. No additional ARIA attributes are needed; place inside a `<main>` or named landmark so context is clear.
+| Prop | Type | Default |
+| ---- | ---- | ------- |
+| *(none)* | — | — |
 
-Tokens: `--credence-border-default`, `--credence-radius-xl`, `--credence-space-4`, `--credence-space-6`, `--credence-surface-card`, `--credence-text-primary`, `--credence-font-size-xl`, `--credence-line-height-tight`.
+The component accepts no props. Route state is derived internally via React Router's `useLocation`.
 
-```tsx
-<ActionCard title="Create bond">
-  <AmountInput value={amount} onChange={setAmount} balance={balance} />
-  <Button onClick={submit}>Submit</Button>
-</ActionCard>
-```
+**Rendered markup:** `<nav aria-label="Bottom navigation">` containing a `<ul role="list">` of 5 `<li>` items, each wrapping a React Router `NavLink`. `NavLink` automatically sets `aria-current="page"` on the active route's `<a>` element.
 
-## Disclaimer
+Accessibility: all tabs are native `<a>` elements reachable by Tab key in document order; active state is communicated both visually (primary-color border and text) and semantically (`aria-current="page"`); focus indicator uses `var(--credence-focus-ring)`; touch targets are ≥ 56 px tall (44 px WCAG minimum). Transitions are suppressed under `prefers-reduced-motion`.
 
-Source: [`src/components/Disclaimer.tsx`](../src/components/Disclaimer.tsx).
-
-| Prop        | Type     | Default        |
-| ----------- | -------- | -------------- |
-| `context`   | `string` | `undefined`    |
-| `termsHref` | `string` | `LINKS.terms`  |
-
-Accessibility: renders as `<aside aria-label="Risk disclaimer">`. The terms link has an explicit `aria-label="Read full terms and conditions"`. When `termsHref` resolves to a placeholder (`'#'` or empty), a `<span aria-disabled="true">` is rendered instead of an anchor so the element is inert for keyboard and AT users.
-
-Tokens: secondary text and spacing tokens via `Disclaimer.css`.
+Tokens: `--credence-surface-card` (background), `--credence-border-default` (top border), `--credence-color-primary` (active tab indicator), `--credence-text-secondary` (inactive label), `--credence-text-primary` (hover), `--credence-space-1`, `--credence-space-2` (padding), `--credence-font-size-xs` (label size), `--credence-font-weight-semibold` (label weight), `--credence-font-weight-bold` (active label), `--credence-motion-duration-fast`, `--credence-motion-easing-standard` (transitions), `--credence-focus-ring`.
 
 ```tsx
-<Disclaimer context="Early withdrawal forfeits accrued rewards." />
-```
-
-## ThemeToggle
-
-Source: [`src/components/ThemeToggle.tsx`](../src/components/ThemeToggle.tsx). Focused docs: [dark mode](./dark-mode.md).
-
-No external props. Reads `themeMode` from `SettingsContext` and writes the explicit opposite on click; never exposes a prop API.
-
-Accessibility: native `<button>` with `aria-label="Switch to {nextTheme} mode"` and `aria-pressed` reflecting whether the resolved theme is dark. Both icons are `aria-hidden`. Tracks the OS `prefers-color-scheme` media query while `themeMode` is `'system'` so `aria-pressed` and `aria-label` stay in sync with the document's `data-theme`.
-
-Tokens: `--credence-focus-ring`, spacing, and icon sizing via `ThemeToggle.css`.
-
-```tsx
-<ThemeToggle />
-```
-
-## KeyboardShortcutsDialog
-
-Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx). Focused docs: [keyboard interactions](./keyboard-interactions.md).
-
-| Prop             | Type                              | Default     |
-| ---------------- | --------------------------------- | ----------- |
-| `open`           | `boolean`                         | Required    |
-| `onClose`        | `() => void`                      | Required    |
-| `returnFocusRef` | `React.RefObject<HTMLElement \| null>` | `undefined` |
-
-Accessibility: portal-rendered modal with `role="dialog"`, `aria-modal="true"`, and a generated `aria-labelledby`. Focus is trapped while open. Escape and backdrop click both call `onClose`. Focus is restored to `returnFocusRef` on close, or to the previously active element when `returnFocusRef` is omitted. Shortcuts are grouped by category with visible section headings.
-
-Tokens: border, surface, text, font, spacing, radius, and focus tokens via `KeyboardShortcutsDialog.css`.
-
-```tsx
-const triggerRef = useRef<HTMLButtonElement>(null)
-
-<button ref={triggerRef} onClick={() => setOpen(true)}>Keyboard shortcuts</button>
-<KeyboardShortcutsDialog open={open} onClose={() => setOpen(false)} returnFocusRef={triggerRef} />
-```
-
-## AttestationForm
-
-Source: [`src/components/AttestationForm.tsx`](../src/components/AttestationForm.tsx).
-
-| Prop              | Type                                                                   | Default     |
-| ----------------- | ---------------------------------------------------------------------- | ----------- |
-| `onSubmitSuccess` | `(payload: { subject: string; type: string; evidence: string }) => void` | `undefined` |
-| `disabled`        | `boolean`                                                              | `false`     |
-
-Accessibility: all form fields are wrapped in `FormField` so each has a `<label>`, hint, and error wired through `aria-describedby` and `aria-invalid`. The type selector uses `controls/Select` (native `<select>`). The evidence textarea has a live character counter associated via `aria-describedby`. Submission is confirmed via `ConfirmDialog` before calling `onSubmitSuccess`; success is announced via a toast.
-
-Tokens: inherits tokens from `AddressInput`, `Select`, `FormField`, and `Button`.
-
-```tsx
-<AttestationForm
-  onSubmitSuccess={({ subject, type, evidence }) => recordAttestation(subject, type, evidence)}
-/>
-```
-
-## CreateBondFlow
-
-Source: [`src/components/CreateBondFlow.tsx`](../src/components/CreateBondFlow.tsx).
-
-| Prop         | Type         | Default     |
-| ------------ | ------------ | ----------- |
-| `onComplete` | `() => void` | `undefined` |
-| `onCancel`   | `() => void` | `undefined` |
-
-A four-step wizard: **amount → duration → review → confirm**. Fetches the connected wallet's USDC balance and calculates early-withdrawal penalty in-flight. The final step uses `ConfirmDialog` for confirmation.
-
-Accessibility: each step manages focus on mount so keyboard users advance through the wizard without losing context. Reduced motion is respected via `useReducedMotion`. Success is announced via a toast; `onComplete` is called after the toast fires.
-
-Tokens: `CreateBondFlow.css` consumes border, radius, spacing, surface, text, font, and motion tokens.
-
-```tsx
-<CreateBondFlow onComplete={() => navigate('/bond')} onCancel={() => navigate('/bond')} />
-```
-
-## ErrorBoundary
-
-Source: [`src/components/ErrorBoundary.tsx`](../src/components/ErrorBoundary.tsx).
-
-| Prop       | Type                                         | Default                        |
-| ---------- | -------------------------------------------- | ------------------------------ |
-| `children` | `ReactNode`                                  | Required                       |
-| `fallback` | `(error: Error, reset: () => void) => ReactNode` | `undefined` (uses `ErrorState`) |
-
-Class component that catches render and lifecycle errors in its subtree. The default fallback renders a branded `ErrorState` with a "Retry" action (re-mounts the subtree without a full reload) and a "Go home" link. Supply `fallback` to override with custom error UI.
-
-Wire telemetry in `componentDidCatch` (currently logs to console) before shipping to production.
-
-Accessibility: no additional ARIA attributes; inherits accessibility from `ErrorState` or the custom `fallback` render.
-
-Tokens: none directly; delegates to `ErrorState`.
-
-```tsx
-<ErrorBoundary>
-  <BondPage />
-</ErrorBoundary>
-
-{/* Custom fallback */}
-<ErrorBoundary fallback={(err, reset) => <button onClick={reset}>Retry: {err.message}</button>}>
-  <TrustScorePage />
-</ErrorBoundary>
+// BottomNav is rendered by Layout — no props needed.
+// It reads the current route via React Router context automatically.
+<BottomNav />
 ```

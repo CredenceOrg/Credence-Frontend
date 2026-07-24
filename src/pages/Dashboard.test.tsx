@@ -4,6 +4,15 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Dashboard from './Dashboard'
 
+// Mocks needed because ActionCard now uses useToast, useCopyToClipboard, and useTranslation
+vi.mock('../components/ToastProvider', () => ({
+  useToast: () => ({ addToast: vi.fn(), removeToast: vi.fn(), removeAllToasts: vi.fn(), announce: vi.fn() }),
+}))
+
+vi.mock('../hooks/useCopyToClipboard', () => ({
+  default: () => ({ copy: vi.fn().mockResolvedValue(true), copied: false, reset: vi.fn() }),
+}))
+
 const mockConnect = vi.fn()
 let mockConnected = true
 let mockIsConnecting = false
@@ -92,5 +101,21 @@ describe('Dashboard', () => {
 
     expect(screen.getByLabelText(/loading dashboard/i)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /wallet required/i })).not.toBeInTheDocument()
+  })
+
+  it('renders copy-link buttons on each dashboard card', () => {
+    renderDashboard()
+
+    const copyButtons = screen.getAllByRole('button', { name: /copy link/i })
+    // Four cards: Trust Score, Active Bonds, Recent Activity, Shortcuts
+    expect(copyButtons).toHaveLength(4)
+  })
+
+  it('does not render copy-link buttons when disconnected', () => {
+    mockConnected = false
+
+    renderDashboard()
+
+    expect(screen.queryByRole('button', { name: /copy link/i })).not.toBeInTheDocument()
   })
 })

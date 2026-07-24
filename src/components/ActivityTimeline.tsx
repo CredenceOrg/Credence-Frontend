@@ -4,25 +4,7 @@ import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
 
-import type { ActivityItem, ActivityTone } from '../data/activity'
-export type { ActivityItem, ActivityTone }
 
-export function toneToBadgeVariant(tone: string): string {
-  switch (tone) {
-    case 'success':
-      return 'active'
-    case 'warning':
-      return 'grace-period'
-    case 'info':
-      return 'locked'
-    default:
-      return 'active'
-  }
-}
-
-export function isTxHash(meta: string): boolean {
-  return meta.toLowerCase().startsWith('tx')
-}
 
 export interface ActivityTimelineProps {
   compact?: boolean

@@ -1,0 +1,8 @@
+.currency {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.currency--invalid {
+  color: var(--credence-color-slate-500);
+}

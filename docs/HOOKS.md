@@ -26,6 +26,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useMediaQuery`](#usemediaquery)
   - [`useQuery`](#usequery)
   - [`useReducedMotion`](#usereducedmotion)
+  - [`useReducedTransparency`](#usereducedtransparency)
   - [`useScrollToTop`](#usescrolltotop)
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
@@ -281,6 +282,52 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 function Banner() {
   const reduceMotion = useReducedMotion()
   return <div className={reduceMotion ? 'no-anim' : 'slide-in'}>…</div>
+}
+```
+
+---
+
+### `useReducedTransparency`
+
+Source: [`src/hooks/useReducedTransparency.ts`](../src/hooks/useReducedTransparency.ts) · See also: [ACCESSIBILITY.md](ACCESSIBILITY.md#6-reduced-transparency-behavior)
+
+```ts
+function useReducedTransparency(): boolean
+```
+
+Returns `true` when the user has `prefers-reduced-transparency: reduce` set, and stays in
+sync as the OS preference changes. When `true`, any component that sets inline transparent
+backgrounds (e.g. `rgba()` values) should fall back to a fully-opaque equivalent so that
+content behind an overlay does not bleed through.
+
+**Behavior notes**
+
+- Identical subscription pattern to `useReducedMotion`: subscribes to `matchMedia`, with an
+  `addListener`/`removeListener` fallback; re-syncs on mount.
+- **CSS-first:** components that express backdrop colours via the `--credence-backdrop-light`,
+  `--credence-backdrop-dark`, or `--credence-backdrop-mobile` tokens do **not** need this
+  hook — the global `@media (prefers-reduced-transparency: reduce)` block in `src/index.css`
+  overrides those tokens automatically. Reach for the hook only when transparency is applied
+  via a JS inline style.
+- **SSR-safe / cleanup:** returns `false` when `window`/`matchMedia` is unavailable; removes
+  its media-query listener on unmount.
+
+```tsx
+import { useReducedTransparency } from '../hooks/useReducedTransparency'
+
+function GlassPanel({ children }: { children: React.ReactNode }) {
+  const reduceTransparency = useReducedTransparency()
+  return (
+    <div
+      style={{
+        background: reduceTransparency
+          ? 'var(--credence-surface-card)'
+          : 'rgba(255, 255, 255, 0.6)',
+      }}
+    >
+      {children}
+    </div>
+  )
 }
 ```
 

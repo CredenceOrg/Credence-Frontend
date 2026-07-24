@@ -6,13 +6,13 @@
   z-index: 1000;
   display: flex;
   justify-content: flex-end;
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--credence-backdrop-light);
   animation: whats-new-dialog-fade-in var(--credence-motion-duration-fast, 150ms)
     var(--credence-motion-easing-decelerate, cubic-bezier(0, 0, 0.2, 1));
 }
 
 [data-theme='dark'] .whats-new-dialog__backdrop {
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--credence-backdrop-dark);
 }
 
 /* ─── Drawer panel (Slide-in right) ───────────────────────────────────────── */

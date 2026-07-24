@@ -57,6 +57,14 @@ Run the relevant automated checks first, then complete the manual checks for eve
 - [ ] Skeletons, spinners, and progress indicators have text alternatives when they carry meaning.
       *Example: A loading spinner on the Trust Score page should include `<span className="sr-only">Calculating score...</span>`.*
 
+### 6. Reduced-transparency behavior
+
+- [ ] Semi-transparent backdrops (modal overlays, drawer backdrops, mobile nav scrim) become fully opaque when `prefers-reduced-transparency` is enabled.
+      *How to test: Enable "Reduce Transparency" in macOS System Settings → Accessibility → Display, or in iOS Settings → Accessibility → Display & Text Size. Alternatively, override the CSS custom property `--credence-backdrop-light` in DevTools and verify the modal backdrop switches to a solid colour.*
+- [ ] No content relies solely on a partially transparent overlay for its visual separation from the page background.
+- [ ] Components that set backdrop colours use the `--credence-backdrop-light`, `--credence-backdrop-dark`, or `--credence-backdrop-mobile` design tokens rather than hard-coded `rgba()` values, so the global `@media (prefers-reduced-transparency: reduce)` override in `src/index.css` takes effect automatically.
+- [ ] JavaScript-driven inline transparency (if any) checks `useReducedTransparency()` and falls back to an opaque value.
+
 ### 6. Forms and validation
 
 - [ ] Every input has a visible label linked with `htmlFor` and `id`, or an equivalent accessible name.

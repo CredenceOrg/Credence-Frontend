@@ -92,6 +92,30 @@ export default function MyComponent() {
 }
 ```
 
+For components that apply inline transparent backgrounds (e.g. `rgba()` values on overlays or glass-effect panels), query the transparency preference using `useReducedTransparency`:
+
+```tsx
+import { useReducedTransparency } from '../hooks/useReducedTransparency'
+
+export default function GlassPanel({ children }: { children: React.ReactNode }) {
+  const reduceTransparency = useReducedTransparency()
+
+  return (
+    <div
+      style={{
+        background: reduceTransparency
+          ? 'var(--credence-surface-card)'
+          : 'rgba(255, 255, 255, 0.6)',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+```
+
+> **CSS-first rule:** components that set backdrop colours via `--credence-backdrop-light`, `--credence-backdrop-dark`, or `--credence-backdrop-mobile` tokens do **not** need the JS hook. The global `@media (prefers-reduced-transparency: reduce)` block in `src/index.css` overrides those tokens automatically. Use `useReducedTransparency` only when transparency is applied through a JS inline style.
+
 #### TrustGauge integration
 
 The TrustGauge progress fill and current-score thumb use inline-styled transitions to animate the new score into place. The component reads `useReducedMotion` and overrides the inline `transition` to `'none'` when reduced motion is preferred, so the gauge snaps to the new position rather than animating:

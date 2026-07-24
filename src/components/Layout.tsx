@@ -34,12 +34,10 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 export default function Layout() {
   const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [launcherOpen, setLauncherOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
-  const launcherButtonRef = useRef<HTMLButtonElement>(null)
 
 
   const NAV_LINKS = [
@@ -144,18 +142,6 @@ export default function Layout() {
 
         <ThemeToggle />
         <NetworkIndicator />
-
-        <button
-          ref={launcherButtonRef}
-          type="button"
-          className="appHeader-launcher-btn"
-          aria-label={t('layout.actionLauncher')}
-          title={t('layout.actionLauncherHint')}
-          onClick={openLauncher}
-        >
-          <span aria-hidden="true">⌘K</span>
-          <span className="sr-only">{t('layout.actionLauncher')}</span>
-        </button>
 
         {/* Keyboard shortcuts help button */}
         <button

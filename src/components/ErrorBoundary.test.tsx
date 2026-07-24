@@ -47,11 +47,13 @@ describe('ErrorBoundary', () => {
   })
 
   it('ErrorBoundary allows retry after component succeeds on reset', async () => {
-    let hasThrown = false
+    let shouldThrow = true
     
     const FlakyComponent = () => {
-      if (!hasThrown) {
-        hasThrown = true
+      if (shouldThrow) {
+        Promise.resolve().then(() => {
+          shouldThrow = false
+        })
         throw new Error('First attempt fails')
       }
       return <div>Recovered content</div>

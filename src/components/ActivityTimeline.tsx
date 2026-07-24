@@ -1,15 +1,41 @@
-import { useState, memo, type ReactElement } from 'react'
+import { useState, useRef, useCallback } from 'react'
+import Badge, { type BadgeVariant } from './Badge'
+import CopyableHash from './CopyableHash'
 import './ActivityTimeline.css'
 import EmptyState from './states/EmptyState'
-import CopyableHash from './CopyableHash'
 
-export type { ActivityItem, ActivityTone }
-export { ACTIVITY_ITEMS, SAMPLE_ACTIVITY }
+export type ActivityTone = 'success' | 'warning' | 'info'
 
-export interface ActivityTimelineProps {
-  compact?: boolean
-  /** Timeline events to render. Defaults to sample data. Pass empty array for no data. */
-  items?: ActivityItem[]
+/**
+ * Maps ActivityTimeline tone values to Badge variants.
+ * Tones represent attestation status severity levels.
+ */
+export function toneToBadgeVariant(tone: ActivityTone): BadgeVariant {
+  const mapping: Record<ActivityTone, BadgeVariant> = {
+    success: 'active',
+    warning: 'grace-period',
+    info: 'locked',
+  }
+  return mapping[tone]
+}
+
+/**
+ * Detects if meta string represents a transaction hash.
+ * Returns true if meta starts with "Tx 0x" pattern.
+ */
+export function isTxHash(meta: string): boolean {
+  return /^Tx\s+0x/i.test(meta)
+}
+
+export interface ActivityItem {
+  id: string
+  timestamp: string
+  title: string
+  description: string
+  actor: string
+  statusLabel: string
+  tone: ActivityTone
+  meta: string
 }
 
 export const SAMPLE_ACTIVITY: ActivityItem[] = [
@@ -45,67 +71,12 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
   },
 ]
 
-const ActivityRow = memo(function ActivityRow({ item, isExpanded, onToggle }: ActivityRowProps) {
-  return (
-    <li className="activity-row" key={item.id}>
-      <div className="activity-row__rail" aria-hidden="true">
-        <span className={`activity-row__node activity-row__node--${item.tone}`} />
-        <span className="activity-row__line" />
-      </div>
+export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
 
-      <time className="activity-row__time">{item.timestamp}</time>
-
-      <div className="activity-row__content">
-        <div className="activity-row__title-wrap">
-          <p className="activity-row__title">{item.title}</p>
-          <span className={`activity-row__status activity-row__status--${item.tone}`}>
-            {item.statusLabel}
-          </span>
-        </div>
-        <p className="activity-row__description">{item.description}</p>
-
-        <button
-          type="button"
-          aria-expanded={isExpanded}
-          aria-controls={`details-${item.id}`}
-          onClick={() => onToggle(item.id)}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            marginTop: 'var(--credence-space-2)',
-            color: 'var(--credence-text-secondary)',
-            cursor: 'pointer',
-            fontSize: 'var(--credence-font-size-sm)',
-            textDecoration: 'underline',
-            textAlign: 'left',
-          }}
-        >
-          {isExpanded ? 'Hide details' : 'Show details'}
-        </button>
-
-        {isExpanded && (
-          <div
-            id={`details-${item.id}`}
-            style={{
-              marginTop: 'var(--credence-space-3)',
-              padding: 'var(--credence-space-3)',
-              background: 'var(--credence-color-surface-hover)',
-              borderRadius: 'var(--credence-radius-md)',
-            }}
-          >
-            <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
-              <strong>Actor:</strong> {item.actor}
-            </p>
-            <p className="activity-row__meta">
-              <strong>Meta:</strong> {item.meta}
-            </p>
-          </div>
-        )}
-      </div>
-    </li>
-  )
-})
+export interface ActivityTimelineProps {
+  compact?: boolean
+  items?: ActivityItem[]
+}
 
 /**
  * Attestation evidence detail panel component.
@@ -120,7 +91,7 @@ const ActivityRow = memo(function ActivityRow({ item, isExpanded, onToggle }: Ac
 export default function ActivityTimeline({
   compact = false,
   items = ACTIVITY_ITEMS,
-}: ActivityTimelineProps): ReactElement {
+}: ActivityTimelineProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const expandedIdRef = useRef<string | null>(null)
@@ -168,8 +139,8 @@ export default function ActivityTimeline({
       {count === 0 ? (
         <EmptyState
           illustration="activity"
-          title="No recent activity"
-          description="New trust score events will appear here once bonds"
+          title="No activity yet"
+          description="Attestations and events will appear here"
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">
@@ -195,39 +166,44 @@ export default function ActivityTimeline({
 
                   <button
                     type="button"
-                    className="activity-row__toggle"
+                    id={buttonId}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
                     onClick={() => toggleExpand(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        toggleExpand(item.id)
+                      }
+                    }}
+                    className="activity-row__disclosure"
+                    ref={(el) => {
+                      if (el) triggerRefs.current.set(item.id, el)
+                      else triggerRefs.current.delete(item.id)
+                    }}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
 
-                  {isExpanded && (
-                    <div
-                      id={`details-${item.id}`}
-                      style={{
-                        marginTop: 'var(--credence-space-3)',
-                        padding: 'var(--credence-space-3)',
-                        background: 'var(--credence-surface-page)',
-                        borderRadius: 'var(--credence-radius-md)',
-                      }}
-                    >
-                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
-                        <strong>Actor:</strong> {item.actor}
-                      </p>
-                      <p className="activity-row__meta">
-                        <strong>Meta:</strong>{' '}
-                        {item.meta.startsWith('Tx ') ? (
-                          <>
-                            Tx <CopyableHash hash={item.meta.slice(3)} kind="tx" />
-                          </>
-                        ) : (
-                          item.meta
-                        )}
-                      </p>
-                    </div>
-                  )}
+                  <div
+                    id={panelId}
+                    className="activity-row__detail-panel"
+                    hidden={!isExpanded}
+                    onKeyDown={handleKeyDown}
+                    tabIndex={-1}
+                  >
+                    <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                      <strong>Actor:</strong> {item.actor}
+                    </p>
+                    <p className="activity-row__meta">
+                      <strong>Meta:</strong>{' '}
+                      {isTxHash(item.meta) ? (
+                        <CopyableHash hash={item.meta} />
+                      ) : (
+                        item.meta
+                      )}
+                    </p>
+                  </div>
                 </div>
               </li>
             )

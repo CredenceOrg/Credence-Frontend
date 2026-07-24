@@ -9,7 +9,7 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
-import { ActivityItem } from '../components/ActivityTimeline'
+import ActivityTimeline, { ActivityItem } from '../components/ActivityTimeline'
 import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
@@ -19,7 +19,6 @@ import { useIsMobile } from '../hooks/useMediaQuery'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
-import { SAMPLE_ACTIVITY } from '../components/ActivityTimeline'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 
 export interface RecentLookupItem {
@@ -55,6 +54,7 @@ function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validati
 }
 
 export default function TrustScore() {
+  const { t } = useTranslation()
   useSeo({
     title: 'Trust Score',
     description:
@@ -107,20 +107,18 @@ export default function TrustScore() {
   useEffect(() => {
     if (!isLoading && !error && data && lookupAddress) {
       if (isValidStellarAddress(lookupAddress)) {
-        setHistory((prev) => {
-          const current = Array.isArray(prev) ? prev : []
-          const filtered = current.filter(
-            (item) => item && typeof item === 'object' && item.address.toLowerCase() !== lookupAddress.toLowerCase()
-          )
-          const newItem: RecentLookupItem = {
-            address: lookupAddress,
-            timestamp: Date.now(),
-          }
-          return [newItem, ...filtered].slice(0, 5)
-        })
+        const current = Array.isArray(history) ? history : []
+        const filtered = current.filter(
+          (item) => item && typeof item === 'object' && item.address.toLowerCase() !== lookupAddress.toLowerCase()
+        )
+        const newItem: RecentLookupItem = {
+          address: lookupAddress,
+          timestamp: Date.now(),
+        }
+        setHistory([newItem, ...filtered].slice(0, 5))
       }
     }
-  }, [isLoading, error, data, lookupAddress, setHistory])
+  }, [isLoading, error, data, lookupAddress, history, setHistory])
 
   const commitAddressParam = (value: string) => {
     setSearchParams(
@@ -170,17 +168,15 @@ export default function TrustScore() {
     commitAddressParam(recentAddress)
 
     // Move to top of history immediately
-    setHistory((prev) => {
-      const current = Array.isArray(prev) ? prev : []
-      const filtered = current.filter(
-        (item) => item && typeof item === 'object' && item.address.toLowerCase() !== recentAddress.toLowerCase()
-      )
-      const newItem: RecentLookupItem = {
-        address: recentAddress,
-        timestamp: Date.now(),
-      }
-      return [newItem, ...filtered].slice(0, 5)
-    })
+    const current = Array.isArray(history) ? history : []
+    const filtered = current.filter(
+      (item) => item && typeof item === 'object' && item.address.toLowerCase() !== recentAddress.toLowerCase()
+    )
+    const newItem: RecentLookupItem = {
+      address: recentAddress,
+      timestamp: Date.now(),
+    }
+    setHistory([newItem, ...filtered].slice(0, 5))
   }
 
   const handleClearHistory = () => {

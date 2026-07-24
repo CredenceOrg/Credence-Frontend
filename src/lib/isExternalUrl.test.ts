@@ -5,14 +5,14 @@ describe('isExternalUrl', () => {
   const originalLocation = window.location;
 
   beforeAll(() => {
-    // Mock window.location for tests
-    delete (window as any).location;
+    // @ts-expect-error - location is non-optional
+    delete window.location;
     window.location = {
       ...originalLocation,
       origin: 'https://app.credence.org',
       href: 'https://app.credence.org/dashboard',
       protocol: 'https:',
-    } as any;
+    };
   });
 
   afterAll(() => {

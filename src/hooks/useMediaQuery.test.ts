@@ -90,9 +90,10 @@ describe('useMediaQuery', () => {
   it('re-subscribes when the query string changes', () => {
     const mql1 = makeMql(false)
     const mql2 = makeMql(true)
-    const matchMediaMock = vi.fn()
-      .mockReturnValueOnce(mql1) // initial render (lazy init) or first effect call
-      .mockReturnValue(mql2)
+    const matchMediaMock = vi.fn((q) => {
+      if (q === QUERY) return mql1
+      return mql2
+    })
 
     window.matchMedia = matchMediaMock
 

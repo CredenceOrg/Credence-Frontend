@@ -10,6 +10,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useTransactions } from '../hooks/useTransactions'
 import { explorerUrl } from '../lib/explorerUrl'
 import type { Transaction } from '../api/types'
+import { truncateAddress } from '@/lib/stellar'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
 

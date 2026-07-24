@@ -58,6 +58,8 @@ The CSP string is defined in [`src/config/security.ts`](../src/config/security.t
 
 The CSP header set by `vite.config.ts` only applies to the Vite dev server (`npm run dev`). For production, configure your web server or hosting platform to send the same `Content-Security-Policy` header with the static build output (`dist/`).
 
+For backend cookie-signing secrets (session and CSRF), see the [Cookie-Secret Rotation Runbook](./COOKIE_SECRETS.md).
+
 ### nginx example
 
 ```nginx

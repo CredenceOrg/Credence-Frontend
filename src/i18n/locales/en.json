@@ -41,7 +41,9 @@
     "reviewAttestations": "Review attestations",
     "reviewAttestationsDescription": "Open recent evidence and claims.",
     "backToSummary": "Back to summary",
-    "mockDataBanner": "Dashboard figures are mock protocol data until live account indexing is connected."
+    "mockDataBanner": "Dashboard figures are mock protocol data until live account indexing is connected.",
+    "copyLink": "Copy link to this card",
+    "linkCopied": "Link copied to clipboard"
   },
   "settings": {
     "title": "Settings",

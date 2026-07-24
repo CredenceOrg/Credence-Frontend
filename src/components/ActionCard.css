@@ -43,12 +43,56 @@
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
 }
 
+.actionCard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--credence-space-2);
+}
+
 .actionCard__title {
   font-size: var(--credence-font-size-xl);
   line-height: var(--credence-line-height-tight);
   margin: 0;
   /* Wrap long titles without breaking layout */
   word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+
+.actionCard__copyLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-md);
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--credence-motion-duration-fast, 0.2s) ease,
+    background-color var(--credence-motion-duration-fast, 0.2s) ease,
+    border-color var(--credence-motion-duration-fast, 0.2s) ease;
+}
+
+.actionCard__copyLink:hover {
+  color: var(--credence-color-primary);
+  background-color: var(--credence-surface-page);
+  border-color: var(--credence-color-primary);
+}
+
+.actionCard__copyLink:focus-visible {
+  outline: 2px solid var(--credence-color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actionCard__copyLink {
+    transition: none;
+  }
 }
 
 .actionCard__content {

@@ -1,14 +1,67 @@
-import { useState, useRef, useCallback } from 'react'
-import Badge, { type BadgeVariant } from './Badge'
+import { useState, useRef, useCallback, type ReactElement } from 'react'
+import './ActivityTimeline.css'
+import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
-import { ACTIVITY_ITEMS } from '../data/activity'
+import Badge from './Badge'
 
+import type { ActivityItem, ActivityTone } from '../data/activity'
 export type { ActivityItem, ActivityTone }
+
+export function toneToBadgeVariant(tone: string): string {
+  switch (tone) {
+    case 'success':
+      return 'active'
+    case 'warning':
+      return 'grace-period'
+    case 'info':
+      return 'locked'
+    default:
+      return 'active'
+  }
+}
+
+export function isTxHash(meta: string): boolean {
+  return meta.toLowerCase().startsWith('tx')
+}
 
 export interface ActivityTimelineProps {
   compact?: boolean
   items?: ActivityItem[]
 }
+
+export const SAMPLE_ACTIVITY: ActivityItem[] = [
+  {
+    id: 'evt-001',
+    timestamp: 'Apr 28, 14:22 UTC',
+    title: 'Attestation submitted',
+    description: 'Identity evidence package uploaded and signed for review.',
+    actor: 'Validator Node 12',
+    statusLabel: 'Accepted',
+    tone: 'success',
+    meta: 'Tx 0x93a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1',
+  },
+  {
+    id: 'evt-002',
+    timestamp: 'Apr 27, 09:48 UTC',
+    title: 'Proof mismatch detected',
+    description: 'Signature payload differed from expected checksum for one field.',
+    actor: 'Automated Verifier',
+    statusLabel: 'Needs update',
+    tone: 'warning',
+    meta: 'Rule AV-17',
+  },
+  {
+    id: 'evt-003',
+    timestamp: 'Apr 26, 20:11 UTC',
+    title: 'Credential refreshed',
+    description: 'Expiration window extended after successful periodic check.',
+    actor: 'System process',
+    statusLabel: 'In review',
+    tone: 'info',
+    meta: 'Window +90d',
+  },
+]
+
 
 /**
  * Attestation evidence detail panel component.
@@ -22,8 +75,8 @@ export interface ActivityTimelineProps {
  */
 export default function ActivityTimeline({
   compact = false,
-  items = ACTIVITY_ITEMS,
-}: ActivityTimelineProps) {
+  items = SAMPLE_ACTIVITY,
+}: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const count = items.length
@@ -37,6 +90,7 @@ export default function ActivityTimeline({
     <section
       className={`activity-surface${compact ? ' activity-surface--compact' : ''}`}
       aria-label="Activity and attestations"
+      onKeyDown={handleKeyDown}
     >
       <header className="activity-surface__header">
         <div>
@@ -50,7 +104,7 @@ export default function ActivityTimeline({
         <EmptyState
           illustration="activity"
           title="No activity yet"
-          description="Attestations and events will appear here"
+          description="Attestations and events will appear here."
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">
@@ -74,6 +128,11 @@ export default function ActivityTimeline({
                   <p className="activity-row__description">{item.description}</p>
 
                   <button
+                    id={buttonId}
+                    ref={(el) => {
+                      if (el) triggerRefs.current.set(item.id, el)
+                      else triggerRefs.current.delete(item.id)
+                    }}
                     type="button"
                     id={buttonId}
                     aria-expanded={isExpanded}
@@ -94,25 +153,29 @@ export default function ActivityTimeline({
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
 
-                  <div
-                    id={panelId}
-                    className="activity-row__detail-panel"
-                    hidden={!isExpanded}
-                    onKeyDown={handleKeyDown}
-                    tabIndex={-1}
-                  >
-                    <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
-                      <strong>Actor:</strong> {item.actor}
-                    </p>
-                    <p className="activity-row__meta">
-                      <strong>Meta:</strong>{' '}
-                      {isTxHash(item.meta) ? (
-                        <CopyableHash hash={item.meta} />
-                      ) : (
-                        item.meta
-                      )}
-                    </p>
-                  </div>
+                  {isExpanded && (
+                    <div
+                      id={`details-${item.id}`}
+                      style={{
+                        marginTop: 'var(--credence-space-3)',
+                        padding: 'var(--credence-space-3)',
+                        background: 'var(--credence-surface-page)',
+                        borderRadius: 'var(--credence-radius-md)',
+                      }}
+                    >
+                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                        <strong>Actor:</strong> {item.actor}
+                      </p>
+                      <p className="activity-row__meta">
+                        <strong>Meta:</strong>{' '}
+                        {isTxHash(item.meta) ? (
+                          <CopyableHash hash={item.meta} kind="tx" />
+                        ) : (
+                          item.meta
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </li>
             )

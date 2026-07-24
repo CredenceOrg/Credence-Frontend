@@ -122,33 +122,33 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     defaultPersistedSettings,
   )
 
-  const normalizedPersistedSettings = useMemo(() => {
-    const normalized = validateAndNormalize(persistedSettingsRaw)
-    return normalized.ok ? normalized.data : defaultPersistedSettings
+  const persistedSettings = useMemo(() => {
+    const res = validateAndNormalize(persistedSettingsRaw)
+    return (res.ok ? res.data : defaultPersistedSettings) as PersistedSettings
   }, [persistedSettingsRaw])
 
-  const [themeMode, setThemeMode] = useState<ThemeMode>(normalizedPersistedSettings.themeMode as ThemeMode)
-  const [network, setNetwork] = useState<NetworkOption>(normalizedPersistedSettings.network as NetworkOption)
-  const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(normalizedPersistedSettings.addressDisplay as AddressDisplayOption)
-  const [toastsEnabled, setToastsEnabled] = useState<boolean>(normalizedPersistedSettings.toastsEnabled)
-  const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(normalizedPersistedSettings.autoDismiss as AutoDismissOption)
+  const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
+  const [network, setNetwork] = useState<NetworkOption>(persistedSettings.network)
+  const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(persistedSettings.addressDisplay)
+  const [toastsEnabled, setToastsEnabled] = useState<boolean>(persistedSettings.toastsEnabled)
+  const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(persistedSettings.autoDismiss)
 
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
-  const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(normalizedPersistedSettings as PersistedSettings)
+  const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)
 
   useEffect(() => {
     const isEquivalent =
-      persistedSettingsRaw.themeMode === normalizedPersistedSettings.themeMode &&
-      persistedSettingsRaw.network === normalizedPersistedSettings.network &&
-      persistedSettingsRaw.addressDisplay === normalizedPersistedSettings.addressDisplay &&
-      persistedSettingsRaw.toastsEnabled === normalizedPersistedSettings.toastsEnabled &&
-      persistedSettingsRaw.autoDismiss === normalizedPersistedSettings.autoDismiss
+      persistedSettingsRaw.themeMode === persistedSettings.themeMode &&
+      persistedSettingsRaw.network === persistedSettings.network &&
+      persistedSettingsRaw.addressDisplay === persistedSettings.addressDisplay &&
+      persistedSettingsRaw.toastsEnabled === persistedSettings.toastsEnabled &&
+      persistedSettingsRaw.autoDismiss === persistedSettings.autoDismiss
 
     if (!isEquivalent) {
-      setPersistedSettings(normalizedPersistedSettings as PersistedSettings)
-      setOriginalSettings(normalizedPersistedSettings as PersistedSettings)
+      setPersistedSettings(persistedSettings)
+      setOriginalSettings(persistedSettings)
     }
-  }, [normalizedPersistedSettings, persistedSettingsRaw, setPersistedSettings])
+  }, [persistedSettings, persistedSettingsRaw, setPersistedSettings])
 
   const hasUnsavedChanges =
     themeMode !== originalSettings.themeMode ||

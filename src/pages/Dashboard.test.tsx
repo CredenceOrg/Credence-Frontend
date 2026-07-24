@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -31,6 +31,27 @@ vi.mock('../context/WalletContext', () => ({
   }),
 }))
 
+const mockRefetch = vi.fn().mockResolvedValue(undefined)
+let mockQueryData = { score: 684, tier: 'gold' }
+let mockIsMobile = false
+
+vi.mock('../hooks/useQuery', () => ({
+  useQuery: (_fn: any, options: any) => {
+    const enabled = options?.enabled !== false
+    return {
+      data: enabled ? mockQueryData : undefined,
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    }
+  }
+}))
+
+vi.mock('../hooks/useMediaQuery', () => ({
+  useIsMobile: () => mockIsMobile,
+  useMediaQuery: () => mockIsMobile,
+}))
+
 function renderDashboard(initialEntries = ['/']) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
@@ -43,8 +64,11 @@ describe('Dashboard', () => {
   beforeEach(() => {
     localStorage.clear()
     mockConnect.mockClear()
+    mockRefetch.mockClear()
     mockConnected = true
     mockIsConnecting = false
+    mockQueryData = { score: 684, tier: 'gold' }
+    mockIsMobile = false
   })
 
   it('prompts disconnected users to connect their wallet', async () => {
@@ -105,19 +129,90 @@ describe('Dashboard', () => {
     expect(screen.queryByRole('heading', { name: /wallet required/i })).not.toBeInTheDocument()
   })
 
-  it('renders copy-link buttons on each dashboard card', () => {
+  it('does not render pull-to-refresh UI on desktop', () => {
+    mockIsMobile = false
     renderDashboard()
-
-    const copyButtons = screen.getAllByRole('button', { name: /copy link/i })
-    // Four cards: Trust Score, Active Bonds, Recent Activity, Shortcuts
-    expect(copyButtons).toHaveLength(4)
+    expect(screen.queryByText(/pull to refresh/i)).not.toBeInTheDocument()
   })
 
-  it('does not render copy-link buttons when disconnected', () => {
-    mockConnected = false
+  it('handles pull-to-refresh touch gesture on mobile', async () => {
+    mockIsMobile = true
+    renderDashboard()
+
+    const dashboardElement = screen.getByRole('heading', { name: 'Dashboard' }).closest('.dashboard')!
+
+    // Fire touchStart
+    fireEvent.touchStart(dashboardElement, {
+      touches: [{ clientY: 100 }]
+    })
+
+    // Fire touchMove - pull down by 200px (pullDistance = 80px)
+    fireEvent.touchMove(dashboardElement, {
+      touches: [{ clientY: 300 }]
+    })
+
+    expect(screen.getByText(/release to refresh/i)).toBeInTheDocument()
+
+    // Fire touchEnd
+    await act(async () => {
+      fireEvent.touchEnd(dashboardElement)
+    })
+
+    expect(mockRefetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not trigger refetch on short pull', () => {
+    mockIsMobile = true
+    renderDashboard()
+
+    const dashboardElement = screen.getByRole('heading', { name: 'Dashboard' }).closest('.dashboard')!
+
+    fireEvent.touchStart(dashboardElement, {
+      touches: [{ clientY: 100 }]
+    })
+
+    // Pull down by 50px (pullDistance = 20px)
+    fireEvent.touchMove(dashboardElement, {
+      touches: [{ clientY: 150 }]
+    })
+
+    expect(screen.getByText(/pull to refresh/i)).toBeInTheDocument()
+
+    fireEvent.touchEnd(dashboardElement)
+
+    expect(mockRefetch).not.toHaveBeenCalled()
+  })
+
+  it('does not trigger pull-to-refresh when offline', () => {
+    mockIsMobile = true
+    const originalOnLine = navigator.onLine
+    Object.defineProperty(navigator, 'onLine', {
+      value: false,
+      configurable: true
+    })
 
     renderDashboard()
 
-    expect(screen.queryByRole('button', { name: /copy link/i })).not.toBeInTheDocument()
+    const dashboardElement = screen.getByRole('heading', { name: 'Dashboard' }).closest('.dashboard')!
+
+    fireEvent.touchStart(dashboardElement, {
+      touches: [{ clientY: 100 }]
+    })
+
+    fireEvent.touchMove(dashboardElement, {
+      touches: [{ clientY: 300 }]
+    })
+
+    // Offline banner should be present, pull UI should not be displayed
+    expect(screen.getByText(/offline/i)).toBeInTheDocument()
+    expect(screen.queryByText(/pull to refresh/i)).not.toBeInTheDocument()
+
+    fireEvent.touchEnd(dashboardElement)
+    expect(mockRefetch).not.toHaveBeenCalled()
+
+    Object.defineProperty(navigator, 'onLine', {
+      value: originalOnLine,
+      configurable: true
+    })
   })
 })

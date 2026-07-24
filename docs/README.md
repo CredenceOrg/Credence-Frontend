@@ -92,6 +92,11 @@ This directory contains comprehensive design specifications and implementation g
    - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 >>>>>>> Stashed changes
 
+14. **[Optimistic Updates](./OPTIMISTIC_UPDATES.md)** ⭐ NEW
+    - When to use optimistic updates and how to design them
+    - Implementation guidelines for rollbacks and state management
+    - Concrete examples of optimistic UI updates
+
 ### Quick Start
 
 To implement UI states in your components:

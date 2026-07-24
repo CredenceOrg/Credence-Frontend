@@ -32,6 +32,8 @@ export interface AmountInputProps extends NativeInputProps {
   onValidityChange?: (isValid: boolean) => void
   /** Loading state - shows skeleton/spinner and disables interaction */
   isLoading?: boolean
+  /** Minimum allowed amount */
+  min?: number
 }
 
 export default function AmountInput({
@@ -48,6 +50,7 @@ export default function AmountInput({
   onFocus,
   onValidityChange,
   disabled,
+  min,
   ...inputProps
 }: AmountInputProps) {
   const uid = useId()

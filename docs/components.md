@@ -24,6 +24,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/EmptyState      | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/ErrorState      | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
+| SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
 
 ## Shared vocabularies
 
@@ -424,4 +425,28 @@ Tokens: inline styles consume `--credence-skeleton-gradient`, `--credence-motion
 
 ```tsx
 <LoadingSkeleton variant="card" rows={2} />
+```
+
+## SessionTimeoutModal
+
+Source: [`src/components/SessionTimeoutModal.tsx`](../src/components/SessionTimeoutModal.tsx).
+
+| Prop              | Type                   | Default  |
+| ----------------- | ---------------------- | -------- |
+| `open`            | `boolean`              | Required |
+| `onStayLoggedIn`  | `() => void`           | Required |
+| `onLogout`        | `() => void`           | Required |
+| `timeLeftSeconds` | `number`               | Required |
+
+Accessibility: uses `ConfirmDialog` primitive.
+
+Tokens: warning color tokens, spacing, radius.
+
+```tsx
+<SessionTimeoutModal
+  open={showWarning}
+  timeLeftSeconds={60}
+  onStayLoggedIn={stay}
+  onLogout={logout}
+/>
 ```

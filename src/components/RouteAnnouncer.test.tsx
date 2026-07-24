@@ -1,11 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import RouteAnnouncer from './RouteAnnouncer'
-
-function getAnnouncer() {
-  return document.querySelector('[aria-live="polite"]') as HTMLElement
-}
 
 function NavigateTo({ to }: { to: string }) {
   const navigate = useNavigate()
@@ -32,7 +29,7 @@ describe('RouteAnnouncer Component', () => {
   })
 
   it('is visually hidden but correctly structured in the DOM tree on mount', () => {
-    const { container } = render(
+    render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <RouteAnnouncer />
       </MemoryRouter>
@@ -44,7 +41,7 @@ describe('RouteAnnouncer Component', () => {
   });
 
   it('defers the announcement text setup until after layout paint', () => {
-    const { container } = render(
+    render(
       <MemoryRouter initialEntries={['/bond']}>
         <RouteAnnouncer />
       </MemoryRouter>
@@ -84,7 +81,7 @@ describe('RouteAnnouncer Component', () => {
   });
 
   it('falls back gracefully to structural 404 descriptions given unknown routes', () => {
-    const { container } = render(
+    render(
       <MemoryRouter initialEntries={['/some/unknown/route']}>
         <RouteAnnouncer />
       </MemoryRouter>

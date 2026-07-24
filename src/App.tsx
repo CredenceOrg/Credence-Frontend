@@ -18,6 +18,7 @@ const Settings = lazy(() => import('./pages/Settings'))
 const AmountInputTestPage = lazy(() => import('./pages/AmountInputTestPage'))
 const SignIn = lazy(() => import('./pages/SignIn'))
 const NotFound = lazy(() => import('./pages/NotFound'))
+const RouteErrorPage = lazy(() => import('./pages/RouteErrorPage'))
 
 // import.meta.env.DEV is replaced with `false` at build time by Vite/Rollup,
 // so the dynamic import('./pages/ToastTest') reference is dead-code eliminated

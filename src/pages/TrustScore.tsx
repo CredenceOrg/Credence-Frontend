@@ -9,8 +9,7 @@ import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
 import ActivityTimeline, { ActivityItem } from '../components/ActivityTimeline'
-import { TIERS } from '../lib/tiers'
-import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
+import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
@@ -103,7 +102,7 @@ export default function TrustScore() {
     setAddress(walletAddress)
   }
 
-  const activity: ActivityItem[] = SAMPLE_ACTIVITY
+  const activity: ActivityItem[] = data ? SAMPLE_ACTIVITY : []
 
   const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
   const mismatchBannerId = 'trust-score-network-mismatch'

@@ -133,6 +133,55 @@ describe('Badge', () => {
     })
   })
 
+  describe('aria-label', () => {
+    it.each([
+      ['bronze', 'Bronze'],
+      ['silver', 'Silver'],
+      ['gold', 'Gold'],
+      ['platinum', 'Platinum'],
+      ['active', 'Active'],
+      ['locked', 'Locked'],
+      ['slashed', 'Slashed'],
+      ['grace-period', 'Grace Period'],
+      ['unknown', 'Unknown'],
+    ] as const)('variant "%s" sets aria-label to "%s"', (variant, expected) => {
+      render(<Badge variant={variant} />)
+      expect(screen.getByTitle(expected)).toHaveAttribute('aria-label', expected)
+    })
+
+    it('custom ariaLabel overrides the default', () => {
+      render(<Badge variant="slashed" ariaLabel="Status: Slashed" />)
+      expect(screen.getByTitle('Slashed')).toHaveAttribute('aria-label', 'Status: Slashed')
+    })
+
+    it('ariaLabel applies alongside a custom label', () => {
+      render(<Badge variant="gold" label="Top Tier" ariaLabel="Tier: Gold" />)
+      expect(screen.getByTitle('Top Tier')).toHaveAttribute('aria-label', 'Tier: Gold')
+    })
+
+    it('ariaLabel works on an unknown variant', () => {
+      render(<Badge variant="experimental" ariaLabel="Experimental tier" />)
+      const badge = document.querySelector('.badge')
+      expect(badge).toHaveAttribute('aria-label', 'Experimental tier')
+    })
+
+    it('no variant produces an empty aria-label', () => {
+      const variants = ['bronze', 'silver', 'gold', 'platinum', 'active', 'locked', 'slashed', 'grace-period', 'unknown', '']
+      for (const v of variants) {
+        const { unmount } = render(<Badge variant={v} />)
+        const badge = document.querySelector('.badge')
+        expect(badge).not.toBeNull()
+        expect(badge?.getAttribute('aria-label')).toBeTruthy()
+        unmount()
+      }
+    })
+
+    it('aria-label is present when srPrefix is also provided', () => {
+      render(<Badge variant="grace-period" srPrefix="Status:" ariaLabel="Grace Period" />)
+      expect(screen.getByTitle('Grace Period')).toHaveAttribute('aria-label', 'Grace Period')
+    })
+  })
+
   describe('color-only regression — visible label is always non-empty', () => {
     it.each([
       'slashed',

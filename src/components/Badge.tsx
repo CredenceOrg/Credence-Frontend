@@ -25,6 +25,12 @@ export interface BadgeProps {
    * when this prop is omitted.
    */
   srPrefix?: string
+  /**
+   * Accessible label for the badge element. Defaults to the display label.
+   * Provide this prop when the badge appears in a context where screen readers
+   * need a more descriptive label than the visible text alone.
+   */
+  ariaLabel?: string
 }
 
 const DEFAULT_LABELS: Record<string, string> = {
@@ -39,7 +45,7 @@ const DEFAULT_LABELS: Record<string, string> = {
   unknown: 'Unknown',
 }
 
-export default function Badge({ variant, label, className = '', srPrefix }: BadgeProps) {
+export default function Badge({ variant, label, className = '', srPrefix, ariaLabel }: BadgeProps) {
   const normalizedVariant =
     variant.toLowerCase() in DEFAULT_LABELS ? variant.toLowerCase() : 'unknown'
 
@@ -49,6 +55,7 @@ export default function Badge({ variant, label, className = '', srPrefix }: Badg
     <span
       className={`badge badge--${normalizedVariant} ${className}`.trim()}
       title={displayLabel}
+      aria-label={ariaLabel || displayLabel}
     >
       {srPrefix && <span className="sr-only">{srPrefix} </span>}
       {displayLabel}

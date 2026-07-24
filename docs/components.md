@@ -87,6 +87,25 @@ Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-co
 </Button>
 ```
 
+## PinWidgetButton
+
+Toggle button rendered on each dashboard widget card, allowing the user
+to pin/unpin it to the top row. Pinned state persists in `localStorage`
+under `credence:pinnedWidgets` (see `src/config/pinnedWidgets.ts`), capped
+at `MAX_PINNED_WIDGETS`.
+
+**Props**
+- `slug: string` — widget identifier
+- `isPinned: boolean`
+- `onToggle: (slug: string) => void`
+
+**Styling**: uses `--spacing-xs`, `--radius-sm`, `--color-text-secondary`,
+`--color-bg-hover`, `--color-focus-ring` design tokens. No hard-coded values.
+
+**Accessibility**: `aria-pressed` reflects pin state; `aria-label` announces
+the pin/unpin action.
+
+
 ## Badge
 
 Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx). Contrast audit: [badge-contrast-audit.md](./badge-contrast-audit.md).

@@ -666,8 +666,9 @@ Source: [`src/components/ActionCard.tsx`](../src/components/ActionCard.tsx).
 | ---------- | ----------- | -------- |
 | `title`    | `string`    | Required |
 | `children` | `ReactNode` | Required |
+| `onDismiss`| `() => void`| `undefined`|
 
-Accessibility: renders as a semantic `<article>` with the title in an `<h2>`. No additional ARIA attributes are needed; place inside a `<main>` or named landmark so context is clear.
+Accessibility: renders as a semantic `<article>` with the title in an `<h2>`. No additional ARIA attributes are needed; place inside a `<main>` or named landmark so context is clear. When `onDismiss` is provided, a fallback `<button>` with an `aria-label` is rendered for non-touch users, and native touch events handle the swipe gesture.
 
 Tokens: `--credence-border-default`, `--credence-radius-xl`, `--credence-space-4`, `--credence-space-6`, `--credence-surface-card`, `--credence-text-primary`, `--credence-font-size-xl`, `--credence-line-height-tight`.
 

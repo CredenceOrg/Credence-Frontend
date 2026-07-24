@@ -61,6 +61,18 @@
   outline-offset: 2px;
 }
 
+.appInstallPrompt {
+  width: 100%;
+  max-width: var(--credence-container-max);
+  margin: var(--credence-space-4) auto 0;
+  padding: 0 var(--credence-container-padding);
+}
+
+.appInstallPrompt-copy {
+  margin: 0;
+  color: var(--credence-text-secondary);
+}
+
 .appMain {
   flex: 1;
   padding: var(--credence-space-6) var(--credence-container-padding);

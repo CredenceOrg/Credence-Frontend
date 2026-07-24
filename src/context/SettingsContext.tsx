@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
-import { validateAndNormalize } from '../lib/settingsSchema'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -141,6 +140,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     addressDisplay: coerceAddressDisplay(persistedSettingsRaw.addressDisplay as unknown as string),
     autoDismiss: coerceAutoDismiss(persistedSettingsRaw.autoDismiss as unknown as string),
   }
+
+  const normalizedPersistedSettings = useMemo<PersistedSettings>(
+    () => ({
+      ...persistedSettings,
+      network: coerceNetwork(persistedSettings.network as unknown as string),
+      addressDisplay: coerceAddressDisplay(persistedSettings.addressDisplay as unknown as string),
+      autoDismiss: coerceAutoDismiss(persistedSettings.autoDismiss as unknown as string),
+    }),
+    [persistedSettings],
+  )
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
   const [network, setNetwork] = useState<NetworkOption>(persistedSettings.network)

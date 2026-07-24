@@ -4,7 +4,7 @@ This catalog is the source-facing reference for shared UI under `src/components/
 
 Related focused docs: [button system](./button-system.md), [notifications](./notifications.md), [design tokens](./DESIGN_TOKENS.md), [dark mode](./dark-mode.md), [focus patterns](./focus-patterns.md), [UI states](./UI_STATES_GUIDE.md), [TrustGauge quick reference](./TRUST_GAUGE_QUICK_REFERENCE.md), and [tier thresholds](./tier-thresholds.md).
 
-> **Per-route SEO metadata** — Use the [`useSeo`](../src/hooks/useSeo.ts) hook (documented in [HOOKS.md](./HOOKS.md#useseo)) to set `document.title` and `<meta name="description">` on a per-route basis. Every route-level page component should call `useSeo` with a descriptive `description` so search engines and social-card scrapers receive page-specific context rather than the static fallback in `index.html`.
+**Storybook**: Components that have stories are listed with their Storybook path and variant names. Run `npm run storybook` (defaults to port 6006) to browse and interact with them. Components without a Storybook entry have no story file yet.
 
 ## Styling ownership snapshot
 
@@ -27,6 +27,13 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/ErrorState      | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
 | states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
 | SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
+| ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
+| Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
+| ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
+| KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
+| AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
+| CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
+| ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
 
 ## Shared vocabularies
 
@@ -77,7 +84,7 @@ Source: [`src/components/Button.tsx`](../src/components/Button.tsx). Focused doc
 | `children`          | `ReactNode`                                       | Required                                 |
 | Native button props | `ButtonHTMLAttributes<HTMLButtonElement>`         | Forwarded; `type` defaults to `'button'` |
 
-Accessibility: renders a native `<button>`, disables interaction while `disabled` or `isLoading`, sets `aria-busy` for loading state, hides spinner SVG from assistive tech, and inherits keyboard activation/focus behavior from the platform. Primary CTAs (`variant="primary"`) automatically receive `data-testid="primary-cta"` for test stability, unless overridden via props.
+Accessibility: renders a native `<button>`, disables interaction while `disabled` or `isLoading`, sets `aria-busy` for loading state, hides spinner SVG from assistive tech, and inherits keyboard activation/focus behavior from the platform.
 
 Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-color-info-surface`, `--credence-color-primary*`, `--credence-color-slate-*`, `--credence-color-white`, `--credence-focus-ring`, font, line-height, radius, spacing, surface, and text tokens.
 
@@ -89,25 +96,21 @@ Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-co
 
 ## Badge
 
-Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx). Contrast audit: [badge-contrast-audit.md](./badge-contrast-audit.md).
+Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx).
 
 | Prop        | Type                     | Default             |
 | ----------- | ------------------------ | ------------------- |
 | `variant`   | `BadgeVariant \| string` | Required            |
 | `label`     | `string`                 | Known variant label |
 | `className` | `string`                 | `''`                |
-| `srPrefix`  | `string`                 | —                   |
 
-**`srPrefix`** renders an `.sr-only` `<span>` _before_ the visible label so assistive technology can announce the badge in context (e.g. `srPrefix="Bond status:"` causes a screen reader to read `"Bond status: Slashed"` rather than just `"Slashed"`). No extra DOM is inserted when the prop is omitted.
-
-Accessibility: renders text in a `<span>` with a `title` attribute matching the display label (provides a tooltip on truncation). Status badges (`slashed`, `grace-period`, `locked`) carry safety-relevant meaning — the visible label is always non-empty so meaning is never communicated by color alone. Use `srPrefix` when a badge appears inside a list row or table cell where a screen reader needs additional context to interpret the label.
+Accessibility: renders text in a `<span>`; consumers should provide surrounding context when the badge alone is not descriptive.
 
 Tokens: tier/status color tokens, `--credence-font-size-xs`, `--credence-font-weight-semibold`, `--credence-radius-full`, `--credence-space-2`.
 
 ```tsx
 <Badge variant="gold" />
 <Badge variant="grace-period" label="Grace" />
-<Badge variant="slashed" srPrefix="Bond status:" />
 ```
 
 ## Banner
@@ -169,18 +172,27 @@ function SaveButton() {
 
 Source: [`src/components/ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx). Focused docs: [focus patterns](./focus-patterns.md).
 
-| Prop             | Type                                                                                              | Default           |
-| ---------------- | ------------------------------------------------------------------------------------------------- | ----------------- |
-| `open`           | `boolean`                                                                                         | Required          |
-| `title`          | `string`                                                                                          | Required          |
-| `subtitle`       | `string`                                                                                          | `undefined`       |
-| `breakdown`      | `{ bondAmount: string; penaltyAmount: string; penaltyPercent: number; resultingBalance: string }` | Required          |
-| `onConfirm`      | `() => void`                                                                                      | Required          |
-| `onCancel`       | `() => void`                                                                                      | Required          |
-| `returnFocusRef` | `RefObject<HTMLElement \| null>`                                                                  | `undefined`       |
-| `confirmLabel`   | `string`                                                                                          | `'Withdraw bond'` |
+| Prop                | Type                              | Default                          |
+| ------------------- | --------------------------------- | -------------------------------- |
+| `open`              | `boolean`                         | Required                         |
+| `title`             | `string`                          | Required                         |
+| `subtitle`          | `string`                          | `undefined`                      |
+| `breakdown`         | `ConfirmDialogPenaltyBreakdown`   | `undefined`                      |
+| `description`       | `React.ReactNode`                 | `undefined`                      |
+| `children`          | `React.ReactNode`                 | `undefined`                      |
+| `onConfirm`         | `() => void`                      | Required                         |
+| `onCancel`          | `() => void`                      | Required                         |
+| `returnFocusRef`    | `RefObject<HTMLElement \| null>`  | `undefined`                      |
+| `confirmLabel`      | `string`                          | `'Withdraw bond'`                |
+| `confirmInputLabel` | `React.ReactNode`                 | `undefined`                      |
+| `confirmInputHint`  | `React.ReactNode`                 | `undefined`                      |
+| `variant`           | `'danger' \| 'info'`              | `'danger'`                       |
+| `confirmPhrase`     | `string`                          | `'CONFIRM'`                      |
+| `confirmHint`       | `string`                          | Wallet/funds irreversibility hint |
 
-Accessibility: renders in a portal with `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby`/`aria-describedby`, focus trap, initial focus on Cancel, Escape and backdrop cancellation, body scroll lock, and optional focus restoration. The destructive action is disabled until the user types `CONFIRM`; assertive sr-only announcements describe state changes.
+`ConfirmDialogPenaltyBreakdown` is `{ bondAmount: string; penaltyAmount: string; penaltyPercent: number; resultingBalance: string }`. When `breakdown` is omitted, the `description` prop or `children` slot is rendered in its place.
+
+Accessibility: renders in a portal with `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby`/`aria-describedby`, focus trap, initial focus on Cancel, Escape and backdrop cancellation, body scroll lock, and optional focus restoration. The confirm button is disabled until the user types the value of `confirmPhrase` (default: `CONFIRM`); assertive sr-only announcements describe state changes.
 
 Tokens: danger color tokens, font family/size/weight, line-height, motion, radius, spacing, surface, and text tokens.
 
@@ -213,7 +225,7 @@ Source: [`src/components/AddressInput.tsx`](../src/components/AddressInput.tsx).
 | `disabled`           | `boolean`                    | `false`             |
 | `className`          | `string`                     | `''`                |
 
-Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste and copy controls are native buttons with explicit aria labels and hidden SVGs. Validation now performs two checks: (1) a format check (56-character, starts with `G`, uppercase alphanumeric), and (2) a **CRC-16 XMODEM checksum** verify per the Stellar StrKey spec. Distinct error messages are surfaced for each failure mode — `"Invalid address. Stellar public keys are 56 characters starting with G."` for a format error, and `"Invalid address checksum. Please verify the address."` for a checksum mismatch — and both are exposed via `role="alert"` with `aria-invalid="true"` set on the `<input>` when any error is active.
+Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste and copy controls are native buttons with explicit aria labels and hidden SVGs. Validation requires a 56-character Stellar public key starting with `G`; invalid feedback is exposed by the FormField alert.
 
 Tokens: border, danger, primary, slate, success, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
 
@@ -225,6 +237,8 @@ Tokens: border, danger, primary, slate, success, focus, font, line-height, motio
   onValidationChange={setAddressValid}
 />
 ```
+
+Storybook: `Components/Forms/AddressInput` — **Default** · **Filled** · **Invalid** · **Disabled** · **Loading**.
 
 ## AmountInput
 
@@ -247,6 +261,8 @@ Tokens: border, danger-border, slate, focus, font, motion, radius, spacing, surf
 ```tsx
 <AmountInput value={amount} onChange={setAmount} balance={availableUsdc} error={amountError} />
 ```
+
+Storybook: `Components/Forms/AmountInput` — **Default** · **Filled** · **OverBalance** · **Error** · **Disabled** · **Loading**.
 
 ## TrustGauge
 
@@ -311,12 +327,11 @@ Source: [`src/components/forms/FormField.tsx`](../src/components/forms/FormField
 | ---------- | -------------------- | ----------- |
 | `id`       | `string`             | Required    |
 | `label`    | `string`             | Required    |
-| `hint`         | `string`             | `undefined` |
-| `error`        | `string`             | `undefined` |
-| `srOnlyLabel`  | `boolean`            | `false`     |
-| `children`     | `React.ReactElement` | Required    |
+| `hint`     | `string`             | `undefined` |
+| `error`    | `string`             | `undefined` |
+| `children` | `React.ReactElement` | Required    |
 
-Accessibility: renders a `<label htmlFor={id}>`, optional hint, clones the child to inject `id`, merged `aria-describedby`, and `aria-invalid` when an error exists. Error text has `role="alert"`. Set `srOnlyLabel` when the visible UI relies on a placeholder or icon-only affordance but a programmatic label is still required for assistive technology.
+Accessibility: renders a `<label htmlFor={id}>`, optional hint, clones the child to inject `id`, merged `aria-describedby`, and `aria-invalid` when an error exists. Error text has `role="alert"`.
 
 Tokens: `--credence-color-danger-text`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-space-2`, `--credence-text-secondary`.
 
@@ -326,13 +341,7 @@ Tokens: `--credence-color-danger-text`, `--credence-font-size-sm`, `--credence-f
 </FormField>
 ```
 
-Placeholder-only layouts should still expose an accessible name:
-
-```tsx
-<FormField id="search" label="Search attestations" srOnlyLabel>
-  <input placeholder="Search attestations…" />
-</FormField>
-```
+Storybook: `Components/Forms/FormField` — **Default** · **WithHint** · **WithError** · **WithHintAndError**.
 
 ## controls/Select
 
@@ -360,6 +369,8 @@ Tokens: shared control CSS consumes border, primary, white, focus, font, line-he
 />
 ```
 
+Storybook: `Components/Controls/Select` — **Default** · **Error** · **Disabled** · **Loading**.
+
 ## controls/Toggle
 
 Source: [`src/components/controls/Toggle.tsx`](../src/components/controls/Toggle.tsx).
@@ -378,6 +389,8 @@ Tokens: shared control CSS consumes border, primary, white, focus, font, line-he
 ```tsx
 <Toggle checked={toastsEnabled} onChange={setToastsEnabled} ariaLabel="Enable notifications" />
 ```
+
+Storybook: `Components/Controls/Toggle` — **Off** · **On** · **Error** · **Disabled** · **Loading**.
 
 ## states/EmptyState
 
@@ -464,4 +477,142 @@ Tokens: warning color tokens, spacing, radius.
   onStayLoggedIn={stay}
   onLogout={logout}
 />
+```
+
+## ActionCard
+
+Source: [`src/components/ActionCard.tsx`](../src/components/ActionCard.tsx).
+
+| Prop       | Type        | Default  |
+| ---------- | ----------- | -------- |
+| `title`    | `string`    | Required |
+| `children` | `ReactNode` | Required |
+
+Accessibility: renders as a semantic `<article>` with the title in an `<h2>`. No additional ARIA attributes are needed; place inside a `<main>` or named landmark so context is clear.
+
+Tokens: `--credence-border-default`, `--credence-radius-xl`, `--credence-space-4`, `--credence-space-6`, `--credence-surface-card`, `--credence-text-primary`, `--credence-font-size-xl`, `--credence-line-height-tight`.
+
+```tsx
+<ActionCard title="Create bond">
+  <AmountInput value={amount} onChange={setAmount} balance={balance} />
+  <Button onClick={submit}>Submit</Button>
+</ActionCard>
+```
+
+## Disclaimer
+
+Source: [`src/components/Disclaimer.tsx`](../src/components/Disclaimer.tsx).
+
+| Prop        | Type     | Default        |
+| ----------- | -------- | -------------- |
+| `context`   | `string` | `undefined`    |
+| `termsHref` | `string` | `LINKS.terms`  |
+
+Accessibility: renders as `<aside aria-label="Risk disclaimer">`. The terms link has an explicit `aria-label="Read full terms and conditions"`. When `termsHref` resolves to a placeholder (`'#'` or empty), a `<span aria-disabled="true">` is rendered instead of an anchor so the element is inert for keyboard and AT users.
+
+Tokens: secondary text and spacing tokens via `Disclaimer.css`.
+
+```tsx
+<Disclaimer context="Early withdrawal forfeits accrued rewards." />
+```
+
+## ThemeToggle
+
+Source: [`src/components/ThemeToggle.tsx`](../src/components/ThemeToggle.tsx). Focused docs: [dark mode](./dark-mode.md).
+
+No external props. Reads `themeMode` from `SettingsContext` and writes the explicit opposite on click; never exposes a prop API.
+
+Accessibility: native `<button>` with `aria-label="Switch to {nextTheme} mode"` and `aria-pressed` reflecting whether the resolved theme is dark. Both icons are `aria-hidden`. Tracks the OS `prefers-color-scheme` media query while `themeMode` is `'system'` so `aria-pressed` and `aria-label` stay in sync with the document's `data-theme`.
+
+Tokens: `--credence-focus-ring`, spacing, and icon sizing via `ThemeToggle.css`.
+
+```tsx
+<ThemeToggle />
+```
+
+## KeyboardShortcutsDialog
+
+Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx). Focused docs: [keyboard interactions](./keyboard-interactions.md).
+
+| Prop             | Type                              | Default     |
+| ---------------- | --------------------------------- | ----------- |
+| `open`           | `boolean`                         | Required    |
+| `onClose`        | `() => void`                      | Required    |
+| `returnFocusRef` | `React.RefObject<HTMLElement \| null>` | `undefined` |
+
+Accessibility: portal-rendered modal with `role="dialog"`, `aria-modal="true"`, and a generated `aria-labelledby`. Focus is trapped while open. Escape and backdrop click both call `onClose`. Focus is restored to `returnFocusRef` on close, or to the previously active element when `returnFocusRef` is omitted. Shortcuts are grouped by category with visible section headings.
+
+Tokens: border, surface, text, font, spacing, radius, and focus tokens via `KeyboardShortcutsDialog.css`.
+
+```tsx
+const triggerRef = useRef<HTMLButtonElement>(null)
+
+<button ref={triggerRef} onClick={() => setOpen(true)}>Keyboard shortcuts</button>
+<KeyboardShortcutsDialog open={open} onClose={() => setOpen(false)} returnFocusRef={triggerRef} />
+```
+
+## AttestationForm
+
+Source: [`src/components/AttestationForm.tsx`](../src/components/AttestationForm.tsx).
+
+| Prop              | Type                                                                   | Default     |
+| ----------------- | ---------------------------------------------------------------------- | ----------- |
+| `onSubmitSuccess` | `(payload: { subject: string; type: string; evidence: string }) => void` | `undefined` |
+| `disabled`        | `boolean`                                                              | `false`     |
+
+Accessibility: all form fields are wrapped in `FormField` so each has a `<label>`, hint, and error wired through `aria-describedby` and `aria-invalid`. The type selector uses `controls/Select` (native `<select>`). The evidence textarea has a live character counter associated via `aria-describedby`. Submission is confirmed via `ConfirmDialog` before calling `onSubmitSuccess`; success is announced via a toast.
+
+Tokens: inherits tokens from `AddressInput`, `Select`, `FormField`, and `Button`.
+
+```tsx
+<AttestationForm
+  onSubmitSuccess={({ subject, type, evidence }) => recordAttestation(subject, type, evidence)}
+/>
+```
+
+## CreateBondFlow
+
+Source: [`src/components/CreateBondFlow.tsx`](../src/components/CreateBondFlow.tsx).
+
+| Prop         | Type         | Default     |
+| ------------ | ------------ | ----------- |
+| `onComplete` | `() => void` | `undefined` |
+| `onCancel`   | `() => void` | `undefined` |
+
+A four-step wizard: **amount → duration → review → confirm**. Fetches the connected wallet's USDC balance and calculates early-withdrawal penalty in-flight. The final step uses `ConfirmDialog` for confirmation.
+
+Accessibility: each step manages focus on mount so keyboard users advance through the wizard without losing context. Reduced motion is respected via `useReducedMotion`. Success is announced via a toast; `onComplete` is called after the toast fires.
+
+Tokens: `CreateBondFlow.css` consumes border, radius, spacing, surface, text, font, and motion tokens.
+
+```tsx
+<CreateBondFlow onComplete={() => navigate('/bond')} onCancel={() => navigate('/bond')} />
+```
+
+## ErrorBoundary
+
+Source: [`src/components/ErrorBoundary.tsx`](../src/components/ErrorBoundary.tsx).
+
+| Prop       | Type                                         | Default                        |
+| ---------- | -------------------------------------------- | ------------------------------ |
+| `children` | `ReactNode`                                  | Required                       |
+| `fallback` | `(error: Error, reset: () => void) => ReactNode` | `undefined` (uses `ErrorState`) |
+
+Class component that catches render and lifecycle errors in its subtree. The default fallback renders a branded `ErrorState` with a "Retry" action (re-mounts the subtree without a full reload) and a "Go home" link. Supply `fallback` to override with custom error UI.
+
+Wire telemetry in `componentDidCatch` (currently logs to console) before shipping to production.
+
+Accessibility: no additional ARIA attributes; inherits accessibility from `ErrorState` or the custom `fallback` render.
+
+Tokens: none directly; delegates to `ErrorState`.
+
+```tsx
+<ErrorBoundary>
+  <BondPage />
+</ErrorBoundary>
+
+{/* Custom fallback */}
+<ErrorBoundary fallback={(err, reset) => <button onClick={reset}>Retry: {err.message}</button>}>
+  <TrustScorePage />
+</ErrorBoundary>
 ```

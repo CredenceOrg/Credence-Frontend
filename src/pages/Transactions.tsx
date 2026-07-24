@@ -11,6 +11,7 @@ import { useTransactions } from '../hooks/useTransactions'
 import { explorerUrl } from '../lib/explorerUrl'
 import { truncateAddress } from '../lib/stellar'
 import type { Transaction } from '../api/types'
+import { truncateAddress } from '@/lib/stellar'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
 

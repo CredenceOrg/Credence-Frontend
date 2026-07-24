@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
 import Badge from '../components/Badge'
@@ -71,6 +72,7 @@ const shortcuts = [
 ] as const
 
 export default function Dashboard() {
+  const { t } = useTranslation()
   useSeo({
     title: 'Dashboard',
     description:
@@ -106,6 +108,12 @@ export default function Dashboard() {
 
     setShowOnboarding(true)
   }, [connected])
+
+  const shortcuts = [
+    { to: '/bond', label: t('dashboard.createBond'), description: t('dashboard.createBondDescription') },
+    { to: '/trust', label: t('dashboard.viewTrustScore'), description: t('dashboard.viewTrustScoreDescription') },
+    { to: '/attestations', label: t('dashboard.reviewAttestations'), description: t('dashboard.reviewAttestationsDescription') },
+  ]
 
   const showTrustScore = !widgetParam || widgetParam === 'trust-score'
   const showActiveBonds = !widgetParam || widgetParam === 'active-bonds'

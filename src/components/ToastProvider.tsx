@@ -143,7 +143,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         {assertiveAnnouncement}
       </div>
 
-      <div className="toast-container" aria-hidden="true">
+      <div className="toast-container">
         {toasts.length > 1 && (
           <button type="button" className="toast-dismiss-all" onClick={removeAllToasts}>
             Dismiss All

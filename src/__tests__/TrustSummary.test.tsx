@@ -1,26 +1,45 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { describe, test, expect, vi } from 'vitest';
 import TrustSummary from '../pages/TrustSummary';
 
 // Mock hooks and components used in TrustSummary
-jest.mock('../hooks/useTrustScore', () => ({
-  useTrustScore: jest.fn(() => ({
+vi.mock('../hooks/useTrustScore', () => ({
+  useTrustScore: vi.fn(() => ({
     data: { score: 500, tier: 'gold' },
     isLoading: false,
     error: null,
-    refetch: jest.fn()
+    refetch: vi.fn()
   }))
 }));
 
-jest.mock('../hooks/useCopyToClipboard', () => ({
-  useCopyToClipboard: jest.fn(() => [jest.fn(), false])
+vi.mock('../hooks/useCopyToClipboard', () => ({
+  useCopyToClipboard: vi.fn(() => [vi.fn(), false])
 }));
 
-jest.mock('../components/Badge', () => (props: any) => <div data-testid="badge" {...props} />);
-jest.mock('../components/TrustGauge', () => (props: any) => <div data-testid="gauge" {...props} />);
-jest.mock('../components/TierLadder', () => () => <div data-testid="ladder" />);
-jest.mock('../components/states', () => ({
-  EmptyState: (props: any) => <div data-testid="empty" {...props} />,
+vi.mock('@/lib/stellar', () => ({
+  isValidStellarAddress: vi.fn((addr) => !!addr)
+}));
+
+vi.mock('../components/Badge', () => ({
+  default: (props: any) => <div data-testid="badge" {...props} />
+}));
+
+vi.mock('../components/TrustGauge', () => ({
+  default: (props: any) => <div data-testid="gauge" {...props} />
+}));
+
+vi.mock('../components/TierLadder', () => ({
+  default: () => <div data-testid="ladder" />
+}));
+
+vi.mock('../components/states', () => ({
+  EmptyState: ({ title, message, description }: any) => (
+    <div data-testid="empty">
+      <h2>{title}</h2>
+      <p>{description || message}</p>
+    </div>
+  ),
   ErrorState: (props: any) => <div data-testid="error" {...props} />, 
   LoadingSkeleton: (props: any) => <div data-testid="loading" {...props} />
 }));
@@ -53,7 +72,7 @@ describe('TrustSummary component', () => {
   });
 
   test('Print button triggers window.print', () => {
-    const printMock = jest.fn();
+    const printMock = vi.fn();
     // @ts-ignore
     window.print = printMock;
     render(

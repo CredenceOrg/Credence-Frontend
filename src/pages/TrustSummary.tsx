@@ -7,7 +7,7 @@ import TooltipOnOverflow from '../components/TooltipOnOverflow';
 import { useTrustScore } from '../hooks/useTrustScore';
 import { ApiError } from '../api/client';
 import { isValidStellarAddress } from '@/lib/stellar';
-import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import useCopyToClipboard from '@/hooks/useCopyToClipboard';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states';
 
 function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {
@@ -22,14 +22,14 @@ export default function TrustSummary() {
   const paramAddress = searchParams.get('address')?.trim() ?? '';
   const address = isValidStellarAddress(paramAddress) ? paramAddress : '';
 
-  const [copy, copied] = useCopyToClipboard();
+  const { copy, copied } = useCopyToClipboard();
 
   const { data, isLoading, error, refetch } = useTrustScore(address);
 
   if (!address) {
     return (
       <div className="trustSummary">
-        <EmptyState title="No address supplied" message="Provide a valid Stellar address via the ?address= query parameter." />
+        <EmptyState title="No address supplied" description="Provide a valid Stellar address via the ?address= query parameter." />
       </div>
     );
   }

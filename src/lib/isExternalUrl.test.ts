@@ -3,17 +3,14 @@ import { isExternalUrl } from './isExternalUrl';
 
 describe('isExternalUrl', () => {
   beforeAll(() => {
-    // Pin the simulated app origin for all tests in this suite.
-    // Object.defineProperty avoids the `delete (window as any).location` anti-pattern.
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      writable: true,
-      value: {
-        origin: 'https://app.credence.org',
-        href: 'https://app.credence.org/dashboard',
-        protocol: 'https:',
-      } satisfies Partial<Location>,
-    });
+    // @ts-expect-error - location is non-optional
+    delete window.location;
+    window.location = {
+      ...originalLocation,
+      origin: 'https://app.credence.org',
+      href: 'https://app.credence.org/dashboard',
+      protocol: 'https:',
+    };
   });
 
   afterAll(() => {

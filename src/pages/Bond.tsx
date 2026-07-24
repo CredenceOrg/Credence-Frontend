@@ -306,7 +306,7 @@ export default function Bond() {
 
           <Button
             type="button"
-            onClick={() => handleCreateBond()}
+            onClick={handleCreateBond}
             fullWidth
             disabled={networkMismatch.mismatch || (isConnected ? isPendingCreate : isConnecting)}
             isLoading={isConnected ? isPendingCreate : isConnecting}

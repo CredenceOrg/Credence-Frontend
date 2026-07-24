@@ -25,7 +25,7 @@ afterEach(() => {
 vi.mock('../context/WalletContext', () => ({
   useWallet: () => ({
     isConnected: true,
-    address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    address: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA',
     connect: vi.fn(),
     disconnect: vi.fn(),
     isConnecting: false,
@@ -36,9 +36,8 @@ vi.mock('../context/WalletContext', () => ({
 
 vi.mock('../hooks/useUsdcBalance', () => ({
   useUsdcBalance: () => ({
-    balance: 100000,
-    status: 'ready',
-    error: null,
+    balance: 10000,
+    status: 'success',
     refetch: vi.fn(),
   }),
 }))

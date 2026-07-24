@@ -222,31 +222,32 @@ describe('Bond Page', () => {
     })
 
     afterEach(() => {
-      vi.runAllTimers()
       vi.useRealTimers()
     })
 
-    it('create bond button enters aria-busy while transaction is in flight', () => {
+    it('create bond button enters aria-busy while transaction is in flight', async () => {
       render(<Bond />)
 
       const createBtn = screen.getByRole('button', { name: /^Create bond$/i })
       expect(createBtn).not.toHaveAttribute('aria-busy', 'true')
 
       fireEvent.click(createBtn)
-      // while the mock delay is pending, the button should be busy
-      expect(createBtn).toHaveAttribute(
+      expect(screen.getByRole('button', { name: /create bond/i })).toHaveAttribute(
         'aria-busy',
         'true'
       )
+
+      await vi.runAllTimersAsync()
     })
 
-    it('aria-live region announces "Submitting transaction…" while in flight', () => {
+    it('aria-live region announces "Submitting transaction…" while in flight', async () => {
       render(<Bond />)
 
       fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
-      const statusElements = screen.getAllByRole('status')
-      const srStatus = statusElements.find(el => el.classList.contains('sr-only'))
-      expect(srStatus).toHaveTextContent('Submitting transaction…')
+      const statusAnnouncer = screen.getAllByRole('status').find((el) => el.classList.contains('sr-only'))!
+      expect(statusAnnouncer).toHaveTextContent('Submitting transaction…')
+
+      await vi.runAllTimersAsync()
     })
 
     it('aria-live region is cleared after transaction completes', async () => {
@@ -255,9 +256,8 @@ describe('Bond Page', () => {
       fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
       await vi.runAllTimersAsync()
 
-      const statusElements = screen.getAllByRole('status')
-      const srStatus = statusElements.find(el => el.classList.contains('sr-only'))
-      expect(srStatus).toHaveTextContent('')
+      const statusAnnouncer = screen.getAllByRole('status').find((el) => el.classList.contains('sr-only'))!
+      expect(statusAnnouncer).toHaveTextContent('')
     })
 
     it('navigates to /bond/new after create transaction completes', async () => {

@@ -137,15 +137,12 @@ describe('useMediaQuery', () => {
   // --- query-change re-subscription ---
 
   it('re-subscribes when the query string changes', () => {
-    // The hook calls matchMedia once per useEffect run (the lazy-init call is
-    // separate and happens only on the initial mount).  Two distinct mql stubs
-    // are used so we can assert which one the hook is currently subscribed to.
-    const mql1 = makeMql(false) // initial subscription (matches=false)
-    const mql2 = makeMql(true)  // subscription after query change (matches=true)
-    const matchMediaMock = vi.fn()
-      .mockReturnValueOnce(mql1) // lazy-init call on first mount
-      .mockReturnValueOnce(mql1) // useEffect call on first mount
-      .mockReturnValue(mql2)     // useEffect call after the query changes
+    const mql1 = makeMql(false)
+    const mql2 = makeMql(true)
+    const matchMediaMock = vi.fn((q) => {
+      if (q === QUERY) return mql1
+      return mql2
+    })
 
     window.matchMedia = matchMediaMock
 

@@ -50,7 +50,11 @@ export default function Badge({ variant, label, className = '', srPrefix }: Badg
   const isKnown = variant.toLowerCase() in DEFAULT_LABELS
   const normalizedVariant = isKnown ? variant.toLowerCase() : 'unknown'
 
-  const displayLabel = label || (isKnown ? DEFAULT_LABELS[normalizedVariant] : variant)
+  const displayLabel =
+    label ||
+    (normalizedVariant === 'unknown' && variant.toLowerCase() !== 'unknown'
+      ? variant
+      : DEFAULT_LABELS[normalizedVariant])
 
   return (
     <TooltipOnOverflow content={displayLabel}>

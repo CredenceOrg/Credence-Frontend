@@ -1,11 +1,9 @@
-import { useState, useCallback, useRef, memo, type ReactElement } from 'react'
+import { useState, useRef, useCallback } from 'react'
+import Badge, { type BadgeVariant } from './Badge'
+import CopyableHash from './CopyableHash'
 import './ActivityTimeline.css'
 import { ACTIVITY_ITEMS, ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
 import EmptyState from './states/EmptyState'
-import CopyableHash from './CopyableHash'
-import Badge from './Badge'
-
-import { ACTIVITY_ITEMS, type ActivityItem } from '../data/activity'
 
 export type ActivityTone = 'success' | 'warning' | 'info'
 
@@ -30,29 +28,15 @@ export function isTxHash(meta: string): boolean {
   return /^Tx\s+0x/i.test(meta)
 }
 
-export type { ActivityItem }
-export { ACTIVITY_ITEMS }
-
-export function toneToBadgeVariant(tone: ActivityTone): 'active' | 'grace-period' | 'locked' {
-  switch (tone) {
-    case 'success':
-      return 'active'
-    case 'warning':
-      return 'grace-period'
-    case 'info':
-    default:
-      return 'locked'
-  }
-}
-
-export function isTxHash(meta: string): boolean {
-  return /^tx\s+0x[\w.-]+$/i.test(meta.trim())
-}
-
-export interface ActivityTimelineProps {
-  compact?: boolean
-  /** Timeline events to render. Defaults to sample data. Pass empty array for no data. */
-  items?: ActivityItem[]
+export interface ActivityItem {
+  id: string
+  timestamp: string
+  title: string
+  description: string
+  actor: string
+  statusLabel: string
+  tone: ActivityTone
+  meta: string
 }
 
 interface ActivityRowProps {
@@ -61,10 +45,27 @@ interface ActivityRowProps {
   onToggle: (id: string) => void
 }
 
+export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
+
+export interface ActivityTimelineProps {
+  compact?: boolean
+  items?: ActivityItem[]
+}
+
+/**
+ * Attestation evidence detail panel component.
+ * Displays full evidence details including actor, status badge, and meta.
+ *
+ * Implements accessible disclosure pattern with:
+ * - aria-expanded/aria-controls wiring
+ * - Enter/Space toggle activation
+ * - Escape key to close and return focus
+ * - Focus management on open/close
+ */
 export default function ActivityTimeline({
   compact = false,
   items = ACTIVITY_ITEMS,
-}: ActivityTimelineProps): ReactElement {
+}: ActivityTimelineProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const count = items.length
@@ -90,8 +91,8 @@ export default function ActivityTimeline({
       {count === 0 ? (
         <EmptyState
           illustration="activity"
-          title="No recent activity"
-          description="New trust score events will appear here once bonds"
+          title="No activity yet"
+          description="Attestations and events will appear here"
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">
@@ -116,39 +117,44 @@ export default function ActivityTimeline({
 
                   <button
                     type="button"
-                    className="activity-row__toggle"
+                    id={buttonId}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
                     onClick={() => toggleExpand(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        toggleExpand(item.id)
+                      }
+                    }}
+                    className="activity-row__disclosure"
+                    ref={(el) => {
+                      if (el) triggerRefs.current.set(item.id, el)
+                      else triggerRefs.current.delete(item.id)
+                    }}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
 
-                  {isExpanded && (
-                    <div
-                      id={`details-${item.id}`}
-                      style={{
-                        marginTop: 'var(--credence-space-3)',
-                        padding: 'var(--credence-space-3)',
-                        background: 'var(--credence-surface-page)',
-                        borderRadius: 'var(--credence-radius-md)',
-                      }}
-                    >
-                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
-                        <strong>Actor:</strong> {item.actor}
-                      </p>
-                      <p className="activity-row__meta">
-                        <strong>Meta:</strong>{' '}
-                        {item.meta.startsWith('Tx ') ? (
-                          <>
-                            Tx <CopyableHash hash={item.meta.slice(3)} kind="tx" />
-                          </>
-                        ) : (
-                          item.meta
-                        )}
-                      </p>
-                    </div>
-                  )}
+                  <div
+                    id={panelId}
+                    className="activity-row__detail-panel"
+                    hidden={!isExpanded}
+                    onKeyDown={handleKeyDown}
+                    tabIndex={-1}
+                  >
+                    <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                      <strong>Actor:</strong> {item.actor}
+                    </p>
+                    <p className="activity-row__meta">
+                      <strong>Meta:</strong>{' '}
+                      {isTxHash(item.meta) ? (
+                        <CopyableHash hash={item.meta} />
+                      ) : (
+                        item.meta
+                      )}
+                    </p>
+                  </div>
                 </div>
               </li>
             )

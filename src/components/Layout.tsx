@@ -8,7 +8,8 @@ import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
-import ActionLauncher from './ActionLauncher'
+import WhatsNewDialog from './WhatsNewDialog'
+import { useProductUpdates } from '../hooks/useProductUpdates'
 import BackToTop from './BackToTop'
 import Banner from './Banner'
 import LINKS from '../config/links'
@@ -82,12 +83,15 @@ export default function Layout() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement
-      const tag = target.tagName
+      const tag = target?.tagName
       if (
         tag === 'INPUT' ||
         tag === 'TEXTAREA' ||
         tag === 'SELECT' ||
-        target.isContentEditable
+        target?.isContentEditable ||
+        target?.contentEditable === 'true' ||
+        (target?.getAttribute && target.getAttribute('contenteditable') === 'true') ||
+        (target?.closest && target.closest('[contenteditable="true"]') !== null)
       ) {
         return
       }
@@ -195,14 +199,10 @@ export default function Layout() {
         returnFocusRef={shortcutsButtonRef}
       />
 
-      <ActionLauncher
-        open={launcherOpen}
-        onClose={closeLauncher}
-        returnFocusRef={launcherButtonRef}
-        onOpenKeyboardShortcuts={() => {
-          closeLauncher()
-          openShortcuts()
-        }}
+      <WhatsNewDialog
+        open={whatsNewOpen}
+        onClose={closeWhatsNew}
+        returnFocusRef={whatsNewButtonRef}
       />
 
       <BackToTop />

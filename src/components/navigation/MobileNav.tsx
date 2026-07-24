@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
+import { PrefetchNavLink } from '../PrefetchNavLink'
+import { PRELOADS_BY_PATH } from '../../config/routes'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
 import './MobileNav.css'
 
@@ -106,9 +108,10 @@ export default function MobileNav() {
         <ul className="mobileNav-links" role="list">
           {NAV_LINKS.map(({ to, label }) => (
             <li key={to}>
-              <NavLink
+              <PrefetchNavLink
                 to={to}
                 end={to === '/'}
+                preload={PRELOADS_BY_PATH[to]}
                 className={({ isActive }) =>
                   `mobileNav-link${isActive ? ' mobileNav-link--active' : ''}`
                 }
@@ -120,7 +123,7 @@ export default function MobileNav() {
                 onClick={close}
               >
                 {label}
-              </NavLink>
+              </PrefetchNavLink>
             </li>
           ))}
         </ul>

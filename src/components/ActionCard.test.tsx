@@ -99,4 +99,13 @@ describe('ActionCard', () => {
     expect(mockCopy).toHaveBeenCalledTimes(1)
     expect(mockAddToast).not.toHaveBeenCalled()
   })
+
+  it('renders a beta ribbon when isEarlyAccess is true', () => {
+    render(
+      <ActionCard title="Beta Feature" isEarlyAccess>
+        Content
+      </ActionCard>,
+    )
+    expect(screen.getByText('BETA')).toBeInTheDocument()
+  })
 })

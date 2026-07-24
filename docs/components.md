@@ -502,10 +502,14 @@ Tokens: warning color tokens, spacing, radius.
 
 Source: [`src/components/ActionCard.tsx`](../src/components/ActionCard.tsx).
 
-| Prop       | Type        | Default  |
-| ---------- | ----------- | -------- |
-| `title`    | `string`    | Required |
-| `children` | `ReactNode` | Required |
+| Prop            | Type        | Default       |
+| --------------- | ----------- | ------------- |
+| `title`         | `string`    | Required      |
+| `padding`       | `'compact' \| 'comfortable'` | `'comfortable'` |
+| `elevated`      | `boolean`   | `false`       |
+| `shareableLink` | `string`    | `undefined`   |
+| `isEarlyAccess` | `boolean`   | `false`       |
+| `children`      | `ReactNode` | Required      |
 
 Accessibility: renders as a semantic `<article>` with the title in an `<h2>`. No additional ARIA attributes are needed; place inside a `<main>` or named landmark so context is clear.
 

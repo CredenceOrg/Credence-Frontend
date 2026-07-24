@@ -2,6 +2,7 @@ import { type ReactNode, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToast } from './ToastProvider'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
+import { BETA_RIBBON_LABEL } from '../config/constants'
 import './ActionCard.css'
 
 export interface ActionCardProps {
@@ -21,6 +22,10 @@ export interface ActionCardProps {
    * Clicking it copies this URL to the clipboard and shows a toast.
    */
   shareableLink?: string
+  /**
+   * Indicates if this is an early-access feature. Will display a beta ribbon if true.
+   */
+  isEarlyAccess?: boolean
   children: ReactNode
 }
 
@@ -29,6 +34,7 @@ export default function ActionCard({
   padding = 'comfortable',
   elevated,
   shareableLink,
+  isEarlyAccess,
   children,
 }: ActionCardProps) {
   const { t } = useTranslation()
@@ -50,6 +56,11 @@ export default function ActionCard({
 
   return (
     <article className={classes.join(' ')}>
+      {isEarlyAccess && (
+        <div className="actionCard__betaRibbon" aria-hidden="true">
+          {BETA_RIBBON_LABEL}
+        </div>
+      )}
       <div className="actionCard__header">
         <h2 className="actionCard__title">
           {title}

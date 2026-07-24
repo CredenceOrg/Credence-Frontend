@@ -9,6 +9,24 @@
   /* Default padding */
   padding: var(--credence-space-6);
   transition: transform var(--credence-motion-duration-fast, 0.2s) ease, box-shadow var(--credence-motion-duration-fast, 0.2s) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.actionCard__betaRibbon {
+  position: absolute;
+  top: 24px;
+  right: -32px;
+  background-color: var(--credence-color-warning-surface);
+  color: var(--credence-color-warning-text);
+  padding: var(--credence-space-1) var(--credence-space-10);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-bold);
+  text-transform: uppercase;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

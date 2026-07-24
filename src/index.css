@@ -97,8 +97,9 @@
   --credence-color-attestation-surface: #d1fae5;
 
   /* Effects */
+  --credence-color-focus-ring: var(--credence-color-primary);
   --credence-shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --credence-focus-ring: 2px solid var(--credence-color-primary);
+  --credence-focus-ring: 2px solid var(--credence-color-focus-ring);
   --credence-skeleton-gradient: linear-gradient(
     90deg,
     var(--credence-color-slate-100) 25%,
@@ -120,6 +121,7 @@
   --text-primary: var(--credence-text-primary);
   --text-secondary: var(--credence-text-secondary);
   --border-default: var(--credence-border-default);
+  --color-focus-ring: var(--credence-color-focus-ring);
   --color-primary: var(--credence-color-primary);
   --color-primary-hover: var(--credence-color-primary-strong);
   --primary-hover: var(--credence-color-primary-strong);

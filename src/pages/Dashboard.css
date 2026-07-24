@@ -1,6 +1,7 @@
 .dashboard {
   display: grid;
   gap: var(--credence-space-8);
+  position: relative;
 }
 
 .dashboard__header {
@@ -147,5 +148,42 @@
 
   .dashboard__shortcut {
     padding: var(--credence-space-2);
+  }
+}
+
+/* Pull-to-refresh styles */
+.dashboard__pullIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--credence-space-2);
+  color: var(--credence-color-primary);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.dashboard__pullArrow {
+  transition: transform 0.15s ease-out;
+}
+
+.dashboard__pullSpinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--credence-border-default);
+  border-top-color: var(--credence-color-primary);
+  border-radius: 50%;
+  animation: dashboard-spin 0.8s linear infinite;
+}
+
+@keyframes dashboard-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

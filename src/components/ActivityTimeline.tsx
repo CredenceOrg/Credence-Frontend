@@ -2,9 +2,9 @@ import { useState, memo, type ReactElement } from 'react'
 import './ActivityTimeline.css'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
+import { ACTIVITY_ITEMS } from '../data/activity'
 
 export type { ActivityItem, ActivityTone }
-export { ACTIVITY_ITEMS, SAMPLE_ACTIVITY }
 
 export interface ActivityTimelineProps {
   compact?: boolean

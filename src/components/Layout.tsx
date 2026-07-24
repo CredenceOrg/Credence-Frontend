@@ -6,9 +6,11 @@ import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
 import LINKS from '../config/links'
 import { isExternalUrl } from '../lib/isExternalUrl'
+import { useProductUpdates } from '../hooks/useProductUpdates'
 import './Layout.css'
 
 
@@ -178,6 +180,12 @@ export default function Layout() {
         open={shortcutsOpen}
         onClose={closeShortcuts}
         returnFocusRef={shortcutsButtonRef}
+      />
+
+      <WhatsNewDialog
+        open={whatsNewOpen}
+        onClose={closeWhatsNew}
+        returnFocusRef={whatsNewButtonRef}
       />
 
       <BackToTop />

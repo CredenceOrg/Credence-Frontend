@@ -7,7 +7,7 @@ import TrustGauge from '../components/TrustGauge';
 import { useTrustScore } from '../hooks/useTrustScore';
 import { ApiError } from '../api/client';
 import { isValidStellarAddress } from '@/lib/stellar';
-import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import useCopyToClipboard from '../hooks/useCopyToClipboard';
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states';
 
 function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {

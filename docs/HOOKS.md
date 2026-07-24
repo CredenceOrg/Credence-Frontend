@@ -29,6 +29,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
   - [`useWallet`](#usewallet)
+  - [`useProductUpdates`](#useproductupdates)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -408,6 +409,42 @@ function BalanceDisplay() {
     )
   }
   return <p>Available: {formatUsdc(balance)}</p>
+}
+```
+
+---
+
+### `useProductUpdates`
+
+Source: [`src/hooks/useProductUpdates.ts`](../src/hooks/useProductUpdates.ts)
+
+```ts
+function useProductUpdates(): UseProductUpdatesResult
+
+interface UseProductUpdatesResult {
+  updates: readonly ProductUpdate[]
+  unreadCount: number
+  isLoading: boolean
+  error: string | null
+  markAllRead: () => void
+  refetch: () => Promise<void>
+}
+```
+
+- Sourced asynchronously from JSON feed (`CHANGELOG_FEED_URL` = `/changelog.json`) with fallback to static updates if offline or fetch fails.
+- Persists read state in `localStorage` under `CHANGELOG_STORAGE_KEY` (`credence:last-seen-update-id`).
+- Calculates `unreadCount` based on items newer than the stored last-seen update ID.
+
+```tsx
+import { useProductUpdates } from '../hooks/useProductUpdates'
+
+function NotificationBadge() {
+  const { unreadCount, markAllRead } = useProductUpdates()
+  return (
+    <button onClick={markAllRead}>
+      Updates {unreadCount > 0 && <span>({unreadCount})</span>}
+    </button>
+  )
 }
 ```
 

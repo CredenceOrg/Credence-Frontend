@@ -1,27 +1,41 @@
-import { useState, useRef, useCallback, type ReactElement } from 'react'
+import { useState, useRef, useCallback } from 'react'
+import Badge, { type BadgeVariant } from './Badge'
+import CopyableHash from './CopyableHash'
 import './ActivityTimeline.css'
 import EmptyState from './states/EmptyState'
-import CopyableHash from './CopyableHash'
-import Badge from './Badge'
 
-import type { ActivityItem, ActivityTone } from '../data/activity'
-export type { ActivityItem, ActivityTone }
+export type ActivityTone = 'success' | 'warning' | 'info'
 
-export function toneToBadgeVariant(tone: string): string {
-  switch (tone) {
-    case 'success':
-      return 'active'
-    case 'warning':
-      return 'grace-period'
-    case 'info':
-      return 'locked'
-    default:
-      return 'active'
+/**
+ * Maps ActivityTimeline tone values to Badge variants.
+ * Tones represent attestation status severity levels.
+ */
+export function toneToBadgeVariant(tone: ActivityTone): BadgeVariant {
+  const mapping: Record<ActivityTone, BadgeVariant> = {
+    success: 'active',
+    warning: 'grace-period',
+    info: 'locked',
   }
+  return mapping[tone]
 }
 
+/**
+ * Detects if meta string represents a transaction hash.
+ * Returns true if meta starts with "Tx 0x" pattern.
+ */
 export function isTxHash(meta: string): boolean {
-  return meta.toLowerCase().startsWith('tx')
+  return /^Tx\s+0x/i.test(meta)
+}
+
+export interface ActivityItem {
+  id: string
+  timestamp: string
+  title: string
+  description: string
+  actor: string
+  statusLabel: string
+  tone: ActivityTone
+  meta: string
 }
 
 export interface ActivityTimelineProps {
@@ -38,7 +52,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
     actor: 'Validator Node 12',
     statusLabel: 'Accepted',
     tone: 'success',
-    meta: 'Tx 0x93a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1',
+    meta: 'Tx 0x93a1...22f4',
   },
   {
     id: 'evt-002',
@@ -62,6 +76,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
   },
 ]
 
+export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
 
 /**
  * Attestation evidence detail panel component.
@@ -75,8 +90,8 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
  */
 export default function ActivityTimeline({
   compact = false,
-  items = SAMPLE_ACTIVITY,
-}: ActivityTimelineProps): ReactElement {
+  items = ACTIVITY_ITEMS,
+}: ActivityTimelineProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const count = items.length
@@ -104,7 +119,7 @@ export default function ActivityTimeline({
         <EmptyState
           illustration="activity"
           title="No activity yet"
-          description="Attestations and events will appear here."
+          description="Attestations and events will appear here once activity begins."
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">
@@ -153,29 +168,25 @@ export default function ActivityTimeline({
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
 
-                  {isExpanded && (
-                    <div
-                      id={`details-${item.id}`}
-                      style={{
-                        marginTop: 'var(--credence-space-3)',
-                        padding: 'var(--credence-space-3)',
-                        background: 'var(--credence-surface-page)',
-                        borderRadius: 'var(--credence-radius-md)',
-                      }}
-                    >
-                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
-                        <strong>Actor:</strong> {item.actor}
-                      </p>
-                      <p className="activity-row__meta">
-                        <strong>Meta:</strong>{' '}
-                        {isTxHash(item.meta) ? (
-                          <CopyableHash hash={item.meta} kind="tx" />
-                        ) : (
-                          item.meta
-                        )}
-                      </p>
-                    </div>
-                  )}
+                  <div
+                    id={panelId}
+                    className="activity-row__detail-panel"
+                    hidden={!isExpanded}
+                    onKeyDown={handleKeyDown}
+                    tabIndex={-1}
+                  >
+                    <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                      <strong>Actor:</strong> {item.actor}
+                    </p>
+                    <p className="activity-row__meta">
+                      <strong>Meta:</strong>{' '}
+                      {isTxHash(item.meta) ? (
+                        <CopyableHash hash={item.meta} />
+                      ) : (
+                        item.meta
+                      )}
+                    </p>
+                  </div>
                 </div>
               </li>
             )

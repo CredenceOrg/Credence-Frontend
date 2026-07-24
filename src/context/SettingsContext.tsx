@@ -1,7 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
-import { validateAndNormalize } from '../lib/settingsSchema'
-import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -66,7 +64,7 @@ const LEGACY_THEME_KEY = 'theme'
 
 const VALID_THEMES: ThemeMode[] = ['light', 'dark', 'system']
 
-export const defaultPersistedSettings: PersistedSettings = {
+const defaultPersistedSettings: PersistedSettings = {
   themeMode: 'system',
   network: 'public',
   addressDisplay: 'short',
@@ -84,10 +82,6 @@ const defaultState: SettingsState = {
   setAddressDisplay: () => {},
   setToastsEnabled: () => {},
   setAutoDismiss: () => {},
-  setQuietHoursEnabled: () => {},
-  setQuietHoursStart: () => {},
-  setQuietHoursEnd: () => {},
-  resetToDefaults: () => {},
   saveSettings: (_payload?: SettingsPayload) => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
@@ -197,23 +191,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
   const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)
 
-  useEffect(() => {
-    const isEquivalent =
-      persistedSettings.themeMode === normalizedPersistedSettings.themeMode &&
-      persistedSettings.network === normalizedPersistedSettings.network &&
-      persistedSettings.addressDisplay === normalizedPersistedSettings.addressDisplay &&
-      persistedSettings.toastsEnabled === normalizedPersistedSettings.toastsEnabled &&
-      persistedSettings.autoDismiss === normalizedPersistedSettings.autoDismiss &&
-      persistedSettings.quietHoursEnabled === normalizedPersistedSettings.quietHoursEnabled &&
-      persistedSettings.quietHoursStart === normalizedPersistedSettings.quietHoursStart &&
-      persistedSettings.quietHoursEnd === normalizedPersistedSettings.quietHoursEnd
-
-    if (!isEquivalent) {
-      setPersistedSettings(persistedSettings)
-      setOriginalSettings(persistedSettings)
-    }
-  }, [persistedSettings, persistedSettingsRaw, setPersistedSettings])
-
   const hasUnsavedChanges =
     themeMode !== originalSettings.themeMode ||
     network !== originalSettings.network ||
@@ -248,32 +225,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setPersistedSettings,
   ])
 
-  const saveSettings = (next?: SettingsPayload) => {
-    const payload = next ?? {
-      themeMode,
-      network,
-      addressDisplay,
-      toastsEnabled,
-      autoDismiss,
-      quietHoursEnabled,
-      quietHoursStart,
-      quietHoursEnd,
-    }
+  const saveSettings = () => {
+    const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
-  }
-
-  const resetToDefaults = () => {
-    const payload = { ...defaultPersistedSettings }
-    setThemeMode(payload.themeMode)
-    setNetwork(payload.network)
-    setAddressDisplay(payload.addressDisplay)
-    setToastsEnabled(payload.toastsEnabled)
-    setAutoDismiss(payload.autoDismiss)
-    setQuietHoursEnabled(payload.quietHoursEnabled)
-    setQuietHoursStart(payload.quietHoursStart)
-    setQuietHoursEnd(payload.quietHoursEnd)
-    saveSettings(payload)
   }
 
   const cancelSettings = () => {
@@ -325,10 +280,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setAddressDisplay,
     setToastsEnabled,
     setAutoDismiss,
-    setQuietHoursEnabled,
-    setQuietHoursStart,
-    setQuietHoursEnd,
-    resetToDefaults,
     saveSettings,
     cancelSettings,
     hasUnsavedChanges,

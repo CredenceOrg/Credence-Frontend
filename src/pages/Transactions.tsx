@@ -9,6 +9,7 @@ import { useSettings } from '../context/SettingsContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useTransactions } from '../hooks/useTransactions'
 import { explorerUrl } from '../lib/explorerUrl'
+import { truncateAddress } from '../lib/stellar'
 import type { Transaction } from '../api/types'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'

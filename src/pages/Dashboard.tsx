@@ -8,6 +8,7 @@ import TrustGauge from '../components/TrustGauge'
 import AddressDisplay from '../components/AddressDisplay'
 import { EmptyState, LoadingSkeleton } from '../components/states'
 import { useWallet } from '../context/WalletContext'
+import { useTranslation } from 'react-i18next'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
 import './Dashboard.css'
@@ -20,6 +21,11 @@ const activeBonds = [
   { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
 ] as const
 
+const shortcuts = [
+  { to: '/bond', label: 'Create Bond', description: 'Lock USDC to build reputation' },
+  { to: '/trust', label: 'View Trust Score', description: 'Check your current score and tier' },
+  { to: '/attestations', label: 'Review Attestations', description: 'View and manage past attestations' },
+] as const
 
 export default function Dashboard() {
   useSeo({
@@ -28,6 +34,7 @@ export default function Dashboard() {
       'Monitor your Credence trust score, active USDC bonds, and recent protocol activity from one place.',
   })
 
+  const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
   const [searchParams] = useSearchParams()
   const widgetParam = searchParams.get('widget')

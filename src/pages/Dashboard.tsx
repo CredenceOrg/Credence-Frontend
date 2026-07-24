@@ -10,6 +10,8 @@ import { EmptyState, LoadingSkeleton } from '../components/states'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
+import { usePinnedWidgets } from '../hooks/usePinnedWidgets';
+import { PinWidgetButton } from '../components/PinWidgetButton';
 import './Dashboard.css'
 
 const TRUST_SCORE = 684
@@ -19,6 +21,14 @@ const activeBonds = [
   { id: 'bond-001', amountUsdc: 2500, status: 'active', unlockLabel: 'May 30, 2026' },
   { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
 ] as const
+
+const { pinned, togglePin, isPinned } = usePinnedWidgets();
+{pinned.length > 0 && (
+  <div className="pinned-widgets-row">
+    <PinWidgetButton slug="trust-score" isPinned={isPinned('trust-score')} onToggle={togglePin} />
+    {/* render each pinned widget's existing component here, keyed by slug */}
+  </div>
+)}
 
 
 export default function Dashboard() {

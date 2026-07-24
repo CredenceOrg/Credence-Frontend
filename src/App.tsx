@@ -6,23 +6,36 @@ import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
 
-const Home = lazy(() => import('./pages/Home'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Bond = lazy(() => import('./pages/Bond'))
-const CreateBondPage = lazy(() => import('./pages/CreateBondPage'))
-const BondDetail = lazy(() => import('./pages/BondDetail'))
-const TrustScore = lazy(() => import('./pages/TrustScore'));
-const TrustSummary = lazy(() => import('./pages/TrustSummary'))
-const Attestations = lazy(() => import('./pages/Attestations'))
-const Transactions = lazy(() => import('./pages/Transactions'))
-const Settings = lazy(() => import('./pages/Settings'))
-const AmountInputTestPage = lazy(() => import('./pages/AmountInputTestPage'))
-const SignIn = lazy(() => import('./pages/SignIn'))
-const NotFound = lazy(() => import('./pages/NotFound'))
+import {
+  preloadHome,
+  preloadDashboard,
+  preloadBond,
+  preloadCreateBond,
+  preloadBondDetail,
+  preloadTrustScore,
+  preloadTrustSummary,
+  preloadAttestations,
+  preloadTransactions,
+  preloadSettings,
+  preloadAmountInputTest,
+  preloadSignIn,
+  preloadNotFound,
+} from './config/routes'
 
-// import.meta.env.DEV is replaced with `false` at build time by Vite/Rollup,
-// so the dynamic import('./pages/ToastTest') reference is dead-code eliminated
-// from the production bundle.
+const Home = lazy(preloadHome)
+const Dashboard = lazy(preloadDashboard)
+const Bond = lazy(preloadBond)
+const CreateBondPage = lazy(preloadCreateBond)
+const BondDetail = lazy(preloadBondDetail)
+const TrustScore = lazy(preloadTrustScore)
+const TrustSummary = lazy(preloadTrustSummary)
+const Attestations = lazy(preloadAttestations)
+const Transactions = lazy(preloadTransactions)
+const Settings = lazy(preloadSettings)
+const AmountInputTestPage = lazy(preloadAmountInputTest)
+const SignIn = lazy(preloadSignIn)
+const NotFound = lazy(preloadNotFound)
+
 const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
 
 /**

@@ -1,4 +1,5 @@
 import './Badge.css'
+import TooltipOnOverflow from './TooltipOnOverflow'
 
 export type BadgeVariant =
   | 'bronze'
@@ -45,20 +46,20 @@ const DEFAULT_LABELS: Record<string, string> = {
   unknown: 'Unknown',
 }
 
-export default function Badge({ variant, label, className = '', srPrefix, ariaLabel }: BadgeProps) {
-  const normalizedVariant =
-    variant.toLowerCase() in DEFAULT_LABELS ? variant.toLowerCase() : 'unknown'
+export default function Badge({ variant, label, className = '', srPrefix }: BadgeProps) {
+  const isKnown = variant.toLowerCase() in DEFAULT_LABELS
+  const normalizedVariant = isKnown ? variant.toLowerCase() : 'unknown'
 
-  const displayLabel = label || DEFAULT_LABELS[normalizedVariant] || variant
+  const displayLabel = label || (isKnown ? DEFAULT_LABELS[normalizedVariant] : variant)
 
   return (
-    <span
-      className={`badge badge--${normalizedVariant} ${className}`.trim()}
-      title={displayLabel}
-      aria-label={ariaLabel || displayLabel}
-    >
-      {srPrefix && <span className="sr-only">{srPrefix} </span>}
-      {displayLabel}
-    </span>
+    <TooltipOnOverflow content={displayLabel}>
+      <span
+        className={`badge badge--${normalizedVariant} ${className}`.trim()}
+      >
+        {srPrefix && <span className="sr-only">{srPrefix} </span>}
+        {displayLabel}
+      </span>
+    </TooltipOnOverflow>
   )
 }

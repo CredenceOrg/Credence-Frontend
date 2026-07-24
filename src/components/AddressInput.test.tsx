@@ -18,6 +18,22 @@ vi.mock('@/hooks/useDebouncedValue', () => ({
   useDebouncedValue: mockDebouncedValue,
 }))
 
+// --- QRScannerModal mocking ---
+
+vi.mock('./QRScannerModal', () => ({
+  default: ({ open, onScan, onClose }: { open: boolean; onScan: (value: string) => void; onClose: () => void }) =>
+    open ? (
+      <div data-testid="qr-scanner-modal">
+        <button data-testid="mock-scan" onClick={() => onScan(VALID_KEY)}>
+          Mock Scan
+        </button>
+        <button data-testid="mock-close" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    ) : null,
+}))
+
 // --- Clipboard mocking helper ---
 
 let clipboardReadTextMock: ReturnType<typeof vi.fn>
@@ -237,5 +253,57 @@ describe('paste button', () => {
     })
 
     expect(document.activeElement).toBe(input)
+  })
+})
+
+// --- Scan button ---
+describe('scan button', () => {
+  it('renders the scan button', () => {
+    render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: /scan qr code/i })).toBeInTheDocument()
+  })
+
+  it('opens the scanner modal on click', async () => {
+    render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /scan qr code/i }))
+    })
+
+    expect(screen.getByTestId('qr-scanner-modal')).toBeInTheDocument()
+  })
+
+  it('calls onChange with scanned value when QR is decoded', async () => {
+    const onChange = vi.fn()
+    render(<AddressInput id="addr" value="" onChange={onChange} />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /scan qr code/i }))
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('mock-scan'))
+    })
+
+    expect(onChange).toHaveBeenCalledWith(VALID_KEY)
+  })
+
+  it('closes the scanner modal without calling onChange when cancelled', async () => {
+    const onChange = vi.fn()
+    render(<AddressInput id="addr" value="" onChange={onChange} />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /scan qr code/i }))
+    })
+
+    expect(screen.getByTestId('qr-scanner-modal')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('mock-close'))
+    })
+
+    expect(screen.queryByTestId('qr-scanner-modal')).toBeNull()
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

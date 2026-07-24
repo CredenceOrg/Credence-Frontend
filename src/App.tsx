@@ -6,35 +6,19 @@ import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
 
-import {
-  preloadHome,
-  preloadDashboard,
-  preloadBond,
-  preloadCreateBond,
-  preloadBondDetail,
-  preloadTrustScore,
-  preloadTrustSummary,
-  preloadAttestations,
-  preloadTransactions,
-  preloadSettings,
-  preloadAmountInputTest,
-  preloadSignIn,
-  preloadNotFound,
-} from './config/routes'
-
-const Home = lazy(preloadHome)
-const Dashboard = lazy(preloadDashboard)
-const Bond = lazy(preloadBond)
-const CreateBondPage = lazy(preloadCreateBond)
-const BondDetail = lazy(preloadBondDetail)
-const TrustScore = lazy(preloadTrustScore)
-const TrustSummary = lazy(preloadTrustSummary)
-const Attestations = lazy(preloadAttestations)
-const Transactions = lazy(preloadTransactions)
-const Settings = lazy(preloadSettings)
-const AmountInputTestPage = lazy(preloadAmountInputTest)
-const SignIn = lazy(preloadSignIn)
-const NotFound = lazy(preloadNotFound)
+const Home = lazy(() => import('./pages/Home'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Bond = lazy(() => import('./pages/Bond'))
+const CreateBondPage = lazy(() => import('./pages/CreateBondPage'))
+const BondDetail = lazy(() => import('./pages/BondDetail'))
+const TrustScore = lazy(() => import('./pages/TrustScore'))
+const Attestations = lazy(() => import('./pages/Attestations'))
+const Transactions = lazy(() => import('./pages/Transactions'))
+const Settings = lazy(() => import('./pages/Settings'))
+const AmountInputTestPage = lazy(() => import('./pages/AmountInputTestPage'))
+const SignIn = lazy(() => import('./pages/SignIn'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+const RouteErrorPage = lazy(() => import('./pages/RouteErrorPage'))
 
 const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
 

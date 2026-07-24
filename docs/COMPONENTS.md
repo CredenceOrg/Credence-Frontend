@@ -20,6 +20,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | TrustGauge             | `src/components/TrustGauge.css`                                                     | Uses inline CSS custom properties for dynamic progress, marker, thumb, and legend-dot colors; keep scoped until migrated. |
 | TierLadder             | `src/components/TierLadder.css` + `Badge.css`                                       | None.                                                                                                                     |
 | ActivityTimeline       | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                       |
+| TooltipOnOverflow      | `src/components/TooltipOnOverflow.css`                                              | None.                                                                                                                     |
 | FormField              | `src/components/forms/FormField.css`                                                | None.                                                                                                                     |
 | controls/Select        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
 | controls/Toggle        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
@@ -104,13 +105,41 @@ Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx).
 | `label`     | `string`                 | Known variant label |
 | `className` | `string`                 | `''`                |
 
-Accessibility: renders text in a `<span>`; consumers should provide surrounding context when the badge alone is not descriptive.
+Accessibility: wraps content in [`TooltipOnOverflow`](#tooltiponoverflow) so the full label is exposed on hover, focus, and to assistive technology when the badge text is truncated. Consumers should provide surrounding context when the badge alone is not descriptive.
 
 Tokens: tier/status color tokens, `--credence-font-size-xs`, `--credence-font-weight-semibold`, `--credence-radius-full`, `--credence-space-2`.
 
 ```tsx
 <Badge variant="gold" />
 <Badge variant="grace-period" label="Grace" />
+```
+
+## TooltipOnOverflow
+
+Source: [`src/components/TooltipOnOverflow.tsx`](../src/components/TooltipOnOverflow.tsx).
+
+| Prop        | Type               | Default     |
+| ----------- | ------------------ | ----------- |
+| `content`   | `string`           | Required    |
+| `children`  | `React.ReactElement` | Required  |
+| `className` | `string`           | `''`        |
+
+Wraps a single child element and displays a tooltip **only when the child's text is visually truncated** (overflowing). The tooltip appears on hover and on keyboard focus — keyboard users can dismiss it with Escape.
+
+Accessibility (WCAG 2.1 AA):
+- Sets `aria-describedby` on the child to associate tooltip content with the trigger.
+- Renders `role="tooltip"` with `aria-hidden` toggled for visibility.
+- Dismissible with Escape while focused, without stealing focus.
+- Respects `prefers-reduced-motion`; disables fade animation when set.
+- Color contrast uses design tokens (`--credence-color-slate-900` / `--credence-color-white`) meeting AA ratios (≥4.5:1).
+- Arrow pointers are CSS pseudo-elements (no extra DOM).
+
+Tokens: `--credence-surface-card`, `--credence-text-primary`, `--credence-color-slate-900`, `--credence-color-white`, `--credence-space-1`, `--credence-space-2`, `--credence-radius-md`, `--credence-font-size-xs`, `--credence-font-family-base`, `--credence-line-height-tight`, `--credence-motion-duration-fast`, `--credence-motion-easing-standard`, `--credence-shadow-toast`.
+
+```tsx
+<TooltipOnOverflow content="GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H">
+  <code>GBRPYHIL2CI3...OX2H</code>
+</TooltipOnOverflow>
 ```
 
 ## Banner

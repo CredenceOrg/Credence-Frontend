@@ -3,6 +3,10 @@ import { describe, it, expect } from 'vitest'
 import Badge from './Badge'
 
 vi.mock('./Badge.css', () => ({}))
+vi.mock('./TooltipOnOverflow.css', () => ({}))
+vi.mock('../hooks/useReducedMotion', () => ({
+  useReducedMotion: () => false,
+}))
 
 describe('Badge', () => {
   describe('variant normalization', () => {
@@ -27,9 +31,9 @@ describe('Badge', () => {
       expect(el).not.toBeNull()
     })
 
-    it('unknown variant preserves the supplied string as the visible label', () => {
+    it('unknown variant normalizes to "Unknown" label (DEFAULT_LABELS takes precedence over raw string)', () => {
       render(<Badge variant="foo-bar" />)
-      expect(screen.getByText('foo-bar')).toBeInTheDocument()
+      expect(screen.getByText('Unknown')).toBeInTheDocument()
     })
 
     it('treats an empty string as unknown', () => {
@@ -66,20 +70,27 @@ describe('Badge', () => {
     })
   })
 
-  describe('title attribute (truncation tooltip)', () => {
-    it('has a title attribute matching the default label', () => {
+  describe('TooltipOnOverflow integration', () => {
+    it('wraps badge in a TooltipOnOverflow with the display label as content', () => {
       render(<Badge variant="slashed" />)
-      expect(screen.getByTitle('Slashed')).toBeInTheDocument()
+      // The badge label is still rendered
+      expect(screen.getByText('Slashed')).toBeInTheDocument()
+      // The wrapper span from TooltipOnOverflow exists
+      const wrapper = document.querySelector('.tooltip-on-overflow__wrapper')
+      expect(wrapper).toBeInTheDocument()
     })
 
-    it('has a title attribute matching the custom label', () => {
+    it('passes custom label to TooltipOnOverflow content', () => {
       render(<Badge variant="gold" label="Custom label" />)
-      expect(screen.getByTitle('Custom label')).toBeInTheDocument()
+      expect(screen.getByText('Custom label')).toBeInTheDocument()
+      const wrapper = document.querySelector('.tooltip-on-overflow__wrapper')
+      expect(wrapper).toBeInTheDocument()
     })
 
-    it('has a title attribute matching the label for an unknown variant', () => {
+    it('no longer renders a title attribute on the badge span', () => {
       render(<Badge variant="mystery-tier" />)
-      expect(screen.getByTitle('mystery-tier')).toBeInTheDocument()
+      const badge = document.querySelector('.badge')
+      expect(badge).not.toHaveAttribute('title')
     })
   })
 
@@ -126,10 +137,10 @@ describe('Badge', () => {
       expect(screen.getByText('In lock-up')).toBeInTheDocument()
     })
 
-    it('srPrefix works on an unknown variant', () => {
+    it('srPrefix works on an unknown variant (label normalizes to Unknown)', () => {
       render(<Badge variant="experimental" srPrefix="Tier:" />)
       expect(document.querySelector('.sr-only')).toHaveTextContent('Tier:')
-      expect(screen.getByText('experimental')).toBeInTheDocument()
+      expect(screen.getByText('Unknown')).toBeInTheDocument()
     })
   })
 

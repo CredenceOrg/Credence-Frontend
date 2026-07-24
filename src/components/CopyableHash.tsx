@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { truncateAddress } from '../lib/stellar'
+import TooltipOnOverflow from './TooltipOnOverflow'
 import './CopyableHash.css'
 
 export interface CopyableHashProps {
@@ -68,7 +69,9 @@ export default function CopyableHash({
 
   return (
     <span className="copyable-hash">
-      <span className="copyable-hash__text">{displayHash}</span>
+      <TooltipOnOverflow content={hash}>
+        <span className="copyable-hash__text">{displayHash}</span>
+      </TooltipOnOverflow>
       
       <button
         type="button"

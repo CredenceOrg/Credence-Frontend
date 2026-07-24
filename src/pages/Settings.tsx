@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSettings, defaultPersistedSettings } from '../context/SettingsContext'
 import ThemeToggle from '../components/ThemeToggle'
 import { useToast } from '../components/ToastProvider'

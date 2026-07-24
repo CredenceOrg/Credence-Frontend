@@ -124,6 +124,54 @@
   cursor: not-allowed;
 }
 
+.address-input-scan-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-md);
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+  flex-shrink: 0;
+}
+
+.address-input-scan-button:hover:not(:disabled) {
+  background: var(--credence-color-slate-50);
+  border-color: var(--credence-text-secondary);
+  color: var(--credence-text-primary);
+}
+
+.address-input-scan-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.address-input-scan-button:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.address-input-scan-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme='dark'] .address-input-scan-button {
+  border-color: var(--credence-color-slate-700);
+}
+
+[data-theme='dark'] .address-input-scan-button:hover:not(:disabled) {
+  background: var(--credence-color-slate-700);
+  border-color: var(--credence-color-slate-600);
+}
+
 .address-input-spinner {
   display: flex;
   align-items: center;
@@ -315,7 +363,8 @@
     font-size: var(--credence-font-size-sm);
   }
 
-  .address-input-paste-button {
+  .address-input-paste-button,
+  .address-input-scan-button {
     width: 28px;
     height: 28px;
   }
@@ -352,7 +401,8 @@
     font-size: var(--credence-font-size-xs);
   }
 
-  .address-input-paste-button {
+  .address-input-paste-button,
+  .address-input-scan-button {
     width: 24px;
     height: 24px;
   }

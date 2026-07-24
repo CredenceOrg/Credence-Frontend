@@ -25,6 +25,8 @@ npm run dev
 
 App runs at [http://localhost:5173](http://localhost:5173). API requests to `/api` are proxied to the backend (default `http://localhost:3000`).
 
+When the browser fires a `beforeinstallprompt` event, the app surfaces a dismissible install card once per browser session so users can discover the install flow without being interrupted repeatedly.
+
 ## Continuous Integration
 
 Every pull request and push to the `main` branch is validated by a GitHub Actions workflow. The quality gate ensures that the code compiles, is correctly formatted, passes all linting rules, and that all tests pass:
@@ -91,8 +93,10 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 See the [docs/](docs/) directory for detailed project documentation, including:
 
 - [Accessibility Checklist](docs/ACCESSIBILITY.md) - Required axe, screen reader, keyboard, and contrast checks before merging UI changes.
+- [Copy Tone Guide](docs/COPY_TONE.md) — How we phrase success, error, empty, and loading UI copy with dos and don'ts.
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
+- [Cookie-Secret Rotation Runbook](docs/COOKIE_SECRETS.md) — Rotation cadence, blast radius, and step-by-step procedure for backend session/CSRF cookie secrets.
 - [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
 
 ## Project layout

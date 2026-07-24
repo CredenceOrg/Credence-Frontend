@@ -16,6 +16,8 @@ import {
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
+import { usePinnedWidgets } from '../hooks/usePinnedWidgets';
+import { PinWidgetButton } from '../components/PinWidgetButton';
 import './Dashboard.css'
 
 const TRUST_SCORE = 684

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ActivityTimeline, { ActivityItem, isTxHash, toneToBadgeVariant } from './ActivityTimeline'
@@ -90,12 +90,12 @@ describe('ActivityTimeline', () => {
   describe('empty items', () => {
     it('renders the EmptyState heading when items is an empty array', () => {
       render(<ActivityTimeline items={[]} />)
-      expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /no recent activity/i })).toBeInTheDocument()
     })
 
     it('renders the EmptyState description', () => {
       render(<ActivityTimeline items={[]} />)
-      expect(screen.getByText(/attestations and events will appear here/i)).toBeInTheDocument()
+      expect(screen.getByText(/new trust score events will appear here/i)).toBeInTheDocument()
     })
 
     it('does not render the timeline list', () => {
@@ -241,7 +241,7 @@ describe('ActivityTimeline', () => {
       await user.click(button)
 
       expect(screen.getByTestId('copyable-hash')).toBeInTheDocument()
-      expect(screen.getByTestId('copyable-hash').textContent).toBe('Tx 0x93a1...22f4')
+      expect(screen.getByTestId('copyable-hash').textContent).toBe('0x93a1...22f4')
     })
 
     it('renders non-tx meta as plain text', async () => {

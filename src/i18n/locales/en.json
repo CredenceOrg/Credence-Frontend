@@ -3,6 +3,8 @@
     "skipToMainContent": "Skip to main content",
     "brand": "Credence",
     "keyboardShortcuts": "Open keyboard shortcuts (Shift+?)",
+    "actionLauncher": "Open action launcher (Ctrl+K / Cmd+K)",
+    "actionLauncherHint": "Open action launcher (Ctrl+K / Cmd+K)",
     "footer": {
       "copyright": "© 2026 Credence Protocol. Built on Stellar.",
       "documentation": "Documentation",

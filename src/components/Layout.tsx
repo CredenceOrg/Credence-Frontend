@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
+import { PrefetchNavLink } from './PrefetchNavLink'
+import { PRELOADS_BY_PATH } from '../config/routes'
 import { useTranslation } from 'react-i18next'
 import ThemeToggle from './ThemeToggle'
 import NetworkIndicator from './NetworkIndicator'
@@ -93,16 +95,17 @@ export default function Layout() {
         {/* Desktop: inline nav (hidden <640px via CSS) */}
         <nav aria-label="Main navigation" className="appNav">
           {NAV_LINKS.map(({ to, label }) => (
-            <NavLink
+            <PrefetchNavLink
               key={to}
               to={to}
               end
+              preload={PRELOADS_BY_PATH[to]}
               className={({ isActive }) =>
                 isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
               }
             >
               {label}
-            </NavLink>
+            </PrefetchNavLink>
           ))}
         </nav>
 

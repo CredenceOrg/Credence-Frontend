@@ -163,6 +163,9 @@ export function useFocusTrap({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
+        // Stop the event from bubbling to any outer focus trap so that only
+        // the innermost active trap consumes the keypress (inside-out close order).
+        event.stopPropagation()
         onEscape?.()
         return
       }

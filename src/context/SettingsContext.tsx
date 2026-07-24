@@ -128,42 +128,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     defaultPersistedSettings,
   )
 
-  // Validation helpers for persisted values
-  const VALID_NETWORKS: NetworkOption[] = ['public', 'test']
-  const VALID_ADDRESS_DISPLAYS: AddressDisplayOption[] = ['full', 'short', 'friendly']
-  const VALID_AUTO_DISMISSES: AutoDismissOption[] = ['off', '3s', '5s', '8s']
-  const MIN_REAUTH_THRESHOLD = 1
-  const MAX_REAUTH_THRESHOLD = 1440
-
-  const coerceNetwork = (v: string): NetworkOption =>
-    (VALID_NETWORKS.includes(v as NetworkOption) ? v : defaultPersistedSettings.network) as NetworkOption
-  const coerceAddressDisplay = (v: string): AddressDisplayOption =>
-    (VALID_ADDRESS_DISPLAYS.includes(v as AddressDisplayOption) ? v : defaultPersistedSettings.addressDisplay) as AddressDisplayOption
-  const coerceAutoDismiss = (v: string): AutoDismissOption =>
-    (VALID_AUTO_DISMISSES.includes(v as AutoDismissOption) ? v : defaultPersistedSettings.autoDismiss) as AutoDismissOption
-  const coerceReauthThreshold = (v: unknown): number => {
-    if (typeof v === 'number' && !isNaN(v) && v >= MIN_REAUTH_THRESHOLD && v <= MAX_REAUTH_THRESHOLD) {
-      return v
-    }
-    return defaultPersistedSettings.reauthThresholdMinutes
-  }
-
-  const normalizedPersistedSettings = useMemo(() => {
-    const validated = validateAndNormalize(persistedSettingsRaw)
-    if (validated.ok) {
-      return {
-        ...validated.data,
-        network: validated.data.network as NetworkOption,
-        addressDisplay: validated.data.addressDisplay as AddressDisplayOption,
-        autoDismiss: validated.data.autoDismiss as AutoDismissOption,
-      }
-    }
-    return defaultPersistedSettings
+  const persistedSettings = useMemo(() => {
+    const res = validateAndNormalize(persistedSettingsRaw)
+    return (res.ok ? res.data : defaultPersistedSettings) as PersistedSettings
   }, [persistedSettingsRaw])
-
-  const persistedSettings: PersistedSettings = {
-    ...normalizedPersistedSettings,
-  }
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
   const [network, setNetwork] = useState<NetworkOption>(persistedSettings.network)
@@ -177,12 +145,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const isEquivalent =
-      persistedSettings.themeMode === normalizedPersistedSettings.themeMode &&
-      persistedSettings.network === normalizedPersistedSettings.network &&
-      persistedSettings.addressDisplay === normalizedPersistedSettings.addressDisplay &&
-      persistedSettings.toastsEnabled === normalizedPersistedSettings.toastsEnabled &&
-      persistedSettings.autoDismiss === normalizedPersistedSettings.autoDismiss &&
-      persistedSettings.reauthThresholdMinutes === normalizedPersistedSettings.reauthThresholdMinutes
+      persistedSettingsRaw.themeMode === persistedSettings.themeMode &&
+      persistedSettingsRaw.network === persistedSettings.network &&
+      persistedSettingsRaw.addressDisplay === persistedSettings.addressDisplay &&
+      persistedSettingsRaw.toastsEnabled === persistedSettings.toastsEnabled &&
+      persistedSettingsRaw.autoDismiss === persistedSettings.autoDismiss
 
     if (!isEquivalent) {
       setPersistedSettings(persistedSettings)

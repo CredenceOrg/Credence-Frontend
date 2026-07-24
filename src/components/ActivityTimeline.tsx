@@ -4,7 +4,25 @@ import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
 
+import type { ActivityItem, ActivityTone } from '../data/activity'
+export type { ActivityItem, ActivityTone }
 
+export function toneToBadgeVariant(tone: string): string {
+  switch (tone) {
+    case 'success':
+      return 'active'
+    case 'warning':
+      return 'grace-period'
+    case 'info':
+      return 'locked'
+    default:
+      return 'active'
+  }
+}
+
+export function isTxHash(meta: string): boolean {
+  return meta.toLowerCase().startsWith('tx')
+}
 
 export interface ActivityTimelineProps {
   compact?: boolean
@@ -85,8 +103,8 @@ export default function ActivityTimeline({
       {count === 0 ? (
         <EmptyState
           illustration="activity"
-          title="No recent activity"
-          description="New trust score events will appear here once bonds, attestations, or score updates occur."
+          title="No activity yet"
+          description="Attestations and events will appear here."
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">

@@ -32,8 +32,8 @@ function renderRoutes(initialEntries: string[]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <SettingsProvider>
-        <WalletProvider>
-          <ToastProvider>
+        <ToastProvider>
+          <WalletProvider>
             <Routes>
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
@@ -44,8 +44,8 @@ function renderRoutes(initialEntries: string[]) {
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
-          </ToastProvider>
-        </WalletProvider>
+          </WalletProvider>
+        </ToastProvider>
       </SettingsProvider>
     </MemoryRouter>,
   )

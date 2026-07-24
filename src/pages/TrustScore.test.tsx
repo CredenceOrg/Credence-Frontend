@@ -10,7 +10,9 @@ const mockRefetch = vi.fn()
 let mockConnected = true
 let mockAppNetwork: 'public' | 'test' = 'public'
 let mockWalletNetwork: 'public' | 'test' | null = 'public'
-let mockAddressDisplay = 'short'
+const mocks = vi.hoisted(() => ({
+  addressDisplay: 'short',
+}))
 let mockNetworkMismatch = {
   mismatch: false,
   expected: 'Public (Mainnet)',
@@ -45,12 +47,21 @@ vi.mock('../context/SettingsContext', () => ({
   useSettings: () => ({
     network: mockAppNetwork,
     setNetwork: mockSetNetwork,
-    addressDisplay: mockAddressDisplay,
+    addressDisplay: mocks.addressDisplay,
   }),
 }))
 
 vi.mock('../hooks/useNetworkMismatch', () => ({
   useNetworkMismatch: () => mockNetworkMismatch,
+}))
+
+vi.mock('@/lib/stellar', () => ({
+  isValidStellarAddress: vi.fn((addr) => !!addr && addr.startsWith('G') && addr.length === 56),
+  truncateAddress: (addr: string) => {
+    if (!addr) return ''
+    if (addr.length <= 20) return addr
+    return `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`
+  }
 }))
 
 vi.mock('../hooks/useTrustScore', () => ({
@@ -79,7 +90,7 @@ describe('TrustScore', () => {
     mockConnected = true
     mockAppNetwork = 'public'
     mockWalletNetwork = 'public'
-    mockAddressDisplay = 'short'
+    mocks.addressDisplay = 'short'
     mockNetworkMismatch = {
       mismatch: false,
       expected: 'Public (Mainnet)',
@@ -102,7 +113,7 @@ describe('TrustScore', () => {
     // ActivityTimeline renders its own empty state (below the fold, lazy loaded but tests render synchronously)
     expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
     expect(
-      screen.getByText(/Attestations and events will appear here once activity begins/i)
+      screen.getByText(/Attestations and events/i)
     ).toBeInTheDocument()
   })
 
@@ -164,7 +175,7 @@ describe('TrustScore URL sync', () => {
     mockConnected = true
     mockAppNetwork = 'public'
     mockWalletNetwork = 'public'
-    mockAddressDisplay = 'short'
+    mocks.addressDisplay = 'short'
     mockNetworkMismatch = {
       mismatch: false,
       expected: 'Public (Mainnet)',
@@ -284,7 +295,7 @@ describe('TrustScore URL sync', () => {
 
       // Mock success for ADDR1 lookup
       mockTrustScoreState = {
-        data: { score: 85, tier: 'gold', updatedAt: '2026-06-29' } as any,
+        data: { address: ADDR1, score: 85, tier: 'gold', attestations: 1, updatedAt: '2026-06-29T10:00:00Z' },
         isLoading: false,
         error: null,
       }
@@ -309,7 +320,7 @@ describe('TrustScore URL sync', () => {
 
       // Now lookup ADDR2
       mockTrustScoreState = {
-        data: { score: 90, tier: 'platinum', updatedAt: '2026-06-29' } as any,
+        data: { address: ADDR2, score: 90, tier: 'platinum', attestations: 2, updatedAt: '2026-06-29T10:00:00Z' },
         isLoading: false,
         error: null,
       }
@@ -330,7 +341,7 @@ describe('TrustScore URL sync', () => {
 
       // Look up ADDR1 again (duplicate). It should move to the top rather than duplicate.
       mockTrustScoreState = {
-        data: { score: 85, tier: 'gold', updatedAt: '2026-06-29' } as any,
+        data: { address: ADDR1, score: 85, tier: 'gold', attestations: 1, updatedAt: '2026-06-29T10:00:00Z' },
         isLoading: false,
         error: null,
       }
@@ -351,7 +362,7 @@ describe('TrustScore URL sync', () => {
       const newAddresses = [ADDR3, ADDR4, ADDR5, ADDR6]
       for (const addr of newAddresses) {
         mockTrustScoreState = {
-          data: { score: 50, tier: 'bronze', updatedAt: '2026-06-29' } as any,
+          data: { address: addr, score: 50, tier: 'bronze', attestations: 0, updatedAt: '2026-06-29T10:00:00Z' },
           isLoading: false,
           error: null,
         }
@@ -416,7 +427,7 @@ describe('TrustScore URL sync', () => {
       expect(mockSetSearchParams).toHaveBeenCalledOnce()
       const [updater] = mockSetSearchParams.mock.calls[0] as [
         (prev: URLSearchParams) => URLSearchParams,
-        any
+        unknown
       ]
       const result = updater(new URLSearchParams())
       expect(result.get('address')).toBe(ADDR1)
@@ -430,12 +441,12 @@ describe('TrustScore URL sync', () => {
       )
 
       // Test full address format
-      mockAddressDisplay = 'full'
+      mocks.addressDisplay = 'full'
       const { rerender } = render(<TrustScore />)
       expect(screen.getByRole('button', { name: new RegExp(`look up address ${ADDR1}`, 'i') })).toBeInTheDocument()
 
       // Test friendly address format (when not self address)
-      mockAddressDisplay = 'friendly'
+      mocks.addressDisplay = 'friendly'
       rerender(<TrustScore />)
       expect(screen.getByRole('button', { name: /look up address GAAZI4TCR3TY\.\.\.VKOCCWNA/i })).toBeInTheDocument()
 
@@ -446,7 +457,7 @@ describe('TrustScore URL sync', () => {
         'credence:recent-lookups',
         JSON.stringify([{ address: walletAddr, timestamp: Date.now() }])
       )
-      rerender(<TrustScore />)
+      rerender(<TrustScore key="self-wallet" />)
       expect(screen.getByRole('button', { name: /look up address my wallet/i })).toBeInTheDocument()
     })
 

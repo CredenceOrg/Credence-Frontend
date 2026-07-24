@@ -43,7 +43,11 @@ export default function Badge({ variant, label, className = '', srPrefix }: Badg
   const normalizedVariant =
     variant.toLowerCase() in DEFAULT_LABELS ? variant.toLowerCase() : 'unknown'
 
-  const displayLabel = label || DEFAULT_LABELS[normalizedVariant] || variant
+  const displayLabel =
+    label ||
+    (normalizedVariant === 'unknown' && variant.toLowerCase() !== 'unknown'
+      ? variant
+      : DEFAULT_LABELS[normalizedVariant])
 
   return (
     <span

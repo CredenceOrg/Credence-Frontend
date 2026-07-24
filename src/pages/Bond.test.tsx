@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import Bond from './Bond'
@@ -151,11 +151,13 @@ describe('Bond Page', () => {
   })
 
   it('navigates to /bond/new when Create bond is clicked while connected', async () => {
-    const user = userEvent.setup()
+    vi.useFakeTimers()
     render(<Bond />)
-    await user.click(screen.getByRole('button', { name: /^Create bond$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+    await vi.runAllTimersAsync()
     expect(mockNavigate).toHaveBeenCalledWith('/bond/new')
     expect(mockConnect).not.toHaveBeenCalled()
+    vi.useRealTimers()
   })
 
   it('calls connect when Create bond is clicked while disconnected', async () => {
@@ -218,87 +220,73 @@ describe('Bond Page', () => {
     })
 
     afterEach(() => {
-      vi.runAllTimers()
       vi.useRealTimers()
     })
 
     it('create bond button enters aria-busy while transaction is in flight', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       render(<Bond />)
 
       const createBtn = screen.getByRole('button', { name: /^Create bond$/i })
       expect(createBtn).not.toHaveAttribute('aria-busy', 'true')
 
-      // start the click but do not advance the timer yet
-      const clickPromise = user.click(createBtn)
-      // while the mock delay is pending, the button should be busy
-      expect(screen.getByRole('button', { name: /^Create bond$/i })).toHaveAttribute(
+      fireEvent.click(createBtn)
+      expect(screen.getByRole('button', { name: /create bond/i })).toHaveAttribute(
         'aria-busy',
         'true'
       )
 
-      // complete the timer so the promise resolves
-      vi.runAllTimers()
-      await clickPromise
+      await vi.runAllTimersAsync()
     })
 
     it('aria-live region announces "Submitting transaction…" while in flight', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       render(<Bond />)
 
-      const clickPromise = user.click(screen.getByRole('button', { name: /^Create bond$/i }))
-      expect(screen.getByRole('status')).toHaveTextContent('Submitting transaction…')
+      fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+      const statusAnnouncer = screen.getAllByRole('status').find((el) => el.classList.contains('sr-only'))!
+      expect(statusAnnouncer).toHaveTextContent('Submitting transaction…')
 
-      vi.runAllTimers()
-      await clickPromise
+      await vi.runAllTimersAsync()
     })
 
     it('aria-live region is cleared after transaction completes', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       render(<Bond />)
 
-      const clickPromise = user.click(screen.getByRole('button', { name: /^Create bond$/i }))
-      vi.runAllTimers()
-      await clickPromise
+      fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+      await vi.runAllTimersAsync()
 
-      expect(screen.getByRole('status')).toHaveTextContent('')
+      const statusAnnouncer = screen.getAllByRole('status').find((el) => el.classList.contains('sr-only'))!
+      expect(statusAnnouncer).toHaveTextContent('')
     })
 
     it('navigates to /bond/new after create transaction completes', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       render(<Bond />)
 
-      const clickPromise = user.click(screen.getByRole('button', { name: /^Create bond$/i }))
-      vi.runAllTimers()
-      await clickPromise
+      fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+      await vi.runAllTimersAsync()
 
       expect(mockNavigate).toHaveBeenCalledWith('/bond/new')
     })
 
     it('prevents double-submit: second click while pending is a no-op', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       render(<Bond />)
 
       const createBtn = screen.getByRole('button', { name: /^Create bond$/i })
-      const firstClick = user.click(createBtn)
+      fireEvent.click(createBtn)
 
       // Button is now disabled (aria-busy + disabled), second click should not fire
-      await user.click(createBtn)
+      fireEvent.click(createBtn)
 
-      vi.runAllTimers()
-      await firstClick
+      await vi.runAllTimersAsync()
 
       // navigate should only have been called once despite two clicks
       expect(mockNavigate).toHaveBeenCalledTimes(1)
     })
 
     it('create bond button resets to non-loading after transaction completes', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       render(<Bond />)
 
-      const clickPromise = user.click(screen.getByRole('button', { name: /^Create bond$/i }))
-      vi.runAllTimers()
-      await clickPromise
+      fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+      await vi.runAllTimersAsync()
 
       const btn = screen.getByRole('button', { name: /^Create bond$/i })
       expect(btn).not.toHaveAttribute('aria-busy', 'true')

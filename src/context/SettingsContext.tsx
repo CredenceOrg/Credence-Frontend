@@ -123,47 +123,33 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     defaultPersistedSettings,
   )
 
-  // Validation helpers for persisted values
-  const VALID_NETWORKS: NetworkOption[] = ['public', 'test']
-  const VALID_ADDRESS_DISPLAYS: AddressDisplayOption[] = ['full', 'short', 'friendly']
-  const VALID_AUTO_DISMISSES: AutoDismissOption[] = ['off', '3s', '5s', '8s']
+  const normalizedPersistedSettings = useMemo(() => {
+    const normalized = validateAndNormalize(persistedSettingsRaw)
+    return normalized.ok ? normalized.data : defaultPersistedSettings
+  }, [persistedSettingsRaw])
 
-  const coerceNetwork = (v: string): NetworkOption =>
-    (VALID_NETWORKS.includes(v as NetworkOption) ? v : defaultPersistedSettings.network) as NetworkOption
-  const coerceAddressDisplay = (v: string): AddressDisplayOption =>
-    (VALID_ADDRESS_DISPLAYS.includes(v as AddressDisplayOption) ? v : defaultPersistedSettings.addressDisplay) as AddressDisplayOption
-  const coerceAutoDismiss = (v: string): AutoDismissOption =>
-    (VALID_AUTO_DISMISSES.includes(v as AutoDismissOption) ? v : defaultPersistedSettings.autoDismiss) as AutoDismissOption
-
-  const persistedSettings: PersistedSettings = {
-    ...persistedSettingsRaw,
-    network: coerceNetwork(persistedSettingsRaw.network as unknown as string),
-    addressDisplay: coerceAddressDisplay(persistedSettingsRaw.addressDisplay as unknown as string),
-    autoDismiss: coerceAutoDismiss(persistedSettingsRaw.autoDismiss as unknown as string),
-  }
-
-  const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
-  const [network, setNetwork] = useState<NetworkOption>(persistedSettings.network)
-  const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(persistedSettings.addressDisplay)
-  const [toastsEnabled, setToastsEnabled] = useState<boolean>(persistedSettings.toastsEnabled)
-  const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(persistedSettings.autoDismiss)
+  const [themeMode, setThemeMode] = useState<ThemeMode>(normalizedPersistedSettings.themeMode as ThemeMode)
+  const [network, setNetwork] = useState<NetworkOption>(normalizedPersistedSettings.network as NetworkOption)
+  const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(normalizedPersistedSettings.addressDisplay as AddressDisplayOption)
+  const [toastsEnabled, setToastsEnabled] = useState<boolean>(normalizedPersistedSettings.toastsEnabled)
+  const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(normalizedPersistedSettings.autoDismiss as AutoDismissOption)
 
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
-  const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(normalizedPersistedSettings)
+  const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(normalizedPersistedSettings as PersistedSettings)
 
   useEffect(() => {
     const isEquivalent =
-      persistedSettings.themeMode === normalizedPersistedSettings.themeMode &&
-      persistedSettings.network === normalizedPersistedSettings.network &&
-      persistedSettings.addressDisplay === normalizedPersistedSettings.addressDisplay &&
-      persistedSettings.toastsEnabled === normalizedPersistedSettings.toastsEnabled &&
-      persistedSettings.autoDismiss === normalizedPersistedSettings.autoDismiss
+      persistedSettingsRaw.themeMode === normalizedPersistedSettings.themeMode &&
+      persistedSettingsRaw.network === normalizedPersistedSettings.network &&
+      persistedSettingsRaw.addressDisplay === normalizedPersistedSettings.addressDisplay &&
+      persistedSettingsRaw.toastsEnabled === normalizedPersistedSettings.toastsEnabled &&
+      persistedSettingsRaw.autoDismiss === normalizedPersistedSettings.autoDismiss
 
     if (!isEquivalent) {
-      setPersistedSettings(normalizedPersistedSettings)
-      setOriginalSettings(normalizedPersistedSettings)
+      setPersistedSettings(normalizedPersistedSettings as PersistedSettings)
+      setOriginalSettings(normalizedPersistedSettings as PersistedSettings)
     }
-  }, [normalizedPersistedSettings, persistedSettings, setPersistedSettings])
+  }, [normalizedPersistedSettings, persistedSettingsRaw, setPersistedSettings])
 
   const hasUnsavedChanges =
     themeMode !== originalSettings.themeMode ||
@@ -216,6 +202,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
 
     apply()
+
+    if (themeMode !== 'system') return
 
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
     const handler = () => apply()

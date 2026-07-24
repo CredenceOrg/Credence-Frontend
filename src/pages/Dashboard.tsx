@@ -1,11 +1,11 @@
 import { Link, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
 import Badge from '../components/Badge'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
 import TrustGauge from '../components/TrustGauge'
-import AddressDisplay from '../components/AddressDisplay'
 import { EmptyState, LoadingSkeleton } from '../components/states'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
@@ -22,6 +22,7 @@ const activeBonds = [
 
 
 export default function Dashboard() {
+  const { t } = useTranslation()
   useSeo({
     title: 'Dashboard',
     description:
@@ -32,6 +33,12 @@ export default function Dashboard() {
   const [searchParams] = useSearchParams()
   const widgetParam = searchParams.get('widget')
   const totalBonded = activeBonds.reduce((total, bond) => total + bond.amountUsdc, 0)
+
+  const shortcuts = [
+    { to: '/bond', label: t('dashboard.createBond'), description: t('dashboard.createBondDescription') },
+    { to: '/trust', label: t('dashboard.viewTrustScore'), description: t('dashboard.viewTrustScoreDescription') },
+    { to: '/attestations', label: t('dashboard.reviewAttestations'), description: t('dashboard.reviewAttestationsDescription') },
+  ]
 
   const showTrustScore = !widgetParam || widgetParam === 'trust-score'
   const showActiveBonds = !widgetParam || widgetParam === 'active-bonds'

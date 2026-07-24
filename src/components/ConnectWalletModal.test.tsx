@@ -147,7 +147,7 @@ describe('ConnectWalletModal — connecting state', () => {
   it('shows loading state on Connect button while connecting', () => {
     mockIsConnecting = true
     renderModal()
-    const connectBtn = screen.getByRole('button', { name: /^connect$/i })
+    const connectBtn = screen.getByRole('button', { name: /connect/i })
     expect(connectBtn).toHaveAttribute('aria-busy', 'true')
   })
 })

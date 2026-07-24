@@ -136,7 +136,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           key={i}
           className={`createBondFlow__stepBar${i <= step ? ' createBondFlow__stepBar--active' : ''}`}
           style={{
-            transition: prefersReducedMotion ? 'none' : undefined,
+            transition: prefersReducedMotion ? 'none' : 'background 0.2s ease',
           }}
         />
       ))}
@@ -257,7 +257,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                 }}
                 className={`createBondFlow__durationButton${duration === d ? ' createBondFlow__durationButton--active' : ''}`}
                 style={{
-                  transition: prefersReducedMotion ? 'none' : undefined,
+                  transition: prefersReducedMotion ? 'none' : 'all 0.2s ease',
                 }}
               >
                 {d} Days

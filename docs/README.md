@@ -43,21 +43,28 @@ This directory contains comprehensive design specifications and implementation g
    - When and how to use each state type
    - Validation checklist
 
-6. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
+6. **[Copy Tone Guide](./COPY_TONE.md)** ⭐ NEW
+   - How we phrase success, error, empty, and loading UI copy
+   - Voice principles (friendly, clear, concise, helpful)
+   - State-by-state dos and don'ts with real codebase examples
+   - Capitalization, punctuation, and i18n conventions
+   - PR review checklist for user-facing strings
+
+7. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
    - Standardized states (Default, Error, Disabled, Loading) for all input components
    - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
 
-7. **[Design Tokens](./DESIGN_TOKENS.md)**
+8. **[Design Tokens](./DESIGN_TOKENS.md)**
    - Canonical `--credence-*` CSS variable reference
    - Color, spacing, radius, typography, and motion scales
    - Guidance for replacing one-off hex values in components
 
-8. **[Motion Guidelines](./motion-guidelines.md)**
+9. **[Motion Guidelines](./motion-guidelines.md)**
    - Motion token strategy and reduced-motion defaults
    - Best practices for animation and transitions
    - Implementation examples for UI micro-interactions
 
-9. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+10. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
    - Visual design specifications
    - Color palette and design tokens
    - Layout measurements and spacing
@@ -65,32 +72,32 @@ This directory contains comprehensive design specifications and implementation g
    - Responsive breakpoints
    - Component organization structure
 
-10. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
+11. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
     - Practical code examples for each page
     - Reusable hooks and patterns
     - Testing examples
     - Accessibility guidelines
     - Performance considerations
 
-11. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
+12. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
     - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
     - Complete implementation guide with code examples
     - Accessibility requirements (WCAG 2.1 AA)
     - Testing guide and troubleshooting
     - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 
-12. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
+13. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
     - Provider tree and routing architecture
     - Context responsibilities
     - Theming flow and mock data boundaries
 
-13. [Keyboard Interactions Contract](./keyboard-interactions.md) ⭐ NEW
+14. [Keyboard Interactions Contract](./keyboard-interactions.md) ⭐ NEW
 
 - Developer-facing matrix of every interactive component and its expected keyboard behavior
 - Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
 - Focus-restore contract and checklist for new interactive components
 
-13. [Wallet Integration](./WALLET_INTEGRATION.md) ⭐ NEW
+15. [Wallet Integration](./WALLET_INTEGRATION.md) ⭐ NEW
     - `useWallet` API documentation
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling

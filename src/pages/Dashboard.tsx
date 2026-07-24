@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
@@ -5,8 +7,12 @@ import Badge from '../components/Badge'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
 import TrustGauge from '../components/TrustGauge'
-import AddressDisplay from '../components/AddressDisplay'
 import { EmptyState, LoadingSkeleton } from '../components/states'
+import {
+  ONBOARDING_COMPLETION_STORAGE_KEY,
+  ONBOARDING_STEP_COUNT,
+  ONBOARDING_STEP_STORAGE_KEY,
+} from '../config/onboarding'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
@@ -15,11 +21,51 @@ import './Dashboard.css'
 const TRUST_SCORE = 684
 const TRUST_TIER = 'gold'
 
+const onboardingSteps = [
+  {
+    title: 'Welcome to your dashboard',
+    description: 'Start with the trust score overview to see how your on-chain reputation is trending.',
+    target: 'trust-score',
+  },
+  {
+    title: 'Review active bonds',
+    description: 'Track the bonds you already have on the books and the next unlocks from the summary card.',
+    target: 'active-bonds',
+  },
+  {
+    title: 'Monitor recent activity',
+    description: 'Follow the latest attestations and protocol updates to stay current with your account.',
+    target: 'recent-activity',
+  },
+  {
+    title: 'Jump to key workflows',
+    description: 'Use the shortcuts section to move quickly into bond creation, trust review, or attestations.',
+    target: 'shortcuts',
+  },
+] as const
+
 const activeBonds = [
   { id: 'bond-001', amountUsdc: 2500, status: 'active', unlockLabel: 'May 30, 2026' },
   { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
 ] as const
 
+const shortcuts = [
+  {
+    to: '/bond',
+    label: 'Create bond',
+    description: 'Start a new USDC bond with trust-backed terms.',
+  },
+  {
+    to: '/trust',
+    label: 'View trust score',
+    description: 'See the details behind your on-chain reputation.',
+  },
+  {
+    to: '/attestations',
+    label: 'Review attestations',
+    description: 'Check recent attestations and protocol approvals.',
+  },
+] as const
 
 export default function Dashboard() {
   useSeo({
@@ -28,15 +74,72 @@ export default function Dashboard() {
       'Monitor your Credence trust score, active USDC bonds, and recent protocol activity from one place.',
   })
 
+  const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
   const [searchParams] = useSearchParams()
   const widgetParam = searchParams.get('widget')
   const totalBonded = activeBonds.reduce((total, bond) => total + bond.amountUsdc, 0)
+  const [onboardingStep, setOnboardingStep] = useState(0)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [onboardingCompleted, setOnboardingCompleted] = useState(false)
+
+  useEffect(() => {
+    if (!connected) return
+
+    const completedAt = window.localStorage.getItem(ONBOARDING_COMPLETION_STORAGE_KEY)
+    const savedStep = window.localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)
+    const parsedStep = savedStep ? Number.parseInt(savedStep, 10) : NaN
+
+    if (completedAt) {
+      setOnboardingCompleted(true)
+      return
+    }
+
+    if (!Number.isNaN(parsedStep) && parsedStep >= 0 && parsedStep < ONBOARDING_STEP_COUNT) {
+      setOnboardingStep(parsedStep)
+      setShowOnboarding(true)
+      return
+    }
+
+    setShowOnboarding(true)
+  }, [connected])
 
   const showTrustScore = !widgetParam || widgetParam === 'trust-score'
   const showActiveBonds = !widgetParam || widgetParam === 'active-bonds'
   const showRecentActivity = !widgetParam || widgetParam === 'recent-activity'
   const showShortcuts = !widgetParam || widgetParam === 'shortcuts'
+
+  const currentOnboardingStep = useMemo(() => onboardingSteps[onboardingStep], [onboardingStep])
+
+  const completeOnboarding = () => {
+    window.localStorage.removeItem(ONBOARDING_STEP_STORAGE_KEY)
+    window.localStorage.setItem(ONBOARDING_COMPLETION_STORAGE_KEY, new Date().toISOString())
+    setOnboardingCompleted(true)
+    setShowOnboarding(false)
+  }
+
+  const skipOnboarding = () => {
+    completeOnboarding()
+  }
+
+  const advanceOnboarding = () => {
+    if (onboardingStep >= onboardingSteps.length - 1) {
+      completeOnboarding()
+      return
+    }
+
+    const nextStep = onboardingStep + 1
+    window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(nextStep))
+    setOnboardingStep(nextStep)
+  }
+
+  const goBackOnboarding = () => {
+    if (onboardingStep === 0) return
+
+    const previousStep = onboardingStep - 1
+    window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(previousStep))
+    setOnboardingStep(previousStep)
+  }
 
   return (
     <div className="dashboard">
@@ -80,6 +183,46 @@ export default function Dashboard() {
 
       {connected && !isConnecting && (
         <>
+          {showOnboarding && !onboardingCompleted && (
+            <section
+              className="dashboard__onboarding"
+              aria-labelledby="dashboard-tour-title"
+              role="dialog"
+              aria-label="Dashboard tour"
+            >
+              <div className="dashboard__onboardingHeader">
+                <div>
+                  <p className="dashboard__onboardingEyebrow">Quick tour</p>
+                  <h2 id="dashboard-tour-title" className="dashboard__onboardingTitle">
+                    {currentOnboardingStep.title}
+                  </h2>
+                </div>
+                <span className="dashboard__onboardingProgress">
+                  {onboardingStep + 1}/{onboardingSteps.length}
+                </span>
+              </div>
+              <p className="dashboard__onboardingDescription">{currentOnboardingStep.description}</p>
+              <div className="dashboard__onboardingActions">
+                <Button type="button" variant="ghost" onClick={skipOnboarding}>
+                  Skip tour
+                </Button>
+                <div className="dashboard__onboardingActionsRow">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={goBackOnboarding}
+                    disabled={onboardingStep === 0}
+                  >
+                    Back
+                  </Button>
+                  <Button type="button" onClick={advanceOnboarding}>
+                    {onboardingStep >= onboardingSteps.length - 1 ? 'Finish tour' : 'Next'}
+                  </Button>
+                </div>
+              </div>
+            </section>
+          )}
+
           <div className="dashboard__grid">
             {showTrustScore && (
               <ActionCard title="Trust Score">

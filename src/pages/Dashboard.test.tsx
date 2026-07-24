@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ONBOARDING_COMPLETION_STORAGE_KEY, ONBOARDING_STEP_STORAGE_KEY } from '../config/onboarding'
 import Dashboard from './Dashboard'
 
 const mockConnect = vi.fn()
@@ -31,6 +32,7 @@ function renderDashboard(initialEntries = ['/']) {
 
 describe('Dashboard', () => {
   beforeEach(() => {
+    localStorage.clear()
     mockConnect.mockClear()
     mockConnected = true
     mockIsConnecting = false
@@ -92,5 +94,38 @@ describe('Dashboard', () => {
 
     expect(screen.getByLabelText(/loading dashboard/i)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /wallet required/i })).not.toBeInTheDocument()
+  })
+
+  it('shows the onboarding tour on first visit and records completion when skipped', async () => {
+    const user = userEvent.setup()
+
+    renderDashboard()
+
+    expect(screen.getByText(/quick tour/i)).toBeInTheDocument()
+    expect(screen.getByText(/welcome to your dashboard/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /skip tour/i }))
+
+    expect(localStorage.getItem(ONBOARDING_COMPLETION_STORAGE_KEY)).toBeTruthy()
+    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBeNull()
+  })
+
+  it('persists progress when advancing the onboarding tour', async () => {
+    const user = userEvent.setup()
+
+    renderDashboard()
+
+    await user.click(screen.getByRole('button', { name: /next/i }))
+
+    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBe('1')
+    expect(screen.getByText(/review active bonds/i)).toBeInTheDocument()
+  })
+
+  it('resumes an interrupted onboarding tour from the saved step', () => {
+    localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, '2')
+
+    renderDashboard()
+
+    expect(screen.getByText(/monitor recent activity/i)).toBeInTheDocument()
   })
 })

@@ -52,6 +52,8 @@ The application implements a pure CSS-variable theming system triggered via DOM 
 
 ## Data Flow and API Seams
 
+The dashboard now supports a first-run onboarding tour for connected users. The flow is implemented in [src/pages/Dashboard.tsx](../src/pages/Dashboard.tsx) and uses the local storage keys `credence:onboarding:step` and `credence:onboarding:onboardedAt` defined in [src/config/onboarding.ts](../src/config/onboarding.ts) to remember whether a user skipped or completed the tour.
+
 Currently, the application operates on **mock data** to illustrate UI flows.
 
 - **Bond Page (`src/pages/Bond.tsx`)**: Contains a hardcoded `initialBonds` array mapped to UI models. State transitions (e.g., slash calculations, withdrawal warnings) execute purely in-memory.

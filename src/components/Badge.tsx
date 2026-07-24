@@ -40,10 +40,10 @@ const DEFAULT_LABELS: Record<string, string> = {
 }
 
 export default function Badge({ variant, label, className = '', srPrefix }: BadgeProps) {
-  const normalizedVariant =
-    variant.toLowerCase() in DEFAULT_LABELS ? variant.toLowerCase() : 'unknown'
+  const isKnown = variant.toLowerCase() in DEFAULT_LABELS
+  const normalizedVariant = isKnown ? variant.toLowerCase() : 'unknown'
 
-  const displayLabel = label || DEFAULT_LABELS[normalizedVariant] || variant
+  const displayLabel = label || (isKnown ? DEFAULT_LABELS[normalizedVariant] : variant)
 
   return (
     <span

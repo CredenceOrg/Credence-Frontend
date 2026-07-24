@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import ActivityTimeline, { ActivityItem } from './ActivityTimeline'
+import userEvent from '@testing-library/user-event'
+import ActivityTimeline, { ActivityItem, toneToBadgeVariant, isTxHash } from './ActivityTimeline'
 
 const makeItem = (overrides: Partial<ActivityItem> = {}): ActivityItem => ({
   id: 'test-1',
@@ -182,7 +183,6 @@ describe('ActivityTimeline', () => {
       const { container } = render(<ActivityTimeline items={[makeItem()]} />)
       expect(container.querySelector('.activity-row__rail')).toHaveAttribute('aria-hidden', 'true')
     })
-  })
 
     it('renders actor label', () => {
       render(<ActivityTimeline items={[makeItem({ actor: 'Node 99' })]} />)

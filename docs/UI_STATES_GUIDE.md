@@ -6,6 +6,8 @@ This guide defines the empty states, error states, and loading patterns for the 
 
 ---
 
+See also: **[Copy Tone Guide](./COPY_TONE.md)** for dos and don'ts when phrasing success, error, empty, and loading copy.
+
 ## Empty States
 
 Empty states appear when there's no data to display. They should be encouraging and guide users toward their next action.

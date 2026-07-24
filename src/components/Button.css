@@ -198,9 +198,17 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .credence-button {
     padding: var(--credence-space-3) var(--credence-space-4);
     font-size: var(--credence-font-size-sm);
+  }
+}
+
+/* Very small screens (360px): further reduce button padding */
+@media (max-width: 360px) {
+  .credence-button {
+    padding: var(--credence-space-2) var(--credence-space-3);
+    font-size: var(--credence-font-size-xs);
   }
 }

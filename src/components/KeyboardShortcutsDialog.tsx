@@ -108,6 +108,7 @@ export default function KeyboardShortcutsDialog({
           >
             {/* × character */}
             <span aria-hidden="true">&#x2715;</span>
+            <span className="sr-only">Close keyboard shortcuts</span>
           </Button>
         </header>
 

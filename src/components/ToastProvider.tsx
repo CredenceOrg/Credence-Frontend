@@ -8,7 +8,11 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
   success: 5000,
   warning: 8000,
   danger: 0,
-}
+};
+
+// Maximum number of toasts displayed simultaneously
+const MAX_TOASTS = 3;
+
 
 const MAX_TOASTS = 3
 
@@ -16,6 +20,8 @@ interface ToastContextValue {
   addToast: (severity: ToastSeverity, message: string) => void
   removeToast: (id: string) => void
   removeAllToasts: () => void
+  /** Broadcasts a visually-hidden message to screen readers. */
+  announce: (message: string, assertive?: boolean) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -37,8 +43,22 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   settingsRef.current = { toastsEnabled, autoDismiss }
 
   const [toasts, setToasts] = useState<ToastData[]>([])
+  const [announcement, setAnnouncement] = useState('')
+  const [assertiveAnnouncement, setAssertiveAnnouncement] = useState('')
+  
   const idCounter = useRef(0)
   const timeoutsMap = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  
+  const announce = useCallback((message: string, assertive = false) => {
+    if (assertive) {
+      setAssertiveAnnouncement(message)
+      // Clear after a short delay so the identical message can be re-announced later if needed
+      setTimeout(() => setAssertiveAnnouncement(''), 3000)
+    } else {
+      setAnnouncement(message)
+      setTimeout(() => setAnnouncement(''), 3000)
+    }
+  }, [])
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev: ToastData[]) => prev.filter((t: ToastData) => t.id !== id))
@@ -61,6 +81,10 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
 
       // respect global toast enable setting
       if (!toastsEnabled) return
+      
+      // Screen readers often fail to read dynamically injected toasts if they contain nested live regions.
+      // We manually announce the text to the visually-hidden aria-live region to guarantee it is read.
+      announce(message, severity === 'danger')
 
       const id = String(++idCounter.current)
       const newToast: ToastData = { id, severity, message }
@@ -102,7 +126,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         timeoutsMap.current.set(id, timerId)
       }
     },
-    [removeToast]
+    [removeToast, announce]
   )
 
   /** Toasts split by politeness: danger → assertive; all others → polite. */
@@ -110,22 +134,31 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   const assertiveToasts = toasts.filter((t: ToastData) => t.severity === 'danger')
 
   return (
-    <ToastContext.Provider value={{ addToast, removeToast, removeAllToasts }}>
+    <ToastContext.Provider value={{ addToast, removeToast, removeAllToasts, announce }}>
       {children}
-      <div className="toast-container">
+      
+      {/* Visually-hidden aria-live regions for reliable off-screen announcements (e.g. async statuses) */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
+      <div className="sr-only" aria-live="assertive" aria-atomic="true">
+        {assertiveAnnouncement}
+      </div>
+
+      <div className="toast-container" aria-hidden="true">
         {toasts.length > 1 && (
           <button type="button" className="toast-dismiss-all" onClick={removeAllToasts}>
             Dismiss All
           </button>
         )}
         {/* Polite region: info, success, warning — announced when the screen reader is idle */}
-        <div role="region" aria-live="polite" aria-label="Notifications">
+        <div role="region" aria-label="Notifications">
           {politeToasts.map((t: ToastData) => (
             <Toast key={t.id} toast={t} onDismiss={removeToast} />
           ))}
         </div>
         {/* Assertive region: danger — interrupts and announces immediately */}
-        <div role="region" aria-live="assertive" aria-label="Error notifications">
+        <div role="region" aria-label="Error notifications">
           {assertiveToasts.map((t: ToastData) => (
             <Toast key={t.id} toast={t} onDismiss={removeToast} />
           ))}

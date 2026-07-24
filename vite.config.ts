@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { CSP } from './src/config/security'
 
 const apiProxyTarget = process.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
@@ -12,6 +13,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    headers: {
+      'Content-Security-Policy': CSP,
+    },
     proxy: {
       '/api': { target: apiProxyTarget, changeOrigin: true },
     },
@@ -36,6 +40,7 @@ export default defineConfig({
         'src/components/Badge.tsx',
         'src/hooks/useLocalStorage.ts',
         'src/hooks/useReducedMotion.ts',
+        'src/lib/bondPenalty.ts',
       ],
       reporter: ['text', 'lcov'],
       thresholds: {
@@ -43,6 +48,7 @@ export default defineConfig({
         'src/components/Badge.tsx': { branches: 95 },
         'src/hooks/useLocalStorage.ts': { lines: 95, branches: 95 },
         'src/hooks/useReducedMotion.ts': { branches: 90 },
+        'src/lib/bondPenalty.ts': { lines: 95, branches: 95, functions: 95 },
       },
     },
   },

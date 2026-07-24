@@ -165,6 +165,7 @@ export function computeWithdrawBreakdown(bond: MockBond): {
   penaltyPercent: number
   resultingBalance: string
   penaltyUsdc: number
+  resultingUsdc: number
 } {
   const rate = getPenaltyRate(bond.status)
   const penaltyPercent = Math.round(rate * 100)
@@ -177,6 +178,7 @@ export function computeWithdrawBreakdown(bond: MockBond): {
     penaltyPercent,
     resultingBalance: formatUsdc(resultingUsdc),
     penaltyUsdc,
+    resultingUsdc,
   }
 }
 

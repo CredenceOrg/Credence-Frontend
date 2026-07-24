@@ -69,7 +69,11 @@
   font-weight: var(--credence-font-weight-regular);
   line-height: var(--credence-line-height-base);
   padding: 0;
-  outline: none;
+}
+
+.address-input-field:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
 }
 
 .address-input-field::placeholder {
@@ -335,5 +339,26 @@
 
   .address-input-copy-feedback {
     font-size: var(--credence-font-size-2xs);
+  }
+}
+
+/* Very small screens (360px): ensure input fits without overflow */
+@media (max-width: 360px) {
+  .address-input-container {
+    padding: var(--credence-space-1) var(--credence-space-2);
+  }
+
+  .address-input-field {
+    font-size: var(--credence-font-size-xs);
+  }
+
+  .address-input-paste-button {
+    width: 24px;
+    height: 24px;
+  }
+
+  .address-input-copy-button {
+    width: 24px;
+    height: 24px;
   }
 }

@@ -170,3 +170,22 @@
     width: 100%;
   }
 }
+
+/* Very small screens (360px): ensure input fits without overflow */
+@media (max-width: 360px) {
+  .amountInput__input {
+    padding: var(--credence-space-2) var(--credence-space-10) var(--credence-space-2)
+      var(--credence-space-3);
+    font-size: var(--credence-font-size-sm);
+  }
+
+  .amountInput__maxButton {
+    padding: var(--credence-space-1) var(--credence-space-2);
+    font-size: var(--credence-font-size-sm);
+  }
+
+  .amountInput__chip {
+    padding: var(--credence-space-1) var(--credence-space-2);
+    font-size: var(--credence-font-size-sm);
+  }
+}

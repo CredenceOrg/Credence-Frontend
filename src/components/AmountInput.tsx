@@ -32,7 +32,7 @@ export interface AmountInputProps extends NativeInputProps {
   onValidityChange?: (isValid: boolean) => void
   /** Loading state - shows skeleton/spinner and disables interaction */
   isLoading?: boolean
-  /** Minimum allowed amount */
+  /** Minimum allowed amount (for validation) */
   min?: number
 }
 

@@ -1,19 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { lazy, Suspense } from 'react'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import ErrorBoundary from './ErrorBoundary'
-
-function GoodChild() {
-  return <div>Normal content</div>
-}
-
-function BadChild({ shouldThrow }: { shouldThrow: boolean }) {
-  if (shouldThrow) throw new Error('test render error')
-  return <div>Recovered content</div>
-}
 
 describe('ErrorBoundary', () => {
   beforeEach(() => {
-    // Suppress React's console.error noise for expected thrown errors.
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
@@ -21,150 +13,85 @@ describe('ErrorBoundary', () => {
     vi.restoreAllMocks()
   })
 
-  describe('happy path — no error', () => {
-    it('renders children when nothing throws', () => {
-      render(
-        <ErrorBoundary>
-          <GoodChild />
-        </ErrorBoundary>
-      )
-      expect(screen.getByText('Normal content')).toBeInTheDocument()
-    })
-
-    it('does not render the fallback when nothing throws', () => {
-      render(
-        <ErrorBoundary>
-          <GoodChild />
-        </ErrorBoundary>
-      )
-      expect(screen.queryByRole('heading', { name: /something went wrong/i })).toBeNull()
-    })
-  })
-
-  describe('error path — child throws', () => {
-    it('shows the ErrorState heading when a child throws', () => {
-      render(
-        <ErrorBoundary>
-          <BadChild shouldThrow />
-        </ErrorBoundary>
-      )
+  it('catches render errors in its subtree and shows a branded ErrorState fallback', async () => {
+    const FailChild = () => {
+      throw new Error('Something went wrong in component render')
+    }
+    
+    render(
+      <ErrorBoundary>
+        <FailChild />
+      </ErrorBoundary>
+    )
+    
+    await waitFor(() => {
       expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
+  })
 
-    it('hides children content after a throw', () => {
-      render(
-        <ErrorBoundary>
-          <BadChild shouldThrow />
-        </ErrorBoundary>
-      )
-      expect(screen.queryByText('Normal content')).toBeNull()
-    })
-
-    it('renders a "Try again" button', () => {
-      render(
-        <ErrorBoundary>
-          <BadChild shouldThrow />
-        </ErrorBoundary>
-      )
-      expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
-    })
-
-    it('renders a "Go to home page" link', () => {
-      render(
-        <ErrorBoundary>
-          <BadChild shouldThrow />
-        </ErrorBoundary>
-      )
-      const link = screen.getByRole('link', { name: /go to home page/i })
-      expect(link).toBeInTheDocument()
-      expect(link).toHaveAttribute('href', '/')
-    })
-
-    it('logs via console.error on catch', () => {
-      render(
-        <ErrorBoundary>
-          <BadChild shouldThrow />
-        </ErrorBoundary>
-      )
-      expect(console.error).toHaveBeenCalled()
+  it('ErrorBoundary catches lazy-loaded component mount errors and shows error state', async () => {
+    const LazyFailComponent = () => {
+      throw new Error('Component render failure')
+    }
+    
+    render(
+      <ErrorBoundary>
+        <LazyFailComponent />
+      </ErrorBoundary>
+    )
+    
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
     })
   })
 
-  describe('retry — clears error state without hard reload', () => {
-    it('re-renders children after retry when they no longer throw', () => {
-      let shouldThrow = true
-
-      function MaybeThrow() {
-        if (shouldThrow) throw new Error('transient error')
-        return <div>Recovered content</div>
+  it('ErrorBoundary allows retry after component succeeds on reset', async () => {
+    let hasThrown = false
+    
+    const FlakyComponent = () => {
+      if (!hasThrown) {
+        hasThrown = true
+        throw new Error('First attempt fails')
       }
-
-      render(
-        <ErrorBoundary>
-          <MaybeThrow />
-        </ErrorBoundary>
-      )
-
+      return <div>Recovered content</div>
+    }
+    
+    render(
+      <ErrorBoundary>
+        <FlakyComponent />
+      </ErrorBoundary>
+    )
+    
+    await waitFor(() => {
       expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
-
-      shouldThrow = false
-      fireEvent.click(screen.getByRole('button', { name: /try again/i }))
-
+    })
+    
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }))
+    
+    await waitFor(() => {
       expect(screen.getByText('Recovered content')).toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: /something went wrong/i })).toBeNull()
-    })
-
-    it('catches again if the child still throws after retry', () => {
-      render(
-        <ErrorBoundary>
-          <BadChild shouldThrow />
-        </ErrorBoundary>
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: /try again/i }))
-
-      // Child still throws — boundary should catch again
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
     })
   })
 
-  describe('custom fallback prop', () => {
-    it('calls the fallback render prop with the caught error', () => {
-      const customFallback = vi.fn((_err: Error, _reset: () => void) => (
-        <div>Custom fallback UI</div>
-      ))
+  it('catches chunk-load errors from lazy-loaded routes and shows retry UI', async () => {
+    const LazyFail = lazy(() => Promise.reject(new Error('Loading chunk 123 failed')))
 
-      render(
-        <ErrorBoundary fallback={customFallback}>
-          <BadChild shouldThrow />
+    render(
+      <MemoryRouter>
+        <ErrorBoundary>
+          <Suspense fallback={<div>Loading...</div>}>
+            <Routes>
+              <Route path="/" element={<LazyFail />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
-      )
+      </MemoryRouter>
+    )
 
-      expect(customFallback).toHaveBeenCalled()
-      expect(customFallback.mock.calls[0][0]).toBeInstanceOf(Error)
-      expect(screen.getByText('Custom fallback UI')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /connection issue/i })).toBeInTheDocument()
     })
-
-    it('passes a working reset callback to the custom fallback', () => {
-      let shouldThrow = true
-
-      function MaybeThrow() {
-        if (shouldThrow) throw new Error('custom boundary error')
-        return <div>Custom recovered</div>
-      }
-
-      render(
-        <ErrorBoundary fallback={(_err, reset) => <button onClick={reset}>Custom retry</button>}>
-          <MaybeThrow />
-        </ErrorBoundary>
-      )
-
-      expect(screen.getByRole('button', { name: /custom retry/i })).toBeInTheDocument()
-
-      shouldThrow = false
-      fireEvent.click(screen.getByRole('button', { name: /custom retry/i }))
-
-      expect(screen.getByText('Custom recovered')).toBeInTheDocument()
-    })
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
 })

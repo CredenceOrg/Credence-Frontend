@@ -1,7 +1,3 @@
-:root {
-  /* no-op: tokens come from src/index.css */
-}
-
 .createBondFlow {
   display: grid;
   gap: var(--credence-space-6);
@@ -58,6 +54,22 @@
   }
 }
 
+/* Very small screens (360px): ensure flow content fits without overflow */
+@media (max-width: 360px) {
+  .createBondFlow__durationButton {
+    padding: var(--credence-space-3);
+    font-size: var(--credence-font-size-sm);
+  }
+
+  .createBondFlow__reviewCard {
+    padding: var(--credence-space-3);
+  }
+
+  .createBondFlow__nav {
+    gap: var(--credence-space-2);
+  }
+}
+
 /* Duration button: defaults to secondary/unselected state */
 .createBondFlow__durationButton {
   flex: 1;
@@ -93,7 +105,6 @@
 .createBondFlow__error {
   color: var(--credence-color-danger);
   font-weight: var(--credence-font-weight-semibold);
-  role: alert;
 }
 
 /* ─────────────────────────────────────────────────────────────

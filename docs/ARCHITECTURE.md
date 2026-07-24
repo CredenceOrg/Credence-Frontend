@@ -26,7 +26,7 @@ graph TD
 ### Context Responsibilities
 
 1. **`SettingsProvider`**: Manages global user preferences (theme mode, network, address display) and application settings (toast toggles and auto-dismiss timing). It must sit high in the tree because it reads from `localStorage` and applies the data-theme immediately.
-2. **`WalletProvider`**: Manages Stellar wallet connection state, exposed address, and connect/disconnect functionality. Depends on `SettingsProvider` for network preferences.
+2. **`WalletProvider`**: Manages Stellar wallet connection state, exposed address, and connect/disconnect functionality. Depends on `SettingsProvider` for network preferences. See [Wallet Integration](./WALLET_INTEGRATION.md) for more details.
 3. **`ToastProvider`**: Exposes `addToast` and `removeToast` functions for global notifications. **Must be placed inside `SettingsProvider`**, because the toast component reads `toastsEnabled` and `autoDismiss` preferences via `useSettings()` to calculate timeout bounds and global mute states.
 
 ### The Route Table & Layout Shell
@@ -57,12 +57,20 @@ Currently, the application operates on **mock data** to illustrate UI flows.
 - **Bond Page (`src/pages/Bond.tsx`)**: Contains a hardcoded `initialBonds` array mapped to UI models. State transitions (e.g., slash calculations, withdrawal warnings) execute purely in-memory.
 - **Trust Score Page (`src/pages/TrustScore.tsx`)**: Retrieves its score and tier information via a mock-enabled `useTrustScore` hook.
 
-### Future API Client Implementation
+### API Type Generation
 
-As referenced in the README, `src/api/` is the designated boundary for typed API clients and real data fetching.
+`src/api/` is the designated boundary for typed API clients and real data fetching.
+
+API types are generated from the OpenAPI 3.1 specification at `openapi.yaml`:
+
+```bash
+npm run generate:api   # writes src/api/generated.ts
+```
+
+`src/api/types.ts` re-exports named aliases (`TrustScore`, `Bond`, `Transaction`, etc.) derived from the generated file, keeping the public type surface backwards-compatible while ensuring all types trace back to a single contract. See [docs/API_TYPES.md](./API_TYPES.md) for the full workflow.
 
 When replacing mock data with real integration:
 
-1. Create data fetching functions inside `src/api/` using the standard `apiFetch<T>()` helper. This ensures all HTTP calls get consistent proxy prefixing, error typing (`ApiError`), and abort signal handling.
+1. Create data fetching functions inside `src/api/` using the standard `apiFetch<T>()` helper (or `apiFetch<ApiResponse<operations['myOp']>>()` for spec-verified types). This ensures all HTTP calls get consistent proxy prefixing, error typing (`ApiError`), and abort signal handling.
 2. Consume these functions via custom data hooks (e.g., `useQuery` or dedicated React hooks).
 3. Connect `Bond` and `TrustScore` components to the new hooks instead of internal state, delegating all Stellar contract reads/writes and backend endpoints to the `api` layer.

@@ -117,6 +117,7 @@ function AddressInputInner({
               strokeLinejoin="round"
             />
           </svg>
+          <span className="sr-only">Paste address from clipboard</span>
         </button>
       )}
     </div>
@@ -200,7 +201,8 @@ export default function AddressInput({
     }
   }, [copy, value])
 
-  const error = externalError || (showError ? 'Invalid address. Stellar public keys are 56 characters starting with G.' : undefined)
+  const isChecksumError = showError && /^G[A-Z0-9]{55}$/.test(debouncedValue)
+  const error = externalError || (showError ? (isChecksumError ? 'Invalid address checksum. Please verify the address.' : 'Invalid address. Stellar public keys are 56 characters starting with G.') : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
 
   // Detect whether the entered (validated) value matches the connected wallet's address.
@@ -284,6 +286,7 @@ export default function AddressInput({
               </svg>
             )}
             {copied && <span className="address-input-copy-feedback">Copied</span>}
+            <span className="sr-only">Copy address to clipboard</span>
           </button>
           {isSelf && (
             <span className="address-input-echo-self" aria-hidden="false">

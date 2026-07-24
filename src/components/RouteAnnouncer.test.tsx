@@ -4,21 +4,6 @@ import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import RouteAnnouncer from './RouteAnnouncer'
 
-function NavigateTo({ to }: { to: string }) {
-  const navigate = useNavigate()
-  useEffect(() => { navigate(to) }, [navigate, to])
-  return null
-}
-
-// Helper component to trigger dynamic route transitions in tests
-function TestNavigator({ to }: { to: string }) {
-  const navigate = useNavigate();
-  useEffect(() => {
-    navigate(to);
-  }, [to, navigate]);
-  return null;
-}
-
 describe('RouteAnnouncer Component', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -60,25 +45,21 @@ describe('RouteAnnouncer Component', () => {
     const { rerender } = render(
       <MemoryRouter key="dashboard" initialEntries={['/dashboard']}>
         <RouteAnnouncer />
-        <NavigateTo to="/trust" />
       </MemoryRouter>
     )
 
     act(() => { vi.advanceTimersByTime(100); });
     expect(screen.getByText('Dashboard page loaded')).toBeInTheDocument();
 
-    // A distinct key remounts the router at the new entry; MemoryRouter only reads
-    // initialEntries on mount, so without this the location would not change.
     rerender(
       <MemoryRouter key="/trust" initialEntries={['/trust']}>
         <RouteAnnouncer />
-        <TestNavigator to="/trust" />
       </MemoryRouter>
     )
 
     act(() => { vi.advanceTimersByTime(100); });
     expect(screen.getByText('Trust Score page loaded')).toBeInTheDocument();
-  });
+  })
 
   it('falls back gracefully to structural 404 descriptions given unknown routes', () => {
     render(

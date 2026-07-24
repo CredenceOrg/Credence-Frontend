@@ -1,0 +1,67 @@
+.progress {
+  width: 100%;
+  display: block;
+}
+
+/* Size variants — track height */
+.progress--sm .progress__track {
+  height: var(--credence-space-1, 4px);
+  border-radius: var(--credence-radius-full, 9999px);
+}
+
+.progress--md .progress__track {
+  height: var(--credence-space-2, 8px);
+  border-radius: var(--credence-radius-full, 9999px);
+}
+
+.progress--lg .progress__track {
+  height: var(--credence-space-3, 12px);
+  border-radius: var(--credence-radius-full, 9999px);
+}
+
+/* Track */
+.progress__track {
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--credence-color-slate-200, #e2e8f0);
+  border-radius: var(--credence-radius-full, 9999px);
+}
+
+/* Determinate fill */
+.progress--determinate .progress__fill {
+  height: 100%;
+  width: var(--progress-fill, 0%);
+  background-color: var(--credence-color-primary, #3b82d4);
+  border-radius: var(--credence-radius-full, 9999px);
+  transition: width var(--credence-motion-duration-base, 200ms) var(--credence-motion-easing-standard, ease);
+}
+
+/* Indeterminate fill — sliding animation */
+.progress--indeterminate .progress__fill {
+  height: 100%;
+  width: 40%;
+  background-color: var(--credence-color-primary, #3b82d4);
+  border-radius: var(--credence-radius-full, 9999px);
+  animation: progress-indeterminate var(--credence-motion-duration-slow, 1400ms) linear infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress--indeterminate .progress__fill {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+
+  .progress--determinate .progress__fill {
+    transition: none;
+  }
+}

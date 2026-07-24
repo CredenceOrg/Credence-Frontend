@@ -13,6 +13,8 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
 | LoadingSpinner         | `src/components/LoadingSpinner.css`                                                | None.                                                                                                                     |
 | Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
+| StatusBadge            | `src/components/StatusBadge.css`                                                    | None.                                                                                                                     |
+| AnalyticsWidget        | `src/components/AnalyticsWidget.css`                                                | None.                                                                                                                     |
 | Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
 | Toast / ToastProvider  | `src/components/Toast.css`                                                          | None.                                                                                                                     |
 | ConfirmDialog          | `src/components/ConfirmDialog.css`                                                  | None.                                                                                                                     |
@@ -47,6 +49,14 @@ Source: [`Badge.tsx`](../src/components/Badge.tsx)
 `'bronze' | 'silver' | 'gold' | 'platinum' | 'active' | 'locked' | 'slashed' | 'grace-period' | 'unknown'`
 
 Unknown runtime strings normalize to the `unknown` visual style while preserving the supplied string as a fallback label only when no known label exists.
+
+### `StatusBadgeVariant`
+
+Source: [`StatusBadge.tsx`](../src/components/StatusBadge.tsx)
+
+`'pending' | 'active' | 'completed' | 'failed'`
+
+Lifecycle status for bonds and operations. Each variant maps to a distinct semantic colour family via `--credence-*` design tokens.
 
 ### `BannerSeverity`
 
@@ -139,6 +149,126 @@ Tokens: tier/status color tokens, `--credence-font-size-xs`, `--credence-font-we
 <Badge variant="gold" />
 <Badge variant="grace-period" label="Grace" />
 <Badge variant="slashed" srPrefix="Bond status:" />
+```
+
+## StatusBadge
+
+Source: [`src/components/StatusBadge.tsx`](../src/components/StatusBadge.tsx). Storybook: `Components/StatusBadge`.
+
+Displays a bond or operation lifecycle status as a colour-coded pill. Each variant maps to a distinct semantic colour family sourced entirely from `--credence-*` design tokens — no hard-coded colour values.
+
+| Prop        | Type                  | Default              |
+| ----------- | --------------------- | -------------------- |
+| `variant`   | `StatusBadgeVariant`  | Required             |
+| `label`     | `string`              | Capitalised variant  |
+| `className` | `string`              | `''`                 |
+| `srPrefix`  | `string`              | —                    |
+| `ariaLabel` | `string`              | Display label        |
+
+### `StatusBadgeVariant`
+
+`'pending' | 'active' | 'completed' | 'failed'`
+
+| Variant     | Semantic intent | Token family                     |
+| ----------- | --------------- | -------------------------------- |
+| `pending`   | Neutral/waiting | `--credence-color-warning-*`     |
+| `active`    | In progress     | `--credence-color-success-*`     |
+| `completed` | Resolved        | `--credence-color-info-*`        |
+| `failed`    | Error/danger    | `--credence-color-danger-*`      |
+
+**`srPrefix`** renders an `.sr-only` `<span>` _before_ the visible label so assistive technology can announce the badge in context (e.g. `srPrefix="Bond status:"` causes a screen reader to read `"Bond status: Failed"` rather than just `"Failed"`). No extra DOM is inserted when the prop is omitted.
+
+Accessibility: renders text in a `<span>` with `aria-label` set to the display label (or the `ariaLabel` prop override). The visible label is always non-empty so meaning is never communicated by colour alone. Use `srPrefix` when a badge appears inside a list row or table cell where a screen reader needs additional context.
+
+Tokens: `--credence-color-warning-surface`, `--credence-color-warning-border`, `--credence-color-warning-text`, `--credence-color-success-surface`, `--credence-color-success-border`, `--credence-color-success-text`, `--credence-color-info-surface`, `--credence-color-info-border`, `--credence-color-info-text`, `--credence-color-danger-surface`, `--credence-color-danger-border`, `--credence-color-danger-text`, `--credence-font-size-xs`, `--credence-font-weight-semibold`, `--credence-radius-full`, `--credence-space-2`.
+
+```tsx
+<StatusBadge variant="pending" />
+<StatusBadge variant="active" />
+<StatusBadge variant="completed" label="Done" />
+<StatusBadge variant="failed" srPrefix="Bond status:" />
+```
+
+## AnalyticsWidget
+
+Source: [`src/components/AnalyticsWidget.tsx`](../src/components/AnalyticsWidget.tsx). Storybook: `Components/AnalyticsWidget`.
+
+Displays one or two periods of numeric metrics in a card layout. When `previousPeriod` is supplied a **Compare periods** toggle appears in the header; enabling it renders the previous period column alongside the current period so operators can do a quick side-by-side comparison without leaving the dashboard.
+
+The component supports both **uncontrolled** (default) and **controlled** modes:
+- **Uncontrolled**: omit `compareEnabled` / `onCompareChange`; the widget manages toggle state internally, optionally seeded by `defaultCompare`.
+- **Controlled**: supply both `compareEnabled` and `onCompareChange` to lift toggle state to the parent.
+
+### Props
+
+| Prop              | Type                        | Default     |
+| ----------------- | --------------------------- | ----------- |
+| `title`           | `string`                    | Required    |
+| `currentPeriod`   | `AnalyticsPeriodData`       | Required    |
+| `previousPeriod`  | `AnalyticsPeriodData`       | —           |
+| `defaultCompare`  | `boolean`                   | `false`     |
+| `compareEnabled`  | `boolean`                   | —           |
+| `onCompareChange` | `(next: boolean) => void`   | —           |
+| `className`       | `string`                    | `''`        |
+
+### `AnalyticsPeriodData`
+
+| Field     | Type                  | Notes                                        |
+| --------- | --------------------- | -------------------------------------------- |
+| `label`   | `string`              | Short period label shown in the column header (e.g. `"Jul 2026"`). |
+| `metrics` | `AnalyticsMetric[]`   | One or more metrics to display.              |
+
+### `AnalyticsMetric`
+
+| Field    | Type                        | Notes                                           |
+| -------- | --------------------------- | ----------------------------------------------- |
+| `label`  | `string`                    | Human-readable metric name (e.g. `"Trust Score"`). |
+| `value`  | `number`                    | Numeric value for the period.                   |
+| `format` | `(value: number) => string` | Optional formatter; defaults to `String(value)`. |
+| `unit`   | `string`                    | Optional suffix appended after the formatted value (e.g. `"USDC"`). |
+
+### Accessibility
+
+- Renders as a `<section>` with `aria-label` set to the `title` prop so it is a named landmark.
+- Title renders as an `<h2>`.
+- The compare toggle is a native `role="switch"` button with `aria-checked` and an `aria-label`. Its visible label (`"Compare periods"`) is linked via `<label htmlFor>`.
+- Each period column carries `aria-label="<period.label> metrics"`.
+- Metrics are structured as a `<dl>` (definition list) with `<dt>` for labels and `<dd>` for values, so assistive technology can navigate key/value pairs.
+
+### Tokens
+
+`--credence-border-default`, `--credence-color-primary`, `--credence-color-slate-50`, `--credence-font-family-base`, `--credence-font-size-lg`, `--credence-font-size-sm`, `--credence-font-size-xl`, `--credence-font-size-xs`, `--credence-font-weight-bold`, `--credence-font-weight-regular`, `--credence-font-weight-semibold`, `--credence-line-height-tight`, `--credence-motion-duration-base`, `--credence-motion-easing-standard`, `--credence-radius-lg`, `--credence-radius-xl`, `--credence-space-1`, `--credence-space-2`, `--credence-space-3`, `--credence-space-4`, `--credence-space-6`, `--credence-surface-card`, `--credence-text-primary`, `--credence-text-secondary`.
+
+```tsx
+// Uncontrolled — single period, no compare toggle
+<AnalyticsWidget
+  title="Analytics Overview"
+  currentPeriod={{
+    label: 'Jul 2026',
+    metrics: [
+      { label: 'Trust Score', value: 684 },
+      { label: 'Active Bonds', value: 3 },
+      { label: 'Total Bonded', value: 4250, format: (v) => v.toLocaleString(), unit: 'USDC' },
+    ],
+  }}
+/>
+
+// Uncontrolled — compare mode on by default
+<AnalyticsWidget
+  title="Analytics Overview"
+  currentPeriod={currentPeriod}
+  previousPeriod={previousPeriod}
+  defaultCompare
+/>
+
+// Controlled — parent owns toggle state
+<AnalyticsWidget
+  title="Analytics Overview"
+  currentPeriod={currentPeriod}
+  previousPeriod={previousPeriod}
+  compareEnabled={isComparing}
+  onCompareChange={setIsComparing}
+/>
 ```
 
 ## TooltipOnOverflow

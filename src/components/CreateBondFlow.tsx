@@ -136,7 +136,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           key={i}
           className={`createBondFlow__stepBar${i <= step ? ' createBondFlow__stepBar--active' : ''}`}
           style={{
-            transition: prefersReducedMotion ? 'none' : undefined,
+            transition: prefersReducedMotion ? 'none' : 'background 0.2s ease',
           }}
         />
       ))}
@@ -182,7 +182,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
               <LoadingSkeleton variant="text" rows={1} width="12rem" />
             ) : balanceStatus === 'error' ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
+                <span role="alert" style={{ color: 'var(--credence-color-danger-text)' }}>
                   Could not load balance.
                 </span>
                 <Button
@@ -257,7 +257,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                 }}
                 className={`createBondFlow__durationButton${duration === d ? ' createBondFlow__durationButton--active' : ''}`}
                 style={{
-                  transition: prefersReducedMotion ? 'none' : undefined,
+                  transition: prefersReducedMotion ? 'none' : 'all 0.2s ease',
                 }}
               >
                 {d} Days
@@ -347,7 +347,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
               /* Fallback: breakdown unavailable (should not normally be reached in step 3) */
               <div className="createBondFlow__reviewRow">
                 <span className="createBondFlow__reviewLabel">Slash Terms:</span>
-                <strong style={{ color: 'var(--credence-color-danger)' }}>Penalties Apply</strong>
+                <strong style={{ color: 'var(--credence-color-danger-text)' }}>Penalties Apply</strong>
               </div>
             )}
           </div>

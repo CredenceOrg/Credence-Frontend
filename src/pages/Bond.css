@@ -144,3 +144,9 @@
   font-size: 0.85rem;
   color: var(--credence-color-success-text);
 }
+
+.bond__penaltyAmount {
+  color: var(--credence-color-danger-action);
+  font-weight: var(--credence-font-weight-semibold);
+}
+

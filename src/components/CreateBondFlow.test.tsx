@@ -22,6 +22,27 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({
+    isConnected: true,
+    address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    isConnecting: false,
+    error: null,
+    network: 'public',
+  }),
+}))
+
+vi.mock('../hooks/useUsdcBalance', () => ({
+  useUsdcBalance: () => ({
+    balance: 100000,
+    status: 'ready',
+    error: null,
+    refetch: vi.fn(),
+  }),
+}))
+
 // ToastProvider depends on SettingsProvider → wrap renders with both
 import ToastProvider from './ToastProvider'
 import { SettingsProvider } from '../context/SettingsContext'

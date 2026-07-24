@@ -96,7 +96,7 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
           </div>
           <div className="bond__penaltyRow">
             <span>{t('bond.penalty', { percent: breakdown.penaltyPercent })}</span>
-            <span>− {breakdown.penaltyAmount}</span>
+            <span className="bond__penaltyAmount">−{breakdown.penaltyAmount}</span>
           </div>
           <div className="bond__penaltyRowTotal">
             <span>{t('bond.youReceive')}</span>
@@ -185,7 +185,6 @@ export default function Bond() {
     setTxStatus('Submitting transaction…')
 
     const { penaltyUsdc } = withdrawBreakdown
-    const mockHash = 'b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380'
 
     try {
       await submitTransaction()
@@ -193,11 +192,10 @@ export default function Bond() {
       if (penaltyUsdc > 0) {
         addToast(
           'warning',
-          `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
-          { txHash: mockHash }
+          `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
         )
       } else {
-        addToast('success', 'Bond withdrawn successfully.', { txHash: mockHash })
+        addToast('success', 'Bond withdrawn successfully.')
       }
       setWithdrawTarget(null)
     } catch {
@@ -308,7 +306,7 @@ export default function Bond() {
 
           <Button
             type="button"
-            onClick={(e) => handleCreateBond(e)}
+            onClick={() => handleCreateBond()}
             fullWidth
             disabled={networkMismatch.mismatch || (isConnected ? isPendingCreate : isConnecting)}
             isLoading={isConnected ? isPendingCreate : isConnecting}

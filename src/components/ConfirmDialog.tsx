@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import Button from './Button'
@@ -196,9 +196,14 @@ export default function ConfirmDialog({
           <div className="confirm-dialog__confirm-field">
             <label htmlFor={`${titleId}-confirm-input`}>
               {confirmInputLabel || (
-                <>
-                  {t('confirmDialog.typeToConfirm', { phrase: confirmPhrase, action: confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal' })}
-                </>
+                <Trans
+                  i18nKey="confirmDialog.typeToConfirm"
+                  values={{
+                    phrase: confirmPhrase,
+                    action: confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal',
+                  }}
+                  components={{ strong: <strong /> }}
+                />
               )}
             </label>
             <input

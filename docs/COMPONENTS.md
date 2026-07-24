@@ -20,6 +20,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | TrustGauge             | `src/components/TrustGauge.css`                                                     | Uses inline CSS custom properties for dynamic progress, marker, thumb, and legend-dot colors; keep scoped until migrated. |
 | TierLadder             | `src/components/TierLadder.css` + `Badge.css`                                       | None.                                                                                                                     |
 | ActivityTimeline       | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                       |
+| TooltipOnOverflow      | `src/components/TooltipOnOverflow.css`                                              | None.                                                                                                                     |
 | FormField              | `src/components/forms/FormField.css`                                                | None.                                                                                                                     |
 | controls/Select        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
 | controls/Toggle        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
@@ -104,13 +105,41 @@ Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx).
 | `label`     | `string`                 | Known variant label |
 | `className` | `string`                 | `''`                |
 
-Accessibility: renders text in a `<span>`; consumers should provide surrounding context when the badge alone is not descriptive.
+Accessibility: wraps content in [`TooltipOnOverflow`](#tooltiponoverflow) so the full label is exposed on hover, focus, and to assistive technology when the badge text is truncated. Consumers should provide surrounding context when the badge alone is not descriptive.
 
 Tokens: tier/status color tokens, `--credence-font-size-xs`, `--credence-font-weight-semibold`, `--credence-radius-full`, `--credence-space-2`.
 
 ```tsx
 <Badge variant="gold" />
 <Badge variant="grace-period" label="Grace" />
+```
+
+## TooltipOnOverflow
+
+Source: [`src/components/TooltipOnOverflow.tsx`](../src/components/TooltipOnOverflow.tsx).
+
+| Prop        | Type               | Default     |
+| ----------- | ------------------ | ----------- |
+| `content`   | `string`           | Required    |
+| `children`  | `React.ReactElement` | Required  |
+| `className` | `string`           | `''`        |
+
+Wraps a single child element and displays a tooltip **only when the child's text is visually truncated** (overflowing). The tooltip appears on hover and on keyboard focus — keyboard users can dismiss it with Escape.
+
+Accessibility (WCAG 2.1 AA):
+- Sets `aria-describedby` on the child to associate tooltip content with the trigger.
+- Renders `role="tooltip"` with `aria-hidden` toggled for visibility.
+- Dismissible with Escape while focused, without stealing focus.
+- Respects `prefers-reduced-motion`; disables fade animation when set.
+- Color contrast uses design tokens (`--credence-color-slate-900` / `--credence-color-white`) meeting AA ratios (≥4.5:1).
+- Arrow pointers are CSS pseudo-elements (no extra DOM).
+
+Tokens: `--credence-surface-card`, `--credence-text-primary`, `--credence-color-slate-900`, `--credence-color-white`, `--credence-space-1`, `--credence-space-2`, `--credence-radius-md`, `--credence-font-size-xs`, `--credence-font-family-base`, `--credence-line-height-tight`, `--credence-motion-duration-fast`, `--credence-motion-easing-standard`, `--credence-shadow-toast`.
+
+```tsx
+<TooltipOnOverflow content="GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H">
+  <code>GBRPYHIL2CI3...OX2H</code>
+</TooltipOnOverflow>
 ```
 
 ## Banner
@@ -223,9 +252,12 @@ Source: [`src/components/AddressInput.tsx`](../src/components/AddressInput.tsx).
 | `onChange`           | `(value: string) => void`    | Required            |
 | `onValidationChange` | `(isValid: boolean) => void` | `undefined`         |
 | `disabled`           | `boolean`                    | `false`             |
+| `isLoading`          | `boolean`                    | `false`             |
 | `className`          | `string`                     | `''`                |
+| `error`              | `string`                     | `undefined`         |
+| `selfAddress`        | `string`                     | `undefined`         |
 
-Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste and copy controls are native buttons with explicit aria labels and hidden SVGs. Validation requires a 56-character Stellar public key starting with `G`; invalid feedback is exposed by the FormField alert.
+Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste, scan, and copy controls are native buttons with explicit aria labels and hidden SVGs. The QR scanner opens a focus-trapped modal dialog (`role="dialog"`, `aria-modal="true"`) and uses `getUserMedia` for camera access. If permission is denied or no camera is available, an error message is shown and the user can fall back to manual paste. Validation requires a 56-character Stellar public key starting with `G`; invalid feedback is exposed by the FormField alert.
 
 Tokens: border, danger, primary, slate, success, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
 
@@ -528,6 +560,33 @@ Tokens: `--credence-focus-ring`, spacing, and icon sizing via `ThemeToggle.css`.
 
 ```tsx
 <ThemeToggle />
+```
+
+## ActionLauncher
+
+Source: [`src/components/ActionLauncher.tsx`](../src/components/ActionLauncher.tsx). Focused docs: [keyboard interactions](./keyboard-interactions.md).
+
+| Prop                 | Type                                             | Default     |
+| -------------------- | ------------------------------------------------ | ----------- |
+| `open`               | `boolean`                                        | Required    |
+| `onClose`            | `() => void`                                     | Required    |
+| `returnFocusRef`     | `React.RefObject<HTMLElement \| null>`          | `undefined` |
+| `onOpenKeyboardShortcuts` | `() => void`                               | Required    |
+
+Accessibility: portal-rendered modal with `role="dialog"`, `aria-modal="true"`, and a generated `aria-labelledby`. Focus is trapped while open and initially lands in the search input. Escape, backdrop click, and the close button all call `onClose`. The launcher supports fuzzy query matching and surfaces recent actions when the query is empty.
+
+Tokens: border, surface, text, font, spacing, radius, and focus tokens via `ActionLauncher.css`.
+
+```tsx
+const triggerRef = useRef<HTMLButtonElement>(null)
+
+<button ref={triggerRef} onClick={() => setOpen(true)}>Open action launcher</button>
+<ActionLauncher
+  open={open}
+  onClose={() => setOpen(false)}
+  returnFocusRef={triggerRef}
+  onOpenKeyboardShortcuts={() => setShortcutsOpen(true)}
+/>
 ```
 
 ## KeyboardShortcutsDialog

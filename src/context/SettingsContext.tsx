@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
-import { validateAndNormalize } from '../lib/settingsSchema'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -142,6 +141,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     autoDismiss: coerceAutoDismiss(persistedSettingsRaw.autoDismiss as unknown as string),
   }
 
+  const normalizedPersistedSettings = useMemo<PersistedSettings>(
+    () => ({
+      ...persistedSettings,
+      network: coerceNetwork(persistedSettings.network as unknown as string),
+      addressDisplay: coerceAddressDisplay(persistedSettings.addressDisplay as unknown as string),
+      autoDismiss: coerceAutoDismiss(persistedSettings.autoDismiss as unknown as string),
+    }),
+    [persistedSettings],
+  )
+
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
   const [network, setNetwork] = useState<NetworkOption>(persistedSettings.network)
   const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(persistedSettings.addressDisplay)
@@ -153,17 +162,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const isEquivalent =
-      persistedSettings.themeMode === persistedSettings.themeMode &&
-      persistedSettings.network === persistedSettings.network &&
-      persistedSettings.addressDisplay === persistedSettings.addressDisplay &&
-      persistedSettings.toastsEnabled === persistedSettings.toastsEnabled &&
-      persistedSettings.autoDismiss === persistedSettings.autoDismiss
+      persistedSettingsRaw.themeMode === persistedSettings.themeMode &&
+      persistedSettingsRaw.network === persistedSettings.network &&
+      persistedSettingsRaw.addressDisplay === persistedSettings.addressDisplay &&
+      persistedSettingsRaw.toastsEnabled === persistedSettings.toastsEnabled &&
+      persistedSettingsRaw.autoDismiss === persistedSettings.autoDismiss
 
     if (!isEquivalent) {
       setPersistedSettings(persistedSettings)
       setOriginalSettings(persistedSettings)
     }
-  }, [persistedSettings, setPersistedSettings])
+  }, [persistedSettings, persistedSettingsRaw, setPersistedSettings])
 
   const hasUnsavedChanges =
     themeMode !== originalSettings.themeMode ||

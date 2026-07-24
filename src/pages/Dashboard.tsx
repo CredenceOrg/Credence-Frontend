@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
@@ -53,24 +51,6 @@ const activeBonds = [
   { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
 ] as const
 
-const shortcuts = [
-  {
-    to: '/bond',
-    label: 'Create bond',
-    description: 'Start a new USDC bond with trust-backed terms.',
-  },
-  {
-    to: '/trust',
-    label: 'View trust score',
-    description: 'See the details behind your on-chain reputation.',
-  },
-  {
-    to: '/attestations',
-    label: 'Review attestations',
-    description: 'Check recent attestations and protocol approvals.',
-  },
-] as const
-
 export default function Dashboard() {
   const { t } = useTranslation()
   useSeo({
@@ -81,7 +61,13 @@ export default function Dashboard() {
 
   const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
+  const { t } = useTranslation()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
+
+  const buildWidgetUrl = (widget: string): string => {
+    return `${window.location.origin}${location.pathname}?widget=${widget}`
+  }
   const widgetParam = searchParams.get('widget')
   const totalBonded = activeBonds.reduce((total, bond) => total + bond.amountUsdc, 0)
   const [onboardingStep, setOnboardingStep] = useState(0)
@@ -236,7 +222,7 @@ export default function Dashboard() {
 
           <div className="dashboard__grid">
             {showTrustScore && (
-              <ActionCard title="Trust Score">
+              <ActionCard title="Trust Score" shareableLink={buildWidgetUrl('trust-score')}>
                 <div className="dashboard__cardHeader">
                   <div>
                     <p className="dashboard__metric">{TRUST_SCORE}</p>
@@ -254,7 +240,7 @@ export default function Dashboard() {
             )}
 
             {showActiveBonds && (
-              <ActionCard title="Active Bonds">
+              <ActionCard title="Active Bonds" shareableLink={buildWidgetUrl('active-bonds')}>
                 <div className="dashboard__cardHeader">
                   <div>
                     <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
@@ -279,13 +265,13 @@ export default function Dashboard() {
 
           <div className="dashboard__grid dashboard__grid--activity">
             {showRecentActivity && (
-              <ActionCard title="Recent Activity">
+              <ActionCard title="Recent Activity" shareableLink={buildWidgetUrl('recent-activity')}>
                 <ActivityTimeline compact />
               </ActionCard>
             )}
 
             {showShortcuts && (
-              <ActionCard title="Shortcuts">
+              <ActionCard title="Shortcuts" shareableLink={buildWidgetUrl('shortcuts')}>
                 <div className="dashboard__shortcutList">
                   {shortcuts.map((shortcut) => (
                     <Link className="dashboard__shortcut" key={shortcut.to} to={shortcut.to}>

@@ -92,10 +92,25 @@ This directory contains comprehensive design specifications and implementation g
    - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 >>>>>>> Stashed changes
 
-14. **[Optimistic Updates](./OPTIMISTIC_UPDATES.md)** ⭐ NEW
-    - When to use optimistic updates and how to design them
-    - Implementation guidelines for rollbacks and state management
-    - Concrete examples of optimistic UI updates
+14. [Keyboard Interactions Contract](./keyboard-interactions.md) ⭐ NEW
+
+- Developer-facing matrix of every interactive component and its expected keyboard behavior
+- Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
+- Focus-restore contract and checklist for new interactive components
+
+15. [Wallet Integration](./WALLET_INTEGRATION.md) ⭐ NEW
+    - `useWallet` API documentation
+    - Connection state machine and UX contract for connection/network states
+    - Usage guide and network mismatch handling
+
+16. **[Widget Cache & Per-Widget Refresh](./widget-cache.md)** ⭐ NEW (closes #561)
+    - Shared in-app cache for dashboard widgets so a refresh button on one card only invalidates that card's key — others keep their state.
+    - `useWidgetCache` hook + `<WidgetRefreshButton />` + token-driven styling.
+    - Coverage includes mount, key isolation, error surfacing, and reduced-motion.
+
+14. **[Telemetry & Analytics](./telemetry.md)**
+    - Privacy-first approach (no telemetry collected)
+    - No PII handling or third-party analytics
 
 ### Quick Start
 

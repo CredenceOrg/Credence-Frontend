@@ -88,7 +88,34 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 - Vite
 - React Router
 
-<<<<<<< Updated upstream
+## Dashboard widget refresh _(closes #561)_
+
+Dashboard pages render their data widgets through a shared in-app cache so the user can refresh a single card without disturbing the rest of the page. See [`docs/widget-cache.md`](./docs/widget-cache.md) for the API, accessibility, and token-driven styling notes.
+
+```tsx
+import { useWidgetCache } from '../widgetCache'
+import { WidgetRefreshButton } from '../components/widget'
+
+const bondsWidget = useWidgetCache<BondRow[]>('bond:active-bonds', fetchActiveBonds)
+
+return (
+  <header>
+    <h2>Active Bonds</h2>
+    <WidgetRefreshButton
+      onRefresh={bondsWidget.refresh}
+      isLoading={bondsWidget.isLoading}
+      lastUpdated={bondsWidget.lastUpdated}
+      label="active bonds"
+    />
+  </header>
+)
+```
+
+Upstream's dashboard page structure has been refactored since this feature
+landed, so the per-page wiring ships in follow-up PRs. The cache primitives
+(`useWidgetCache`, `<WidgetRefreshButton>`, `<WidgetCacheProvider>`) are
+**library-only additions** available immediately.
+
 ## Documentation
 
 See the [docs/](docs/) directory for detailed project documentation, including:
@@ -138,6 +165,9 @@ function Feed() {
 
 - `src/pages/` — Home, Bond, Trust Score
 - `src/components/` — Layout, shared UI (including the in-app Changelog drawer sourced from `/changelog.json`); see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
+- `src/widgetCache/` — Shared widget cache (`WidgetCacheProvider`, `useWidgetCache`)
+- `src/components/widget/` — Per-widget UI primitives (`WidgetRefreshButton`)
+- `src/config/widgetCache.ts` — Central widget-cache constants
 - `src/App.tsx` — Router and routes
 
 ## Documentation

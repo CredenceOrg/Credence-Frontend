@@ -11,6 +11,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |
 | ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
+| LoadingSpinner         | `src/components/LoadingSpinner.css`                                                | None.                                                                                                                     |
 | Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
 | Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
 | Toast / ToastProvider  | `src/components/Toast.css`                                                          | None.                                                                                                                     |
@@ -93,6 +94,27 @@ Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-co
 <Button variant="primary" isLoading={isSaving} onClick={saveBond}>
   Save bond
 </Button>
+```
+
+## LoadingSpinner
+
+Source: [`src/components/LoadingSpinner.tsx`](../src/components/LoadingSpinner.tsx). Storybook: `Components/LoadingSpinner`.
+
+| Prop            | Type                        | Default      |
+| --------------- | --------------------------- | ------------ |
+| `label`         | `string`                    | `'Loading…'` |
+| `size`          | `'sm' \| 'md' \| 'lg'`      | `'md'`       |
+| `className`     | `string`                    | `''`         |
+| `iconClassName` | `string`                    | `''`         |
+| Native props    | `HTMLAttributes<HTMLSpanElement>` | Forwarded    |
+
+Accessibility: Renders an SVG loading spinner with `aria-hidden="true"` by default. When the user enables `prefers-reduced-motion: reduce`, the component automatically falls back to rendering static `"Loading…"` text (or custom `label` prop), complying with WCAG 2.1 AA animation requirements.
+
+Tokens: `--credence-font-family-base`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-space-*`, `--credence-motion-*`.
+
+```tsx
+<LoadingSpinner size="md" />
+<LoadingSpinner label="Processing…" />
 ```
 
 ## Badge

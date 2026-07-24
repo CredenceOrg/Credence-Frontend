@@ -1,9 +1,11 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
+import QRScannerModal from './QRScannerModal'
 import './AddressInput.css'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import useCopyToClipboard from '@/hooks/useCopyToClipboard'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { TEST_IDS } from '@/config/testIds'
 
 export interface AddressInputProps {
   id: string
@@ -32,6 +34,7 @@ interface AddressInputInnerProps {
   disabled: boolean
   isLoading?: boolean
   handlePaste: () => void
+  handleOpenScanner: () => void
   focused: boolean
   showError: boolean
   showSuccess: boolean
@@ -49,6 +52,7 @@ function AddressInputInner({
   disabled,
   isLoading,
   handlePaste,
+  handleOpenScanner,
   focused,
   showError,
   showSuccess,
@@ -93,32 +97,59 @@ function AddressInputInner({
           </svg>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={handlePaste}
-          disabled={isDisabled}
-          className="address-input-paste-button"
-          aria-label="Paste address from clipboard"
-          title="Paste address from clipboard"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
+        <>
+          <button
+            type="button"
+            onClick={handleOpenScanner}
+            disabled={isDisabled}
+            className="address-input-scan-button"
+            data-testid={TEST_IDS.SCAN_BUTTON}
+            aria-label="Scan QR code"
+            title="Scan QR code"
           >
-            <path
-              d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span className="sr-only">Paste address from clipboard</span>
-        </button>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="10" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="1" y="10" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="10" y="10" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M8 4v2M8 10v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <span className="sr-only">Scan QR code</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePaste}
+            disabled={isDisabled}
+            className="address-input-paste-button"
+            aria-label="Paste address from clipboard"
+            title="Paste address from clipboard"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="sr-only">Paste address from clipboard</span>
+          </button>
+        </>
       )}
     </div>
   )
@@ -140,6 +171,7 @@ export default function AddressInput({
 
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
   const { copy, copied } = useCopyToClipboard()
 
   const debouncedValue = useDebouncedValue(value, 200)
@@ -192,6 +224,23 @@ export default function AddressInput({
     }
   }
 
+  const handleOpenScanner = useCallback(() => {
+    setScannerOpen(true)
+  }, [])
+
+  const handleScan = useCallback(
+    (scannedValue: string) => {
+      onChange(scannedValue)
+      setAttempted(true)
+      setScannerOpen(false)
+    },
+    [onChange],
+  )
+
+  const handleCloseScanner = useCallback(() => {
+    setScannerOpen(false)
+  }, [])
+
   const handleCopy = useCallback(async () => {
     if (!value) return
     try {
@@ -224,11 +273,14 @@ export default function AddressInput({
           disabled={disabled}
           isLoading={isLoading}
           handlePaste={handlePaste}
+          handleOpenScanner={handleOpenScanner}
           focused={focused}
           showError={showError}
           showSuccess={showSuccess}
         />
       </FormField>
+
+      <QRScannerModal open={scannerOpen} onScan={handleScan} onClose={handleCloseScanner} />
 
       {/* Address echo display when valid */}
       {showSuccess && value && (

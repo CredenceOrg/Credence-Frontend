@@ -223,9 +223,12 @@ Source: [`src/components/AddressInput.tsx`](../src/components/AddressInput.tsx).
 | `onChange`           | `(value: string) => void`    | Required            |
 | `onValidationChange` | `(isValid: boolean) => void` | `undefined`         |
 | `disabled`           | `boolean`                    | `false`             |
+| `isLoading`          | `boolean`                    | `false`             |
 | `className`          | `string`                     | `''`                |
+| `error`              | `string`                     | `undefined`         |
+| `selfAddress`        | `string`                     | `undefined`         |
 
-Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste and copy controls are native buttons with explicit aria labels and hidden SVGs. Validation requires a 56-character Stellar public key starting with `G`; invalid feedback is exposed by the FormField alert.
+Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste, scan, and copy controls are native buttons with explicit aria labels and hidden SVGs. The QR scanner opens a focus-trapped modal dialog (`role="dialog"`, `aria-modal="true"`) and uses `getUserMedia` for camera access. If permission is denied or no camera is available, an error message is shown and the user can fall back to manual paste. Validation requires a 56-character Stellar public key starting with `G`; invalid feedback is exposed by the FormField alert.
 
 Tokens: border, danger, primary, slate, success, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
 

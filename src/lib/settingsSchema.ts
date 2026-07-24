@@ -6,12 +6,15 @@ export interface SettingsBlob {
   addressDisplay: string
   toastsEnabled: boolean
   autoDismiss: string
+  reauthThresholdMinutes: number
 }
 
 const VALID_THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system']
 const VALID_NETWORKS = ['public', 'test'] as const
 const VALID_ADDRESS_DISPLAYS = ['full', 'short', 'friendly'] as const
 const VALID_AUTO_DISMISS = ['off', '3s', '5s', '8s'] as const
+const MIN_REAUTH_THRESHOLD = 1
+const MAX_REAUTH_THRESHOLD = 1440
 
 const DEFAULT_SETTINGS: SettingsBlob = {
   themeMode: 'system',
@@ -19,6 +22,7 @@ const DEFAULT_SETTINGS: SettingsBlob = {
   addressDisplay: 'short',
   toastsEnabled: true,
   autoDismiss: '5s',
+  reauthThresholdMinutes: 15,
 }
 
 export function defaultSettings(): SettingsBlob {
@@ -79,6 +83,14 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
       result.autoDismiss = input.autoDismiss
     } else {
       errors.push(`autoDismiss must be one of: ${VALID_AUTO_DISMISS.join(', ')}`)
+    }
+  }
+
+  if (input.reauthThresholdMinutes !== undefined) {
+    if (typeof input.reauthThresholdMinutes === 'number' && !isNaN(input.reauthThresholdMinutes) && input.reauthThresholdMinutes >= MIN_REAUTH_THRESHOLD && input.reauthThresholdMinutes <= MAX_REAUTH_THRESHOLD) {
+      result.reauthThresholdMinutes = input.reauthThresholdMinutes
+    } else {
+      errors.push(`reauthThresholdMinutes must be a number between ${MIN_REAUTH_THRESHOLD} and ${MAX_REAUTH_THRESHOLD}`)
     }
   }
 

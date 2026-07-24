@@ -24,6 +24,8 @@ import LoadingSkeleton from './states/LoadingSkeleton'
 import { useToast } from './ToastProvider'
 import { useWallet } from '../context/WalletContext'
 import { useUsdcBalance } from '../hooks/useUsdcBalance'
+import ReauthPrompt from './ReauthPrompt'
+import { SessionReauthRequiredError } from '../lib/sessionErrors'
 import { computeBondSlashBreakdown, calcUnlockDate } from '../lib/bondPenalty'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { formatUsdc } from '../lib/format'
@@ -53,14 +55,15 @@ interface CreateBondFlowProps {
 export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowProps = {}) {
   const prefersReducedMotion = useReducedMotion()
   const { addToast } = useToast()
-  const { isConnected, connect } = useWallet()
-  const { balance, status: balanceStatus, refetch: refetchBalance } =
+  const { isConnected, connect, reauth, isReauthRequired: checkIsReauthRequired } = useWallet()
+  const { balance, status: balanceStatus, error: balanceError, refetch: refetchBalance } =
     useUsdcBalance()
   const [step, setStep] = useState(1)
   const [amount, setAmount] = useState('')
   const [duration, setDuration] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [acknowledged, setAcknowledged] = useState(false)
+  const [showReauthPrompt, setShowReauthPrompt] = useState(false)
 
   const step1Ref = useRef<HTMLHeadingElement>(null)
   const step2Ref = useRef<HTMLHeadingElement>(null)
@@ -73,6 +76,24 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
     else if (step === 3) step3Ref.current?.focus()
     else if (step === 4) step4Ref.current?.focus()
   }, [step])
+
+  useEffect(() => {
+    if (balanceError instanceof SessionReauthRequiredError || checkIsReauthRequired()) {
+      setShowReauthPrompt(true)
+    } else {
+      setShowReauthPrompt(false)
+    }
+  }, [balanceError, checkIsReauthRequired])
+
+  const handleReauthConfirm = async () => {
+    await reauth()
+    setShowReauthPrompt(false)
+    refetchBalance()
+  }
+
+  const handleReauthCancel = () => {
+    setShowReauthPrompt(false)
+  }
 
   const reset = () => {
     setStep(1)
@@ -181,19 +202,35 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             ) : balanceStatus === 'loading' ? (
               <LoadingSkeleton variant="text" rows={1} width="12rem" />
             ) : balanceStatus === 'error' ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
-                  Could not load balance.
+              balanceError instanceof SessionReauthRequiredError ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                  <span role="alert" style={{ color: 'var(--credence-text-secondary)' }}>
+                    Re-authentication required.
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={() => setShowReauthPrompt(true)}
+                    className="createBondFlow__retryButton"
+                    style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
+                  >
+                    Re-authenticate
+                  </Button>
                 </span>
-                <Button
-                  type="button"
-                  onClick={refetchBalance}
-                  className="createBondFlow__retryButton"
-                  style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
-                >
-                  Retry
-                </Button>
-              </span>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                  <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
+                    Could not load balance.
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={refetchBalance}
+                    className="createBondFlow__retryButton"
+                    style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
+                  >
+                    Retry
+                  </Button>
+                </span>
+              )
             ) : (
               <span style={{ color: 'var(--credence-text-secondary)', fontSize: '0.875rem' }}>
                 Available: {formatUsdc(balance)}
@@ -414,7 +451,13 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
         >
           Cancel
         </Button>
+</div>
       </div>
+      <ReauthPrompt
+        open={showReauthPrompt}
+        onConfirm={handleReauthConfirm}
+        onCancel={handleReauthCancel}
+      />
     </div>
   )
 }

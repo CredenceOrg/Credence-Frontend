@@ -1,10 +1,19 @@
-import { useState, memo, type ReactElement } from 'react'
+import { useState, useRef, useCallback, memo, type ReactElement } from 'react'
 import './ActivityTimeline.css'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
+import Badge from './Badge'
+import { ACTIVITY_ITEMS } from '../data/activity'
 
 export type { ActivityItem, ActivityTone }
-export { ACTIVITY_ITEMS, SAMPLE_ACTIVITY }
+
+function toneToBadgeVariant(tone: ActivityTone): BadgeVariant {
+  switch (tone) {
+    case 'success': return 'active'
+    case 'warning': return 'locked'
+    case 'info': return 'unknown'
+  }
+}
 
 export interface ActivityTimelineProps {
   compact?: boolean

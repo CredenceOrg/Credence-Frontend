@@ -149,21 +149,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(persistedSettings.autoDismiss)
 
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
-  const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(normalizedPersistedSettings)
+  const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)
 
   useEffect(() => {
     const isEquivalent =
-      persistedSettings.themeMode === normalizedPersistedSettings.themeMode &&
-      persistedSettings.network === normalizedPersistedSettings.network &&
-      persistedSettings.addressDisplay === normalizedPersistedSettings.addressDisplay &&
-      persistedSettings.toastsEnabled === normalizedPersistedSettings.toastsEnabled &&
-      persistedSettings.autoDismiss === normalizedPersistedSettings.autoDismiss
+      persistedSettings.themeMode === persistedSettings.themeMode &&
+      persistedSettings.network === persistedSettings.network &&
+      persistedSettings.addressDisplay === persistedSettings.addressDisplay &&
+      persistedSettings.toastsEnabled === persistedSettings.toastsEnabled &&
+      persistedSettings.autoDismiss === persistedSettings.autoDismiss
 
     if (!isEquivalent) {
-      setPersistedSettings(normalizedPersistedSettings)
-      setOriginalSettings(normalizedPersistedSettings)
+      setPersistedSettings(persistedSettings)
+      setOriginalSettings(persistedSettings)
     }
-  }, [normalizedPersistedSettings, persistedSettings, setPersistedSettings])
+  }, [persistedSettings, setPersistedSettings])
 
   const hasUnsavedChanges =
     themeMode !== originalSettings.themeMode ||

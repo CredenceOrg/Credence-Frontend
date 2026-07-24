@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useMemo, useRef, useState, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './Bond.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'

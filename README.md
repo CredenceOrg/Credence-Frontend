@@ -25,6 +25,8 @@ npm run dev
 
 App runs at [http://localhost:5173](http://localhost:5173). API requests to `/api` are proxied to the backend (default `http://localhost:3000`).
 
+When the browser fires a `beforeinstallprompt` event, the app surfaces a dismissible install card once per browser session so users can discover the install flow without being interrupted repeatedly.
+
 ## Continuous Integration
 
 Every pull request and push to the `main` branch is validated by a GitHub Actions workflow. The quality gate ensures that the code compiles, is correctly formatted, passes all linting rules, and that all tests pass:

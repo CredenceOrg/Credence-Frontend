@@ -3,6 +3,7 @@ import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import ToastProvider, { useToast } from '../ToastProvider';
+import { type ToastSeverity } from '../Toast';
 import '@testing-library/jest-dom';
 
 const mockSettingsValues = {
@@ -19,7 +20,7 @@ const TestComponent = ({ msg, severity = 'info' }: { msg: string; severity?: str
   return (
     <button 
       aria-label={`trigger-${msg}`} 
-      onClick={() => (addToast as any)(severity, msg)}
+      onClick={() => addToast(severity as ToastSeverity, msg)}
     >
       Launch
     </button>

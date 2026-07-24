@@ -530,6 +530,33 @@ Tokens: `--credence-focus-ring`, spacing, and icon sizing via `ThemeToggle.css`.
 <ThemeToggle />
 ```
 
+## ActionLauncher
+
+Source: [`src/components/ActionLauncher.tsx`](../src/components/ActionLauncher.tsx). Focused docs: [keyboard interactions](./keyboard-interactions.md).
+
+| Prop                 | Type                                             | Default     |
+| -------------------- | ------------------------------------------------ | ----------- |
+| `open`               | `boolean`                                        | Required    |
+| `onClose`            | `() => void`                                     | Required    |
+| `returnFocusRef`     | `React.RefObject<HTMLElement \| null>`          | `undefined` |
+| `onOpenKeyboardShortcuts` | `() => void`                               | Required    |
+
+Accessibility: portal-rendered modal with `role="dialog"`, `aria-modal="true"`, and a generated `aria-labelledby`. Focus is trapped while open and initially lands in the search input. Escape, backdrop click, and the close button all call `onClose`. The launcher supports fuzzy query matching and surfaces recent actions when the query is empty.
+
+Tokens: border, surface, text, font, spacing, radius, and focus tokens via `ActionLauncher.css`.
+
+```tsx
+const triggerRef = useRef<HTMLButtonElement>(null)
+
+<button ref={triggerRef} onClick={() => setOpen(true)}>Open action launcher</button>
+<ActionLauncher
+  open={open}
+  onClose={() => setOpen(false)}
+  returnFocusRef={triggerRef}
+  onOpenKeyboardShortcuts={() => setShortcutsOpen(true)}
+/>
+```
+
 ## KeyboardShortcutsDialog
 
 Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx). Focused docs: [keyboard interactions](./keyboard-interactions.md).

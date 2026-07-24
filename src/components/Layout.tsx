@@ -6,6 +6,7 @@ import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import ActionLauncher from './ActionLauncher'
 import BackToTop from './BackToTop'
 import Banner from './Banner'
 import LINKS from '../config/links'
@@ -30,10 +31,12 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 export default function Layout() {
   const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [launcherOpen, setLauncherOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
+  const launcherButtonRef = useRef<HTMLButtonElement>(null)
 
 
   const NAV_LINKS = [
@@ -47,6 +50,8 @@ export default function Layout() {
 
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
+  const openLauncher = useCallback(() => setLauncherOpen(true), [])
+  const closeLauncher = useCallback(() => setLauncherOpen(false), [])
 
   const dismissInstallPrompt = useCallback(() => {
     markInstallPromptHandled()
@@ -75,8 +80,6 @@ export default function Layout() {
   // text-entry contexts (input, textarea, contenteditable).
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== '?') return
-      // Ignore while typing inside editable elements
       const target = event.target as HTMLElement
       const tag = target.tagName
       if (
@@ -87,6 +90,14 @@ export default function Layout() {
       ) {
         return
       }
+
+      if ((event.key === 'k' || event.key === 'K') && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault()
+        setLauncherOpen(true)
+        return
+      }
+
+      if (event.key !== '?') return
       setShortcutsOpen(true)
     }
 
@@ -130,6 +141,18 @@ export default function Layout() {
         <ThemeToggle />
         <NetworkIndicator />
 
+        <button
+          ref={launcherButtonRef}
+          type="button"
+          className="appHeader-launcher-btn"
+          aria-label={t('layout.actionLauncher')}
+          title={t('layout.actionLauncherHint')}
+          onClick={openLauncher}
+        >
+          <span aria-hidden="true">⌘K</span>
+          <span className="sr-only">{t('layout.actionLauncher')}</span>
+        </button>
+
         {/* Keyboard shortcuts help button */}
         <button
           ref={shortcutsButtonRef}
@@ -139,7 +162,7 @@ export default function Layout() {
           onClick={openShortcuts}
         >
           <span aria-hidden="true">?</span>
-          <span className="sr-only">Open keyboard shortcuts (Shift+?)</span>
+          <span className="sr-only">{t('layout.keyboardShortcuts')}</span>
         </button>
       </header>
 
@@ -180,6 +203,16 @@ export default function Layout() {
         open={shortcutsOpen}
         onClose={closeShortcuts}
         returnFocusRef={shortcutsButtonRef}
+      />
+
+      <ActionLauncher
+        open={launcherOpen}
+        onClose={closeLauncher}
+        returnFocusRef={launcherButtonRef}
+        onOpenKeyboardShortcuts={() => {
+          closeLauncher()
+          openShortcuts()
+        }}
       />
 
       <BackToTop />

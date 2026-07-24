@@ -130,3 +130,26 @@ export function sanitizeUSDCInput(nextValue: string): string {
 
   return `${trimmedWhole}.${trimmedFraction}`
 }
+
+/**
+ * Formats a numeric amount with locale-aware separators.
+ *
+ * Uses `toLocaleString` so thousands and decimal separators match
+ * the conventions of the target locale.  Useful for displaying
+ * monetary values in a user's preferred locale.
+ *
+ * @example
+ * formatMoney(1234.5, 'en-US')  // → "1,234.5"
+ * formatMoney(1234.5, 'es-ES')  // → "1234,5"
+ * formatMoney(1234.5, 'fr-FR')  // → "1 234,5"
+ * formatMoney(1234.5, 'ja-JP')  // → "1,234.5"
+ * formatMoney(1234.5, 'ar-EG')  // → "١٬٢٣٤٫٥"
+ */
+export function formatMoney(amount: number, locale: string = 'en-US'): string {
+  if (!Number.isFinite(amount)) {
+    if (Number.isNaN(amount)) return 'NaN'
+    if (amount === Infinity) return '∞'
+    if (amount === -Infinity) return '-∞'
+  }
+  return amount.toLocaleString(locale, { maximumFractionDigits: 2 })
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatUsdc,
+  formatMoney,
   normalizeUSDC,
   formatUSDC,
   formatUSDCDisplay,
@@ -451,5 +452,61 @@ describe('property: sanitizeUSDCInput output contains only digits, at most one d
     if (result !== '') {
       expect(result).toMatch(/^\d+(\.\d{0,2})?$/)
     }
+  })
+})
+
+describe('formatMoney', () => {
+  describe('happy path — locale-specific formatting', () => {
+    it('formats with en-US comma separators and decimal point', () => {
+      expect(formatMoney(1234.5, 'en-US')).toBe('1,234.5')
+      expect(formatMoney(1_000_000.99, 'en-US')).toBe('1,000,000.99')
+      expect(formatMoney(0, 'en-US')).toBe('0')
+    })
+
+    it('formats with es-ES comma decimal separator; grouping starts at 5+ integer digits', () => {
+      // Modern CLDR sets minimumGroupingDigits=2 for es-ES (group at ≥5 digits).
+      expect(formatMoney(1234.5, 'es-ES')).toBe('1234,5')
+      expect(formatMoney(12345.67, 'es-ES')).toBe('12.345,67')
+      expect(formatMoney(1_000_000.99, 'es-ES')).toBe('1.000.000,99')
+      expect(formatMoney(0, 'es-ES')).toBe('0')
+    })
+
+    it('formats with fr-FR narrow non-breaking space (U+202F) grouping and comma decimal', () => {
+      expect(formatMoney(1234.5, 'fr-FR')).toBe('1\u202f234,5')
+      expect(formatMoney(1_000_000.99, 'fr-FR')).toBe('1\u202f000\u202f000,99')
+      expect(formatMoney(0, 'fr-FR')).toBe('0')
+    })
+
+    it('formats with ja-JP comma separators and decimal point', () => {
+      expect(formatMoney(1234.5, 'ja-JP')).toBe('1,234.5')
+      expect(formatMoney(1_000_000.99, 'ja-JP')).toBe('1,000,000.99')
+      expect(formatMoney(0, 'ja-JP')).toBe('0')
+    })
+
+    it('formats with ar-EG Arabic-Indic digits and Arabic thousand/decimal separators', () => {
+      // ar-EG uses Arabic-Indic digits (١٢٣٤) with ٬ (U+066C) thousand separator and ٫ (U+066B) decimal.
+      expect(formatMoney(1234.5, 'ar-EG')).toBe('١٬٢٣٤٫٥')
+      expect(formatMoney(0, 'ar-EG')).toBe('٠')
+    })
+  })
+
+  describe('sad path — non-finite and edge-case inputs', () => {
+    it('renders NaN as "NaN" across all locales', () => {
+      expect(formatMoney(NaN, 'en-US')).toBe('NaN')
+      expect(formatMoney(NaN, 'es-ES')).toBe('NaN')
+      expect(formatMoney(NaN, 'ar-EG')).toBe('NaN')
+    })
+
+    it('renders Infinity as "∞" across all locales', () => {
+      expect(formatMoney(Infinity, 'en-US')).toBe('∞')
+      expect(formatMoney(-Infinity, 'en-US')).toBe('-∞')
+    })
+  })
+
+  describe('default locale', () => {
+    it('defaults to en-US when no locale is provided', () => {
+      expect(formatMoney(1234.5)).toBe('1,234.5')
+      expect(formatMoney(0)).toBe('0')
+    })
   })
 })

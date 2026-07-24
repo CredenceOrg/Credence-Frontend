@@ -24,6 +24,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useMediaQuery`](#usemediaquery)
+  - [`useQuery`](#usequery)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useScrollToTop`](#usescrolltotop)
   - [`useTrustScore`](#usetrustscore)
@@ -193,6 +194,62 @@ const isWide = useMediaQuery('(min-width: 1024px)')
 function ActivityCard() {
   const isMobile = useIsMobile()
   return <h2>{isMobile ? 'Recent Activity' : 'Recent Activity Timeline'}</h2>
+}
+```
+
+---
+
+### `useQuery`
+
+Source: [`src/hooks/useQuery.ts`](../src/hooks/useQuery.ts)
+
+```ts
+function useQuery<T>(
+  queryFn: () => Promise<T>,
+  options?: UseQueryOptions,
+): UseQueryResult<T>
+
+interface UseQueryOptions {
+  enabled?: boolean // default: true
+}
+
+interface UseQueryResult<T> {
+  data: T | undefined
+  isLoading: boolean
+  error: Error | null
+  refetch: () => Promise<void>
+}
+```
+
+A custom hook that wraps an asynchronous query function to fetch and manage data state.
+
+**Parameters**
+
+| Option    | Required | Description                                                  |
+| --------- | :------: | ------------------------------------------------------------ |
+| `queryFn` |    ✓     | An asynchronous function returning a Promise.               |
+| `enabled` |          | Set to `false` to prevent the initial request. Default `true`. |
+
+**Behavior notes**
+
+- **Offline-safe:** both the initial query execution and subsequent `refetch` are disabled when offline (using `window.navigator.onLine`).
+- **Safe state updates:** uses component lifecycle checks to safely ignore state updates if the component unmounts before the asynchronous query finishes.
+- **Race-condition protection:** uses run IDs to guarantee that only the latest triggered fetch updates the component state.
+- **SSR-safe / cleanup:** all DOM/navigator checks are guarded for server-rendered environments; active promises do not trigger state updates on unmount.
+
+```tsx
+import { useQuery } from '../hooks/useQuery'
+import { apiFetch } from '../api/client'
+
+function MyComponent() {
+  const { data, isLoading, refetch } = useQuery(() => apiFetch('/data'))
+
+  return (
+    <div>
+      <button onClick={refetch} disabled={isLoading}>Refresh</button>
+      {isLoading ? <p>Loading...</p> : <p>Data: {JSON.stringify(data)}</p>}
+    </div>
+  )
 }
 ```
 

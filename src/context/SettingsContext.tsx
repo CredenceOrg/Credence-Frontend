@@ -17,6 +17,7 @@ export interface SettingsPayload {
   addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
   autoDismiss: AutoDismissOption
+  reauthThresholdMinutes: number
 }
 
 export interface SettingsState {
@@ -25,11 +26,13 @@ export interface SettingsState {
   addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
   autoDismiss: AutoDismissOption
+  reauthThresholdMinutes: number
   setThemeMode: (m: ThemeMode) => void
   setNetwork: (n: NetworkOption) => void
   setAddressDisplay: (s: AddressDisplayOption) => void
   setToastsEnabled: (b: boolean) => void
   setAutoDismiss: (s: AutoDismissOption) => void
+  setReauthThresholdMinutes: (n: number) => void
   /**
    * Persist settings. Pass an explicit payload to save immediately (avoids the
    * stale-state race when called right after the individual setters); omit it to
@@ -46,6 +49,7 @@ type PersistedSettings = {
   addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
   autoDismiss: AutoDismissOption
+  reauthThresholdMinutes: number
 }
 
 const STORAGE_KEY = 'credence:settings'
@@ -59,6 +63,7 @@ export const defaultPersistedSettings: PersistedSettings = {
   addressDisplay: 'short',
   toastsEnabled: true,
   autoDismiss: '5s',
+  reauthThresholdMinutes: 15,
 }
 
 const defaultState: SettingsState = {
@@ -68,6 +73,7 @@ const defaultState: SettingsState = {
   setAddressDisplay: () => {},
   setToastsEnabled: () => {},
   setAutoDismiss: () => {},
+  setReauthThresholdMinutes: () => {},
   resetToDefaults: () => {},
   saveSettings: (_payload?: SettingsPayload) => {},
   cancelSettings: () => {},
@@ -127,6 +133,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const VALID_NETWORKS: NetworkOption[] = ['public', 'test']
   const VALID_ADDRESS_DISPLAYS: AddressDisplayOption[] = ['full', 'short', 'friendly']
   const VALID_AUTO_DISMISSES: AutoDismissOption[] = ['off', '3s', '5s', '8s']
+  const MIN_REAUTH_THRESHOLD = 1
+  const MAX_REAUTH_THRESHOLD = 1440
 
   const coerceNetwork = (v: string): NetworkOption =>
     (VALID_NETWORKS.includes(v as NetworkOption) ? v : defaultPersistedSettings.network) as NetworkOption
@@ -134,12 +142,28 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     (VALID_ADDRESS_DISPLAYS.includes(v as AddressDisplayOption) ? v : defaultPersistedSettings.addressDisplay) as AddressDisplayOption
   const coerceAutoDismiss = (v: string): AutoDismissOption =>
     (VALID_AUTO_DISMISSES.includes(v as AutoDismissOption) ? v : defaultPersistedSettings.autoDismiss) as AutoDismissOption
+  const coerceReauthThreshold = (v: unknown): number => {
+    if (typeof v === 'number' && !isNaN(v) && v >= MIN_REAUTH_THRESHOLD && v <= MAX_REAUTH_THRESHOLD) {
+      return v
+    }
+    return defaultPersistedSettings.reauthThresholdMinutes
+  }
+
+  const normalizedPersistedSettings = useMemo(() => {
+    const validated = validateAndNormalize(persistedSettingsRaw)
+    if (validated.ok) {
+      return {
+        ...validated.data,
+        network: validated.data.network as NetworkOption,
+        addressDisplay: validated.data.addressDisplay as AddressDisplayOption,
+        autoDismiss: validated.data.autoDismiss as AutoDismissOption,
+      }
+    }
+    return defaultPersistedSettings
+  }, [persistedSettingsRaw])
 
   const persistedSettings: PersistedSettings = {
-    ...persistedSettingsRaw,
-    network: coerceNetwork(persistedSettingsRaw.network as unknown as string),
-    addressDisplay: coerceAddressDisplay(persistedSettingsRaw.addressDisplay as unknown as string),
-    autoDismiss: coerceAutoDismiss(persistedSettingsRaw.autoDismiss as unknown as string),
+    ...normalizedPersistedSettings,
   }
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
@@ -147,6 +171,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(persistedSettings.addressDisplay)
   const [toastsEnabled, setToastsEnabled] = useState<boolean>(persistedSettings.toastsEnabled)
   const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(persistedSettings.autoDismiss)
+  const [reauthThresholdMinutes, setReauthThresholdMinutes] = useState<number>(persistedSettings.reauthThresholdMinutes)
 
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
   const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(normalizedPersistedSettings)
@@ -157,7 +182,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       persistedSettings.network === normalizedPersistedSettings.network &&
       persistedSettings.addressDisplay === normalizedPersistedSettings.addressDisplay &&
       persistedSettings.toastsEnabled === normalizedPersistedSettings.toastsEnabled &&
-      persistedSettings.autoDismiss === normalizedPersistedSettings.autoDismiss
+      persistedSettings.autoDismiss === normalizedPersistedSettings.autoDismiss &&
+      persistedSettings.reauthThresholdMinutes === normalizedPersistedSettings.reauthThresholdMinutes
 
     if (!isEquivalent) {
       setPersistedSettings(normalizedPersistedSettings)
@@ -170,15 +196,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     network !== originalSettings.network ||
     addressDisplay !== originalSettings.addressDisplay ||
     toastsEnabled !== originalSettings.toastsEnabled ||
-    autoDismiss !== originalSettings.autoDismiss
+    autoDismiss !== originalSettings.autoDismiss ||
+    reauthThresholdMinutes !== originalSettings.reauthThresholdMinutes
 
   // Auto-persist any draft change immediately so values survive a page reload.
   useEffect(() => {
-    setPersistedSettings({ themeMode, network, addressDisplay, toastsEnabled, autoDismiss })
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, setPersistedSettings])
+    setPersistedSettings({ themeMode, network, addressDisplay, toastsEnabled, autoDismiss, reauthThresholdMinutes })
+  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, reauthThresholdMinutes, setPersistedSettings])
 
   const saveSettings = (next?: SettingsPayload) => {
-    const payload = next ?? { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
+    const payload = next ?? { themeMode, network, addressDisplay, toastsEnabled, autoDismiss, reauthThresholdMinutes }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
   }
@@ -190,6 +217,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setAddressDisplay(payload.addressDisplay)
     setToastsEnabled(payload.toastsEnabled)
     setAutoDismiss(payload.autoDismiss)
+    setReauthThresholdMinutes(payload.reauthThresholdMinutes)
     saveSettings(payload)
   }
 
@@ -199,6 +227,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setAddressDisplay(originalSettings.addressDisplay)
     setToastsEnabled(originalSettings.toastsEnabled)
     setAutoDismiss(originalSettings.autoDismiss)
+    setReauthThresholdMinutes(originalSettings.reauthThresholdMinutes)
   }
 
   // Apply theme to document and keep it in sync with the system preference.
@@ -229,11 +258,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     addressDisplay,
     toastsEnabled,
     autoDismiss,
+    reauthThresholdMinutes,
     setThemeMode,
     setNetwork,
     setAddressDisplay,
     setToastsEnabled,
     setAutoDismiss,
+    setReauthThresholdMinutes,
     resetToDefaults,
     saveSettings,
     cancelSettings,

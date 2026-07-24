@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSettings, defaultPersistedSettings } from '../context/SettingsContext'
 import ThemeToggle from '../components/ThemeToggle'
 import { useToast } from '../components/ToastProvider'
@@ -36,6 +37,8 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
+    reauthThresholdMinutes,
+    setReauthThresholdMinutes,
     resetToDefaults,
     saveSettings,
   } = useSettings()
@@ -52,6 +55,7 @@ export default function Settings() {
     addressDisplay,
     toastsEnabled,
     autoDismiss,
+    reauthThresholdMinutes,
   })
 
   const isDirty =
@@ -59,9 +63,10 @@ export default function Settings() {
     draft.network !== network ||
     draft.addressDisplay !== addressDisplay ||
     draft.toastsEnabled !== toastsEnabled ||
-    draft.autoDismiss !== autoDismiss
+    draft.autoDismiss !== autoDismiss ||
+    draft.reauthThresholdMinutes !== reauthThresholdMinutes
 
-  const updateDraft = (key: string, value: string | boolean) => {
+  const updateDraft = (key: string, value: string | boolean | number) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -73,12 +78,14 @@ export default function Settings() {
       addressDisplay: draft.addressDisplay,
       toastsEnabled: draft.toastsEnabled,
       autoDismiss: draft.autoDismiss,
+      reauthThresholdMinutes: draft.reauthThresholdMinutes,
     }
     setThemeMode(payload.themeMode)
     setNetwork(payload.network)
     setAddressDisplay(payload.addressDisplay)
     setToastsEnabled(payload.toastsEnabled)
     setAutoDismiss(payload.autoDismiss)
+    setReauthThresholdMinutes(payload.reauthThresholdMinutes)
     saveSettings(payload)
     addToast('success', 'Settings saved successfully')
   }
@@ -96,6 +103,7 @@ export default function Settings() {
       addressDisplay,
       toastsEnabled,
       autoDismiss,
+      reauthThresholdMinutes,
     })
     addToast('info', t('settings.toasts.reverted'))
   }
@@ -408,6 +416,31 @@ export default function Settings() {
             </button>
             <span className="form-hint">{t('settings.notifications.previewHint')}</span>
           </div>
+        </FormField>
+      </section>
+
+      <section className="settings-section" aria-labelledby="security-heading">
+        <h2 id="security-heading">Security</h2>
+        <p className="form-hint">Configure session re-authentication settings for accessing sensitive data.</p>
+
+        <FormField id="reauth-threshold" label="Re-authentication Threshold (minutes)">
+          <input
+            type="number"
+            id="reauth-threshold"
+            min="1"
+            max="1440"
+            value={draft.reauthThresholdMinutes}
+            onChange={(e) => {
+              const value = parseInt(e.target.value, 10);
+              if (!isNaN(value) && value >= 1 && value <= 1440) {
+                updateDraft('reauthThresholdMinutes', value);
+              }
+            }}
+            style={{ width: '100%', padding: '0.5rem 0.75rem' }}
+          />
+          <span className="form-hint">
+            Require re-authentication after N minutes of session inactivity (1-1440 minutes, default: 15).
+          </span>
         </FormField>
       </section>
 

@@ -8,32 +8,33 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 
 ## Styling ownership snapshot
 
-| Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
-| Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
-| Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
-| Toast / ToastProvider  | `src/components/Toast.css`                                                          | None.                                                                                                                     |
-| ConfirmDialog          | `src/components/ConfirmDialog.css`                                                  | None.                                                                                                                     |
-| AddressInput           | `src/components/AddressInput.css` + `FormField.css`                                 | None.                                                                                                                     |
-| AmountInput            | `src/components/AmountInput.css`                                                    | None.                                                                                                                     |
-| TrustGauge             | `src/components/TrustGauge.css`                                                     | Uses inline CSS custom properties for dynamic progress, marker, thumb, and legend-dot colors; keep scoped until migrated. |
-| TierLadder             | `src/components/TierLadder.css` + `Badge.css`                                       | None.                                                                                                                     |
-| ActivityTimeline       | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                       |
-| FormField              | `src/components/forms/FormField.css`                                                | None.                                                                                                                     |
-| controls/Select        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
-| controls/Toggle        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
-| states/EmptyState      | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
-| states/ErrorState      | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
-| states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
-| SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
-| ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
-| Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
-| ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
-| KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
-| AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
-| CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
-| ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
+| Component               | Styling owner                                                                       | Inline-style migration note                                                                                               |
+| ----------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Button                  | `src/components/Button.css`                                                         | None.                                                                                                                     |
+| Badge                   | `src/components/Badge.css`                                                          | None.                                                                                                                     |
+| Banner                  | `src/components/Banner.css`                                                         | None.                                                                                                                     |
+| Toast / ToastProvider   | `src/components/Toast.css`                                                          | None.                                                                                                                     |
+| ConfirmDialog           | `src/components/ConfirmDialog.css`                                                  | None.                                                                                                                     |
+| AddressInput            | `src/components/AddressInput.css` + `FormField.css`                                 | None.                                                                                                                     |
+| AmountInput             | `src/components/AmountInput.css`                                                    | None.                                                                                                                     |
+| Currency                | `src/components/Currency.css`                                                       | None.                                                                                                                     |
+| TrustGauge              | `src/components/TrustGauge.css`                                                     | Uses inline CSS custom properties for dynamic progress, marker, thumb, and legend-dot colors; keep scoped until migrated. |
+| TierLadder              | `src/components/TierLadder.css` + `Badge.css`                                       | None.                                                                                                                     |
+| ActivityTimeline        | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                       |
+| FormField               | `src/components/forms/FormField.css`                                                | None.                                                                                                                     |
+| controls/Select         | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
+| controls/Toggle         | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
+| states/EmptyState       | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
+| states/ErrorState       | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
+| states/LoadingSkeleton  | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
+| SessionTimeoutModal     | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
+| ActionCard              | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                     |
+| Disclaimer              | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
+| ThemeToggle             | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
+| KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                        | None.                                                                                                                     |
+| AttestationForm         | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
+| CreateBondFlow          | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
+| ErrorBoundary           | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
 
 ## Shared vocabularies
 
@@ -172,23 +173,23 @@ function SaveButton() {
 
 Source: [`src/components/ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx). Focused docs: [focus patterns](./focus-patterns.md).
 
-| Prop                | Type                              | Default                          |
-| ------------------- | --------------------------------- | -------------------------------- |
-| `open`              | `boolean`                         | Required                         |
-| `title`             | `string`                          | Required                         |
-| `subtitle`          | `string`                          | `undefined`                      |
-| `breakdown`         | `ConfirmDialogPenaltyBreakdown`   | `undefined`                      |
-| `description`       | `React.ReactNode`                 | `undefined`                      |
-| `children`          | `React.ReactNode`                 | `undefined`                      |
-| `onConfirm`         | `() => void`                      | Required                         |
-| `onCancel`          | `() => void`                      | Required                         |
-| `returnFocusRef`    | `RefObject<HTMLElement \| null>`  | `undefined`                      |
-| `confirmLabel`      | `string`                          | `'Withdraw bond'`                |
-| `confirmInputLabel` | `React.ReactNode`                 | `undefined`                      |
-| `confirmInputHint`  | `React.ReactNode`                 | `undefined`                      |
-| `variant`           | `'danger' \| 'info'`              | `'danger'`                       |
-| `confirmPhrase`     | `string`                          | `'CONFIRM'`                      |
-| `confirmHint`       | `string`                          | Wallet/funds irreversibility hint |
+| Prop                | Type                             | Default                           |
+| ------------------- | -------------------------------- | --------------------------------- |
+| `open`              | `boolean`                        | Required                          |
+| `title`             | `string`                         | Required                          |
+| `subtitle`          | `string`                         | `undefined`                       |
+| `breakdown`         | `ConfirmDialogPenaltyBreakdown`  | `undefined`                       |
+| `description`       | `React.ReactNode`                | `undefined`                       |
+| `children`          | `React.ReactNode`                | `undefined`                       |
+| `onConfirm`         | `() => void`                     | Required                          |
+| `onCancel`          | `() => void`                     | Required                          |
+| `returnFocusRef`    | `RefObject<HTMLElement \| null>` | `undefined`                       |
+| `confirmLabel`      | `string`                         | `'Withdraw bond'`                 |
+| `confirmInputLabel` | `React.ReactNode`                | `undefined`                       |
+| `confirmInputHint`  | `React.ReactNode`                | `undefined`                       |
+| `variant`           | `'danger' \| 'info'`             | `'danger'`                        |
+| `confirmPhrase`     | `string`                         | `'CONFIRM'`                       |
+| `confirmHint`       | `string`                         | Wallet/funds irreversibility hint |
 
 `ConfirmDialogPenaltyBreakdown` is `{ bondAmount: string; penaltyAmount: string; penaltyPercent: number; resultingBalance: string }`. When `breakdown` is omitted, the `description` prop or `children` slot is rendered in its place.
 
@@ -263,6 +264,30 @@ Tokens: border, danger-border, slate, focus, font, motion, radius, spacing, surf
 ```
 
 Storybook: `Components/Forms/AmountInput` — **Default** · **Filled** · **OverBalance** · **Error** · **Disabled** · **Loading**.
+
+## Currency
+
+Source: [`src/components/Currency.tsx`](../src/components/Currency.tsx).
+
+| Prop                    | Type     | Default              |
+| ----------------------- | -------- | -------------------- |
+| `amount`                | `number` | Required             |
+| `currency`              | `string` | `'USD'`              |
+| `locale`                | `string` | Active i18n language |
+| `minimumFractionDigits` | `number` | CLDR per currency    |
+| `maximumFractionDigits` | `number` | CLDR per currency    |
+| `fallback`              | `string` | `'—'`                |
+| `className`             | `string` | `''`                 |
+
+Locale-aware currency display built on `Intl.NumberFormat` with `style: 'currency'`. Symbol placement, thousand separators, and decimal precision come from CLDR for the given locale/currency pair (e.g. `$1,234.50` in en-US, `1234,50 €` in es-ES, `￥1,235` in ja-JP). Non-finite amounts render the `fallback` with a `currency--invalid` class; unknown currency codes degrade to a plain grouped number plus the code instead of throwing.
+
+Tokens: numeric figures use tabular numbers; the invalid state uses the slate-500 text token.
+
+```tsx
+<Currency amount={total} currency="EUR" locale="es-ES" />
+```
+
+Storybook: `Components/Display/Currency` — **Default** · **EuroSpain** · **YenJapan** · **InvalidAmount**.
 
 ## TrustGauge
 
@@ -459,12 +484,12 @@ Tokens: inline styles consume `--credence-skeleton-gradient`, `--credence-motion
 
 Source: [`src/components/SessionTimeoutModal.tsx`](../src/components/SessionTimeoutModal.tsx).
 
-| Prop              | Type                   | Default  |
-| ----------------- | ---------------------- | -------- |
-| `open`            | `boolean`              | Required |
-| `onStayLoggedIn`  | `() => void`           | Required |
-| `onLogout`        | `() => void`           | Required |
-| `timeLeftSeconds` | `number`               | Required |
+| Prop              | Type         | Default  |
+| ----------------- | ------------ | -------- |
+| `open`            | `boolean`    | Required |
+| `onStayLoggedIn`  | `() => void` | Required |
+| `onLogout`        | `() => void` | Required |
+| `timeLeftSeconds` | `number`     | Required |
 
 Accessibility: uses `ConfirmDialog` primitive.
 
@@ -503,10 +528,10 @@ Tokens: `--credence-border-default`, `--credence-radius-xl`, `--credence-space-4
 
 Source: [`src/components/Disclaimer.tsx`](../src/components/Disclaimer.tsx).
 
-| Prop        | Type     | Default        |
-| ----------- | -------- | -------------- |
-| `context`   | `string` | `undefined`    |
-| `termsHref` | `string` | `LINKS.terms`  |
+| Prop        | Type     | Default       |
+| ----------- | -------- | ------------- |
+| `context`   | `string` | `undefined`   |
+| `termsHref` | `string` | `LINKS.terms` |
 
 Accessibility: renders as `<aside aria-label="Risk disclaimer">`. The terms link has an explicit `aria-label="Read full terms and conditions"`. When `termsHref` resolves to a placeholder (`'#'` or empty), a `<span aria-disabled="true">` is rendered instead of an anchor so the element is inert for keyboard and AT users.
 
@@ -534,10 +559,10 @@ Tokens: `--credence-focus-ring`, spacing, and icon sizing via `ThemeToggle.css`.
 
 Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx). Focused docs: [keyboard interactions](./keyboard-interactions.md).
 
-| Prop             | Type                              | Default     |
-| ---------------- | --------------------------------- | ----------- |
-| `open`           | `boolean`                         | Required    |
-| `onClose`        | `() => void`                      | Required    |
+| Prop             | Type                                   | Default     |
+| ---------------- | -------------------------------------- | ----------- |
+| `open`           | `boolean`                              | Required    |
+| `onClose`        | `() => void`                           | Required    |
 | `returnFocusRef` | `React.RefObject<HTMLElement \| null>` | `undefined` |
 
 Accessibility: portal-rendered modal with `role="dialog"`, `aria-modal="true"`, and a generated `aria-labelledby`. Focus is trapped while open. Escape and backdrop click both call `onClose`. Focus is restored to `returnFocusRef` on close, or to the previously active element when `returnFocusRef` is omitted. Shortcuts are grouped by category with visible section headings.
@@ -555,10 +580,10 @@ const triggerRef = useRef<HTMLButtonElement>(null)
 
 Source: [`src/components/AttestationForm.tsx`](../src/components/AttestationForm.tsx).
 
-| Prop              | Type                                                                   | Default     |
-| ----------------- | ---------------------------------------------------------------------- | ----------- |
+| Prop              | Type                                                                     | Default     |
+| ----------------- | ------------------------------------------------------------------------ | ----------- |
 | `onSubmitSuccess` | `(payload: { subject: string; type: string; evidence: string }) => void` | `undefined` |
-| `disabled`        | `boolean`                                                              | `false`     |
+| `disabled`        | `boolean`                                                                | `false`     |
 
 Accessibility: all form fields are wrapped in `FormField` so each has a `<label>`, hint, and error wired through `aria-describedby` and `aria-invalid`. The type selector uses `controls/Select` (native `<select>`). The evidence textarea has a live character counter associated via `aria-describedby`. Submission is confirmed via `ConfirmDialog` before calling `onSubmitSuccess`; success is announced via a toast.
 
@@ -593,9 +618,9 @@ Tokens: `CreateBondFlow.css` consumes border, radius, spacing, surface, text, fo
 
 Source: [`src/components/ErrorBoundary.tsx`](../src/components/ErrorBoundary.tsx).
 
-| Prop       | Type                                         | Default                        |
-| ---------- | -------------------------------------------- | ------------------------------ |
-| `children` | `ReactNode`                                  | Required                       |
+| Prop       | Type                                             | Default                         |
+| ---------- | ------------------------------------------------ | ------------------------------- |
+| `children` | `ReactNode`                                      | Required                        |
 | `fallback` | `(error: Error, reset: () => void) => ReactNode` | `undefined` (uses `ErrorState`) |
 
 Class component that catches render and lifecycle errors in its subtree. The default fallback renders a branded `ErrorState` with a "Retry" action (re-mounts the subtree without a full reload) and a "Go home" link. Supply `fallback` to override with custom error UI.
@@ -607,12 +632,14 @@ Accessibility: no additional ARIA attributes; inherits accessibility from `Error
 Tokens: none directly; delegates to `ErrorState`.
 
 ```tsx
-<ErrorBoundary>
+;<ErrorBoundary>
   <BondPage />
 </ErrorBoundary>
 
-{/* Custom fallback */}
-<ErrorBoundary fallback={(err, reset) => <button onClick={reset}>Retry: {err.message}</button>}>
+{
+  /* Custom fallback */
+}
+;<ErrorBoundary fallback={(err, reset) => <button onClick={reset}>Retry: {err.message}</button>}>
   <TrustScorePage />
 </ErrorBoundary>
 ```

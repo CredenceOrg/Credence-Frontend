@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+import { validateAndNormalize } from '../lib/settingsSchema'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */

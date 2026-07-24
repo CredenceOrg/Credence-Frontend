@@ -451,8 +451,8 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
         >
           Cancel
         </Button>
-</div>
       </div>
+
       <ReauthPrompt
         open={showReauthPrompt}
         onConfirm={handleReauthConfirm}

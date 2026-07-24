@@ -34,10 +34,13 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 export default function Layout() {
   const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [launcherOpen, setLauncherOpen] = useState(false)
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
+  const whatsNewButtonRef = useRef<HTMLButtonElement>(null)
 
 
   const NAV_LINKS = [
@@ -53,6 +56,7 @@ export default function Layout() {
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
   const openLauncher = useCallback(() => setLauncherOpen(true), [])
   const closeLauncher = useCallback(() => setLauncherOpen(false), [])
+  const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
 
   const dismissInstallPrompt = useCallback(() => {
     markInstallPromptHandled()

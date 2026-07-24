@@ -47,6 +47,13 @@ describe('Layout Integration', () => {
     expect(screen.getByRole('link', { name: /^credence$/i })).toBeInTheDocument()
   })
 
+  it('renders keyboard shortcuts button with accessible name', () => {
+    renderLayout()
+    expect(screen.getByRole('button', { name: /open keyboard shortcuts/i })).toHaveAccessibleName(
+      /open keyboard shortcuts/i
+    )
+  })
+
   it('renders theme toggle button', () => {
     renderLayout()
     expect(screen.getByRole('button', { name: /switch to/i })).toBeInTheDocument()

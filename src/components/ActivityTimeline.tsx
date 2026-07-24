@@ -1,51 +1,9 @@
 import { useState, useRef, useCallback } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import CopyableHash from './CopyableHash'
-import './ActivityTimeline.css'
-import { ACTIVITY_ITEMS, ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
-import EmptyState from './states/EmptyState'
+import { ACTIVITY_ITEMS } from '../data/activity'
 
-export type ActivityTone = 'success' | 'warning' | 'info'
-
-/**
- * Maps ActivityTimeline tone values to Badge variants.
- * Tones represent attestation status severity levels.
- */
-export function toneToBadgeVariant(tone: ActivityTone): BadgeVariant {
-  const mapping: Record<ActivityTone, BadgeVariant> = {
-    success: 'active',
-    warning: 'grace-period',
-    info: 'locked',
-  }
-  return mapping[tone]
-}
-
-/**
- * Detects if meta string represents a transaction hash.
- * Returns true if meta starts with "Tx 0x" pattern.
- */
-export function isTxHash(meta: string): boolean {
-  return /^Tx\s+0x/i.test(meta)
-}
-
-export interface ActivityItem {
-  id: string
-  timestamp: string
-  title: string
-  description: string
-  actor: string
-  statusLabel: string
-  tone: ActivityTone
-  meta: string
-}
-
-interface ActivityRowProps {
-  item: ActivityItem
-  isExpanded: boolean
-  onToggle: (id: string) => void
-}
-
-export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
+export type { ActivityItem, ActivityTone }
 
 export interface ActivityTimelineProps {
   compact?: boolean

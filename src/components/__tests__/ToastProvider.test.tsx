@@ -4,9 +4,18 @@ import ToastProvider, { useToast } from '../ToastProvider';
 import { type ToastSeverity } from '../Toast';
 import '@testing-library/jest-dom';
 
-const mockSettingsValues = {
+const mockSettingsValues: {
+  autoDismiss: string
+  toastsEnabled: boolean
+  quietHoursEnabled: boolean
+  quietHoursStart: string
+  quietHoursEnd: string
+} = {
   autoDismiss: '3s',
   toastsEnabled: true,
+  quietHoursEnabled: false,
+  quietHoursStart: '22:00',
+  quietHoursEnd: '07:00',
 };
 
 vi.mock('../../context/SettingsContext', () => ({
@@ -30,6 +39,9 @@ describe('ToastProvider Timing and Queue Logic', () => {
     vi.useFakeTimers();
     mockSettingsValues.autoDismiss = '3s';
     mockSettingsValues.toastsEnabled = true;
+    mockSettingsValues.quietHoursEnabled = false;
+    mockSettingsValues.quietHoursStart = '22:00';
+    mockSettingsValues.quietHoursEnd = '07:00';
   });
 
   afterEach(() => {

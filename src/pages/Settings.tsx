@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettings, defaultPersistedSettings } from '../context/SettingsContext'
+import { useTranslation } from 'react-i18next'
 import ThemeToggle from '../components/ThemeToggle'
 import { useToast } from '../components/ToastProvider'
 import { FormField } from '../components/forms/FormField'
@@ -10,12 +11,22 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { ErrorState } from '../components/states'
 import { useSeo } from '../hooks/useSeo'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
+import { isQuietHoursActive, parseHHmm } from '../lib/quietHours'
 import './Settings.css'
 
 
 function computeDiff(current: Omit<SettingsBlob, keyof unknown>, incoming: SettingsBlob): { key: string; from: string; to: string }[] {
   const diffs: { key: string; from: string; to: string }[] = []
-  const keys: (keyof SettingsBlob)[] = ['themeMode', 'network', 'addressDisplay', 'toastsEnabled', 'autoDismiss']
+  const keys: (keyof SettingsBlob)[] = [
+    'themeMode',
+    'network',
+    'addressDisplay',
+    'toastsEnabled',
+    'autoDismiss',
+    'quietHoursEnabled',
+    'quietHoursStart',
+    'quietHoursEnd',
+  ]
   for (const key of keys) {
     if (String(current[key as keyof typeof current]) !== String(incoming[key])) {
       diffs.push({ key, from: String(current[key as keyof typeof current]), to: String(incoming[key]) })
@@ -37,8 +48,12 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
-    reauthThresholdMinutes,
-    setReauthThresholdMinutes,
+    quietHoursEnabled,
+    setQuietHoursEnabled,
+    quietHoursStart,
+    setQuietHoursStart,
+    quietHoursEnd,
+    setQuietHoursEnd,
     resetToDefaults,
     saveSettings,
   } = useSettings()
@@ -49,14 +64,23 @@ export default function Settings() {
     description: 'Configure your Credence app preferences: theme, network, address display, and toast notifications.',
   })
 
-  const [draft, setDraft] = useState({
+  // Settings draft mirrors the persisted state at mount and is what the user
+  // edits locally before pressing Save. The dirty detection below intentionally
+  // compares draft against the live context values so the Save button reflects
+  // the user's actual changes. Save / Cancel / Reset / Import paths each feed
+  // the draft explicitly, so the page does not auto-resync on every context
+  // change -- clicking ThemeToggle (or any other incidental context mutation)
+  // must not silently discard pending edits.
+  const [draft, setDraft] = useState(() => ({
     themeMode: themeMode as 'light' | 'dark' | 'system',
     network,
     addressDisplay,
     toastsEnabled,
     autoDismiss,
-    reauthThresholdMinutes,
-  })
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
+  }))
 
   const isDirty =
     draft.themeMode !== themeMode ||
@@ -64,28 +88,63 @@ export default function Settings() {
     draft.addressDisplay !== addressDisplay ||
     draft.toastsEnabled !== toastsEnabled ||
     draft.autoDismiss !== autoDismiss ||
-    draft.reauthThresholdMinutes !== reauthThresholdMinutes
+    draft.quietHoursEnabled !== quietHoursEnabled ||
+    draft.quietHoursStart !== quietHoursStart ||
+    draft.quietHoursEnd !== quietHoursEnd
 
   const updateDraft = (key: string, value: string | boolean | number) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
 
+  // Validate quiet hours draft: start and end must be valid HH:mm and must
+  // differ. The provider falls back to defaults for invalid values, but we
+  // surface the error inline so the user can correct bad input.
+  const quietHoursError = useMemo(() => {
+    if (parseHHmm(draft.quietHoursStart).ok === false) {
+      return t('settings.notifications.quietHours.invalidRange')
+    }
+    if (parseHHmm(draft.quietHoursEnd).ok === false) {
+      return t('settings.notifications.quietHours.invalidRange')
+    }
+    if (draft.quietHoursStart === draft.quietHoursEnd) {
+      return t('settings.notifications.quietHours.invalidRange')
+    }
+    return undefined
+  }, [draft.quietHoursStart, draft.quietHoursEnd, t])
+
+  // Live indicator of whether the configured window would silence toasts at this
+  // moment. Recomputed on every render so the user sees the impact immediately.
+  const quietHoursCurrentlyActive = useMemo(() => {
+    if (!draft.quietHoursEnabled) return false
+    if (quietHoursError) return false
+    return isQuietHoursActive({
+      enabled: true,
+      start: draft.quietHoursStart,
+      end: draft.quietHoursEnd,
+    })
+  }, [draft.quietHoursEnabled, draft.quietHoursStart, draft.quietHoursEnd, quietHoursError])
+
   const handleSave = () => {
     if (!isDirty) return
+    if (quietHoursError) return
     const payload = {
       themeMode: draft.themeMode,
       network: draft.network,
       addressDisplay: draft.addressDisplay,
       toastsEnabled: draft.toastsEnabled,
       autoDismiss: draft.autoDismiss,
-      reauthThresholdMinutes: draft.reauthThresholdMinutes,
+      quietHoursEnabled: draft.quietHoursEnabled,
+      quietHoursStart: draft.quietHoursStart,
+      quietHoursEnd: draft.quietHoursEnd,
     }
     setThemeMode(payload.themeMode)
     setNetwork(payload.network)
     setAddressDisplay(payload.addressDisplay)
     setToastsEnabled(payload.toastsEnabled)
     setAutoDismiss(payload.autoDismiss)
-    setReauthThresholdMinutes(payload.reauthThresholdMinutes)
+    setQuietHoursEnabled(payload.quietHoursEnabled)
+    setQuietHoursStart(payload.quietHoursStart)
+    setQuietHoursEnd(payload.quietHoursEnd)
     saveSettings(payload)
     addToast('success', 'Settings saved successfully')
   }
@@ -103,7 +162,9 @@ export default function Settings() {
       addressDisplay,
       toastsEnabled,
       autoDismiss,
-      reauthThresholdMinutes,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
     })
     addToast('info', t('settings.toasts.reverted'))
   }
@@ -136,8 +197,26 @@ export default function Settings() {
   }, [])
 
   const currentSettings = useMemo(() => {
-    return { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss])
+    return {
+      themeMode,
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
+    }
+  }, [
+    themeMode,
+    network,
+    addressDisplay,
+    toastsEnabled,
+    autoDismiss,
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
+  ])
 
   const handleExport = useCallback(() => {
     const payload: SettingsBlob = {
@@ -146,6 +225,9 @@ export default function Settings() {
       addressDisplay,
       toastsEnabled,
       autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -157,7 +239,18 @@ export default function Settings() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
     addToast('success', t('settings.toasts.exported'))
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, addToast])
+  }, [
+    themeMode,
+    network,
+    addressDisplay,
+    toastsEnabled,
+    autoDismiss,
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
+    addToast,
+    t,
+  ])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -196,7 +289,7 @@ export default function Settings() {
       setImportError(t('settings.backup.invalidFile'))
     }
     reader.readAsText(file)
-  }, [])
+  }, [t])
 
   const handleImportConfirm = useCallback(() => {
     if (!importPreview) return
@@ -206,15 +299,31 @@ export default function Settings() {
     setAddressDisplay(importPreview.addressDisplay)
     setToastsEnabled(importPreview.toastsEnabled)
     setAutoDismiss(importPreview.autoDismiss)
+    setQuietHoursEnabled(importPreview.quietHoursEnabled)
+    setQuietHoursStart(importPreview.quietHoursStart)
+    setQuietHoursEnd(importPreview.quietHoursEnd)
     saveSettings(importPreview)
     addToast('success', 'Settings imported successfully')
     resetImportState()
-  }, [importPreview, setThemeMode, setNetwork, setAddressDisplay, setToastsEnabled, setAutoDismiss, saveSettings, addToast, resetImportState])
+  }, [
+    importPreview,
+    setThemeMode,
+    setNetwork,
+    setAddressDisplay,
+    setToastsEnabled,
+    setAutoDismiss,
+    setQuietHoursEnabled,
+    setQuietHoursStart,
+    setQuietHoursEnd,
+    saveSettings,
+    addToast,
+    resetImportState,
+  ])
 
   const handleImportCancel = useCallback(() => {
     resetImportState()
     addToast('info', t('settings.toasts.importCancelled'))
-  }, [resetImportState, addToast])
+  }, [resetImportState, addToast, t])
 
   const handleResetRequest = useCallback(() => {
     setResetConfirmOpen(true)
@@ -227,6 +336,9 @@ export default function Settings() {
       addressDisplay: defaultPersistedSettings.addressDisplay,
       toastsEnabled: defaultPersistedSettings.toastsEnabled,
       autoDismiss: defaultPersistedSettings.autoDismiss,
+      quietHoursEnabled: defaultPersistedSettings.quietHoursEnabled,
+      quietHoursStart: defaultPersistedSettings.quietHoursStart,
+      quietHoursEnd: defaultPersistedSettings.quietHoursEnd,
     }
 
     setDraft(nextDraft)
@@ -271,7 +383,7 @@ export default function Settings() {
         </table>
       </div>
     )
-  }, [importPreview, diffs, importFileName])
+  }, [importPreview, diffs, importFileName, t])
 
   return (
     <div className="settings-page">
@@ -404,6 +516,63 @@ export default function Settings() {
           />
         </FormField>
 
+        <FormField id="quiet-hours-enabled" label={t('settings.notifications.quietHours.enable')}>
+          <Toggle
+            checked={draft.quietHoursEnabled}
+            onChange={(v) => updateDraft('quietHoursEnabled', v)}
+            ariaLabel={t('settings.notifications.quietHours.enable')}
+          />
+        </FormField>
+
+        <div
+          className="quiet-hours-fields"
+          role="group"
+          aria-labelledby="quiet-hours-range-label"
+        >
+          <span id="quiet-hours-range-label" className="sr-only">
+            {t('settings.notifications.quietHours.heading')}
+          </span>
+          <FormField id="quiet-hours-start" label={t('settings.notifications.quietHours.start')}>
+            <input
+              type="time"
+              className="control-time"
+              value={draft.quietHoursStart}
+              onChange={(e) => updateDraft('quietHoursStart', e.target.value)}
+              disabled={!draft.quietHoursEnabled}
+              step={300}
+              aria-describedby="quiet-hours-hint"
+            />
+          </FormField>
+          <FormField id="quiet-hours-end" label={t('settings.notifications.quietHours.end')}>
+            <input
+              type="time"
+              className="control-time"
+              value={draft.quietHoursEnd}
+              onChange={(e) => updateDraft('quietHoursEnd', e.target.value)}
+              disabled={!draft.quietHoursEnabled}
+              step={300}
+              aria-describedby="quiet-hours-hint"
+            />
+          </FormField>
+        </div>
+
+        <p
+          id="quiet-hours-hint"
+          className="form-hint"
+          data-testid="quiet-hours-status"
+          data-active={quietHoursCurrentlyActive ? 'true' : 'false'}
+        >
+          {t('settings.notifications.quietHours.description')}
+          <br />
+          {quietHoursError ? (
+            <span role="alert">{quietHoursError}</span>
+          ) : quietHoursCurrentlyActive ? (
+            <span>{t('settings.notifications.quietHours.active')}</span>
+          ) : (
+            <span>{t('settings.notifications.quietHours.inactive')}</span>
+          )}
+        </p>
+
         <FormField id="toast-preview" label={t('settings.notifications.preview')}>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
@@ -496,8 +665,8 @@ export default function Settings() {
         <button
           type="button"
           onClick={handleSave}
-          disabled={!isDirty}
-          aria-disabled={!isDirty}
+          disabled={!isDirty || !!quietHoursError}
+          aria-disabled={!isDirty || !!quietHoursError}
           style={{ padding: '0.5rem 0.75rem' }}
         >
           {isDirty ? t('settings.actions.save') : t('settings.actions.saved')}
@@ -543,4 +712,17 @@ export default function Settings() {
       />
     </div>
   )
+}
+
+// Friendly labels for the diff table so users see "Quiet hours" instead of
+// "quietHoursEnabled" when reviewing an import preview.
+const FIELD_LABELS: Record<string, string> = {
+  themeMode: 'Theme mode',
+  network: 'Network',
+  addressDisplay: 'Address display',
+  toastsEnabled: 'Enable toasts',
+  autoDismiss: 'Auto-dismiss',
+  quietHoursEnabled: 'Quiet hours enabled',
+  quietHoursStart: 'Quiet hours start',
+  quietHoursEnd: 'Quiet hours end',
 }

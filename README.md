@@ -93,6 +93,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - [Accessibility Checklist](docs/ACCESSIBILITY.md) - Required axe, screen reader, keyboard, and contrast checks before merging UI changes.
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
+- [Security Checklist](docs/SECURITY_CHECKLIST_FRONTEND.md) — CSP, storage, third-party scripts, and dependency posture for contributors.
 - [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
 
 ## Project layout

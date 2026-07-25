@@ -95,6 +95,10 @@ This directory contains comprehensive design specifications and implementation g
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling
 
+14. **[Security Checklist](./SECURITY_CHECKLIST_FRONTEND.md)**
+    - CSP policy, browser storage rules, third-party script posture, and dependency audit workflow
+    - Concrete review checklist for each security area
+
 ### Quick Start
 
 To implement UI states in your components:

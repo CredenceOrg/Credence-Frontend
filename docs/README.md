@@ -86,6 +86,7 @@ This directory contains comprehensive design specifications and implementation g
     - Testing guide and troubleshooting
     - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 
+<<<<<<< Updated upstream
 13. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
     - Provider tree and routing architecture
     - Context responsibilities
@@ -105,6 +106,19 @@ This directory contains comprehensive design specifications and implementation g
 14. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
+=======
+7. **[Infinite Feed Hook](../src/hooks/useInfiniteQuery.ts)** ⭐ NEW
+   - Cursor-based pagination wrapper for feed-style APIs
+   - Supports automatic first-page loading, `fetchNextPage()`, and pagination state
+   - Includes a usage example in the project README
+
+8. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
+   - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
+   - Complete implementation guide with code examples
+   - Accessibility requirements (WCAG 2.1 AA)
+   - Testing guide and troubleshooting
+   - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
+>>>>>>> Stashed changes
 
 ### Quick Start
 

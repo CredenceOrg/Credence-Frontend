@@ -88,6 +88,7 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 - Vite
 - React Router
 
+<<<<<<< Updated upstream
 ## Documentation
 
 See the [docs/](docs/) directory for detailed project documentation, including:
@@ -99,6 +100,39 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
 - [Cookie-Secret Rotation Runbook](docs/COOKIE_SECRETS.md) — Rotation cadence, blast radius, and step-by-step procedure for backend session/CSRF cookie secrets.
 - [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
+=======
+## Data fetching helpers
+
+The frontend now includes a small infinite-query wrapper for cursor-based feeds in [src/hooks/useInfiniteQuery.ts](src/hooks/useInfiniteQuery.ts). It supports loading the first page automatically, appending later pages with `fetchNextPage()`, and exposing the pagination state needed by feed UIs.
+
+Example:
+
+```tsx
+import { useInfiniteQuery } from './src/hooks'
+
+async function fetchPage(cursor: string | null) {
+  const response = await fetch(`/api/feed?cursor=${cursor ?? ''}`)
+  return response.json()
+}
+
+function Feed() {
+  const { data, status, hasNextPage, fetchNextPage } = useInfiniteQuery({
+    queryKey: 'feed',
+    fetchPage,
+  })
+
+  return (
+    <div>
+      {status === 'loading' && <p>Loading feed…</p>}
+      {data.map((item) => (
+        <div key={item.id}>{item.title}</div>
+      ))}
+      {hasNextPage && <button onClick={() => void fetchNextPage()}>Load more</button>}
+    </div>
+  )
+}
+```
+>>>>>>> Stashed changes
 
 ## Project layout
 

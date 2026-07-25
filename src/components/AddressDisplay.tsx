@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { useToast } from './ToastProvider'
 import { truncateAddress } from '../lib/stellar'
@@ -17,6 +18,8 @@ export default function AddressDisplay({
 }: AddressDisplayProps) {
   const { copy, copied } = useCopyToClipboard()
   const { addToast } = useToast()
+  const [isHovered, setIsHovered] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
 
   const handleCopy = async () => {
     const success = await copy(address)
@@ -25,11 +28,22 @@ export default function AddressDisplay({
     }
   }
 
+  const showFull = isHovered || isFocused
+  const displayText = showFull ? address : truncateAddress(address)
+
   return (
     <div className={`address-display ${className}`}>
-      <TooltipOnOverflow content={address}>
-        <code className="address-display__address" tabIndex={0}>
-          {truncateAddress(address)}
+      <TooltipOnOverflow content={address} forceShow>
+        <code
+          className="address-display__address"
+          tabIndex={0}
+          title={address}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+        >
+          {displayText}
         </code>
       </TooltipOnOverflow>
       {showCopyButton && (

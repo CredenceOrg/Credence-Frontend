@@ -322,7 +322,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             <div className="createBondFlow__reviewRow">
               <span className="createBondFlow__reviewLabel">Bond Amount:</span>
               <strong className="createBondFlow__reviewValue" data-testid="review-bond-amount">
-                {amount} USDC
+                {formatUsdc(Number(amount))}
               </strong>
             </div>
 

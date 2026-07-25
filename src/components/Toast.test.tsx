@@ -30,9 +30,13 @@ const SEVERITY_CASES = [
   iconSelector: string
 }[]
 
-function renderToast(severity: ToastSeverity, message = `${severity} notification`) {
+function renderToast(
+  severity: ToastSeverity,
+  message = `${severity} notification`,
+  durationMs = 5000
+) {
   const onDismiss = vi.fn()
-  const toast = { id: `toast-${severity}`, severity, message }
+  const toast = { id: `toast-${severity}`, severity, message, durationMs }
 
   const view = render(<Toast toast={toast} onDismiss={onDismiss} />)
 
@@ -60,6 +64,15 @@ describe('Toast', () => {
       ).toBeInTheDocument()
     }
   )
+
+  it('renders a progress indicator for auto-dismissible toasts', () => {
+    renderToast('info', 'Auto dismissing toast', 5000)
+
+    const progressBar = screen.getByRole('progressbar', { name: /time remaining/i })
+    expect(progressBar).toHaveAttribute('aria-valuemin', '0')
+    expect(progressBar).toHaveAttribute('aria-valuemax', '100')
+    expect(progressBar).toHaveAttribute('aria-valuenow', '100')
+  })
 
   it('passes the toast id to onDismiss when the severity-labelled button is clicked', async () => {
     const user = userEvent.setup()

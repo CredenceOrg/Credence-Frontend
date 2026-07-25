@@ -118,28 +118,37 @@ describe('MobileNav', () => {
   })
 
   // --- active route (drawer must be open for links to be in the a11y tree) ---
+  // The drawer now shows only secondary routes: Home (/) and Settings (/settings).
+  // Primary routes (Dashboard, Bond, Trust Score, Attestations, Transactions) are
+  // handled by the BottomNav component.
 
   it('marks the current route with aria-current="page"', () => {
-    renderNav('/bond')
+    renderNav('/settings')
     fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
-    expect(screen.getByRole('link', { name: /bond/i })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('aria-current', 'page')
   })
 
   it('does not mark inactive routes with aria-current', () => {
-    renderNav('/bond')
+    renderNav('/settings')
     fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
-    expect(screen.getByRole('link', { name: /trust score/i })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: /home/i })).not.toHaveAttribute('aria-current')
   })
 
   // --- links ---
 
-  it('shows all nav links when drawer is open', () => {
+  it('shows secondary nav links (Home and Settings) when drawer is open', () => {
     renderNav()
     fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /bond/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /trust score/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument()
+  })
+
+  it('does not show primary route links in the drawer', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.queryByRole('link', { name: /^dashboard$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /^bond$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /^trust score$/i })).not.toBeInTheDocument()
   })
 
   // --- backdrop lifecycle ---

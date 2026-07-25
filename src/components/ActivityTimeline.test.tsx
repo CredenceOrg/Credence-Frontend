@@ -287,3 +287,5 @@ describe('ActivityTimeline', () => {
       expect(screen.queryByTestId('copyable-hash')).toBeNull()
     })
   })
+})
+})

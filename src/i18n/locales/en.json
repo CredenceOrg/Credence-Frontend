@@ -13,6 +13,7 @@
     }
   },
   "nav": {
+    "home": "Home",
     "dashboard": "Dashboard",
     "bond": "Bond",
     "trustScore": "Trust Score",
@@ -85,7 +86,18 @@
       "8seconds": "8 seconds",
       "preview": "Preview",
       "showPreview": "Show preview",
-      "previewHint": "Preview respects current toast settings."
+      "previewHint": "Preview respects current toast settings.",
+      "quietHours": {
+        "heading": "Quiet hours",
+        "description": "Silence non-critical toasts between the chosen hours. Critical error toasts are never silenced.",
+        "enable": "Enable quiet hours",
+        "start": "Start time",
+        "end": "End time",
+        "includeCritical": "Danger toasts (critical) are not silenced.",
+        "active": "Quiet hours active now",
+        "inactive": "Quiet hours inactive",
+        "invalidRange": "End time must differ from the start time."
+      }
     },
     "backup": {
       "heading": "Backup & Restore",
@@ -110,6 +122,13 @@
       "imported": "Imported",
       "confirmHint": "This will overwrite your current settings with the imported values.",
       "confirmLabel": "Import settings"
+    },
+    "autoSave": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "savedRelative": "Saved {{when}}",
+      "error": "Couldn't save. Try again.",
+      "retry": "Retry"
     },
     "toasts": {
       "saved": "Settings saved successfully",

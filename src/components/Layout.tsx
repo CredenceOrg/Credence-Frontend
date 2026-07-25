@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import ThemeToggle from './ThemeToggle'
 import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
+import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import WhatsNewDialog from './WhatsNewDialog'
@@ -209,9 +210,7 @@ export default function Layout() {
       />
 
       <BackToTop />
-
-      {/* Mobile speed-dial – only visible on screens ≤768px */}
-      <SpeedDial />
+      <BottomNav />
     </div>
   )
 }

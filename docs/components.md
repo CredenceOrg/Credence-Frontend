@@ -247,10 +247,23 @@ Source: [`src/components/AddressInput.tsx`](../src/components/AddressInput.tsx).
 | `onValidationChange` | `(isValid: boolean) => void` | `undefined`         |
 | `disabled`           | `boolean`                    | `false`             |
 | `className`          | `string`                     | `''`                |
+| `selfAddress`        | `string`                     | `undefined`         |
 
 Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste and copy controls are native buttons with explicit aria labels and hidden SVGs. Validation requires a 56-character Stellar public key starting with `G`; invalid feedback is exposed by the FormField alert.
 
 Tokens: border, danger, primary, slate, success, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
+
+### Address echo display
+
+Once the user enters a valid address and blurs the input, a **"Recognized:"** echo line appears below the field. The format of the displayed address is driven by **Settings → Display → Address format** (`addressDisplay` in `SettingsContext`):
+
+| `addressDisplay` | Format                                      | Example                                            |
+| ---------------- | ------------------------------------------- | -------------------------------------------------- |
+| `short`          | First 12 chars + `...` + last 8 (default)  | `GBRPYHIL2CI3...X2H`                               |
+| `full`           | Complete 56-character key                   | `GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H` |
+| `friendly`       | First 6 chars + `…` + last 4               | `GBRPYH…X2H`                                       |
+
+The formatting is provided by `formatAddressForDisplay(address, mode)` exported from `src/lib/stellar.ts`. The component reads the user's preference directly from `useSettings()` — no prop is needed.
 
 ```tsx
 <AddressInput
@@ -261,7 +274,7 @@ Tokens: border, danger, primary, slate, success, focus, font, line-height, motio
 />
 ```
 
-Storybook: `Components/Forms/AddressInput` — **Default** · **Filled** · **Invalid** · **Disabled** · **Loading**.
+Storybook: `Components/Forms/AddressInput` — **Default** · **Filled** · **Invalid** · **ChecksumError** · **Disabled** · **Loading** · **Echo – full address** · **Echo – short address (default)** · **Echo – friendly address**.
 
 ## AmountInput
 
@@ -275,9 +288,35 @@ Source: [`src/components/AmountInput.tsx`](../src/components/AmountInput.tsx). F
 | `presets`          | `number[]`                                                                          | `[100, 500, 1000]` |
 | `currencyLabel`    | `string`                                                                            | `'USDC'`           |
 | `error`            | `string`                                                                            | `undefined`        |
+| `onValidityChange` | `(isValid: boolean) => void`                                                        | `undefined`        |
+| `isLoading`        | `boolean`                                                                           | `false`            |
+| `min`              | `number`                                                                            | `undefined`        |
 | Native input props | `Omit<InputHTMLAttributes<HTMLInputElement>, 'value' \| 'onChange' \| 'inputMode'>` | Forwarded          |
 
 Accessibility: uses a native input with `inputMode="decimal"`, disables browser autocomplete, exposes invalid state when `error` or `aria-invalid="true"` is supplied, hides the currency adornment, and gives Max/preset buttons descriptive aria labels. Presets above balance and Max at zero balance are disabled.
+
+### Validation
+
+The component manages two internal validity checks:
+
+**Over-balance** — when the numeric value exceeds `balance` the input is invalid and an inline `⚠ Amount exceeds available balance.` error appears.
+
+**Below-minimum** — when `min` is supplied and the numeric value is greater than zero but less than `min`, the input is invalid and an inline `⚠ Amount must be at least <min> <currencyLabel>.` error appears.
+
+Precedence: an explicit `error` prop always wins. Over-balance takes precedence over below-minimum when both conditions hold simultaneously.
+
+`onValidityChange(false)` fires whenever **either** internal check fails; `onValidityChange(true)` fires when both pass (or the value is empty).
+
+```tsx
+// Gate a submit button using min + onValidityChange
+<AmountInput
+  value={amount}
+  onChange={setAmount}
+  balance={walletBalance}
+  min={10}
+  onValidityChange={(isValid) => setCanSubmit(isValid)}
+/>
+```
 
 Tokens: border, danger-border, slate, focus, font, motion, radius, spacing, surface, and text tokens.
 
@@ -285,7 +324,7 @@ Tokens: border, danger-border, slate, focus, font, motion, radius, spacing, surf
 <AmountInput value={amount} onChange={setAmount} balance={availableUsdc} error={amountError} />
 ```
 
-Storybook: `Components/Forms/AmountInput` — **Default** · **Filled** · **OverBalance** · **Error** · **Disabled** · **Loading**.
+Storybook: `Components/Forms/AmountInput` — **Default** · **Filled** · **OverBalance** · **Error** · **Disabled** · **Loading** · **Below minimum**.
 
 ## TrustGauge
 

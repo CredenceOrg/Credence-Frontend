@@ -32,6 +32,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useUsdcBalance`](#useusdcbalance)
   - [`useWallet`](#usewallet)
   - [`useProductUpdates`](#useproductupdates)
+  - [`useSmartBack`](#usesmartback)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -556,6 +557,48 @@ function NotificationBadge() {
 
 ---
 
+### `useSmartBack`
+
+Source: [`src/hooks/useSmartBack.ts`](../src/hooks/useSmartBack.ts) · Pure utility: [`src/lib/smartBack.ts`](../src/lib/smartBack.ts)
+
+```ts
+function useSmartBack(options?: UseSmartBackOptions): UseSmartBackReturn
+
+interface UseSmartBackOptions {
+  fallback?: string // default: '/dashboard'
+}
+
+interface UseSmartBackReturn {
+  goBack: () => void
+  fallback: string
+  getDestination: () => SmartBackResult
+}
+```
+
+Smart back navigation hook that honours prior route state when navigating back and safely falls back to `/dashboard` (or a custom route) when history is missing.
+
+**Behavior notes**
+
+- **Prior route priority:** if `location.state.from` is present, `goBack()` navigates directly to that path.
+- **History back:** if `from` state is absent and browser history is available (`window.history.length > 1`), calls `navigate(-1)`.
+- **Missing history fallback:** if `from` state is absent and history is empty (e.g. direct deep link landing), navigates to `/dashboard`.
+
+```tsx
+import { useSmartBack } from '../hooks/useSmartBack'
+
+function BackButton() {
+  const { goBack } = useSmartBack({ fallback: '/dashboard' })
+
+  return (
+    <button onClick={goBack} aria-label="Go back">
+      ← Back
+    </button>
+  )
+}
+```
+
+---
+
 ## Utilities (`src/lib/`)
 
 Framework-free helpers — pure functions and a wallet SDK wrapper. No React required.
@@ -563,6 +606,11 @@ Framework-free helpers — pure functions and a wallet SDK wrapper. No React req
 ### `format` — USDC formatting
 
 Source: [`src/lib/format.ts`](../src/lib/format.ts) · Single source of truth for USDC display.
+
+> **Canonical rule (closes #558):** Always use `formatUsdc(amount)` to display a USDC
+> amount in the UI. Never inline `amount.toLocaleString('en-US') + ' USDC'`,
+> `amount.toFixed(2) + ' USDC'`, or any other ad-hoc pattern. All monetary display
+> helpers live in `format.ts` so every surface shows consistent numbers.
 
 ```ts
 formatUsdc(amount: number): string        // 1234.5      → "1,234.5 USDC"
@@ -580,7 +628,15 @@ can correct it. SSR-safe (pure functions, no globals).
 ```ts
 import { formatUsdc, sanitizeUSDCInput } from '@/lib/format'
 
-formatUsdc(1000) // "1,000 USDC"
+// ✅ Correct — always use formatUsdc for display
+formatUsdc(1000)          // "1,000 USDC"
+formatUsdc(1234.5)        // "1,234.5 USDC"
+formatUsdc(Number(str))   // when amount comes from a string state value
+
+// ❌ Avoid — do not use ad-hoc patterns
+// `${amount.toLocaleString('en-US')} USDC`
+// `${amount.toFixed(2)} USDC`
+
 sanitizeUSDCInput('12.345') // "12.34"
 ```
 

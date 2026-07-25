@@ -37,40 +37,49 @@ This directory contains comprehensive design specifications and implementation g
    - Consolidated props, Storybook story paths and variants, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for all public shared UI components
    - Documents severity/variant vocabularies and cross-links focused component docs
 
-5. **[UI States Guide](./UI_STATES_GUIDE.md)**
+5. **[Component API Conventions](./COMPONENT_API.md)** ⭐ NEW
+   - Single-source for props conventions (naming rules, ordering rules, boolean-prop rules, and TypeScript interface contracts)
+   - Code examples and review checklist for consistent component APIs
+
+6. **[UI States Guide](./UI_STATES_GUIDE.md)**
    - Complete guide for empty states, error states, and loading patterns
    - Microcopy guidelines and tone recommendations
    - When and how to use each state type
    - Validation checklist
 
-6. **[Copy Tone Guide](./COPY_TONE.md)** ⭐ NEW
+6. **[Error UI Pattern Guide](./ERROR_UI.md)** ⭐ NEW
+   - Standardized guide for inline form errors, banners, toasts, and section/page error states
+   - Surface decision matrix, component contracts, accessibility guidelines, and concrete code snippets
+
+7. **[Copy Tone Guide](./COPY_TONE.md)** ⭐ NEW
    - How we phrase success, error, empty, and loading UI copy
    - Voice principles (friendly, clear, concise, helpful)
    - State-by-state dos and don'ts with real codebase examples
    - Capitalization, punctuation, and i18n conventions
    - PR review checklist for user-facing strings
 
-7. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
+8. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
    - Standardized states (Default, Error, Disabled, Loading) for all input components
    - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
 
-8. **[Design Tokens](./DESIGN_TOKENS.md)**
+9. **[Design Tokens](./DESIGN_TOKENS.md)**
    - Canonical `--credence-*` CSS variable reference
    - Color, spacing, radius, typography, and motion scales
    - Guidance for replacing one-off hex values in components
 
-9. **[Motion Guidelines](./motion-guidelines.md)**
-   - Motion token strategy and reduced-motion defaults
-   - Best practices for animation and transitions
-   - Implementation examples for UI micro-interactions
+10. **[Motion Guidelines](./motion-guidelines.md)**
+    - Motion token strategy and reduced-motion defaults
+    - Best practices for animation and transitions
+    - Implementation examples for UI micro-interactions
 
-10. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
-   - Visual design specifications
-   - Color palette and design tokens
-   - Layout measurements and spacing
-   - Animation specifications
-   - Responsive breakpoints
-   - Component organization structure
+11. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+
+- Visual design specifications
+- Color palette and design tokens
+- Layout measurements and spacing
+- Animation specifications
+- Responsive breakpoints
+- Component organization structure
 
 11. **[Implementation Examples](./IMPLEMENTATION_EXAMPLES.md)**
     - Practical code examples for each page
@@ -79,10 +88,10 @@ This directory contains comprehensive design specifications and implementation g
     - Accessibility guidelines
     - Performance considerations
 
-6. **[Prop Types Migration Guide](./PROP_TYPES_MIGRATION.md)** ⭐ NEW
-   - Migration path from any-typed props to explicit TypeScript contracts
-   - Review checklist and component examples
-   - Guidance for replacing loose props with safer, documented interfaces
+12. **[Prop Types Migration Guide](./PROP_TYPES_MIGRATION.md)** ⭐ NEW
+    - Migration path from any-typed props to explicit TypeScript contracts
+    - Review checklist and component examples
+    - Guidance for replacing loose props with safer, documented interfaces
 
 7. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
    - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
@@ -92,10 +101,9 @@ This directory contains comprehensive design specifications and implementation g
    - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 
 14. [Keyboard Interactions Contract](./keyboard-interactions.md) ⭐ NEW
-
-- Developer-facing matrix of every interactive component and its expected keyboard behavior
-- Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
-- Focus-restore contract and checklist for new interactive components
+    - Developer-facing matrix of every interactive component and its expected keyboard behavior
+    - Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
+    - Focus-restore contract and checklist for new interactive components
 
 15. [Wallet Integration](./WALLET_INTEGRATION.md) ⭐ NEW
     - `useWallet` API documentation
@@ -112,7 +120,11 @@ This directory contains comprehensive design specifications and implementation g
     - `useWidgetCache` hook + `<WidgetRefreshButton />` + token-driven styling.
     - Coverage includes mount, key isolation, error surfacing, and reduced-motion.
 
-14. **[Telemetry & Analytics](./telemetry.md)**
+17. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
+    - Interceptors, retry policy, and error taxonomy for the API client
+    - `ApiError` structure and usage examples
+
+18. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 

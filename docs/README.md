@@ -102,7 +102,11 @@ This directory contains comprehensive design specifications and implementation g
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling
 
-14. **[Telemetry & Analytics](./telemetry.md)**
+16. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
+    - Interceptors, retry policy, and error taxonomy for the API client
+    - `ApiError` structure and usage examples
+
+17. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 

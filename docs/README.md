@@ -93,12 +93,12 @@ This directory contains comprehensive design specifications and implementation g
     - Review checklist and component examples
     - Guidance for replacing loose props with safer, documented interfaces
 
-7. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
-   - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
-   - Complete implementation guide with code examples
-   - Accessibility requirements (WCAG 2.1 AA)
-   - Testing guide and troubleshooting
-   - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
+13. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
+    - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
+    - Complete implementation guide with code examples
+    - Accessibility requirements (WCAG 2.1 AA)
+    - Testing guide and troubleshooting
+    - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 
 14. [Keyboard Interactions Contract](./keyboard-interactions.md) ⭐ NEW
     - Developer-facing matrix of every interactive component and its expected keyboard behavior

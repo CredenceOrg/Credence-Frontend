@@ -163,12 +163,15 @@ function Feed() {
 
 ## Project layout
 
-- `src/pages/` — Home, Bond, Trust Score
-- `src/components/` — Layout, shared UI (including the in-app Changelog drawer sourced from `/changelog.json`); see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
+- `src/components/` — Layout, shared UI (including `SmartBackButton` and the in-app Changelog drawer sourced from `/changelog.json`); see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
 - `src/widgetCache/` — Shared widget cache (`WidgetCacheProvider`, `useWidgetCache`)
 - `src/components/widget/` — Per-widget UI primitives (`WidgetRefreshButton`)
 - `src/config/widgetCache.ts` — Central widget-cache constants
 - `src/App.tsx` — Router and routes
+
+## Smart Back Navigation
+
+The application provides a "Smart Back" navigation primitive (`useSmartBack` hook and `SmartBackButton` component). When a user navigates back, prior-route history is honoured when present; if no prior history or route state exists (e.g. direct deep link landing), navigation safely falls back to `/dashboard`.
 
 ## Documentation
 

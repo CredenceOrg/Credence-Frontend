@@ -36,7 +36,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
 | ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
-| RepoAvatar             | `src/components/RepoAvatar.css`                                                     | None.                                                                                                                     |
+| SmartBackButton        | `src/components/navigation/SmartBackButton.css`                                     | None.                                                                                                                     |
 
 ## Shared vocabularies
 
@@ -552,29 +552,29 @@ Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track b
 <Progress aria-label="Loading trust score" />
 ```
 
-## RepoAvatar
+## SmartBackButton
 
-Source: [`src/components/RepoAvatar.tsx`](../src/components/RepoAvatar.tsx). Config: [`src/config/avatar.ts`](../src/config/avatar.ts).
+Source: [`src/components/navigation/SmartBackButton.tsx`](../src/components/navigation/SmartBackButton.tsx). Hook: [`src/hooks/useSmartBack.ts`](../src/hooks/useSmartBack.ts).
 
-Repository avatar component supporting tokenised sizing presets (`sm`, `md`, `lg`) tied directly to `--credence-*` design tokens, image error fallback handling, and accessible ARIA attributes.
+Navigation button component that uses smart-back navigation. Honours prior-route history when present and falls back to `/dashboard` (or custom fallback) when no prior history exists.
 
 | Prop | Type | Default | Description |
 | ---- | ---- | ------- | ----------- |
-| `src` | `string` | `undefined` | URL for the avatar image |
-| `name` | `string` | `undefined` | Repository or organization name, used for fallback initials generation |
-| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Preset tokenised size variant |
-| `alt` | `string` | `undefined` | Image alt text override |
-| `className` | `string` | `''` | Extra CSS class names |
+| `label` | `string` | `'Go Back'` | Visible button text |
+| `fallback` | `string` | `'/dashboard'` | Fallback route when history is missing |
+| `variant` | `'primary' \| 'secondary' \| 'ghost' \| 'danger'` | `'secondary'` | Button visual style variant |
+| `className` | `string` | `''` | Custom CSS class overrides |
+| `ariaLabel` | `string` | `undefined` | Accessible ARIA label override |
 
-Accessibility: renders `role="img"` with descriptive `aria-label`. When `src` is missing or fails to load, falls back cleanly to uppercase initials derived from `name` or a default repository icon.
+Accessibility: renders native `<button>` element with arrow icon hidden from screen readers (`aria-hidden="true"`). Accessible label defaults to `label` text.
 
-Tokens: `--credence-avatar-size-sm`, `--credence-avatar-size-md`, `--credence-avatar-size-lg`, `--credence-space-6`, `--credence-space-8`, `--credence-space-12`, `--credence-radius-md`, `--credence-surface-card`, `--credence-border-default`, `--credence-text-primary`, `--credence-font-size-xs`, `--credence-font-size-sm`, `--credence-font-size-base`.
+Tokens: `--credence-space-2`, `--credence-space-3`, `--credence-font-family-base`, `--credence-font-weight-semibold`, `--credence-motion-duration-fast`, `--credence-motion-easing-standard`.
 
 ```tsx
-{/* Default medium size with name fallback */}
-<RepoAvatar name="CredenceOrg/Credence-Frontend" />
+{/* Standard smart-back button with default /dashboard fallback */}
+<SmartBackButton />
 
-{/* Small size with image URL */}
-<RepoAvatar size="sm" src="https://example.com/avatar.png" name="CredenceOrg/Credence-Frontend" />
+{/* Custom label and fallback route */}
+<SmartBackButton label="Back to Settings" fallback="/settings" variant="ghost" />
 ```
 

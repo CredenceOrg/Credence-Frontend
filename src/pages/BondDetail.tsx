@@ -200,7 +200,7 @@ export default function BondDetail() {
             </div>
             <div className="bond-detail__slash-row">
               <span>USDC Penalty Amount</span>
-              <span className="bond-detail__penalty-amount">{breakdown.penaltyAmount}</span>
+              <span className="bond-detail__penalty-amount">−{breakdown.penaltyAmount}</span>
             </div>
             <div className="bond-detail__divider" />
             <div className="bond-detail__slash-row bond-detail__slash-row--total">

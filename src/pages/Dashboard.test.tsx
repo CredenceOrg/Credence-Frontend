@@ -1,9 +1,18 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ONBOARDING_COMPLETION_STORAGE_KEY, ONBOARDING_STEP_STORAGE_KEY } from '../config/onboarding'
 import Dashboard from './Dashboard'
+
+// Mocks needed because ActionCard now uses useToast, useCopyToClipboard, and useTranslation
+vi.mock('../components/ToastProvider', () => ({
+  useToast: () => ({ addToast: vi.fn(), removeToast: vi.fn(), removeAllToasts: vi.fn(), announce: vi.fn() }),
+}))
+
+vi.mock('../hooks/useCopyToClipboard', () => ({
+  default: () => ({ copy: vi.fn().mockResolvedValue(true), copied: false, reset: vi.fn() }),
+}))
 
 const mockConnect = vi.fn()
 let mockConnected = true
@@ -22,6 +31,27 @@ vi.mock('../context/WalletContext', () => ({
   }),
 }))
 
+const mockRefetch = vi.fn().mockResolvedValue(undefined)
+let mockQueryData = { score: 684, tier: 'gold' }
+let mockIsMobile = false
+
+vi.mock('../hooks/useQuery', () => ({
+  useQuery: (_fn: any, options: any) => {
+    const enabled = options?.enabled !== false
+    return {
+      data: enabled ? mockQueryData : undefined,
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    }
+  }
+}))
+
+vi.mock('../hooks/useMediaQuery', () => ({
+  useIsMobile: () => mockIsMobile,
+  useMediaQuery: () => mockIsMobile,
+}))
+
 function renderDashboard(initialEntries = ['/']) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
@@ -34,8 +64,11 @@ describe('Dashboard', () => {
   beforeEach(() => {
     localStorage.clear()
     mockConnect.mockClear()
+    mockRefetch.mockClear()
     mockConnected = true
     mockIsConnecting = false
+    mockQueryData = { score: 684, tier: 'gold' }
+    mockIsMobile = false
   })
 
   it('prompts disconnected users to connect their wallet', async () => {

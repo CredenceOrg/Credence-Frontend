@@ -9,17 +9,17 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
-import { ActivityItem } from '../components/ActivityTimeline'
 import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
+import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
+import { useToast } from '../components/ToastProvider'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
-import { SAMPLE_ACTIVITY } from '../components/ActivityTimeline'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 
 export interface RecentLookupItem {
@@ -61,9 +61,12 @@ export default function TrustScore() {
       'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
   })
 
+  const { t } = useTranslation()
   const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork, addressDisplay } = useSettings()
+  const { copy, copied } = useCopyToClipboard()
+  const { addToast } = useToast()
   const networkMismatch = useNetworkMismatch()
   const [searchParams, setSearchParams] = useSearchParams()
   const [address, setAddress] = useState<string>(() => {
@@ -107,20 +110,18 @@ export default function TrustScore() {
   useEffect(() => {
     if (!isLoading && !error && data && lookupAddress) {
       if (isValidStellarAddress(lookupAddress)) {
-        setHistory((prev) => {
-          const current = Array.isArray(prev) ? prev : []
-          const filtered = current.filter(
-            (item) => item && typeof item === 'object' && item.address.toLowerCase() !== lookupAddress.toLowerCase()
-          )
-          const newItem: RecentLookupItem = {
-            address: lookupAddress,
-            timestamp: Date.now(),
-          }
-          return [newItem, ...filtered].slice(0, 5)
-        })
+        const current = Array.isArray(history) ? history : []
+        const filtered = current.filter(
+          (item) => item && typeof item === 'object' && item.address.toLowerCase() !== lookupAddress.toLowerCase()
+        )
+        const newItem: RecentLookupItem = {
+          address: lookupAddress,
+          timestamp: Date.now(),
+        }
+        setHistory([newItem, ...filtered].slice(0, 5))
       }
     }
-  }, [isLoading, error, data, lookupAddress, setHistory])
+  }, [isLoading, error, data, lookupAddress, history, setHistory])
 
   const commitAddressParam = (value: string) => {
     setSearchParams(
@@ -170,17 +171,15 @@ export default function TrustScore() {
     commitAddressParam(recentAddress)
 
     // Move to top of history immediately
-    setHistory((prev) => {
-      const current = Array.isArray(prev) ? prev : []
-      const filtered = current.filter(
-        (item) => item && typeof item === 'object' && item.address.toLowerCase() !== recentAddress.toLowerCase()
-      )
-      const newItem: RecentLookupItem = {
-        address: recentAddress,
-        timestamp: Date.now(),
-      }
-      return [newItem, ...filtered].slice(0, 5)
-    })
+    const current = Array.isArray(history) ? history : []
+    const filtered = current.filter(
+      (item) => item && typeof item === 'object' && item.address.toLowerCase() !== recentAddress.toLowerCase()
+    )
+    const newItem: RecentLookupItem = {
+      address: recentAddress,
+      timestamp: Date.now(),
+    }
+    setHistory([newItem, ...filtered].slice(0, 5))
   }
 
   const handleClearHistory = () => {
@@ -192,7 +191,7 @@ export default function TrustScore() {
     setAddress(walletAddress)
   }
 
-  const activity: ActivityItem[] = []
+  const activity: ActivityItem[] = data ? SAMPLE_ACTIVITY : []
 
   const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
   const mismatchBannerId = 'trust-score-network-mismatch'
@@ -314,6 +313,28 @@ export default function TrustScore() {
                         aria-label={`Look up address ${displayLabel}`}
                       >
                         {displayLabel}
+                      </button>
+                      <button
+                        type="button"
+                        className="trustScore__recentCopyBtn"
+                        onClick={async () => {
+                          const success = await copy(item.address)
+                          if (success) {
+                            addToast('success', 'Address copied to clipboard')
+                          }
+                        }}
+                        aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}
+                      >
+                        {copied ? (
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                        )}
                       </button>
                     </li>
                   )

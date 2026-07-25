@@ -30,7 +30,7 @@
 .mobileNav-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--credence-backdrop-mobile);
   z-index: 999;
   animation: mobileNav-fadeIn var(--credence-motion-duration-base)
     var(--credence-motion-easing-standard);

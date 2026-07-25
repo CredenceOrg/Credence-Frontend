@@ -197,6 +197,12 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .credence-button__spinner-icon {
+    animation: none !important;
+  }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .credence-button {

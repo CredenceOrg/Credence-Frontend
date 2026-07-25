@@ -143,9 +143,13 @@
   color: var(--credence-text-secondary);
 }
 
-.bond-detail__slash-row .bond-detail__penalty-percent,
-.bond-detail__slash-row .bond-detail__penalty-amount {
+.bond-detail__slash-row .bond-detail__penalty-percent {
   color: var(--credence-color-danger-text, #b91c1c);
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+.bond-detail__slash-row .bond-detail__penalty-amount {
+  color: var(--credence-color-danger-action);
   font-weight: var(--credence-font-weight-semibold);
 }
 

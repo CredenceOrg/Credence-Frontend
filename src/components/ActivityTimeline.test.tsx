@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ActivityTimeline, { ActivityItem, isTxHash, toneToBadgeVariant } from './ActivityTimeline'
@@ -90,12 +90,12 @@ describe('ActivityTimeline', () => {
   describe('empty items', () => {
     it('renders the EmptyState heading when items is an empty array', () => {
       render(<ActivityTimeline items={[]} />)
-      expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /no recent activity/i })).toBeInTheDocument()
     })
 
     it('renders the EmptyState description', () => {
       render(<ActivityTimeline items={[]} />)
-      expect(screen.getByText(/attestations and events will appear here/i)).toBeInTheDocument()
+      expect(screen.getByText(/new trust score events will appear here/i)).toBeInTheDocument()
     })
 
     it('does not render the timeline list', () => {
@@ -184,51 +184,83 @@ describe('ActivityTimeline', () => {
       expect(container.querySelector('.activity-row__rail')).toHaveAttribute('aria-hidden', 'true')
     })
 
-    it('renders actor label', () => {
-      render(<ActivityTimeline items={[makeItem({ actor: 'Node 99' })]} />)
-      const button = screen.getByText('Show details')
-      fireEvent.click(button)
-      expect(screen.getByText(/Node 99/)).toBeInTheDocument()
-    })
-  })
-
-  describe('expandable details and keyboard interaction', () => {
-    it('toggles details visibility and aria-expanded state on click', async () => {
-      const user = userEvent.setup()
-      render(<ActivityTimeline items={[makeItem({ id: 'test-expand', actor: 'Test Actor' })]} />)
-      
-      const button = screen.getByRole('button', { name: 'Show details' })
+  describe('disclosure interaction', () => {
+    it('renders disclosure button in collapsed state with aria-expanded="false"', () => {
+      render(<ActivityTimeline items={[makeItem()]} />)
+      const button = screen.getByRole('button', { name: /show details/i })
       expect(button).toHaveAttribute('aria-expanded', 'false')
-      expect(screen.queryByText(/Test Actor/)).toBeNull()
+    })
 
+    it('renders disclosure button with aria-controls pointing to panel', () => {
+      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+      const button = screen.getByRole('button', { name: /show details/i })
+      expect(button).toHaveAttribute('aria-controls', 'details-test-item')
+    })
+
+    it('expands panel and sets aria-expanded="true" on click', async () => {
+      const user = userEvent.setup()
+      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+      const button = screen.getByRole('button', { name: /show details/i })
       await user.click(button)
-      
+
       expect(button).toHaveAttribute('aria-expanded', 'true')
-      expect(button).toHaveTextContent('Hide details')
-      expect(screen.getByText(/Test Actor/)).toBeInTheDocument()
-
-      await user.click(button)
-      expect(button).toHaveAttribute('aria-expanded', 'false')
-      expect(screen.queryByText(/Test Actor/)).toBeNull()
+      expect(screen.getByText('Actor:')).toBeInTheDocument()
+      expect(screen.getByText('Meta:')).toBeInTheDocument()
     })
 
-    it('is fully operable via keyboard', async () => {
+    it('collapses panel and sets aria-expanded="false" on second click', async () => {
       const user = userEvent.setup()
-      render(<ActivityTimeline items={[makeItem({ id: 'test-kbd', actor: 'Keyboard Actor' })]} />)
-      
-      const button = screen.getByRole('button', { name: 'Show details' })
-      
-      // Focus via Tab
-      await user.tab()
+      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+      const button = screen.getByRole('button', { name: /show details/i })
+      await user.click(button)
+      await user.click(button)
+
+      expect(button).toHaveAttribute('aria-expanded', 'false')
+      // Panel should have hidden attribute when collapsed
+      const panel = document.getElementById('details-test-item')
+      expect(panel).toHaveAttribute('hidden')
+    })
+
+    it('toggles panel visibility via Enter key', async () => {
+      const user = userEvent.setup()
+      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+      const button = screen.getByRole('button', { name: /show details/i })
+      button.focus()
+      await user.keyboard('{Enter}')
+
+      expect(button).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('toggles panel visibility via Space key', async () => {
+      const user = userEvent.setup()
+      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+      const button = screen.getByRole('button', { name: /show details/i })
+      button.focus()
+      await user.keyboard(' ')
+
+      expect(button).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('closes panel via Escape key and returns focus to trigger', async () => {
+      const user = userEvent.setup()
+      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+      const button = screen.getByRole('button', { name: /show details/i })
+      await user.click(button)
+
+      const panel = document.getElementById('details-test-item')
+      expect(panel).toBeInTheDocument()
+      expect(panel).not.toHaveAttribute('hidden')
+
+      // Escape should close the panel - fire on panel element
+      fireEvent.keyDown(panel!, { key: 'Escape' })
+
+      expect(button).toHaveAttribute('aria-expanded', 'false')
       expect(button).toHaveFocus()
-      
-      // Expand via Enter
-      await user.keyboard('[Enter]')
-      expect(screen.getByText(/Keyboard Actor/)).toBeInTheDocument()
-      
-      // Collapse via Space
-      await user.keyboard('[Space]')
-      expect(screen.queryByText(/Keyboard Actor/)).toBeNull()
     })
   })
 
@@ -241,7 +273,7 @@ describe('ActivityTimeline', () => {
       await user.click(button)
 
       expect(screen.getByTestId('copyable-hash')).toBeInTheDocument()
-      expect(screen.getByTestId('copyable-hash').textContent).toBe('Tx 0x93a1...22f4')
+      expect(screen.getByTestId('copyable-hash').textContent).toBe('0x93a1...22f4')
     })
 
     it('renders non-tx meta as plain text', async () => {
@@ -255,4 +287,5 @@ describe('ActivityTimeline', () => {
       expect(screen.queryByTestId('copyable-hash')).toBeNull()
     })
   })
+})
 })

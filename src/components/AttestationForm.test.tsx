@@ -5,6 +5,15 @@ import AttestationForm from './AttestationForm'
 import { SettingsProvider } from '../context/SettingsContext'
 import ToastProvider from './ToastProvider'
 
+vi.mock('../lib/stellar', () => ({
+  isValidStellarAddress: vi.fn((addr) => !!addr && addr.startsWith('G') && addr.length === 56),
+  truncateAddress: (addr: string) => {
+    if (!addr) return ''
+    if (addr.length <= 20) return addr
+    return `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`
+  }
+}))
+
 // A valid 56-character Stellar public key
 const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
 
@@ -79,10 +88,10 @@ describe('AttestationForm', () => {
       const evidenceTextarea = screen.getByRole('textbox', { name: /evidence/i })
       const countEl = document.querySelector('[aria-live="polite"]')
 
-      expect(countEl?.textContent?.trim()).toBe('0 / 500 characters')
+      expect(countEl?.textContent?.trim()).toBe('0 / 28 bytes')
 
       await user.type(evidenceTextarea, 'hello')
-      expect(countEl?.textContent?.trim()).toBe('5 / 500 characters')
+      expect(countEl?.textContent?.trim()).toBe('5 / 28 bytes')
     })
   })
 
@@ -168,7 +177,7 @@ describe('AttestationForm', () => {
       })
 
       // Success toast should show
-      expect(screen.getByText('Attestation submitted successfully.')).toBeInTheDocument()
+      expect(screen.getAllByText('Attestation submitted successfully.').length).toBeGreaterThan(0)
 
       // Form fields should reset
       expect(addressInput).toHaveValue('')

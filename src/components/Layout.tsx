@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
+import { PrefetchNavLink } from './PrefetchNavLink'
+import { PRELOADS_BY_PATH } from '../config/routes'
 import { useTranslation } from 'react-i18next'
 import ThemeToggle from './ThemeToggle'
 import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
+import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
+import SpeedDial from './SpeedDial'
 import LINKS from '../config/links'
+import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
+import { useProductUpdates } from '../hooks/useProductUpdates'
 import './Layout.css'
 
 
@@ -28,12 +35,14 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 export default function Layout() {
   const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false)
+  const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
   const whatsNewButtonRef = useRef<HTMLButtonElement>(null)
 
-  const { unreadCount } = useProductUpdates()
 
   const NAV_LINKS = [
     { to: '/dashboard', label: t('nav.dashboard') },
@@ -46,26 +55,58 @@ export default function Layout() {
 
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
-
-  const openWhatsNew = useCallback(() => setWhatsNewOpen(true), [])
+  const openLauncher = useCallback(() => setLauncherOpen(true), [])
+  const closeLauncher = useCallback(() => setLauncherOpen(false), [])
   const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
+
+  const dismissInstallPrompt = useCallback(() => {
+    markInstallPromptHandled()
+    setInstallPromptDismissed(true)
+    setShowInstallPrompt(false)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || installPromptDismissed) return
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      if (installPromptDismissed) return
+      event.preventDefault()
+      markInstallPromptHandled()
+      setInstallPromptDismissed(true)
+      setShowInstallPrompt(true)
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener)
+    }
+  }, [installPromptDismissed])
 
   // Global Shift+? listener — opens the shortcuts dialog from anywhere except
   // text-entry contexts (input, textarea, contenteditable).
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== '?') return
-      // Ignore while typing inside editable elements
       const target = event.target as HTMLElement
-      const tag = target.tagName
+      const tag = target?.tagName
       if (
         tag === 'INPUT' ||
         tag === 'TEXTAREA' ||
         tag === 'SELECT' ||
-        target.isContentEditable
+        target?.isContentEditable ||
+        target?.contentEditable === 'true' ||
+        (target?.getAttribute && target.getAttribute('contenteditable') === 'true') ||
+        (target?.closest && target.closest('[contenteditable="true"]') !== null)
       ) {
         return
       }
+
+      if ((event.key === 'k' || event.key === 'K') && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault()
+        setLauncherOpen(true)
+        return
+      }
+
+      if (event.key !== '?') return
       setShortcutsOpen(true)
     }
 
@@ -93,55 +134,22 @@ export default function Layout() {
         {/* Desktop: inline nav (hidden <640px via CSS) */}
         <nav aria-label="Main navigation" className="appNav">
           {NAV_LINKS.map(({ to, label }) => (
-            <NavLink
+            <PrefetchNavLink
               key={to}
               to={to}
               end
+              preload={PRELOADS_BY_PATH[to]}
               className={({ isActive }) =>
                 isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
               }
             >
               {label}
-            </NavLink>
+            </PrefetchNavLink>
           ))}
         </nav>
 
         <ThemeToggle />
         <NetworkIndicator />
-
-        {/* What's New button */}
-        <button
-          ref={whatsNewButtonRef}
-          type="button"
-          className="appHeader-whats-new-btn"
-          aria-label={
-            unreadCount > 0
-              ? `What's New — ${unreadCount} unread update${unreadCount === 1 ? '' : 's'}`
-              : "What's New"
-          }
-          onClick={openWhatsNew}
-        >
-          <svg
-            className="appHeader-whats-new-icon"
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          {unreadCount > 0 && (
-            <span className="appHeader-whats-new-badge" aria-hidden="true">
-              {unreadCount}
-            </span>
-          )}
-        </button>
 
         {/* Keyboard shortcuts help button */}
         <button
@@ -152,9 +160,24 @@ export default function Layout() {
           onClick={openShortcuts}
         >
           <span aria-hidden="true">?</span>
-          <span className="sr-only">Open keyboard shortcuts (Shift+?)</span>
+          <span className="sr-only">{t('layout.keyboardShortcuts')}</span>
         </button>
       </header>
+
+      {showInstallPrompt && (
+        <div className="appInstallPrompt">
+          <Banner
+            severity="info"
+            title="Install Credence"
+            dismissible
+            onDismiss={dismissInstallPrompt}
+          >
+            <p className="appInstallPrompt-copy">
+              Install this app for a faster, more reliable experience on your device.
+            </p>
+          </Banner>
+        </div>
+      )}
 
       <main id="main-content" className="appMain">
         <Outlet />
@@ -180,7 +203,14 @@ export default function Layout() {
         returnFocusRef={shortcutsButtonRef}
       />
 
+      <WhatsNewDialog
+        open={whatsNewOpen}
+        onClose={closeWhatsNew}
+        returnFocusRef={whatsNewButtonRef}
+      />
+
       <BackToTop />
+      <BottomNav />
     </div>
   )
 }

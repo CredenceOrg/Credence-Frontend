@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import Button from './Button'
 import './ConfirmDialog.css'
 
@@ -91,6 +92,8 @@ export default function ConfirmDialog({
     onCancel()
   }, [onCancel])
 
+  useScrollPreserver({ isActive: open })
+
   useFocusTrap({
     containerRef: dialogRef,
     isActive: open,
@@ -109,13 +112,6 @@ export default function ConfirmDialog({
 
     const message = subtitle ? `${title}. ${subtitle}` : title
     setAnnouncement(message)
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
   }, [open, title, subtitle])
 
   const isConfirmEnabled = confirmText === confirmPhrase
@@ -196,9 +192,14 @@ export default function ConfirmDialog({
           <div className="confirm-dialog__confirm-field">
             <label htmlFor={`${titleId}-confirm-input`}>
               {confirmInputLabel || (
-                <>
-                  {t('confirmDialog.typeToConfirm', { phrase: confirmPhrase, action: confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal' })}
-                </>
+                <Trans
+                  i18nKey="confirmDialog.typeToConfirm"
+                  values={{
+                    phrase: confirmPhrase,
+                    action: confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal',
+                  }}
+                  components={{ strong: <strong /> }}
+                />
               )}
             </label>
             <input

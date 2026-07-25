@@ -39,6 +39,7 @@ The top-level route uses `src/components/Layout.tsx` as an application shell. Th
 - **Header/Nav**: Contains `MobileNav` (hamburger menu), `ThemeToggle`, and desktop navigation links.
 - **Main Content**: Renders child routes inside `<main id="main-content">` via `<Outlet />`.
 - **Footer**: Displays standard legal and document links.
+- **Install prompt card**: The layout listens for the browser's `beforeinstallprompt` event, shows a dismissible install card once per browser session, and persists the dismissal state in session storage so subsequent prompts stay quiet until the session resets.
 
 ## Theming Flow
 

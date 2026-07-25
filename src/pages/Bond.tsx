@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useMemo, useRef, useState, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './Bond.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
@@ -19,12 +20,6 @@ import { formatUsdc } from '../lib/format'
 import { getPenaltyRate, computeWithdrawBreakdown, type MockBond } from '../lib/bondPenalty'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
-
-/** Simulates the async round-trip of signing and submitting a Stellar transaction. */
-function submitTransaction(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 1500))
-}
-
 
 const initialBonds: MockBond[] = [
   { id: 1, amountUsdc: 1000, status: 'locked' },
@@ -95,7 +90,7 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
           </div>
           <div className="bond__penaltyRow">
             <span>{t('bond.penalty', { percent: breakdown.penaltyPercent })}</span>
-            <span>− {breakdown.penaltyAmount}</span>
+            <span className="bond__penaltyAmount">−{breakdown.penaltyAmount}</span>
           </div>
           <div className="bond__penaltyRowTotal">
             <span>{t('bond.youReceive')}</span>
@@ -184,26 +179,13 @@ export default function Bond() {
     setTxStatus('Submitting transaction…')
 
     const { penaltyUsdc } = withdrawBreakdown
-    const mockHash = 'b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380'
-
-    try {
-      await submitTransaction()
-      setTxStatus('')
-      if (penaltyUsdc > 0) {
-        addToast(
-          'warning',
-          `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
-          { txHash: mockHash }
-        )
-      } else {
-        addToast('success', 'Bond withdrawn successfully.', { txHash: mockHash })
-      }
-      setWithdrawTarget(null)
-    } catch {
-      setTxStatus('')
-      addToast('danger', 'Withdrawal failed. Please try again.')
-    } finally {
-      setIsPendingWithdraw(false)
+    if (penaltyUsdc > 0) {
+      addToast(
+        'warning',
+        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
+      )
+    } else {
+      addToast('success', 'Bond withdrawn successfully.')
     }
   }, [withdrawTarget, withdrawBreakdown, addToast, isPendingWithdraw])
 
@@ -307,7 +289,7 @@ export default function Bond() {
 
           <Button
             type="button"
-            onClick={(e) => handleCreateBond(e)}
+            onClick={handleCreateBond}
             fullWidth
             disabled={networkMismatch.mismatch || (isConnected ? isPendingCreate : isConnecting)}
             isLoading={isConnected ? isPendingCreate : isConnecting}

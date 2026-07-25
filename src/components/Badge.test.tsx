@@ -3,6 +3,10 @@ import { describe, it, expect } from 'vitest'
 import Badge from './Badge'
 
 vi.mock('./Badge.css', () => ({}))
+vi.mock('./TooltipOnOverflow.css', () => ({}))
+vi.mock('../hooks/useReducedMotion', () => ({
+  useReducedMotion: () => false,
+}))
 
 describe('Badge', () => {
   describe('variant normalization', () => {
@@ -27,9 +31,9 @@ describe('Badge', () => {
       expect(el).not.toBeNull()
     })
 
-    it('unknown variant preserves the supplied string as the visible label', () => {
+    it('unknown variant normalizes to "Unknown" label (DEFAULT_LABELS takes precedence over raw string)', () => {
       render(<Badge variant="foo-bar" />)
-      expect(screen.getByText('foo-bar')).toBeInTheDocument()
+      expect(screen.getByText('Unknown')).toBeInTheDocument()
     })
 
     it('treats an empty string as unknown', () => {
@@ -66,20 +70,27 @@ describe('Badge', () => {
     })
   })
 
-  describe('title attribute (truncation tooltip)', () => {
-    it('has a title attribute matching the default label', () => {
+  describe('TooltipOnOverflow integration', () => {
+    it('wraps badge in a TooltipOnOverflow with the display label as content', () => {
       render(<Badge variant="slashed" />)
-      expect(screen.getByTitle('Slashed')).toBeInTheDocument()
+      // The badge label is still rendered
+      expect(screen.getByText('Slashed')).toBeInTheDocument()
+      // The wrapper span from TooltipOnOverflow exists
+      const wrapper = document.querySelector('.tooltip-on-overflow__wrapper')
+      expect(wrapper).toBeInTheDocument()
     })
 
-    it('has a title attribute matching the custom label', () => {
+    it('passes custom label to TooltipOnOverflow content', () => {
       render(<Badge variant="gold" label="Custom label" />)
-      expect(screen.getByTitle('Custom label')).toBeInTheDocument()
+      expect(screen.getByText('Custom label')).toBeInTheDocument()
+      const wrapper = document.querySelector('.tooltip-on-overflow__wrapper')
+      expect(wrapper).toBeInTheDocument()
     })
 
-    it('has a title attribute matching the label for an unknown variant', () => {
+    it('no longer renders a title attribute on the badge span', () => {
       render(<Badge variant="mystery-tier" />)
-      expect(screen.getByTitle('mystery-tier')).toBeInTheDocument()
+      const badge = document.querySelector('.badge')
+      expect(badge).not.toHaveAttribute('title')
     })
   })
 
@@ -126,10 +137,59 @@ describe('Badge', () => {
       expect(screen.getByText('In lock-up')).toBeInTheDocument()
     })
 
-    it('srPrefix works on an unknown variant', () => {
+    it('srPrefix works on an unknown variant (label normalizes to Unknown)', () => {
       render(<Badge variant="experimental" srPrefix="Tier:" />)
       expect(document.querySelector('.sr-only')).toHaveTextContent('Tier:')
-      expect(screen.getByText('experimental')).toBeInTheDocument()
+      expect(screen.getByText('Unknown')).toBeInTheDocument()
+    })
+  })
+
+  describe('aria-label', () => {
+    it.each([
+      ['bronze', 'Bronze'],
+      ['silver', 'Silver'],
+      ['gold', 'Gold'],
+      ['platinum', 'Platinum'],
+      ['active', 'Active'],
+      ['locked', 'Locked'],
+      ['slashed', 'Slashed'],
+      ['grace-period', 'Grace Period'],
+      ['unknown', 'Unknown'],
+    ] as const)('variant "%s" sets aria-label to "%s"', (variant, expected) => {
+      render(<Badge variant={variant} />)
+      expect(screen.getByTitle(expected)).toHaveAttribute('aria-label', expected)
+    })
+
+    it('custom ariaLabel overrides the default', () => {
+      render(<Badge variant="slashed" ariaLabel="Status: Slashed" />)
+      expect(screen.getByTitle('Slashed')).toHaveAttribute('aria-label', 'Status: Slashed')
+    })
+
+    it('ariaLabel applies alongside a custom label', () => {
+      render(<Badge variant="gold" label="Top Tier" ariaLabel="Tier: Gold" />)
+      expect(screen.getByTitle('Top Tier')).toHaveAttribute('aria-label', 'Tier: Gold')
+    })
+
+    it('ariaLabel works on an unknown variant', () => {
+      render(<Badge variant="experimental" ariaLabel="Experimental tier" />)
+      const badge = document.querySelector('.badge')
+      expect(badge).toHaveAttribute('aria-label', 'Experimental tier')
+    })
+
+    it('no variant produces an empty aria-label', () => {
+      const variants = ['bronze', 'silver', 'gold', 'platinum', 'active', 'locked', 'slashed', 'grace-period', 'unknown', '']
+      for (const v of variants) {
+        const { unmount } = render(<Badge variant={v} />)
+        const badge = document.querySelector('.badge')
+        expect(badge).not.toBeNull()
+        expect(badge?.getAttribute('aria-label')).toBeTruthy()
+        unmount()
+      }
+    })
+
+    it('aria-label is present when srPrefix is also provided', () => {
+      render(<Badge variant="grace-period" srPrefix="Status:" ariaLabel="Grace Period" />)
+      expect(screen.getByTitle('Grace Period')).toHaveAttribute('aria-label', 'Grace Period')
     })
   })
 

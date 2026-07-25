@@ -24,7 +24,7 @@ export default function useCopyToClipboard(options?: UseCopyOptions) {
   const { timeoutMs = 2000, setTimeoutImpl = setTimeout, clearTimeoutImpl = clearTimeout } = options || {}
 
   const [copied, setCopied] = useState(false)
-  const timeoutRef = useRef<any>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeoutImpl> | null>(null)
 
   useEffect(() => {
     return () => {
@@ -76,7 +76,7 @@ export default function useCopyToClipboard(options?: UseCopyOptions) {
   const triggerCopied = () => {
     setCopied(true)
     if (timeoutRef.current != null) {
-      try { clearTimeoutImpl(timeoutRef.current) } catch { }
+      try { clearTimeoutImpl(timeoutRef.current) } catch { /* ignore */ }
     }
     timeoutRef.current = setTimeoutImpl(() => {
       setCopied(false)

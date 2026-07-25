@@ -61,6 +61,18 @@
   outline-offset: 2px;
 }
 
+.appInstallPrompt {
+  width: 100%;
+  max-width: var(--credence-container-max);
+  margin: var(--credence-space-4) auto 0;
+  padding: 0 var(--credence-container-padding);
+}
+
+.appInstallPrompt-copy {
+  margin: 0;
+  color: var(--credence-text-secondary);
+}
+
 .appMain {
   flex: 1;
   padding: var(--credence-space-6) var(--credence-container-padding);
@@ -136,8 +148,9 @@
   pointer-events: none;
 }
 
-/* ── Shortcuts help button ───────────────────────────────────────────────── */
+/* ── Header icon buttons ─────────────────────────────────────────────────── */
 
+.appHeader-launcher-btn,
 .appHeader-shortcuts-btn {
   display: inline-flex;
   align-items: center;
@@ -160,17 +173,20 @@
   flex-shrink: 0;
 }
 
+.appHeader-launcher-btn:hover,
 .appHeader-shortcuts-btn:hover {
   background: var(--credence-color-slate-100);
   color: var(--credence-text-primary);
   border-color: var(--credence-color-slate-400);
 }
 
+.appHeader-launcher-btn:focus-visible,
 .appHeader-shortcuts-btn:focus-visible {
   outline: var(--credence-focus-ring);
   outline-offset: 2px;
 }
 
+[data-theme='dark'] .appHeader-launcher-btn:hover,
 [data-theme='dark'] .appHeader-shortcuts-btn:hover {
   background: var(--credence-color-slate-700);
 }
@@ -194,5 +210,12 @@
 
   .appBrand {
     font-size: var(--credence-font-size-lg);
+  }
+}
+
+/* Safe area: prevent content from being obscured by the fixed BottomNav */
+@media (max-width: 768px) {
+  .appMain {
+    padding-bottom: calc(var(--credence-space-16, 4rem) + var(--credence-space-4));
   }
 }

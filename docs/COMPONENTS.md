@@ -32,6 +32,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
 | Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
 | ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
+| Kbd                     | `src/components/Kbd.css`                                                            | None.                                                                                                                     |
 | KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
@@ -549,4 +550,73 @@ Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track b
 
 {/* Indeterminate */}
 <Progress aria-label="Loading trust score" />
+```
+
+## Kbd
+
+Source: [`src/components/Kbd.tsx`](../src/components/Kbd.tsx).
+
+Renders a single keyboard key as a styled `<kbd>` element with a raised-button visual. Use this wherever the UI needs to display a keyboard shortcut consistently — in docs, tooltips, onboarding copy, or alongside the `KeyboardShortcutsDialog`.
+
+| Prop        | Type                    | Default       |
+| ----------- | ----------------------- | ------------- |
+| `children`  | `string`                | Required      |
+| `size`      | `'sm' \| 'md' \| 'lg'` | `'md'`        |
+| `className` | `string`                | `''`          |
+| `ariaLabel` | `string`                | `children`    |
+
+- `sm` — compact; suited for dense tooltips and inline prose.
+- `md` — default; matches the existing `KeyboardShortcutsDialog` key chip size.
+- `lg` — spacious; suited for large-print contexts and onboarding copy.
+
+Accessibility: renders a native `<kbd>` element (semantic keyboard text); sets `aria-label` to `children` by default. Supply `ariaLabel` when the visible symbol is ambiguous to assistive technology (e.g. `ariaLabel="Command"` for `"⌘"`).
+
+Tokens: `--credence-border-default`, `--credence-color-slate-600`, `--credence-color-slate-700`, `--credence-font-family-base`, `--credence-font-size-xs`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-radius-sm`, `--credence-space-1`, `--credence-space-2`, `--credence-space-3`, `--credence-surface-page`, `--credence-text-primary`.
+
+```tsx
+{/* Single key */}
+<Kbd>Esc</Kbd>
+
+{/* Composite shortcut — one <Kbd> per key */}
+<span aria-label="Ctrl + K">
+  <Kbd>Ctrl</Kbd>
+  {' + '}
+  <Kbd>K</Kbd>
+</span>
+
+{/* Platform symbol with accessible label */}
+<Kbd ariaLabel="Command">⌘</Kbd>
+
+{/* Small variant inline in a tooltip */}
+<Kbd size="sm">?</Kbd>
+```
+
+Storybook: `Components/Kbd` — **Default** · **Small** · **Medium** · **Large** · **ModifierKey** · **PlatformSymbol** · **AllSizes** · **CompositeShortcut** · **ThreeKeyShortcut** · **InlineProse**.
+
+## KeyboardShortcutsDialog
+
+Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx).
+
+Modal dialog that lists all global keyboard shortcuts grouped by category. Rendered via a React portal into `document.body`. Key chips inside the dialog are rendered with `<Kbd>`.
+
+| Prop             | Type                             | Default                |
+| ---------------- | -------------------------------- | ---------------------- |
+| `open`           | `boolean`                        | Required               |
+| `onClose`        | `() => void`                     | Required               |
+| `returnFocusRef` | `RefObject<HTMLElement \| null>` | Previously focused element |
+
+Shortcut data is sourced from `src/data/keyboardShortcuts.ts` (`KEYBOARD_SHORTCUTS`). Add entries there to have them reflected in the dialog automatically.
+
+`formatModifierKey(key, userAgent?)` is exported as a named helper: it translates `Ctrl → ⌘`, `Alt → ⌥`, and `Shift → ⇧` on macOS user-agents, and is a no-op on all other platforms.
+
+Accessibility: `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby`/`aria-describedby`, focus trap (initial focus on close button), Escape and backdrop-click dismissal, body scroll lock, and optional focus restoration via `returnFocusRef`.
+
+Tokens: inherits from `KeyboardShortcutsDialog.css`; no hard-coded colours — all values reference `--credence-*` design tokens.
+
+```tsx
+<KeyboardShortcutsDialog
+  open={shortcutsOpen}
+  onClose={() => setShortcutsOpen(false)}
+  returnFocusRef={triggerRef}
+/>
 ```

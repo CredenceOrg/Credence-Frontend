@@ -61,6 +61,8 @@ The Vite dev server also proxies local API requests. Requests from the frontend 
 
 The dashboard includes a first-run onboarding tour for connected users. It is skippable, resumable, and stores progress in browser local storage under `credence:onboarding:step` and `credence:onboarding:onboardedAt`, so returning visitors can pick up where they left off or opt out permanently.
 
+Long-running lists now render through a shared windowed list primitive in `src/components/VirtualizedList.tsx`. It keeps large result sets responsive by only mounting the visible slice of items while preserving scroll position and keyboard navigation behavior.
+
 Shared API helpers live in `src/api/`. All request and response types are generated from the OpenAPI spec at [`openapi.yaml`](./openapi.yaml):
 
 ```bash

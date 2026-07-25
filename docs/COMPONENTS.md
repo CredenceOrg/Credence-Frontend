@@ -30,6 +30,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
 | SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
 | ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
+| VirtualizedList        | `src/components/VirtualizedList.tsx`                                               | No dedicated CSS file; uses consumer-provided layout and spacing.                                                          |
 | Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
 | ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
 | KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
@@ -157,6 +158,23 @@ Tokens: motion duration/easing tokens in CSS; severity color styling is componen
   Your bond evidence needs one more attestation.
 </Banner>
 ```
+
+## VirtualizedList
+
+Source: [`src/components/VirtualizedList.tsx`](../src/components/VirtualizedList.tsx).
+
+| Prop | Type | Default |
+| ---- | ---- | ------- |
+| `items` | `T[]` | Required |
+| `itemHeight` | `number` | `64` |
+| `overscan` | `number` | `3` |
+| `virtualizeThreshold` | `number` | `1000` |
+| `getKey` | `(item: T, index: number) => string \| number` | Required |
+| `renderItem` | `(item: T, index: number) => ReactNode` | Required |
+| `height` | `number` | `320` |
+| `emptyMessage` | `ReactNode` | `undefined` |
+
+The component renders only the visible window of a large list when the item count exceeds the configured threshold. It is used in the command launcher to keep search results responsive for very large result sets while preserving scroll behavior and keyboard access.
 
 ## Toast and ToastProvider
 

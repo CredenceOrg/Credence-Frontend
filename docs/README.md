@@ -189,7 +189,7 @@ When adding new states or modifying existing ones:
 
 ### Design Review Process
 
-Before shipping new states:
+Before shipping new states or UI changes, refer to the [Design QA Checklist](./DESIGN_QA.md).
 
 1. Review against UI States Guide principles
 2. Validate microcopy with product team

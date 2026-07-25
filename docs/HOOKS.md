@@ -562,6 +562,11 @@ Framework-free helpers — pure functions and a wallet SDK wrapper. No React req
 
 Source: [`src/lib/format.ts`](../src/lib/format.ts) · Single source of truth for USDC display.
 
+> **Canonical rule (closes #558):** Always use `formatUsdc(amount)` to display a USDC
+> amount in the UI. Never inline `amount.toLocaleString('en-US') + ' USDC'`,
+> `amount.toFixed(2) + ' USDC'`, or any other ad-hoc pattern. All monetary display
+> helpers live in `format.ts` so every surface shows consistent numbers.
+
 ```ts
 formatUsdc(amount: number): string        // 1234.5      → "1,234.5 USDC"
 normalizeUSDC(rawValue: string): string   // "1,234.5"   → "1234.50"  (clamps <0 to "0.00"; invalid → "")
@@ -578,7 +583,15 @@ can correct it. SSR-safe (pure functions, no globals).
 ```ts
 import { formatUsdc, sanitizeUSDCInput } from '@/lib/format'
 
-formatUsdc(1000) // "1,000 USDC"
+// ✅ Correct — always use formatUsdc for display
+formatUsdc(1000)          // "1,000 USDC"
+formatUsdc(1234.5)        // "1,234.5 USDC"
+formatUsdc(Number(str))   // when amount comes from a string state value
+
+// ❌ Avoid — do not use ad-hoc patterns
+// `${amount.toLocaleString('en-US')} USDC`
+// `${amount.toFixed(2)} USDC`
+
 sanitizeUSDCInput('12.345') // "12.34"
 ```
 

@@ -36,6 +36,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
 | ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
+| RepoAvatar             | `src/components/RepoAvatar.css`                                                     | None.                                                                                                                     |
 
 ## Shared vocabularies
 
@@ -550,3 +551,30 @@ Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track b
 {/* Indeterminate */}
 <Progress aria-label="Loading trust score" />
 ```
+
+## RepoAvatar
+
+Source: [`src/components/RepoAvatar.tsx`](../src/components/RepoAvatar.tsx). Config: [`src/config/avatar.ts`](../src/config/avatar.ts).
+
+Repository avatar component supporting tokenised sizing presets (`sm`, `md`, `lg`) tied directly to `--credence-*` design tokens, image error fallback handling, and accessible ARIA attributes.
+
+| Prop | Type | Default | Description |
+| ---- | ---- | ------- | ----------- |
+| `src` | `string` | `undefined` | URL for the avatar image |
+| `name` | `string` | `undefined` | Repository or organization name, used for fallback initials generation |
+| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Preset tokenised size variant |
+| `alt` | `string` | `undefined` | Image alt text override |
+| `className` | `string` | `''` | Extra CSS class names |
+
+Accessibility: renders `role="img"` with descriptive `aria-label`. When `src` is missing or fails to load, falls back cleanly to uppercase initials derived from `name` or a default repository icon.
+
+Tokens: `--credence-avatar-size-sm`, `--credence-avatar-size-md`, `--credence-avatar-size-lg`, `--credence-space-6`, `--credence-space-8`, `--credence-space-12`, `--credence-radius-md`, `--credence-surface-card`, `--credence-border-default`, `--credence-text-primary`, `--credence-font-size-xs`, `--credence-font-size-sm`, `--credence-font-size-base`.
+
+```tsx
+{/* Default medium size with name fallback */}
+<RepoAvatar name="CredenceOrg/Credence-Frontend" />
+
+{/* Small size with image URL */}
+<RepoAvatar size="sm" src="https://example.com/avatar.png" name="CredenceOrg/Credence-Frontend" />
+```
+

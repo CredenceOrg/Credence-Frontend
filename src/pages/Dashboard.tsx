@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
+import AddressDisplay from '../components/AddressDisplay'
 import Badge from '../components/Badge'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
@@ -253,9 +254,7 @@ export default function Dashboard() {
         {connected && address && (
           <div className="dashboard__wallet" aria-label="Connected wallet">
             <span className="dashboard__walletLabel">{t('dashboard.wallet')}</span>
-            <code className="dashboard__walletAddress">
-              {address.slice(0, 8)}...{address.slice(-6)}
-            </code>
+            <AddressDisplay address={address} className="dashboard__walletAddress" />
           </div>
         )}
       </header>

@@ -3,23 +3,20 @@ import { useLocation } from 'react-router-dom'
 import { PrefetchNavLink } from '../PrefetchNavLink'
 import { PRELOADS_BY_PATH } from '../../config/routes'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useScrollPreserver } from '../../hooks/useScrollPreserver'
 import './MobileNav.css'
-
-const NAV_LINKS = [
-  { to: '/', label: 'Home' },
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/bond', label: 'Bond' },
-  { to: '/trust', label: 'Trust Score' },
-  { to: '/transactions', label: 'Transactions' },
-  { to: '/settings', label: 'Settings' },
-]
+import { useTranslation } from 'react-i18next'
+import { SECONDARY_NAV_LINKS } from '../../config/navLinks'
 
 export default function MobileNav() {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const hamburgerRef = useRef<HTMLButtonElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const location = useLocation()
+
+  useScrollPreserver({ isActive: isOpen })
 
   // Close on route change
   const prevPath = useRef(location.pathname)
@@ -106,7 +103,7 @@ export default function MobileNav() {
         </div>
 
         <ul className="mobileNav-links" role="list">
-          {NAV_LINKS.map(({ to, label }) => (
+          {SECONDARY_NAV_LINKS.map(({ to, labelKey }) => (
             <li key={to}>
               <PrefetchNavLink
                 to={to}
@@ -122,7 +119,7 @@ export default function MobileNav() {
                 }
                 onClick={close}
               >
-                {label}
+                {t(labelKey)}
               </PrefetchNavLink>
             </li>
           ))}

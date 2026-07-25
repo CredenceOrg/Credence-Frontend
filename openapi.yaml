@@ -160,6 +160,17 @@ components:
           description: Human-readable message describing the outcome.
           example: Address not found.
 
+    Tenant:
+      type: object
+      description: The authenticated tenant context.
+      required: [tenantId]
+      properties:
+        tenantId:
+          type: string
+          description: Stable public identifier for the active tenant (Stellar public key).
+          example: GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+
   # ── Reusable parameters ────────────────────────────────────────────────────
 
   parameters:

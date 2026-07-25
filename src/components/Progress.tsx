@@ -20,6 +20,17 @@ export interface ProgressProps {
   className?: string
   /** Size variant affecting bar height. Defaults to `'md'`. */
   size?: 'sm' | 'md' | 'lg'
+  /**
+   * Adds diagonal stripes to the fill bar for visual distinction.
+   * Works in both determinate and indeterminate modes.
+   */
+  striped?: boolean
+  /**
+   * Animates the striped pattern so it scrolls across the bar.
+   * Implies `striped` when set to `true`.
+   * Respects `prefers-reduced-motion: reduce`.
+   */
+  animated?: boolean
 }
 
 /**
@@ -38,8 +49,11 @@ export default function Progress({
   'aria-label': ariaLabel,
   className = '',
   size = 'md',
+  striped = false,
+  animated = false,
 }: ProgressProps) {
   const isIndeterminate = value === undefined
+  const showStripes = striped || animated
 
   const clampedValue = isIndeterminate ? undefined : Math.min(Math.max(value, min), max)
   const percentage = isIndeterminate
@@ -52,6 +66,8 @@ export default function Progress({
     'progress',
     `progress--${size}`,
     isIndeterminate ? 'progress--indeterminate' : 'progress--determinate',
+    showStripes ? 'progress--striped' : '',
+    animated ? 'progress--animated' : '',
     className,
   ]
     .filter(Boolean)

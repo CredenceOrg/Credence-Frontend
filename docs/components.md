@@ -37,6 +37,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
 | ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
+| RepoAvatar             | `src/components/RepoAvatar.css`                                                     | None.                                                                                                                     |
 
 ## Shared vocabularies
 

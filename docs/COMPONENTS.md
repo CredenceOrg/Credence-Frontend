@@ -34,6 +34,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
 | Kbd                     | `src/components/Kbd.css`                                                            | None.                                                                                                                     |
 | KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
+| FormattedNumber         | `src/components/FormattedNumber.css`                                                | None.                                                                                                                     |
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
 | ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
@@ -620,3 +621,61 @@ Tokens: inherits from `KeyboardShortcutsDialog.css`; no hard-coded colours — a
   returnFocusRef={triggerRef}
 />
 ```
+
+
+## FormattedNumber
+
+Source: [`src/components/FormattedNumber.tsx`](../src/components/FormattedNumber.tsx). Closes #597.
+
+Locale-aware number display component. Renders a number using `Intl.NumberFormat` so that thousand separators, decimal separators, currency symbol placement, and digit scripts all match the conventions of the active locale. The locale is resolved in this order:
+
+1. The `locale` prop — highest priority
+2. `i18next.language` — the currently active i18n language
+3. `'en-US'` — project-wide fallback
+
+The formatting primitive `formatNumber` in `src/lib/format.ts` is also exported for use in non-React contexts (e.g. `aria-label` strings).
+
+| Prop                      | Type                                                       | Default                                     |
+| ------------------------- | ---------------------------------------------------------- | ------------------------------------------- |
+| `value`                   | `number`                                                   | Required                                    |
+| `locale`                  | `string` (BCP 47)                                          | `i18n.language` → `'en-US'`                 |
+| `numberStyle`                   | `'decimal' \| 'currency' \| 'percent'`                     | `'decimal'`                                 |
+| `currency`                | `string` (ISO 4217)                                        | `'USD'` (when `numberStyle='currency'`)           |
+| `currencyDisplay`         | `'symbol' \| 'narrowSymbol' \| 'code' \| 'name'`           | `'symbol'`                                  |
+| `minimumFractionDigits`   | `number`                                                   | `2`                                         |
+| `maximumFractionDigits`   | `number`                                                   | `2`                                         |
+| `minimumSignificantDigits`| `number`                                                   | `undefined`                                 |
+| `maximumSignificantDigits`| `number`                                                   | `undefined`                                 |
+| `ariaLabel`               | `string`                                                   | Derived from value + style                  |
+| `srPrefix`                | `string`                                                   | `undefined`                                 |
+| Native span props         | `HTMLAttributes<HTMLSpanElement>` except `children`        | Forwarded                                   |
+
+Non-finite inputs (`NaN`, `±Infinity`) render a safe `'—'` em-dash rather than surfacing JavaScript implementation details.
+
+Accessibility: renders a `<span>` with an `aria-label` so screen readers announce the raw numeric value rather than a locale-specific digit script. For currency style the label defaults to `"{value} {currency}"`. For percent it defaults to `"{value * 100} percent"`. Supply `ariaLabel` to override. The `srPrefix` prop injects a visually hidden span before the number (mirrors the `Badge`/`StatusBadge` pattern).
+
+Constants: all defaults are defined in [`src/config/numberFormat.ts`](../src/config/numberFormat.ts) and imported by `FormattedNumber` and `formatNumber` to keep the single-source-of-truth requirement.
+
+Tokens: `FormattedNumber` carries no visual chrome of its own — it inherits typography from its parent. Use `--credence-font-*` tokens in the surrounding element.
+
+```tsx
+{/* Basic usage — locale from i18next */}
+<FormattedNumber value={1234567.89} />
+
+{/* Explicit locale */}
+<FormattedNumber value={1234567.89} locale="de-DE" />
+
+{/* Currency — EUR in German locale */}
+<FormattedNumber value={9999.5} numberStyle="currency" currency="EUR" locale="de-DE" />
+
+{/* Percent */}
+<FormattedNumber value={0.125} numberStyle="percent" minimumFractionDigits={1} maximumFractionDigits={1} />
+
+{/* Screen-reader prefix */}
+<FormattedNumber value={50000} srPrefix="Bond amount:" />
+
+{/* Zero decimal places */}
+<FormattedNumber value={1234} minimumFractionDigits={0} maximumFractionDigits={0} />
+```
+
+Storybook: `Components/FormattedNumber` — **Default** · **EnUS** · **German** · **French** · **ArabicEgypt** · **HindiIndia** · **CurrencyUSD** · **CurrencyEUR** · **CurrencyJPY** · **Percent** · **NonFinite** · **WithSrPrefix** · **LocaleComparison**.

@@ -1,0 +1,24 @@
+/*
+ * FormattedNumber.css
+ *
+ * FormattedNumber renders as a plain <span> by default and carries no
+ * visual chrome of its own — callers compose it inside layout that
+ * already owns spacing and typography tokens.
+ *
+ * The only styling concern here is the sr-only utility class used for the
+ * accessible machine-readable label when the formatted string may be
+ * ambiguous to assistive technology (e.g. native digits vs. Arabic-Indic).
+ */
+
+/* Re-use the project-wide sr-only pattern already applied by Badge, StatusBadge, etc. */
+.formatted-number__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

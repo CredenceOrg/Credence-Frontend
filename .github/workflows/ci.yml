@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel any in-progress CI run for the same branch / PR so that only the
+# latest commit is validated.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Formatting ────────────────────────────────────────────────────────
+      - name: Check formatting (Prettier)
+        run: npm run format:check
+
+      # ── Linting ───────────────────────────────────────────────────────────
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      # ── Build (type-check + Vite) ─────────────────────────────────────────
+      - name: Build
+        run: npm run build
+
+      # ── Unit tests ────────────────────────────────────────────────────────
+      - name: Test
+        run: npm run test

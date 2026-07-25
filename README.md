@@ -90,6 +90,33 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 - Vite
 - React Router
 
+## Locale-aware number formatting _(closes #597)_
+
+Numbers displayed across the app now respect the active locale for thousand separators, decimal separators, currency symbol placement, and digit scripts. The formatting is provided by two public exports:
+
+- **`formatNumber(value, options)`** — pure function in `src/lib/format.ts`. Wraps `Intl.NumberFormat` and returns `'—'` for non-finite inputs.
+- **`<FormattedNumber>`** — React component in `src/components/FormattedNumber.tsx`. Reads the active locale from `i18next.language` by default and forwards all `Intl.NumberFormat` options as props.
+
+```tsx
+import FormattedNumber from './components/FormattedNumber'
+
+{/* Uses the active i18next locale */}
+<FormattedNumber value={1234567.89} />
+
+{/* Explicit locale */}
+<FormattedNumber value={1234567.89} locale="de-DE" />
+
+{/* Currency */}
+<FormattedNumber value={99.9} numberStyle="currency" currency="EUR" locale="fr-FR" />
+
+{/* Percent */}
+<FormattedNumber value={0.125} numberStyle="percent" minimumFractionDigits={1} maximumFractionDigits={1} />
+```
+
+Format constants (default locale, currency, fraction-digit counts) are defined in a single location: `src/config/numberFormat.ts`.
+
+See [docs/COMPONENTS.md — FormattedNumber](./docs/COMPONENTS.md#formattednumber) for the full prop reference.
+
 ## Settings auto-save _(closes #564)_
 
 The Settings page now debounces every field change into a single `PATCH /settings` round-trip and surfaces a small "Saved just now" pill on success. See [`docs/auto-save.md`](./docs/auto-save.md) for the API, accessibility, and token-driven styling notes.
@@ -159,6 +186,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - `src/hooks/useDebouncedAutoSave.ts` — Generic debounced save lifecycle (`pending` / `saving` / `saved` / `error`)
 - `src/components/indicators/` — Status indicators (`AutoSaveIndicator`)
 - `src/config/autoSave.ts` — Central auto-save constants
+- `src/config/numberFormat.ts` — Central number-formatting constants (default locale, currency, precision)
 - `src/widgetCache/` — Shared widget cache (`WidgetCacheProvider`, `useWidgetCache`)
 - `src/components/widget/` — Per-widget UI primitives (`WidgetRefreshButton`)
 - `src/config/widgetCache.ts` — Central widget-cache constants

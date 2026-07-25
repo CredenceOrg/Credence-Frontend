@@ -153,3 +153,93 @@ export function formatMoney(amount: number, locale: string = 'en-US'): string {
   }
   return amount.toLocaleString(locale, { maximumFractionDigits: 2 })
 }
+
+/**
+ * Options accepted by {@link formatNumber}.
+ */
+export interface FormatNumberOptions {
+  /**
+   * BCP 47 locale string (e.g. `'en-US'`, `'de-DE'`, `'ar-EG'`).
+   * Defaults to `'en-US'` when omitted.
+   */
+  locale?: string
+  /**
+   * `Intl.NumberFormat` style.
+   * - `'decimal'`  — plain number (default)
+   * - `'currency'` — with currency symbol; requires `currency`
+   * - `'percent'`  — multiplied by 100 with % sign
+   */
+  style?: 'decimal' | 'currency' | 'percent'
+  /**
+   * ISO 4217 currency code (e.g. `'USD'`, `'EUR'`).
+   * Required when `style = 'currency'`; ignored otherwise.
+   */
+  currency?: string
+  /**
+   * How the currency symbol is displayed.
+   * `'symbol'` (default) | `'narrowSymbol'` | `'code'` | `'name'`
+   */
+  currencyDisplay?: 'symbol' | 'narrowSymbol' | 'code' | 'name'
+  /** Minimum number of fraction digits. */
+  minimumFractionDigits?: number
+  /** Maximum number of fraction digits. */
+  maximumFractionDigits?: number
+  /** Minimum number of significant digits. */
+  minimumSignificantDigits?: number
+  /** Maximum number of significant digits. */
+  maximumSignificantDigits?: number
+}
+
+/**
+ * Locale-aware number formatting utility.
+ *
+ * Wraps `Intl.NumberFormat` and handles non-finite inputs gracefully,
+ * returning `'—'` rather than throwing or showing `NaN`/`Infinity`.
+ *
+ * This is the single formatting primitive consumed by `<FormattedNumber>`.
+ * Use this function directly when you only need the formatted string (e.g.
+ * for `aria-label` attributes or non-React contexts).
+ *
+ * @example
+ * formatNumber(1234.5)                                   // → "1,234.50"
+ * formatNumber(1234.5, { locale: 'de-DE' })              // → "1.234,50"
+ * formatNumber(1234.5, { locale: 'fr-FR' })              // → "1 234,50"
+ * formatNumber(0.125,  { style: 'percent' })             // → "12.50%"
+ * formatNumber(1234.5, { style: 'currency', currency: 'EUR', locale: 'de-DE' })
+ *                                                        // → "1.234,50 €"
+ * formatNumber(NaN)                                      // → "—"
+ * formatNumber(Infinity)                                 // → "—"
+ */
+export function formatNumber(
+  amount: number,
+  {
+    locale = 'en-US',
+    style = 'decimal',
+    currency,
+    currencyDisplay = 'symbol',
+    minimumFractionDigits = 2,
+    maximumFractionDigits = 2,
+    minimumSignificantDigits,
+    maximumSignificantDigits,
+  }: FormatNumberOptions = {}
+): string {
+  if (!Number.isFinite(amount)) return '—'
+
+  const options: Intl.NumberFormatOptions = {
+    style,
+    currencyDisplay,
+    // Only apply fraction digit constraints when significant digit constraints
+    // are NOT set — the two groups are mutually exclusive in Intl.NumberFormat.
+    ...(minimumSignificantDigits === undefined && maximumSignificantDigits === undefined
+      ? { minimumFractionDigits, maximumFractionDigits }
+      : {}),
+    ...(minimumSignificantDigits !== undefined ? { minimumSignificantDigits } : {}),
+    ...(maximumSignificantDigits !== undefined ? { maximumSignificantDigits } : {}),
+  }
+
+  if (style === 'currency') {
+    options.currency = currency ?? 'USD'
+  }
+
+  return new Intl.NumberFormat(locale, options).format(amount)
+}

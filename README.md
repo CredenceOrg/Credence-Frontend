@@ -88,6 +88,26 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 - Vite
 - React Router
 
+## Settings auto-save _(closes #564)_
+
+The Settings page now debounces every field change into a single `PATCH /settings` round-trip and surfaces a small "Saved just now" pill on success. See [`docs/auto-save.md`](./docs/auto-save.md) for the API, accessibility, and token-driven styling notes.
+
+```tsx
+import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
+import { AutoSaveIndicator } from '../components/indicators'
+import { apiFetch } from '../api/client'
+
+const autoSave = useDebouncedAutoSave({
+  value: draft,
+  save: (next, signal) =>
+    apiFetch<void>('/settings', { method: 'PATCH', body: next, signal }),
+  delayMs: 600,
+  isEqual: (a, b) => a.themeMode === b.themeMode && a.network === b.network /* … */,
+})
+```
+
+The existing manual Save button on Settings stays — it commits the draft to `localStorage` while the new auto-save flows `PATCH` to the backend. The two flows are intentionally independent.
+
 ## Documentation
 
 See the [docs/](docs/) directory for detailed project documentation, including:
@@ -104,6 +124,9 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 
 - `src/pages/` — Home, Bond, Trust Score
 - `src/components/` — Layout, shared UI (including the in-app Changelog drawer sourced from `/changelog.json`); see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
+- `src/hooks/useDebouncedAutoSave.ts` — Generic debounced save lifecycle (`pending` / `saving` / `saved` / `error`)
+- `src/components/indicators/` — Status indicators (`AutoSaveIndicator`)
+- `src/config/autoSave.ts` — Central auto-save constants
 - `src/App.tsx` — Router and routes
 
 ### Bond flow routes

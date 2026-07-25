@@ -10,6 +10,13 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { ErrorState } from '../components/states'
 import { useSeo } from '../hooks/useSeo'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
+import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
+import {
+  AutoSaveIndicator,
+  type AutoSaveIndicatorLabels,
+} from '../components/indicators'
+import { apiFetch } from '../api/client'
+import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
 import './Settings.css'
 
 
@@ -69,6 +76,51 @@ export default function Settings() {
   const updateDraft = (key: string, value: string | boolean | number) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
+
+  // Field-by-field equality. Memoized so reference stability keeps the hook's
+  // internal effect from re-firing on every parent render — `setDraft`
+  // always allocates a fresh object, so a stable comparator is required to
+  // avoid a phantom save cycle per keystroke.
+  const draftIsEqual = useCallback(
+    (a: typeof draft, b: typeof draft) =>
+      a.themeMode === b.themeMode &&
+      a.network === b.network &&
+      a.addressDisplay === b.addressDisplay &&
+      a.toastsEnabled === b.toastsEnabled &&
+      a.autoDismiss === b.autoDismiss &&
+      a.reauthThresholdMinutes === b.reauthThresholdMinutes,
+    []
+  )
+
+  // Debounced auto-save: every field change triggers a PATCH against the
+  // backend after AUTO_SAVE_DEFAULTS.DEBOUNCE_MS of stability. The hook
+  // owns the AbortController lifecycle and supersedes in-flight saves per
+  // change. This flow is *additive* — the existing manual `Save` button
+  // still commits to `localStorage` via `SettingsContext` so it is also
+  // available offline.
+  const autoSave = useDebouncedAutoSave({
+    value: draft,
+    save: (next, signal) =>
+      apiFetch<void>('/settings', { method: 'PATCH', body: next, signal }),
+    delayMs: AUTO_SAVE_DEFAULTS.DEBOUNCE_MS,
+    isEqual: draftIsEqual,
+  })
+
+  const autoSaveLabels = useMemo<AutoSaveIndicatorLabels>(
+    () => ({
+      saving: t('settings.autoSave.saving'),
+      saved: t('settings.autoSave.saved'),
+      savedRelative: (relative: string) =>
+        t('settings.autoSave.savedRelative', { when: relative }),
+      error: t('settings.autoSave.error'),
+      retry: t('settings.autoSave.retry'),
+    }),
+    [t]
+  )
+
+  const handleRetry = useCallback(() => {
+    void autoSave.saveNow()
+  }, [autoSave])
 
   const handleSave = () => {
     if (!isDirty) return
@@ -493,6 +545,12 @@ export default function Settings() {
       </section>
 
       <div className="settings-actions">
+        <AutoSaveIndicator
+          status={autoSave.status}
+          lastSavedAt={autoSave.lastSavedAt}
+          labels={autoSaveLabels}
+          onRetry={handleRetry}
+        />
         <button
           type="button"
           onClick={handleSave}

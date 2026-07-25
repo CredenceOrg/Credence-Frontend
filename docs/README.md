@@ -102,6 +102,11 @@ This directory contains comprehensive design specifications and implementation g
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling
 
+**[Settings Auto-Save Indicator](./auto-save.md)** ⭐ NEW (closes #564)
+- Debounced `PATCH /settings` flow with `useDebouncedAutoSave` hook.
+- `<AutoSaveIndicator />` token-driven pill showing `Saving…` / `Saved just now` / "Couldn't save" with retry.
+- In-flight cancellation via `AbortController` so stale PATCHes can't overwrite newer state.
+
 14. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics

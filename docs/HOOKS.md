@@ -39,6 +39,8 @@ behavior notes, and a minimal usage example linking to source.
   - [`bondPenalty`](#bondpenalty--duration-based-penalties)
   - [`penalty`](#penalty--status-based-penalties)
   - [`freighterClient`](#freighterclient--wallet-sdk-wrapper)
+  - [`horizon`](#horizon--horizon-api-client)
+  - [`safeOpenExternal`](#safeopenexternal--safe-windowopen-wrapper)
 
 ---
 
@@ -730,6 +732,47 @@ try {
   if (err instanceof HorizonError) {
     console.error(`Horizon error ${err.status}: ${err.message}`)
   }
+}
+```
+
+### `safeOpenExternal` — safe `window.open` wrapper
+
+Source: [`src/lib/safeOpenExternal.ts`](../src/lib/safeOpenExternal.ts) · Defence-in-depth security utility.
+
+```ts
+type SafeOpenError =
+  | { kind: 'blocked_protocol'; url: string; protocol: string }
+  | { kind: 'invalid_url'; url: string }
+
+type SafeOpenResult =
+  | { ok: true; handle: WindowProxy | null }
+  | { ok: false; error: SafeOpenError }
+
+safeOpenExternal(url: string, features?: string): SafeOpenResult
+```
+
+**Threat model:** without this wrapper, passing a `javascript:` URI to `window.open`
+executes arbitrary script in the opener's context, enabling credential theft or DOM
+manipulation. Missing `noopener` on new windows also permits reverse tabnapping — the opened
+tab holds a `window.opener` reference it can use to navigate the parent page.
+
+**Behavior notes:**
+
+- **Protocol allowlist** — only `https:`, `http:`, and `mailto:` are accepted. Any other
+  scheme (`javascript:`, `data:`, `vbscript:`, `blob:`, etc.) is rejected with a typed error
+  before `window.open` is called. Always opens target `_blank`.
+- **Forced `noopener,noreferrer`** — injected into the feature string unconditionally, matching
+  the `rel` attributes on every `<a target="_blank">` in the codebase. Duplicates are de-duped.
+- **Never throws** — failures are returned as a typed discriminated union; callers do not need
+  `try/catch`.
+- Not SSR-safe (calls `window.open`); use only in browser event handlers.
+
+```ts
+import { safeOpenExternal } from '@/lib/safeOpenExternal'
+
+const result = safeOpenExternal('https://stellar.expert/explorer/public/tx/abc123')
+if (!result.ok) {
+  console.error('Blocked:', result.error.kind, result.error.url)
 }
 ```
 

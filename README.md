@@ -108,6 +108,34 @@ const autoSave = useDebouncedAutoSave({
 
 The existing manual Save button on Settings stays — it commits the draft to `localStorage` while the new auto-save flows `PATCH` to the backend. The two flows are intentionally independent.
 
+## Dashboard widget refresh _(closes #561)_
+
+Dashboard pages render their data widgets through a shared in-app cache so the user can refresh a single card without disturbing the rest of the page. See [`docs/widget-cache.md`](./docs/widget-cache.md) for the API, accessibility, and token-driven styling notes.
+
+```tsx
+import { useWidgetCache } from '../widgetCache'
+import { WidgetRefreshButton } from '../components/widget'
+
+const bondsWidget = useWidgetCache<BondRow[]>('bond:active-bonds', fetchActiveBonds)
+
+return (
+  <header>
+    <h2>Active Bonds</h2>
+    <WidgetRefreshButton
+      onRefresh={bondsWidget.refresh}
+      isLoading={bondsWidget.isLoading}
+      lastUpdated={bondsWidget.lastUpdated}
+      label="active bonds"
+    />
+  </header>
+)
+```
+
+Upstream's dashboard page structure has been refactored since this feature
+landed, so the per-page wiring ships in follow-up PRs. The cache primitives
+(`useWidgetCache`, `<WidgetRefreshButton>`, `<WidgetCacheProvider>`) are
+**library-only additions** available immediately.
+
 ## Documentation
 
 See the [docs/](docs/) directory for detailed project documentation, including:
@@ -127,14 +155,14 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - `src/hooks/useDebouncedAutoSave.ts` — Generic debounced save lifecycle (`pending` / `saving` / `saved` / `error`)
 - `src/components/indicators/` — Status indicators (`AutoSaveIndicator`)
 - `src/config/autoSave.ts` — Central auto-save constants
+- `src/widgetCache/` — Shared widget cache (`WidgetCacheProvider`, `useWidgetCache`)
+- `src/components/widget/` — Per-widget UI primitives (`WidgetRefreshButton`)
+- `src/config/widgetCache.ts` — Central widget-cache constants
 - `src/App.tsx` — Router and routes
 
-### Bond flow routes
+## Documentation
 
-| Route       | Component            | Description                                                                                                               |
-| ----------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `/dashboard`| `Dashboard.tsx`      | Overview of user activity. Supports `?widget=<slug>` (e.g., `trust-score`, `active-bonds`) for deep-linking exact views.  |
-| `/bond`     | `Bond.tsx`           | Overview page — lists active bonds and provides an entry into the creation wizard                                         |
-| `/bond/new` | `CreateBondPage.tsx` | Four-step bond-creation wizard (amount → duration → review → confirm). Navigates back to `/bond` on completion or cancel. |
+- [Docs index](./docs/README.md)
+- [Prop types migration guide](./docs/PROP_TYPES_MIGRATION.md)
 
 To add wallet (e.g. Freighter) and contract calls, extend the Bond and Trust Score pages and add a small API client in `src/api/`.

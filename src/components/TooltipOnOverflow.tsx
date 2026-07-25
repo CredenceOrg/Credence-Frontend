@@ -23,6 +23,13 @@ export interface TooltipOnOverflowProps {
   children: React.ReactElement
   /** Additional class name appended to the tooltip element. */
   className?: string
+  /**
+   * When true, the tooltip is always rendered and shown on hover/focus
+   * regardless of whether the child content overflows its container.
+   * Useful for cases like truncated addresses where the shortened text
+   * may still fit visually but the full value should always be accessible.
+   */
+  forceShow?: boolean
 }
 
 /**
@@ -54,6 +61,7 @@ export default function TooltipOnOverflow({
   content,
   children,
   className = '',
+  forceShow = false,
 }: TooltipOnOverflowProps) {
   const reducedMotion = useReducedMotion()
   const tooltipId = useId()
@@ -104,10 +112,10 @@ export default function TooltipOnOverflow({
 
   // ── Event handlers ────────────────────────────────────────────────────
   const show = useCallback(() => {
-    if (!isOverflowing) return
+    if (!isOverflowing && !forceShow) return
     updatePosition()
     setVisible(true)
-  }, [isOverflowing, updatePosition])
+  }, [isOverflowing, forceShow, updatePosition])
 
   const hide = useCallback(() => {
     setVisible(false)
@@ -128,7 +136,7 @@ export default function TooltipOnOverflow({
   // Clone the child to inject our ref, event handlers, and aria-describedby.
   const childProps = children.props as Record<string, unknown>
   const existingDescribedBy = (childProps['aria-describedby'] as string) ?? ''
-  const describedBy = [existingDescribedBy, isOverflowing ? tooltipId : '']
+  const describedBy = [existingDescribedBy, isOverflowing || forceShow ? tooltipId : '']
     .filter(Boolean)
     .join(' ')
 
@@ -183,7 +191,7 @@ export default function TooltipOnOverflow({
     <span className="tooltip-on-overflow__wrapper">
       {React.cloneElement(children, mergedProps)}
 
-      {isOverflowing && (
+      {(isOverflowing || forceShow) && (
         <span
           id={tooltipId}
           role="tooltip"

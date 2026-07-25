@@ -18,6 +18,8 @@ In practice, that means:
 2. Show field-specific feedback with `onBlur`.
 3. Block submission and run the full validation pass with `onSubmit`.
 
+For Credence bond and attestation flows, this usually means keeping the input value controlled while the user types, surfacing field-specific guidance once the field loses focus, and reserving `onSubmit` for the final authority check before calling the API or moving the user forward.
+
 ## When to use `onChange`
 
 Use `onChange` when the user is actively typing and the UI can respond immediately without blocking the flow.

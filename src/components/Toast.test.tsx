@@ -70,4 +70,33 @@ describe('Toast', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1)
     expect(onDismiss).toHaveBeenCalledWith(toast.id)
   })
+
+  it('passes the toast id to onDismiss when removed via keyboard (Enter)', async () => {
+    const user = userEvent.setup()
+    const { onDismiss, toast } = renderToast('warning')
+
+    const button = screen.getByRole('button', { name: 'Dismiss warning notification' })
+    button.focus()
+    await user.keyboard('{Enter}')
+
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(onDismiss).toHaveBeenCalledWith(toast.id)
+  })
+
+  it('passes the toast id to onDismiss when removed via keyboard (Space)', async () => {
+    const user = userEvent.setup()
+    const { onDismiss, toast } = renderToast('warning')
+
+    const button = screen.getByRole('button', { name: 'Dismiss warning notification' })
+    button.focus()
+    await user.keyboard(' ')
+
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(onDismiss).toHaveBeenCalledWith(toast.id)
+  })
+
+  it('has the correct aria-label accessible name', () => {
+    renderToast('info')
+    expect(screen.getByRole('button', { name: 'Dismiss info notification' })).toHaveAccessibleName('Dismiss info notification')
+  })
 })

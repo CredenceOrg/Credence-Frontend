@@ -31,6 +31,8 @@ vi.mock('../context/WalletContext', () => ({
     isConnecting: false,
     error: null,
     network: 'public',
+    reauth: vi.fn(),
+    isReauthRequired: vi.fn(() => false),
   }),
 }))
 

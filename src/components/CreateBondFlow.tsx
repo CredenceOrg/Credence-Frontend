@@ -78,12 +78,15 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   }, [step])
 
   useEffect(() => {
-    if (balanceError instanceof SessionReauthRequiredError || checkIsReauthRequired()) {
+    if (
+      balanceError instanceof SessionReauthRequiredError ||
+      (isConnected && checkIsReauthRequired())
+    ) {
       setShowReauthPrompt(true)
     } else {
       setShowReauthPrompt(false)
     }
-  }, [balanceError, checkIsReauthRequired])
+  }, [balanceError, isConnected, checkIsReauthRequired])
 
   const handleReauthConfirm = async () => {
     await reauth()

@@ -9,12 +9,9 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
   success: 5000,
   warning: 8000,
   danger: 0,
-};
+}
 
 // Maximum number of toasts displayed simultaneously
-const MAX_TOASTS = 3;
-
-
 const MAX_TOASTS = 3
 
 interface ToastContextValue {
@@ -129,8 +126,23 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
       // We manually announce the text to the visually-hidden aria-live region to guarantee it is read.
       announce(message, severity === 'danger')
 
+      // compute timeout: settings `autoDismiss` can override default TIMEOUTS
+      let timeout = TIMEOUTS[severity]
+      if (timeout > 0) {
+        try {
+          if (autoDismiss === 'off') {
+            timeout = 0
+          } else if (typeof autoDismiss === 'string' && autoDismiss.endsWith('s')) {
+            const seconds = Number(autoDismiss.replace('s', ''))
+            if (!Number.isNaN(seconds)) timeout = seconds * 1000
+          }
+        } catch {
+          // fallback to default
+        }
+      }
+
       const id = String(++idCounter.current)
-      const newToast: ToastData = { id, severity, message }
+      const newToast: ToastData = { id, severity, message, durationMs: timeout > 0 ? timeout : 0 }
 
       // Enforce max toast limit: remove oldest if needed
       setToasts((prev: ToastData[]) => {
@@ -148,21 +160,6 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         updated.push(newToast)
         return updated
       })
-
-      // compute timeout: settings `autoDismiss` can override default TIMEOUTS
-      let timeout = TIMEOUTS[severity]
-      if (timeout > 0) {
-        try {
-          if (autoDismiss === 'off') {
-            timeout = 0
-          } else if (typeof autoDismiss === 'string' && autoDismiss.endsWith('s')) {
-            const seconds = Number(autoDismiss.replace('s', ''))
-            if (!Number.isNaN(seconds)) timeout = seconds * 1000
-          }
-        } catch {
-          // fallback to default
-        }
-      }
 
       if (timeout > 0) {
         const timerId = setTimeout(() => removeToast(id), timeout)

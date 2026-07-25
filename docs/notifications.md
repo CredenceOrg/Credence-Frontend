@@ -19,6 +19,7 @@ Ephemeral overlay notification triggered by user actions or system events.
 - Renders fixed top-right on desktop, and **bottom-center** on mobile
 - Stays safe from covering primary CTAs on small screens
 - Auto-dismisses based on severity timeout
+- Shows a countdown ring while the toast is auto-dismissing so the remaining time is visible at a glance
 - Supports "Dismiss All" when multiple toasts are active
 - Use for: action confirmations, transient status updates
 
@@ -181,6 +182,7 @@ Defaults: `false`, `'22:00'`, `'07:00'`. Legacy exports missing the three keys c
 - Icons are marked `aria-hidden="true"` (decorative)
 - Dismiss buttons are keyboard-focusable and respond to Enter/Space
 - Toasts automatically pause their auto-dismiss timer on mouse hover or when keyboard focus moves inside them, satisfying WCAG 2.2.1 (Timing Adjustable)
+- The countdown ring respects the same pause/resume behavior and remains accurate while the toast is hovered or focused
 - Supports `prefers-reduced-motion` for simplified entrance animations
 
 ## Event → Notification Mapping

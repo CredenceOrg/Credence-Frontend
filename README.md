@@ -27,6 +27,8 @@ App runs at [http://localhost:5173](http://localhost:5173). API requests to `/ap
 
 When the browser fires a `beforeinstallprompt` event, the app surfaces a dismissible install card once per browser session so users can discover the install flow without being interrupted repeatedly.
 
+Auto-dismissed toasts now show a small countdown ring so users can see when a message will disappear without needing to hover or guess.
+
 ## Continuous Integration
 
 Every pull request and push to the `main` branch is validated by a GitHub Actions workflow. The quality gate ensures that the code compiles, is correctly formatted, passes all linting rules, and that all tests pass:

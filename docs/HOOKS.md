@@ -32,6 +32,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useUsdcBalance`](#useusdcbalance)
   - [`useWallet`](#usewallet)
   - [`useProductUpdates`](#useproductupdates)
+  - [`useSmartBack`](#usesmartback)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -549,6 +550,48 @@ function NotificationBadge() {
   return (
     <button onClick={markAllRead}>
       Updates {unreadCount > 0 && <span>({unreadCount})</span>}
+    </button>
+  )
+}
+```
+
+---
+
+### `useSmartBack`
+
+Source: [`src/hooks/useSmartBack.ts`](../src/hooks/useSmartBack.ts) · Pure utility: [`src/lib/smartBack.ts`](../src/lib/smartBack.ts)
+
+```ts
+function useSmartBack(options?: UseSmartBackOptions): UseSmartBackReturn
+
+interface UseSmartBackOptions {
+  fallback?: string // default: '/dashboard'
+}
+
+interface UseSmartBackReturn {
+  goBack: () => void
+  fallback: string
+  getDestination: () => SmartBackResult
+}
+```
+
+Smart back navigation hook that honours prior route state when navigating back and safely falls back to `/dashboard` (or a custom route) when history is missing.
+
+**Behavior notes**
+
+- **Prior route priority:** if `location.state.from` is present, `goBack()` navigates directly to that path.
+- **History back:** if `from` state is absent and browser history is available (`window.history.length > 1`), calls `navigate(-1)`.
+- **Missing history fallback:** if `from` state is absent and history is empty (e.g. direct deep link landing), navigates to `/dashboard`.
+
+```tsx
+import { useSmartBack } from '../hooks/useSmartBack'
+
+function BackButton() {
+  const { goBack } = useSmartBack({ fallback: '/dashboard' })
+
+  return (
+    <button onClick={goBack} aria-label="Go back">
+      ← Back
     </button>
   )
 }

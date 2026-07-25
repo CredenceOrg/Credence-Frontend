@@ -24,6 +24,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useMediaQuery`](#usemediaquery)
+  - [`useApiQuery`](#useapiquery)
   - [`useQuery`](#usequery)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useReducedTransparency`](#usereducedtransparency)
@@ -200,6 +201,82 @@ const isWide = useMediaQuery('(min-width: 1024px)')
 function ActivityCard() {
   const isMobile = useIsMobile()
   return <h2>{isMobile ? 'Recent Activity' : 'Recent Activity Timeline'}</h2>
+}
+```
+
+---
+
+### `useApiQuery`
+
+Source: [`src/hooks/useApiQuery.ts`](../src/hooks/useApiQuery.ts) · Built on [`apiFetch`](../src/api/client.ts)
+
+```ts
+function useApiQuery<T>(
+  path: string,
+  options?: UseApiQueryOptions,
+): UseApiQueryResult<T>
+
+interface UseApiQueryOptions {
+  enabled?: boolean     // default: true
+  staleTimeMs?: number  // default: WIDGET_CACHE_DEFAULTS.STALE_TIME_MS (30 000)
+}
+
+interface UseApiQueryResult<T> {
+  data: T | undefined
+  isLoading: boolean
+  error: ApiError | null
+  isStale: boolean
+  refetch: () => Promise<void>
+}
+
+// Also exported: invalidateApiQuery(path), clearApiQueryCache()
+```
+
+Type-safe, cache-aware wrapper around `apiFetch` for GET requests. Caches responses keyed by API path and serves cached data within the configured `staleTime`. Abolishes the repetitive abort-controller / mounted-ref boilerplate that domain hooks (`useTrustScore`, `useTransactions`) currently manage by hand.
+
+**Parameters**
+
+| Option        | Required | Description                                                                  |
+| ------------- | :------: | ---------------------------------------------------------------------------- |
+| `path`        |    ✓     | API path passed to `apiFetch` (e.g. `'/trust-score/GABC…'`).               |
+| `enabled`     |          | Set `false` to skip the initial fetch. Default `true`.                      |
+| `staleTimeMs` |          | Time in ms before cached data is considered stale. Default `30 000`.        |
+
+**Behavior notes**
+
+- **Cache:** in-memory `Map` keyed by `path`. Cached data is served synchronously on mount (no loading flash). Cache entries are shared across all hook instances — mounting a second component with the same path reuses the cached result.
+- **Stale-while-revalidate:** when data is within `staleTimeMs`, the hook returns it directly and skips the network call. `refetch()` always bypasses stale-time checks and hits the network.
+- **`isStale`:** set to `true` when the current `data` is older than `staleTimeMs`. Useful for showing a subtle "refreshing" indicator without a full loading spinner.
+- **Abort safety:** in-flight requests are aborted when the component unmounts or when `refetch()` is called again (superseded). Stale responses and `AbortError`s are silently discarded.
+- **Offline-safe:** when `navigator.onLine` is `false`, the hook skips the fetch and sets `isLoading: false`.
+- **Race-condition protection:** run IDs guarantee only the latest triggered fetch updates component state.
+- **Manual invalidation:** call `invalidateApiQuery(path)` to evict a single entry (the next mount/refetch will re-fetch). Call `clearApiQueryCache()` to wipe everything (useful in tests).
+- **SSR-safe / cleanup:** all DOM/navigator checks are guarded; the active `AbortController` is aborted on unmount.
+
+```tsx
+import { useApiQuery } from '../hooks/useApiQuery'
+import type { TrustScore } from '../api/types'
+
+function TrustScoreCard({ address }: { address: string }) {
+  const { data, isLoading, error, isStale, refetch } = useApiQuery<TrustScore>(
+    `/trust-score/${address}`,
+  )
+
+  if (isLoading) return <p>Loading…</p>
+  if (error) {
+    return (
+      <p role="alert">
+        {error.message} <button onClick={refetch}>Retry</button>
+      </p>
+    )
+  }
+
+  return (
+    <div>
+      {isStale && <span className="stale-badge">Refreshing…</span>}
+      <p>Score: {data?.score}</p>
+    </div>
+  )
 }
 ```
 

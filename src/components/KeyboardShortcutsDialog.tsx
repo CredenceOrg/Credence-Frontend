@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useId, useRef } from 'react'
+import { useCallback, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import { KEYBOARD_SHORTCUTS, type KeyboardShortcut } from '../data/keyboardShortcuts'
 import Button from './Button'
 import Kbd from './Kbd'
@@ -67,6 +68,8 @@ export default function KeyboardShortcutsDialog({
     onClose()
   }, [onClose])
 
+  useScrollPreserver({ isActive: open })
+
   useFocusTrap({
     containerRef: dialogRef,
     isActive: open,
@@ -74,16 +77,6 @@ export default function KeyboardShortcutsDialog({
     returnFocusRef,
     onEscape: handleClose,
   })
-
-  // Lock body scroll while dialog is open (mirrors ConfirmDialog pattern)
-  useEffect(() => {
-    if (!open) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [open])
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {

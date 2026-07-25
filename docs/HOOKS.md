@@ -27,6 +27,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useQuery`](#usequery)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useReducedTransparency`](#usereducedtransparency)
+  - [`useScrollPreserver`](#usescrollpreserver)
   - [`useScrollToTop`](#usescrolltotop)
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
@@ -330,6 +331,48 @@ function GlassPanel({ children }: { children: React.ReactNode }) {
     >
       {children}
     </div>
+  )
+}
+```
+
+---
+
+### `useScrollPreserver`
+
+Source: [`src/hooks/useScrollPreserver.ts`](../src/hooks/useScrollPreserver.ts)
+
+```ts
+function useScrollPreserver(options: UseScrollPreserverOptions): void
+
+interface UseScrollPreserverOptions {
+  isActive: boolean
+}
+```
+
+Preserves the page's scroll position and prevents content reflow when an overlay (drawer, modal, dialog) opens and locks body scroll. Without this hook, setting `overflow: hidden` on the body causes the scrollbar to disappear, which shifts the content horizontally by the scrollbar width — a jarring visual jump for users on long-scrolling pages.
+
+**Behavior notes**
+
+- **On activation** (`isActive → true`): saves the current `window.scrollY` and measures the scrollbar width (`window.innerWidth - document.documentElement.clientWidth`). Sets `overflow: hidden` on `document.body` to lock background scrolling, and adds `padding-right` equal to the scrollbar width to prevent horizontal reflow.
+- **On deactivation** (`isActive → false` / unmount): restores the previous `overflow` and `padding-right` values, then calls `window.scrollTo(0, savedScrollY)` to return to the exact scroll position the user was at before the overlay opened.
+- **No-op when inactive**: when `isActive` is `false`, the hook does nothing — no DOM mutations, no side effects.
+- **Scrollbar‑width aware**: if the scrollbar width is zero (e.g. overlay scrollbars or a non-scrolling page), no padding is added. The saved `padding-right` is always restored exactly.
+- **SSR-safe / cleanup:** all DOM work runs inside `useEffect`; the effect's cleanup function restores overflow, padding, and scroll position on unmount or when `isActive` flips to `false`.
+
+```tsx
+import { useState } from 'react'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
+
+function MyDrawer() {
+  const [open, setOpen] = useState(false)
+
+  useScrollPreserver({ isActive: open })
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)}>Open drawer</button>
+      {open && <div className="drawer">{/* overlay content */}</div>}
+    </>
   )
 }
 ```

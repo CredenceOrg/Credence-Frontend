@@ -128,6 +128,11 @@ This directory contains comprehensive design specifications and implementation g
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 
+19. **[Feature Flag Lifecycle](./FEATURE_FLAG_LIFECYCLE.md)** ⭐ NEW
+    - How feature flags are proposed, implemented, monitored, and retired
+    - Flag types used in the codebase (build-time, env var, local-storage, target flag module)
+    - Lifecycle checklist for adding, monitoring, and retiring flags
+
 ### Quick Start
 
 To implement UI states in your components:

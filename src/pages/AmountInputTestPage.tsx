@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import AmountInput from '../components/AmountInput'
+import { formatUsdc } from '../lib/format'
 
 export default function AmountInputTestPage() {
   const [value, setValue] = useState('')
@@ -19,7 +20,7 @@ export default function AmountInputTestPage() {
 
       <section style={{ marginBottom: '2rem' }}>
         <h2>Basic Test (Default Presets)</h2>
-        <p>Balance: {balance.toFixed(2)} USDC</p>
+        <p>Balance: {formatUsdc(balance)}</p>
         <AmountInput value={value} onChange={handleValueChange} balance={balance} error={error} />
         <div style={{ marginTop: '1rem' }}>
           <strong>Current value:</strong> {value || '(empty)'}

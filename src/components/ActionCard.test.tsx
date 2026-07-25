@@ -99,4 +99,28 @@ describe('ActionCard', () => {
     expect(mockCopy).toHaveBeenCalledTimes(1)
     expect(mockAddToast).not.toHaveBeenCalled()
   })
+
+  it('renders a beta ribbon when isEarlyAccess is true', () => {
+    render(
+      <ActionCard title="Beta Feature" isEarlyAccess>
+        Content
+      </ActionCard>,
+    )
+    expect(screen.getByText('BETA')).toBeInTheDocument()
+  })
+
+  it('renders close button when onDismiss is provided', async () => {
+    const user = userEvent.setup()
+    const onDismiss = vi.fn()
+    render(
+      <ActionCard title="Test" onDismiss={onDismiss}>
+        Content
+      </ActionCard>
+    )
+    const closeBtn = screen.getByRole('button', { name: 'Close card' })
+    expect(closeBtn).toBeInTheDocument()
+    
+    await user.click(closeBtn)
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+  })
 })

@@ -1,7 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import RouteAnnouncer from './RouteAnnouncer'
+
+function NavigateTo({ to }: { to: string }) {
+  const navigate = useNavigate()
+  useEffect(() => { navigate(to) }, [navigate, to])
+  return null
+}
+
+// Helper component to trigger dynamic route transitions in tests
+function TestNavigator({ to }: { to: string }) {
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate(to);
+  }, [to, navigate]);
+  return null;
+}
 
 describe('RouteAnnouncer Component', () => {
   beforeEach(() => {

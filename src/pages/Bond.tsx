@@ -21,12 +21,6 @@ import { getPenaltyRate, computeWithdrawBreakdown, type MockBond } from '../lib/
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
-/** Simulates the async round-trip of signing and submitting a Stellar transaction. */
-function submitTransaction(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 1500))
-}
-
-
 const initialBonds: MockBond[] = [
   { id: 1, amountUsdc: 1000, status: 'locked' },
   { id: 2, amountUsdc: 500, status: 'grace-period' },
@@ -185,24 +179,13 @@ export default function Bond() {
     setTxStatus('Submitting transaction…')
 
     const { penaltyUsdc } = withdrawBreakdown
-
-    try {
-      await submitTransaction()
-      setTxStatus('')
-      if (penaltyUsdc > 0) {
-        addToast(
-          'warning',
-          `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
-        )
-      } else {
-        addToast('success', 'Bond withdrawn successfully.')
-      }
-      setWithdrawTarget(null)
-    } catch {
-      setTxStatus('')
-      addToast('danger', 'Withdrawal failed. Please try again.')
-    } finally {
-      setIsPendingWithdraw(false)
+    if (penaltyUsdc > 0) {
+      addToast(
+        'warning',
+        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
+      )
+    } else {
+      addToast('success', 'Bond withdrawn successfully.')
     }
   }, [withdrawTarget, withdrawBreakdown, addToast, isPendingWithdraw])
 

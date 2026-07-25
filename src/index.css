@@ -41,6 +41,15 @@
   --credence-motion-easing-linear: linear;
   --credence-motion-skeleton: shimmer 1.5s infinite;
 
+  /* Backdrop / overlay transparency
+   * Default values use semi-transparent colours.  When prefers-reduced-transparency
+   * is active the @media block below replaces these with fully-opaque equivalents
+   * so content behind an overlay cannot bleed through.
+   */
+  --credence-backdrop-light: rgba(15, 23, 42, 0.55);
+  --credence-backdrop-dark: rgba(0, 0, 0, 0.65);
+  --credence-backdrop-mobile: rgba(0, 0, 0, 0.5);
+
   /* Layout */
   --credence-container-max: 72rem;
   --credence-container-padding: clamp(1rem, 2vw, 2rem);
@@ -272,6 +281,20 @@ a:hover {
     transition-delay: 0ms !important;
     animation-delay: 0ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/**
+ * Reduced-transparency: replace all semi-transparent overlays/backdrops with
+ * opaque equivalents.  Components should consume --credence-backdrop-light /
+ * --credence-backdrop-dark / --credence-backdrop-mobile instead of hard-coding
+ * rgba() values so this media query can override them in one place.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --credence-backdrop-light: #0f172a;
+    --credence-backdrop-dark: #000000;
+    --credence-backdrop-mobile: #000000;
   }
 }
 

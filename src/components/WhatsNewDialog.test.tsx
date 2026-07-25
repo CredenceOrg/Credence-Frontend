@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import WhatsNewDialog from './WhatsNewDialog'
+import WhatsNewDialog, { ChangelogDrawer } from './WhatsNewDialog'
 import * as useProductUpdatesModule from '../hooks/useProductUpdates'
 import { PRODUCT_UPDATES } from '../data/productUpdates'
 
@@ -10,23 +10,32 @@ vi.mock('../hooks/useProductUpdates', () => ({
 }))
 
 const mockMarkAllRead = vi.fn()
+const mockRefetch = vi.fn()
 
-function setMockUpdates(unreadCount = 0) {
+function setMockUpdates(unreadCount = 0, isLoading = false, error: string | null = null) {
   vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
     updates: PRODUCT_UPDATES,
     unreadCount,
+    isLoading,
+    error,
     markAllRead: mockMarkAllRead,
+    refetch: mockRefetch,
   })
 }
 
-describe('WhatsNewDialog', () => {
+describe('WhatsNewDialog / ChangelogDrawer', () => {
   beforeEach(() => {
     mockMarkAllRead.mockReset()
+    mockRefetch.mockReset()
     setMockUpdates(0)
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it('exports ChangelogDrawer alias', () => {
+    expect(ChangelogDrawer).toBe(WhatsNewDialog)
   })
 
   it('does not render when open is false', () => {
@@ -37,6 +46,37 @@ describe('WhatsNewDialog', () => {
   it('renders the dialog with correct role and label when open', () => {
     render(<WhatsNewDialog open={true} onClose={() => undefined} />)
     expect(screen.getByRole('dialog', { name: /what.s new/i })).toBeInTheDocument()
+  })
+
+  it('renders loading state when isLoading is true and list is empty', () => {
+    vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
+      updates: [],
+      unreadCount: 0,
+      isLoading: true,
+      error: null,
+      markAllRead: mockMarkAllRead,
+      refetch: mockRefetch,
+    })
+    render(<WhatsNewDialog open={true} onClose={() => undefined} />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByText(/loading changelog/i)).toBeInTheDocument()
+  })
+
+  it('renders error state and handles retry when fetch fails and list is empty', () => {
+    vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
+      updates: [],
+      unreadCount: 0,
+      isLoading: false,
+      error: 'Network error',
+      markAllRead: mockMarkAllRead,
+      refetch: mockRefetch,
+    })
+    render(<WhatsNewDialog open={true} onClose={() => undefined} />)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/unable to load product updates/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+    expect(mockRefetch).toHaveBeenCalledTimes(1)
   })
 
   it('renders a list item for every product update', () => {
@@ -103,8 +143,13 @@ describe('WhatsNewDialog', () => {
 
   it('renders tag labels for each update', () => {
     render(<WhatsNewDialog open={true} onClose={() => undefined} />)
-    // At least one "New" tag should be present (from 'feature' updates)
     const newTags = screen.getAllByText('New')
     expect(newTags.length).toBeGreaterThan(0)
+  })
+
+  it('renders unread badge when unreadCount > 0', () => {
+    setMockUpdates(2)
+    render(<WhatsNewDialog open={true} onClose={() => undefined} />)
+    expect(screen.getByText('2 unread')).toBeInTheDocument()
   })
 })

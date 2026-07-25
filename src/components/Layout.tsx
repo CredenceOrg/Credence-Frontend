@@ -6,12 +6,12 @@ import { useTranslation } from 'react-i18next'
 import ThemeToggle from './ThemeToggle'
 import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
+import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import WhatsNewDialog from './WhatsNewDialog'
-import { useProductUpdates } from '../hooks/useProductUpdates'
 import BackToTop from './BackToTop'
-import Banner from './Banner'
+import SpeedDial from './SpeedDial'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
@@ -35,10 +35,13 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 export default function Layout() {
   const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [launcherOpen, setLauncherOpen] = useState(false)
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
+  const whatsNewButtonRef = useRef<HTMLButtonElement>(null)
 
 
   const NAV_LINKS = [
@@ -54,6 +57,7 @@ export default function Layout() {
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
   const openLauncher = useCallback(() => setLauncherOpen(true), [])
   const closeLauncher = useCallback(() => setLauncherOpen(false), [])
+  const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
 
   const dismissInstallPrompt = useCallback(() => {
     markInstallPromptHandled()
@@ -206,6 +210,7 @@ export default function Layout() {
       />
 
       <BackToTop />
+      <BottomNav />
     </div>
   )
 }

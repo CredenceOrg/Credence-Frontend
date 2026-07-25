@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import { useWallet } from '../context/WalletContext'
 import Button from './Button'
 import './ConnectWalletModal.css'
@@ -45,6 +46,8 @@ export default function ConnectWalletModal({
     }
   }, [isConnected, open, onClose])
 
+  useScrollPreserver({ isActive: open })
+
   useFocusTrap({
     containerRef: dialogRef,
     isActive: open,
@@ -52,16 +55,6 @@ export default function ConnectWalletModal({
     returnFocusRef,
     onEscape: onClose,
   })
-
-  // Lock body scroll while open
-  useEffect(() => {
-    if (!open) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [open])
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {

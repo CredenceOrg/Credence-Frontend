@@ -9,6 +9,24 @@
   /* Default padding */
   padding: var(--credence-space-6);
   transition: transform var(--credence-motion-duration-fast, 0.2s) ease, box-shadow var(--credence-motion-duration-fast, 0.2s) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.actionCard__betaRibbon {
+  position: absolute;
+  top: 24px;
+  right: -32px;
+  background-color: var(--credence-color-warning-surface);
+  color: var(--credence-color-warning-text);
+  padding: var(--credence-space-1) var(--credence-space-10);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-bold);
+  text-transform: uppercase;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -93,6 +111,34 @@
   .actionCard__copyLink {
     transition: none;
   }
+}
+
+.actionCard__close {
+  background: transparent;
+  border: none;
+  padding: var(--credence-space-1, 4px);
+  margin: calc(var(--credence-space-1, 4px) * -1);
+  color: var(--credence-text-secondary, #64748b);
+  cursor: pointer;
+  border-radius: var(--credence-radius-full, 9999px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--credence-motion-duration-fast, 0.2s) ease, color var(--credence-motion-duration-fast, 0.2s) ease;
+}
+
+.actionCard__close:hover {
+  background-color: var(--credence-surface-hover, rgba(0,0,0,0.05));
+  color: var(--credence-text-primary, #0f172a);
+}
+
+[data-theme="dark"] .actionCard__close:hover {
+  background-color: var(--credence-surface-hover, rgba(255,255,255,0.1));
+  color: var(--credence-text-primary, #f8fafc);
+}
+
+.actionCard--swiping {
+  transition: none !important; /* Disable transition while dragging */
 }
 
 .actionCard__content {

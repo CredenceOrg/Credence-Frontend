@@ -16,6 +16,9 @@ export interface SettingsPayload {
   addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
   autoDismiss: AutoDismissOption
+  quietHoursEnabled: boolean
+  quietHoursStart: string
+  quietHoursEnd: string
 }
 
 export interface SettingsState {
@@ -24,11 +27,17 @@ export interface SettingsState {
   addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
   autoDismiss: AutoDismissOption
+  quietHoursEnabled: boolean
+  quietHoursStart: string
+  quietHoursEnd: string
   setThemeMode: (m: ThemeMode) => void
   setNetwork: (n: NetworkOption) => void
   setAddressDisplay: (s: AddressDisplayOption) => void
   setToastsEnabled: (b: boolean) => void
   setAutoDismiss: (s: AutoDismissOption) => void
+  setQuietHoursEnabled: (b: boolean) => void
+  setQuietHoursStart: (value: string) => void
+  setQuietHoursEnd: (value: string) => void
   /**
    * Persist settings. Pass an explicit payload to save immediately (avoids the
    * stale-state race when called right after the individual setters); omit it to
@@ -45,6 +54,9 @@ type PersistedSettings = {
   addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
   autoDismiss: AutoDismissOption
+  quietHoursEnabled: boolean
+  quietHoursStart: string
+  quietHoursEnd: string
 }
 
 const STORAGE_KEY = 'credence:settings'
@@ -52,12 +64,15 @@ const LEGACY_THEME_KEY = 'theme'
 
 const VALID_THEMES: ThemeMode[] = ['light', 'dark', 'system']
 
-export const defaultPersistedSettings: PersistedSettings = {
+const defaultPersistedSettings: PersistedSettings = {
   themeMode: 'system',
   network: 'public',
   addressDisplay: 'short',
   toastsEnabled: true,
   autoDismiss: '5s',
+  quietHoursEnabled: false,
+  quietHoursStart: QUIET_HOURS_DEFAULTS.start,
+  quietHoursEnd: QUIET_HOURS_DEFAULTS.end,
 }
 
 const defaultState: SettingsState = {
@@ -67,7 +82,6 @@ const defaultState: SettingsState = {
   setAddressDisplay: () => {},
   setToastsEnabled: () => {},
   setAutoDismiss: () => {},
-  resetToDefaults: () => {},
   saveSettings: (_payload?: SettingsPayload) => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
@@ -112,6 +126,10 @@ function useMigrateLegacyTheme(): void {
   })
 }
 
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n)
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   // Migrate legacy 'theme' key before useLocalStorage reads from storage.
   useMigrateLegacyTheme()
@@ -122,60 +140,95 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     defaultPersistedSettings,
   )
 
-  const persistedSettings = useMemo(() => {
-    const res = validateAndNormalize(persistedSettingsRaw)
-    return (res.ok ? res.data : defaultPersistedSettings) as PersistedSettings
-  }, [persistedSettingsRaw])
+  // Validation helpers for persisted values
+  const VALID_NETWORKS: NetworkOption[] = ['public', 'test']
+  const VALID_ADDRESS_DISPLAYS: AddressDisplayOption[] = ['full', 'short', 'friendly']
+  const VALID_AUTO_DISMISSES: AutoDismissOption[] = ['off', '3s', '5s', '8s']
+
+  const coerceNetwork = (v: string): NetworkOption =>
+    (VALID_NETWORKS.includes(v as NetworkOption) ? v : defaultPersistedSettings.network) as NetworkOption
+  const coerceAddressDisplay = (v: string): AddressDisplayOption =>
+    (VALID_ADDRESS_DISPLAYS.includes(v as AddressDisplayOption) ? v : defaultPersistedSettings.addressDisplay) as AddressDisplayOption
+  const coerceAutoDismiss = (v: string): AutoDismissOption =>
+    (VALID_AUTO_DISMISSES.includes(v as AutoDismissOption) ? v : defaultPersistedSettings.autoDismiss) as AutoDismissOption
+  /**
+   * Coerce an `HH:mm` value from storage back to a canonical string. Falls back
+   * to the configured default when the persisted value is missing, malformed, or
+   * not a string — this is the recovery path for legacy payloads (no quiet hours
+   * field) without throwing.
+   */
+  const coerceHHmm = (v: unknown, fallback: string): string => {
+    const parsed = parseHHmm(v)
+    return parsed.ok ? `${pad2(parsed.hours)}:${pad2(parsed.minutes)}` : fallback
+  }
+
+  const persistedSettings: PersistedSettings = {
+    ...persistedSettingsRaw,
+    network: coerceNetwork(persistedSettingsRaw.network as unknown as string),
+    addressDisplay: coerceAddressDisplay(persistedSettingsRaw.addressDisplay as unknown as string),
+    autoDismiss: coerceAutoDismiss(persistedSettingsRaw.autoDismiss as unknown as string),
+    quietHoursStart: coerceHHmm(
+      persistedSettingsRaw.quietHoursStart,
+      defaultPersistedSettings.quietHoursStart,
+    ),
+    quietHoursEnd: coerceHHmm(
+      persistedSettingsRaw.quietHoursEnd,
+      defaultPersistedSettings.quietHoursEnd,
+    ),
+  }
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
   const [network, setNetwork] = useState<NetworkOption>(persistedSettings.network)
   const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(persistedSettings.addressDisplay)
   const [toastsEnabled, setToastsEnabled] = useState<boolean>(persistedSettings.toastsEnabled)
   const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(persistedSettings.autoDismiss)
+  const [quietHoursEnabled, setQuietHoursEnabled] = useState<boolean>(
+    persistedSettings.quietHoursEnabled,
+  )
+  const [quietHoursStart, setQuietHoursStart] = useState<string>(persistedSettings.quietHoursStart)
+  const [quietHoursEnd, setQuietHoursEnd] = useState<string>(persistedSettings.quietHoursEnd)
 
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
   const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)
-
-  useEffect(() => {
-    const isEquivalent =
-      persistedSettingsRaw.themeMode === persistedSettings.themeMode &&
-      persistedSettingsRaw.network === persistedSettings.network &&
-      persistedSettingsRaw.addressDisplay === persistedSettings.addressDisplay &&
-      persistedSettingsRaw.toastsEnabled === persistedSettings.toastsEnabled &&
-      persistedSettingsRaw.autoDismiss === persistedSettings.autoDismiss
-
-    if (!isEquivalent) {
-      setPersistedSettings(persistedSettings)
-      setOriginalSettings(persistedSettings)
-    }
-  }, [persistedSettings, persistedSettingsRaw, setPersistedSettings])
 
   const hasUnsavedChanges =
     themeMode !== originalSettings.themeMode ||
     network !== originalSettings.network ||
     addressDisplay !== originalSettings.addressDisplay ||
     toastsEnabled !== originalSettings.toastsEnabled ||
-    autoDismiss !== originalSettings.autoDismiss
+    autoDismiss !== originalSettings.autoDismiss ||
+    quietHoursEnabled !== originalSettings.quietHoursEnabled ||
+    quietHoursStart !== originalSettings.quietHoursStart ||
+    quietHoursEnd !== originalSettings.quietHoursEnd
 
   // Auto-persist any draft change immediately so values survive a page reload.
   useEffect(() => {
-    setPersistedSettings({ themeMode, network, addressDisplay, toastsEnabled, autoDismiss })
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, setPersistedSettings])
+    setPersistedSettings({
+      themeMode,
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
+    })
+  }, [
+    themeMode,
+    network,
+    addressDisplay,
+    toastsEnabled,
+    autoDismiss,
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
+    setPersistedSettings,
+  ])
 
-  const saveSettings = (next?: SettingsPayload) => {
-    const payload = next ?? { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
+  const saveSettings = () => {
+    const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
-  }
-
-  const resetToDefaults = () => {
-    const payload = { ...defaultPersistedSettings }
-    setThemeMode(payload.themeMode)
-    setNetwork(payload.network)
-    setAddressDisplay(payload.addressDisplay)
-    setToastsEnabled(payload.toastsEnabled)
-    setAutoDismiss(payload.autoDismiss)
-    saveSettings(payload)
   }
 
   const cancelSettings = () => {
@@ -184,6 +237,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setAddressDisplay(originalSettings.addressDisplay)
     setToastsEnabled(originalSettings.toastsEnabled)
     setAutoDismiss(originalSettings.autoDismiss)
+    setQuietHoursEnabled(originalSettings.quietHoursEnabled)
+    setQuietHoursStart(originalSettings.quietHoursStart)
+    setQuietHoursEnd(originalSettings.quietHoursEnd)
   }
 
   // Apply theme to document and keep it in sync with the system preference.
@@ -216,12 +272,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     addressDisplay,
     toastsEnabled,
     autoDismiss,
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
     setThemeMode,
     setNetwork,
     setAddressDisplay,
     setToastsEnabled,
     setAutoDismiss,
-    resetToDefaults,
     saveSettings,
     cancelSettings,
     hasUnsavedChanges,

@@ -337,6 +337,123 @@ describe('TooltipOnOverflow', () => {
     })
   })
 
+  // ── forceShow prop ────────────────────────────────────────────────────
+  describe('forceShow prop', () => {
+    it('renders the tooltip when forceShow is true even if content does not overflow', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full text" forceShow>
+          <span>Short</span>
+        </TooltipOnOverflow>,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+    })
+
+    it('shows the tooltip on hover when forceShow is true and content does not overflow', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full tooltip content" forceShow>
+          <span data-testid="child">Short text</span>
+        </TooltipOnOverflow>,
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+
+      const child = screen.getByTestId('child')
+      const tooltip = screen.getByRole('tooltip', { hidden: true })
+
+      fireEvent.mouseEnter(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false')
+    })
+
+    it('shows the tooltip on focus when forceShow is true', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full tooltip content" forceShow>
+          <span data-testid="child" tabIndex={0}>
+            Short text
+          </span>
+        </TooltipOnOverflow>,
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+
+      const child = screen.getByTestId('child')
+      const tooltip = screen.getByRole('tooltip', { hidden: true })
+
+      fireEvent.focus(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false')
+    })
+
+    it('sets aria-describedby when forceShow is true', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full text" forceShow>
+          <span data-testid="child">Short</span>
+        </TooltipOnOverflow>,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('child')).toHaveAttribute('aria-describedby')
+      })
+    })
+
+    it('dismisses tooltip on Escape when forceShow is true', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full tooltip content" forceShow>
+          <span data-testid="child" tabIndex={0}>
+            Short text
+          </span>
+        </TooltipOnOverflow>,
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+
+      const child = screen.getByTestId('child')
+      const tooltip = screen.getByRole('tooltip', { hidden: true })
+
+      fireEvent.focus(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false')
+
+      fireEvent.keyDown(child, { key: 'Escape' })
+      expect(tooltip).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    it('hides tooltip on blur when forceShow is true', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full tooltip content" forceShow>
+          <span data-testid="child" tabIndex={0}>
+            Short text
+          </span>
+        </TooltipOnOverflow>,
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+
+      const child = screen.getByTestId('child')
+      const tooltip = screen.getByRole('tooltip', { hidden: true })
+
+      fireEvent.focus(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false')
+
+      fireEvent.blur(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'true')
+    })
+  })
+
   // ── Wrapper element ───────────────────────────────────────────────────
   it('renders a wrapper span around the child', () => {
     stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)

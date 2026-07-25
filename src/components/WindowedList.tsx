@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { LONG_LIST_RENDER_THRESHOLD } from '../config/listing'
 
 export interface WindowedListProps<T> {
@@ -34,6 +34,7 @@ export default function WindowedList<T>({
 
   const isLongList = items.length >= LONG_LIST_RENDER_THRESHOLD
   const totalHeight = Math.max(items.length * itemHeight, 0)
+  const resolvedContainerHeight = Math.max(containerHeight, 0)
 
   const visibleRange = useMemo(() => {
     if (!isLongList) {
@@ -81,11 +82,26 @@ export default function WindowedList<T>({
     return emptyMessage ? <p className={className}>{emptyMessage}</p> : null
   }
 
+  const renderItemContent = (item: T, index: number) => {
+    const content = renderItem(item, index)
+
+    if (isValidElement(content)) {
+      return cloneElement(content, {
+        style: {
+          ...(content.props.style ?? {}),
+          minHeight: `${itemHeight}px`,
+        },
+      })
+    }
+
+    return <div style={{ minHeight: `${itemHeight}px` }}>{content}</div>
+  }
+
   if (!isLongList) {
     return (
       <div className={className} role={role} aria-label={ariaLabel}>
         {items.map((item, index) => (
-          <div key={getItemKey ? getItemKey(item, index) : index}>{renderItem(item, index)}</div>
+          <div key={getItemKey ? getItemKey(item, index) : index}>{renderItemContent(item, index)}</div>
         ))}
       </div>
     )
@@ -100,15 +116,20 @@ export default function WindowedList<T>({
       className={className}
       role={role}
       aria-label={ariaLabel}
-      style={{ height: '100%', overflowY: 'auto' }}
+      style={{ height: `${resolvedContainerHeight}px`, overflowY: 'auto' }}
     >
       <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
         <div style={{ transform: `translateY(${offsetY}px)` }}>
-          {visibleItems.map((item, index) => (
-            <div key={getItemKey ? getItemKey(item, visibleRange.start + index) : visibleRange.start + index}>
-              {renderItem(item, visibleRange.start + index)}
-            </div>
-          ))}
+          {visibleItems.map((item, index) => {
+            const itemIndex = visibleRange.start + index
+            const key = getItemKey ? getItemKey(item, itemIndex) : itemIndex
+
+            return (
+              <div key={key} style={{ minHeight: `${itemHeight}px` }}>
+                {renderItemContent(item, itemIndex)}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

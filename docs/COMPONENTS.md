@@ -92,7 +92,7 @@ Source: [`src/components/WindowedList.tsx`](../src/components/WindowedList.tsx).
 | `getItemKey`    | `(item: T, index: number) => string \| number`                        | `undefined` |
 | `containerHeight` | `number`                                                            | `320` |
 
-The component uses the shared `LONG_LIST_RENDER_THRESHOLD` from [`src/config/listing.ts`](../src/config/listing.ts) to switch into a windowed render path for large data sets. It preserves the existing DOM structure for shorter lists and keeps the scroll container accessible for larger lists.
+The component uses the shared `LONG_LIST_RENDER_THRESHOLD` from [`src/config/listing.ts`](../src/config/listing.ts) to switch into a windowed render path for large data sets. It preserves the existing DOM structure for shorter lists, uses the supplied `containerHeight` for the scroll viewport, and keeps the rendered content accessible for larger lists.
 
 ## Button
 

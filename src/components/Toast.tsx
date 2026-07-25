@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import './Toast.css'
 
 export type ToastSeverity = 'info' | 'success' | 'warning' | 'danger'
@@ -85,10 +85,12 @@ interface ToastProps {
 
 export default function Toast({ toast, onDismiss }: ToastProps) {
   const { durationMs = 0 } = toast
+  const [progress, setProgress] = useState(100)
   const remainingTimeRef = useRef(durationMs)
   const lastResumeTimeRef = useRef<number | null>(null)
   const timerRef = useRef<number | null>(null)
-  
+  const progressTimerRef = useRef<number | null>(null)
+
   const isHoveredRef = useRef(false)
   const isFocusedRef = useRef(false)
 
@@ -97,7 +99,21 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       clearTimeout(timerRef.current)
       timerRef.current = null
     }
+    if (progressTimerRef.current !== null) {
+      clearInterval(progressTimerRef.current)
+      progressTimerRef.current = null
+    }
   }, [])
+
+  const updateProgress = useCallback(() => {
+    if (durationMs <= 0 || remainingTimeRef.current <= 0) {
+      setProgress(0)
+      return
+    }
+
+    const percent = (remainingTimeRef.current / durationMs) * 100
+    setProgress(Math.max(0, percent))
+  }, [durationMs])
 
   const startTimer = useCallback(() => {
     // Bypassed for danger severity or autoDismiss='off'
@@ -107,7 +123,22 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
     timerRef.current = window.setTimeout(() => {
       onDismiss(toast.id)
     }, remainingTimeRef.current)
-  }, [durationMs, onDismiss, toast.id, clearTimer])
+    progressTimerRef.current = window.setInterval(() => {
+      if (lastResumeTimeRef.current === null) return
+
+      const elapsed = Date.now() - lastResumeTimeRef.current
+      const remaining = Math.max(0, remainingTimeRef.current - elapsed)
+      remainingTimeRef.current = remaining
+      lastResumeTimeRef.current = Date.now()
+      setProgress((remaining / durationMs) * 100)
+
+      if (remaining <= 0) {
+        clearTimer()
+        setProgress(0)
+      }
+    }, 100)
+    updateProgress()
+  }, [durationMs, onDismiss, toast.id, clearTimer, updateProgress])
 
   const pauseTimer = useCallback(() => {
     if (durationMs <= 0) return
@@ -117,7 +148,8 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       remainingTimeRef.current = Math.max(0, remainingTimeRef.current - elapsed)
       lastResumeTimeRef.current = null
     }
-  }, [durationMs, clearTimer])
+    updateProgress()
+  }, [durationMs, clearTimer, updateProgress])
 
   const updateTimerState = useCallback(() => {
     if (isHoveredRef.current || isFocusedRef.current) {
@@ -165,6 +197,27 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       onFocus={handleFocus}
       onBlur={handleBlur}
     >
+      {durationMs > 0 && (
+        <div
+          className="toast__progress"
+          role="progressbar"
+          aria-label="Time remaining"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(progress)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" className="toast__progress-track" />
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              className="toast__progress-indicator"
+              style={{ strokeDashoffset: `${((100 - progress) / 100) * 62.8319}` }}
+            />
+          </svg>
+        </div>
+      )}
       <div className="toast__icon-container" aria-hidden="true">
         {ICONS[toast.severity]}
       </div>

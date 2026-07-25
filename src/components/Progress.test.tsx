@@ -232,6 +232,57 @@ describe('Progress', () => {
   })
 
   // -------------------------------------------------------------------------
+  // Striped variant
+  // -------------------------------------------------------------------------
+  describe('striped variant', () => {
+    it('applies .progress--striped when striped is true (determinate)', () => {
+      const { container } = render(<Progress value={50} striped aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+    })
+
+    it('does NOT apply .progress--striped by default', () => {
+      const { container } = render(<Progress value={50} aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).toBeNull()
+    })
+
+    it('applies .progress--striped in indeterminate mode', () => {
+      const { container } = render(<Progress striped aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Animated variant
+  // -------------------------------------------------------------------------
+  describe('animated variant', () => {
+    it('applies .progress--animated when animated is true', () => {
+      const { container } = render(<Progress value={50} animated aria-label="Loading" />)
+      expect(container.querySelector('.progress--animated')).not.toBeNull()
+    })
+
+    it('implies striped when animated is true', () => {
+      const { container } = render(<Progress value={50} animated aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+    })
+
+    it('does NOT apply .progress--animated by default', () => {
+      const { container } = render(<Progress value={50} aria-label="Loading" />)
+      expect(container.querySelector('.progress--animated')).toBeNull()
+    })
+
+    it('applies .progress--animated in indeterminate mode', () => {
+      const { container } = render(<Progress animated aria-label="Loading" />)
+      expect(container.querySelector('.progress--animated')).not.toBeNull()
+    })
+
+    it('both striped and animated can be set explicitly', () => {
+      const { container } = render(<Progress value={50} striped animated aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+      expect(container.querySelector('.progress--animated')).not.toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
   // DOM structure
   // -------------------------------------------------------------------------
   describe('DOM structure', () => {

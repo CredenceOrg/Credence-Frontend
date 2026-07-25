@@ -1,0 +1,63 @@
+:root {
+  --credence-avatar-size-sm: var(--credence-space-6);
+  --credence-avatar-size-md: var(--credence-space-8);
+  --credence-avatar-size-lg: var(--credence-space-12);
+}
+
+.credence-repo-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--credence-radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: var(--credence-surface-card);
+  border: 1px solid var(--credence-border-default);
+  color: var(--credence-text-primary);
+  font-family: var(--credence-font-family-base);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.credence-repo-avatar--sm {
+  width: var(--credence-avatar-size-sm);
+  height: var(--credence-avatar-size-sm);
+  font-size: var(--credence-font-size-xs);
+}
+
+.credence-repo-avatar--md {
+  width: var(--credence-avatar-size-md);
+  height: var(--credence-avatar-size-md);
+  font-size: var(--credence-font-size-sm);
+}
+
+.credence-repo-avatar--lg {
+  width: var(--credence-avatar-size-lg);
+  height: var(--credence-avatar-size-lg);
+  font-size: var(--credence-font-size-base);
+}
+
+.credence-repo-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.credence-repo-avatar__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.credence-repo-avatar__icon {
+  width: 60%;
+  height: 60%;
+  fill: currentColor;
+}

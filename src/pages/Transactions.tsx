@@ -19,8 +19,8 @@ import {
 } from '../lib/transactionsExport'
 import { explorerUrl } from '../lib/explorerUrl'
 import { truncateAddress } from '../lib/stellar'
+import { formatUsdc } from '../lib/format'
 import type { Transaction } from '../api/types'
-import { truncateAddress } from '@/lib/stellar'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
 
@@ -361,7 +361,7 @@ export default function Transactions() {
                         {tx.type}
                       </td>
                       <td data-label="Amount">
-                        {tx.amountUsdc != null ? `${tx.amountUsdc.toLocaleString('en-US')} USDC` : '—'}
+                        {tx.amountUsdc != null ? formatUsdc(tx.amountUsdc) : '—'}
                       </td>
                       <td data-label="Status">
                         <Badge variant={STATUS_BADGE_MAP[tx.status]} label={tx.status} />

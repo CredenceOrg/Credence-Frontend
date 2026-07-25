@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useSmartBack } from '../hooks/useSmartBack';
 import Button from '../components/Button';
 import { suggestRoute } from '../lib/suggestRoute';
 import './NotFound.css';
@@ -7,6 +8,7 @@ import './NotFound.css';
 export default function NotFound() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { goBack } = useSmartBack({ fallback: '/dashboard' });
   const suggestion = suggestRoute(location.pathname, ['/', '/bond', '/trust', '/settings']);
   useDocumentTitle('Page Not Found');
 
@@ -52,7 +54,7 @@ export default function NotFound() {
           Back to Home
         </Button>
 
-        <Button variant="secondary" onClick={() => navigate(-1)}>
+        <Button variant="secondary" onClick={goBack}>
           Go Back
         </Button>
       </div>

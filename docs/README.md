@@ -37,7 +37,11 @@ This directory contains comprehensive design specifications and implementation g
    - Consolidated props, Storybook story paths and variants, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for all public shared UI components
    - Documents severity/variant vocabularies and cross-links focused component docs
 
-5. **[UI States Guide](./UI_STATES_GUIDE.md)**
+5. **[Component API Conventions](./COMPONENT_API.md)** ⭐ NEW
+   - Single-source for props conventions (naming rules, ordering rules, boolean-prop rules, and TypeScript interface contracts)
+   - Code examples and review checklist for consistent component APIs
+
+6. **[UI States Guide](./UI_STATES_GUIDE.md)**
    - Complete guide for empty states, error states, and loading patterns
    - Microcopy guidelines and tone recommendations
    - When and how to use each state type

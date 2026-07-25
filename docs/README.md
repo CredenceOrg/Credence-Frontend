@@ -79,34 +79,38 @@ This directory contains comprehensive design specifications and implementation g
     - Accessibility guidelines
     - Performance considerations
 
-12. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
+12. **[Prop Types Migration Guide](./PROP_TYPES_MIGRATION.md)** ⭐ NEW
+    - Migration path from any-typed props to explicit TypeScript contracts
+    - Review checklist and component examples
+    - Guidance for replacing loose props with safer, documented interfaces
+
+13. **[Mobile Navigation Pattern](./mobile-navigation-pattern.md)** ⭐ NEW
     - Hybrid responsive navigation (hamburger mobile + horizontal desktop)
     - Complete implementation guide with code examples
     - Accessibility requirements (WCAG 2.1 AA)
     - Testing guide and troubleshooting
     - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
 
-13. **[Architecture Overview](./ARCHITECTURE.md)** ⭐ NEW
-    - Provider tree and routing architecture
-    - Context responsibilities
-    - Theming flow and mock data boundaries
-
 14. [Keyboard Interactions Contract](./keyboard-interactions.md) ⭐ NEW
-
-- Developer-facing matrix of every interactive component and its expected keyboard behavior
-- Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
-- Focus-restore contract and checklist for new interactive components
+    - Developer-facing matrix of every interactive component and its expected keyboard behavior
+    - Covers `ConfirmDialog`, `TierLadder`, `Banner`, `Toggle`, `AddressInput`, skip-link, and navigation
+    - Focus-restore contract and checklist for new interactive components
 
 15. [Wallet Integration](./WALLET_INTEGRATION.md) ⭐ NEW
     - `useWallet` API documentation
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling
 
-16. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
+16. **[Widget Cache & Per-Widget Refresh](./widget-cache.md)** ⭐ NEW (closes #561)
+    - Shared in-app cache for dashboard widgets so a refresh button on one card only invalidates that card's key — others keep their state.
+    - `useWidgetCache` hook + `<WidgetRefreshButton />` + token-driven styling.
+    - Coverage includes mount, key isolation, error surfacing, and reduced-motion.
+
+17. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
     - Interceptors, retry policy, and error taxonomy for the API client
     - `ApiError` structure and usage examples
 
-17. **[Telemetry & Analytics](./telemetry.md)**
+18. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 

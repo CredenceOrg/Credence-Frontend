@@ -17,6 +17,9 @@ function StateDump() {
         addressDisplay: s.addressDisplay,
         toastsEnabled: s.toastsEnabled,
         autoDismiss: s.autoDismiss,
+        quietHoursEnabled: s.quietHoursEnabled,
+        quietHoursStart: s.quietHoursStart,
+        quietHoursEnd: s.quietHoursEnd,
       })}
     </pre>
   )
@@ -85,6 +88,9 @@ describe('SettingsContext persistence & theme application', () => {
       addressDisplay: 'short',
       toastsEnabled: true,
       autoDismiss: '5s',
+      quietHoursEnabled: false,
+      quietHoursStart: '22:00',
+      quietHoursEnd: '07:00',
     })
 
     // system + prefers-color-scheme false => light
@@ -99,6 +105,9 @@ describe('SettingsContext persistence & theme application', () => {
       addressDisplay: 'full',
       toastsEnabled: false,
       autoDismiss: '3s',
+      quietHoursEnabled: true,
+      quietHoursStart: '20:00',
+      quietHoursEnd: '06:30',
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
     setupMatchMedia(false)
@@ -176,6 +185,9 @@ describe('SettingsContext persistence & theme application', () => {
       addressDisplay: 'short',
       toastsEnabled: true,
       autoDismiss: '5s',
+      quietHoursEnabled: false,
+      quietHoursStart: '22:00',
+      quietHoursEnd: '07:00',
     })
   })
 
@@ -353,6 +365,9 @@ describe('SettingsProvider', () => {
       expect(stored.themeMode).toBe('dark')
       expect(stored.network).toBe('public')
       expect(stored.toastsEnabled).toBe(true)
+      expect(stored.quietHoursEnabled).toBe(false)
+      expect(stored.quietHoursStart).toBe('22:00')
+      expect(stored.quietHoursEnd).toBe('07:00')
     })
 
     it('persists full payload when saveSettings is called after changes', async () => {
@@ -368,6 +383,9 @@ describe('SettingsProvider', () => {
         addressDisplay: 'short',
         toastsEnabled: true,
         autoDismiss: '5s',
+        quietHoursEnabled: false,
+        quietHoursStart: '22:00',
+        quietHoursEnd: '07:00',
       })
     })
 
@@ -414,6 +432,9 @@ describe('SettingsProvider', () => {
         addressDisplay: 'short',
         toastsEnabled: true,
         autoDismiss: '5s',
+        quietHoursEnabled: false,
+        quietHoursStart: '22:00',
+        quietHoursEnd: '07:00',
       })
     })
   })

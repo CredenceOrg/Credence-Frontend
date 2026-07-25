@@ -88,29 +88,91 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 - Vite
 - React Router
 
+## Dashboard widget refresh _(closes #561)_
+
+Dashboard pages render their data widgets through a shared in-app cache so the user can refresh a single card without disturbing the rest of the page. See [`docs/widget-cache.md`](./docs/widget-cache.md) for the API, accessibility, and token-driven styling notes.
+
+```tsx
+import { useWidgetCache } from '../widgetCache'
+import { WidgetRefreshButton } from '../components/widget'
+
+const bondsWidget = useWidgetCache<BondRow[]>('bond:active-bonds', fetchActiveBonds)
+
+return (
+  <header>
+    <h2>Active Bonds</h2>
+    <WidgetRefreshButton
+      onRefresh={bondsWidget.refresh}
+      isLoading={bondsWidget.isLoading}
+      lastUpdated={bondsWidget.lastUpdated}
+      label="active bonds"
+    />
+  </header>
+)
+```
+
+Upstream's dashboard page structure has been refactored since this feature
+landed, so the per-page wiring ships in follow-up PRs. The cache primitives
+(`useWidgetCache`, `<WidgetRefreshButton>`, `<WidgetCacheProvider>`) are
+**library-only additions** available immediately.
+
 ## Documentation
 
 See the [docs/](docs/) directory for detailed project documentation, including:
 
 - [Accessibility Checklist](docs/ACCESSIBILITY.md) - Required axe, screen reader, keyboard, and contrast checks before merging UI changes.
 - [Copy Tone Guide](docs/COPY_TONE.md) — How we phrase success, error, empty, and loading UI copy with dos and don'ts.
+- [Design Tokens Overview](docs/DESIGN_TOKENS.md) — Exhaustive list of CSS custom properties and semantic roles.
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
 - [Cookie-Secret Rotation Runbook](docs/COOKIE_SECRETS.md) — Rotation cadence, blast radius, and step-by-step procedure for backend session/CSRF cookie secrets.
 - [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
+=======
+## Data fetching helpers
+
+The frontend now includes a small infinite-query wrapper for cursor-based feeds in [src/hooks/useInfiniteQuery.ts](src/hooks/useInfiniteQuery.ts). It supports loading the first page automatically, appending later pages with `fetchNextPage()`, and exposing the pagination state needed by feed UIs.
+
+Example:
+
+```tsx
+import { useInfiniteQuery } from './src/hooks'
+
+async function fetchPage(cursor: string | null) {
+  const response = await fetch(`/api/feed?cursor=${cursor ?? ''}`)
+  return response.json()
+}
+
+function Feed() {
+  const { data, status, hasNextPage, fetchNextPage } = useInfiniteQuery({
+    queryKey: 'feed',
+    fetchPage,
+  })
+
+  return (
+    <div>
+      {status === 'loading' && <p>Loading feed…</p>}
+      {data.map((item) => (
+        <div key={item.id}>{item.title}</div>
+      ))}
+      {hasNextPage && <button onClick={() => void fetchNextPage()}>Load more</button>}
+    </div>
+  )
+}
+```
+>>>>>>> Stashed changes
 
 ## Project layout
 
 - `src/pages/` — Home, Bond, Trust Score
 - `src/components/` — Layout, shared UI (including the in-app Changelog drawer sourced from `/changelog.json`); see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
+- `src/widgetCache/` — Shared widget cache (`WidgetCacheProvider`, `useWidgetCache`)
+- `src/components/widget/` — Per-widget UI primitives (`WidgetRefreshButton`)
+- `src/config/widgetCache.ts` — Central widget-cache constants
 - `src/App.tsx` — Router and routes
 
-### Bond flow routes
+## Documentation
 
-| Route       | Component            | Description                                                                                                               |
-| ----------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `/dashboard`| `Dashboard.tsx`      | Overview of user activity. Supports `?widget=<slug>` (e.g., `trust-score`, `active-bonds`) for deep-linking exact views.  |
-| `/bond`     | `Bond.tsx`           | Overview page — lists active bonds and provides an entry into the creation wizard                                         |
-| `/bond/new` | `CreateBondPage.tsx` | Four-step bond-creation wizard (amount → duration → review → confirm). Navigates back to `/bond` on completion or cancel. |
+- [Docs index](./docs/README.md)
+- [Prop types migration guide](./docs/PROP_TYPES_MIGRATION.md)
 
 To add wallet (e.g. Freighter) and contract calls, extend the Bond and Trust Score pages and add a small API client in `src/api/`.

@@ -22,6 +22,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | TrustGauge             | `src/components/TrustGauge.css`                                                     | Uses inline CSS custom properties for dynamic progress, marker, thumb, and legend-dot colors; keep scoped until migrated. |
 | TierLadder             | `src/components/TierLadder.css` + `Badge.css`                                       | None.                                                                                                                     |
 | ActivityTimeline       | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                       |
+| WindowedList           | `src/components/WindowedList.tsx`                                                   | Lightweight helper for large lists; uses the shared threshold in `src/config/listing.ts` and preserves the existing list semantics. |
 | FormField              | `src/components/forms/FormField.css`                                                | None.                                                                                                                     |
 | controls/Select        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
 | controls/Toggle        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
@@ -73,6 +74,25 @@ Source: [`TrustGauge.tsx`](../src/components/TrustGauge.tsx)
 | `silver`   | 250-500  | Silver   | `--credence-color-silver-border`, `--credence-color-silver-surface`, `--credence-color-silver-text`       |
 | `gold`     | 500-750  | Gold     | `--credence-color-gold-border`, `--credence-color-gold-surface`, `--credence-color-gold-text`             |
 | `platinum` | 750-1000 | Platinum | `--credence-color-platinum-border`, `--credence-color-platinum-surface`, `--credence-color-platinum-text` |
+
+## WindowedList
+
+Source: [`src/components/WindowedList.tsx`](../src/components/WindowedList.tsx).
+
+| Prop            | Type                                                                 | Default |
+| --------------- | -------------------------------------------------------------------- | ------- |
+| `items`         | `readonly T[]`                                                        | Required |
+| `itemHeight`    | `number`                                                              | Required |
+| `overscan`      | `number`                                                              | `4` |
+| `renderItem`    | `(item: T, index: number) => ReactNode`                                | Required |
+| `className`     | `string`                                                              | `undefined` |
+| `role`          | `string`                                                              | `undefined` |
+| `ariaLabel`     | `string`                                                              | `undefined` |
+| `emptyMessage`  | `string`                                                              | `undefined` |
+| `getItemKey`    | `(item: T, index: number) => string \| number`                        | `undefined` |
+| `containerHeight` | `number`                                                            | `320` |
+
+The component uses the shared `LONG_LIST_RENDER_THRESHOLD` from [`src/config/listing.ts`](../src/config/listing.ts) to switch into a windowed render path for large data sets. It preserves the existing DOM structure for shorter lists and keeps the scroll container accessible for larger lists.
 
 ## Button
 

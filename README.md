@@ -165,6 +165,7 @@ function Feed() {
 
 - `src/pages/` — Home, Bond, Trust Score
 - `src/components/` — Layout, shared UI (including the in-app Changelog drawer sourced from `/changelog.json`); see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
+- Long lists now use a windowed rendering path once they reach the configured threshold in [src/config/listing.ts](src/config/listing.ts), keeping large update lists responsive without changing the public component API
 - `src/widgetCache/` — Shared widget cache (`WidgetCacheProvider`, `useWidgetCache`)
 - `src/components/widget/` — Per-widget UI primitives (`WidgetRefreshButton`)
 - `src/config/widgetCache.ts` — Central widget-cache constants

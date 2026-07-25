@@ -11,6 +11,10 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+  },
   server: {
     port: 5173,
     headers: {

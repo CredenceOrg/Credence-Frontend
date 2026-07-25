@@ -105,14 +105,58 @@ const triggerRef = useRef<HTMLButtonElement>(null)
 
 ## Severity Levels (Toast)
 
-| Severity  | Auto-dismiss | Rationale                        |
-| --------- | ------------ | -------------------------------- |
-| `info`    | 5 seconds*   | Low urgency, informational       |
-| `success` | 5 seconds*   | Confirmation — user can move on  |
-| `warning` | 8 seconds*   | Needs attention but not blocking |
-| `danger`  | Manual only  | Must be acknowledged explicitly  |
+| Severity  | Auto-dismiss | Quieted by Quiet hours? | Rationale                                              |
+| --------- | ------------ | ------------------------ | ------------------------------------------------------ |
+| `info`    | 5 seconds*   | Yes                      | Low urgency, informational                             |
+| `success` | 5 seconds*   | Yes                      | Confirmation — user can move on                        |
+| `warning` | 8 seconds*   | Yes                      | Needs attention but not blocking                       |
+| `danger`  | Manual only  | **No**                   | Must be acknowledged explicitly — never silenced       |
 
 *\* Timers pause while the pointer is hovering over the toast or while keyboard focus is inside it.*
+
+## Quiet Hours
+
+Users can opt into a configurable window during which non-critical toasts (`info`, `success`, `warning`) are silenced. Critical `danger` toasts always surface so incident, slashing, and failed-transaction events are never lost.
+
+### Default behaviour
+
+- **Disabled by default.** Users have to opt in.
+- **Severity filter.** Only `info`, `success`, and `warning` toasts are silenced. `danger` always surfaces visually *and* via the visually-hidden assertive `aria-live` region — see [Accessibility](#accessibility).
+- **Screen reader silence.** When a toast is suppressed, its `announce()` call is also skipped so the polite `aria-live` region stays quiet during the user's selected window.
+- **Local time.** The current minute is computed from `new Date().getHours() * 60 + new Date().getMinutes()` so the window follows the user's clock.
+- **Inclusive endpoints.** Both `start` and `end` are inclusive; a 22:00–07:00 window silences the minute starting at 22:00 and the minute ending at 07:00.
+
+### Window semantics
+
+The window is interpreted on the user's local clock:
+
+| Configuration            | Interpretation                                             |
+| ------------------------ | ---------------------------------------------------------- |
+| `start < end`            | Active for the same-day window, e.g. `13:00–15:00`          |
+| `start > end`            | Cross-midnight window, e.g. `22:00–07:00` covers both halves |
+| `start === end`          | Degenerate; treat as disabled (silences nothing)            |
+
+### Settings payload
+
+Quiet hours live in the same `credence:settings` payload as the rest of the user preferences. Three fields are persisted:
+
+- `quietHoursEnabled` — boolean master toggle.
+- `quietHoursStart` — inclusive `HH:mm` start of the window.
+- `quietHoursEnd` — inclusive `HH:mm` end of the window.
+
+Defaults: `false`, `'22:00'`, `'07:00'`. Legacy exports missing the three keys continue to import cleanly — `validateAndNormalize` fills them with defaults. Invalid `HH:mm` strings fail the import with a descriptive error.
+
+### Where the logic lives
+
+- **Constants** — `src/config/notifications.ts` (`DEFAULT_QUIET_HOURS_START`, `DEFAULT_QUIET_HOURS_END`, `QUIET_HOURS_TIME_PATTERN`).
+- **Pure-function helpers** — `src/lib/quietHours.ts` (`parseHHmm`, `isWithinQuietHours`, `isQuietHoursActive`, `QUIET_HOURS_DEFAULTS`).
+- **Evaluation hook** — `ToastProvider` reads `quietHoursEnabled/Start/End` from settings, evaluates `isQuietHoursActive` at the moment `addToast` fires, and bails out (skipping both the toast and its aria-live announcement) when active and severity is not `danger`.
+- **UI** — Settings page → Notifications section → Quiet hours block with the master toggle and two `<input type="time">` controls (step 5 minutes). A live "Quiet hours active now" / "Quiet hours inactive" hint reflects the current minute.
+
+### Tests
+
+- Pure-function coverage lives in `src/lib/quietHours.test.ts` and exercises same-day, cross-midnight, degenerate (`start === end`), boundary equality, and malformed-input cases.
+- Integration coverage in `src/components/ToastProvider.test.tsx` (Quiet hours suite) confirms that non-danger toasts are suppressed during the active window, danger toasts still surface and announce assertively, and disabled quiet hours let every toast through.
 
 ---
 

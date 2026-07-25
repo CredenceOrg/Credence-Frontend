@@ -140,12 +140,9 @@ function Feed() {
 - `src/components/` — Layout, shared UI (including the in-app Changelog drawer sourced from `/changelog.json`); see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
 - `src/App.tsx` — Router and routes
 
-### Bond flow routes
+## Documentation
 
-| Route       | Component            | Description                                                                                                               |
-| ----------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `/dashboard`| `Dashboard.tsx`      | Overview of user activity. Supports `?widget=<slug>` (e.g., `trust-score`, `active-bonds`) for deep-linking exact views.  |
-| `/bond`     | `Bond.tsx`           | Overview page — lists active bonds and provides an entry into the creation wizard                                         |
-| `/bond/new` | `CreateBondPage.tsx` | Four-step bond-creation wizard (amount → duration → review → confirm). Navigates back to `/bond` on completion or cancel. |
+- [Docs index](./docs/README.md)
+- [Prop types migration guide](./docs/PROP_TYPES_MIGRATION.md)
 
 To add wallet (e.g. Freighter) and contract calls, extend the Bond and Trust Score pages and add a small API client in `src/api/`.

@@ -123,6 +123,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - [Accessibility Checklist](docs/ACCESSIBILITY.md) - Required axe, screen reader, keyboard, and contrast checks before merging UI changes.
 - [Copy Tone Guide](docs/COPY_TONE.md) — How we phrase success, error, empty, and loading UI copy with dos and don'ts.
 - [Design Tokens Overview](docs/DESIGN_TOKENS.md) — Exhaustive list of CSS custom properties and semantic roles.
+- [Form Validation Timing](docs/FORM_VALIDATION_TIMING.md) — When to use `onChange`, `onBlur`, and `onSubmit` for form validation.
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
 - [Cookie-Secret Rotation Runbook](docs/COOKIE_SECRETS.md) — Rotation cadence, blast radius, and step-by-step procedure for backend session/CSRF cookie secrets.

@@ -27,11 +27,13 @@ behavior notes, and a minimal usage example linking to source.
   - [`useQuery`](#usequery)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useReducedTransparency`](#usereducedtransparency)
+  - [`useScrollPreserver`](#usescrollpreserver)
   - [`useScrollToTop`](#usescrolltotop)
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
   - [`useWallet`](#usewallet)
   - [`useProductUpdates`](#useproductupdates)
+  - [`useSmartBack`](#usesmartback)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -335,6 +337,48 @@ function GlassPanel({ children }: { children: React.ReactNode }) {
 
 ---
 
+### `useScrollPreserver`
+
+Source: [`src/hooks/useScrollPreserver.ts`](../src/hooks/useScrollPreserver.ts)
+
+```ts
+function useScrollPreserver(options: UseScrollPreserverOptions): void
+
+interface UseScrollPreserverOptions {
+  isActive: boolean
+}
+```
+
+Preserves the page's scroll position and prevents content reflow when an overlay (drawer, modal, dialog) opens and locks body scroll. Without this hook, setting `overflow: hidden` on the body causes the scrollbar to disappear, which shifts the content horizontally by the scrollbar width — a jarring visual jump for users on long-scrolling pages.
+
+**Behavior notes**
+
+- **On activation** (`isActive → true`): saves the current `window.scrollY` and measures the scrollbar width (`window.innerWidth - document.documentElement.clientWidth`). Sets `overflow: hidden` on `document.body` to lock background scrolling, and adds `padding-right` equal to the scrollbar width to prevent horizontal reflow.
+- **On deactivation** (`isActive → false` / unmount): restores the previous `overflow` and `padding-right` values, then calls `window.scrollTo(0, savedScrollY)` to return to the exact scroll position the user was at before the overlay opened.
+- **No-op when inactive**: when `isActive` is `false`, the hook does nothing — no DOM mutations, no side effects.
+- **Scrollbar‑width aware**: if the scrollbar width is zero (e.g. overlay scrollbars or a non-scrolling page), no padding is added. The saved `padding-right` is always restored exactly.
+- **SSR-safe / cleanup:** all DOM work runs inside `useEffect`; the effect's cleanup function restores overflow, padding, and scroll position on unmount or when `isActive` flips to `false`.
+
+```tsx
+import { useState } from 'react'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
+
+function MyDrawer() {
+  const [open, setOpen] = useState(false)
+
+  useScrollPreserver({ isActive: open })
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)}>Open drawer</button>
+      {open && <div className="drawer">{/* overlay content */}</div>}
+    </>
+  )
+}
+```
+
+---
+
 ### `useScrollToTop`
 
 Source: [`src/hooks/useScrollToTop.ts`](../src/hooks/useScrollToTop.ts)
@@ -556,6 +600,48 @@ function NotificationBadge() {
 
 ---
 
+### `useSmartBack`
+
+Source: [`src/hooks/useSmartBack.ts`](../src/hooks/useSmartBack.ts) · Pure utility: [`src/lib/smartBack.ts`](../src/lib/smartBack.ts)
+
+```ts
+function useSmartBack(options?: UseSmartBackOptions): UseSmartBackReturn
+
+interface UseSmartBackOptions {
+  fallback?: string // default: '/dashboard'
+}
+
+interface UseSmartBackReturn {
+  goBack: () => void
+  fallback: string
+  getDestination: () => SmartBackResult
+}
+```
+
+Smart back navigation hook that honours prior route state when navigating back and safely falls back to `/dashboard` (or a custom route) when history is missing.
+
+**Behavior notes**
+
+- **Prior route priority:** if `location.state.from` is present, `goBack()` navigates directly to that path.
+- **History back:** if `from` state is absent and browser history is available (`window.history.length > 1`), calls `navigate(-1)`.
+- **Missing history fallback:** if `from` state is absent and history is empty (e.g. direct deep link landing), navigates to `/dashboard`.
+
+```tsx
+import { useSmartBack } from '../hooks/useSmartBack'
+
+function BackButton() {
+  const { goBack } = useSmartBack({ fallback: '/dashboard' })
+
+  return (
+    <button onClick={goBack} aria-label="Go back">
+      ← Back
+    </button>
+  )
+}
+```
+
+---
+
 ## Utilities (`src/lib/`)
 
 Framework-free helpers — pure functions and a wallet SDK wrapper. No React required.
@@ -563,6 +649,11 @@ Framework-free helpers — pure functions and a wallet SDK wrapper. No React req
 ### `format` — USDC formatting
 
 Source: [`src/lib/format.ts`](../src/lib/format.ts) · Single source of truth for USDC display.
+
+> **Canonical rule (closes #558):** Always use `formatUsdc(amount)` to display a USDC
+> amount in the UI. Never inline `amount.toLocaleString('en-US') + ' USDC'`,
+> `amount.toFixed(2) + ' USDC'`, or any other ad-hoc pattern. All monetary display
+> helpers live in `format.ts` so every surface shows consistent numbers.
 
 ```ts
 formatUsdc(amount: number): string        // 1234.5      → "1,234.5 USDC"
@@ -580,7 +671,15 @@ can correct it. SSR-safe (pure functions, no globals).
 ```ts
 import { formatUsdc, sanitizeUSDCInput } from '@/lib/format'
 
-formatUsdc(1000) // "1,000 USDC"
+// ✅ Correct — always use formatUsdc for display
+formatUsdc(1000)          // "1,000 USDC"
+formatUsdc(1234.5)        // "1,234.5 USDC"
+formatUsdc(Number(str))   // when amount comes from a string state value
+
+// ❌ Avoid — do not use ad-hoc patterns
+// `${amount.toLocaleString('en-US')} USDC`
+// `${amount.toFixed(2)} USDC`
+
 sanitizeUSDCInput('12.345') // "12.34"
 ```
 

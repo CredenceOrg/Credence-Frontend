@@ -308,6 +308,8 @@ describe('KeyboardShortcutsDialog — global Shift+? shortcut guard', () => {
     window.removeEventListener('keydown', handler)
   })
 })
+
+describe('KeyboardShortcutsDialog — backdrop & close', () => {
   it('calls onClose when the backdrop is clicked', async () => {
     const user = userEvent.setup()
     const { onClose } = renderDialog()
@@ -502,6 +504,8 @@ describe('KeyboardShortcutsDialog — global Shift+? shortcut guard', () => {
     window.removeEventListener('keydown', handler)
   })
 })
+
+describe('KeyboardShortcutsDialog — backdrop & close', () => {
   it('calls onClose when the backdrop is clicked', async () => {
     const user = userEvent.setup()
     const { onClose } = renderDialog()

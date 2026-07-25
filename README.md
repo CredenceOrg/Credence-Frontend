@@ -173,6 +173,7 @@ function Feed() {
 ## Documentation
 
 - [Docs index](./docs/README.md)
+- [Component API conventions](./docs/COMPONENT_API.md)
 - [Prop types migration guide](./docs/PROP_TYPES_MIGRATION.md)
 
 To add wallet (e.g. Freighter) and contract calls, extend the Bond and Trust Score pages and add a small API client in `src/api/`.

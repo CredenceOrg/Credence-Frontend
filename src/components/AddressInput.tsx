@@ -171,6 +171,7 @@ export default function AddressInput({
 
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
   const [sanitizationError, setSanitizationError] = useState<AddressSanitizationError | null>(null)
   const { copy, copied } = useCopyToClipboard()
 

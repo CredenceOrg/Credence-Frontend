@@ -93,6 +93,7 @@ export default function ActivityTimeline({
   items = ACTIVITY_ITEMS,
 }: ActivityTimelineProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
   const count = items.length
   const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
@@ -100,6 +101,16 @@ export default function ActivityTimeline({
   const toggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
   }, [])
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'Escape' || !expandedId) return
+      const openId = expandedId
+      setExpandedId(null)
+      triggerRefs.current.get(openId)?.focus()
+    },
+    [expandedId],
+  )
 
   return (
     <section
@@ -126,6 +137,7 @@ export default function ActivityTimeline({
           {items.map((item) => {
             const isExpanded = expandedId === item.id
             const panelId = `details-${item.id}`
+            const buttonId = `trigger-${item.id}`
             return (
               <li className="activity-row" key={item.id}>
                 <div className="activity-row__rail" aria-hidden="true">
@@ -149,7 +161,6 @@ export default function ActivityTimeline({
                       else triggerRefs.current.delete(item.id)
                     }}
                     type="button"
-                    id={buttonId}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
                     onClick={() => toggleExpand(item.id)}
@@ -160,10 +171,6 @@ export default function ActivityTimeline({
                       }
                     }}
                     className="activity-row__disclosure"
-                    ref={(el) => {
-                      if (el) triggerRefs.current.set(item.id, el)
-                      else triggerRefs.current.delete(item.id)
-                    }}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>

@@ -123,6 +123,13 @@
       "confirmHint": "This will overwrite your current settings with the imported values.",
       "confirmLabel": "Import settings"
     },
+    "autoSave": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "savedRelative": "Saved {{when}}",
+      "error": "Couldn't save. Try again.",
+      "retry": "Retry"
+    },
     "toasts": {
       "saved": "Settings saved successfully",
       "reverted": "Settings reverted to last saved state",

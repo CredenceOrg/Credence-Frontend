@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import ActivityTimeline from '../components/ActivityTimeline'
 import './TrustScore.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
@@ -56,7 +55,6 @@ function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validati
 }
 
 export default function TrustScore() {
-  const { t } = useTranslation()
   useSeo({
     title: 'Trust Score',
     description:

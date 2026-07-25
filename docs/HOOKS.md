@@ -24,6 +24,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useMediaQuery`](#usemediaquery)
+  - [`useOnceMounted`](#useoncemounted)
   - [`useQuery`](#usequery)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useReducedTransparency`](#usereducedtransparency)
@@ -200,6 +201,47 @@ const isWide = useMediaQuery('(min-width: 1024px)')
 function ActivityCard() {
   const isMobile = useIsMobile()
   return <h2>{isMobile ? 'Recent Activity' : 'Recent Activity Timeline'}</h2>
+}
+```
+
+---
+
+### `useOnceMounted`
+
+Source: [`src/hooks/useOnceMounted.ts`](../src/hooks/useOnceMounted.ts)
+
+```ts
+function useOnceMounted(callback: () => void | (() => void)): void
+```
+
+Runs the provided callback exactly once per component mount, even under React 18 StrictMode
+where effects are intentionally double-invoked in development.
+
+**Parameters**
+
+| Parameter  | Required | Description                                                                          |
+| ---------- | :------: | ------------------------------------------------------------------------------------ |
+| `callback` |    ✓     | The function to run once on mount. May optionally return a cleanup function invoked on unmount. |
+
+**Behavior notes**
+
+- **StrictMode-resilient:** uses a `useRef` gate so the callback fires exactly once even when
+  React 18 StrictMode double-invokes effects (mount → cleanup → mount again).
+- **True remount:** a full unmount followed by a fresh component mount will trigger the
+  callback again — the guard is per-component-instance.
+- **Cleanup:** if the callback returns a function, it is stored and invoked on unmount (or
+  during StrictMode's simulated unmount before the effect re-runs).
+- The callback is stored in a ref so re-renders with a different function reference do
+  not re-trigger the effect.
+
+```tsx
+import { useOnceMounted } from '../hooks/useOnceMounted'
+
+function PageViewTracker({ page }: { page: string }) {
+  useOnceMounted(() => {
+    analytics.track('page_view', { page })
+  })
+  return <main>…</main>
 }
 ```
 

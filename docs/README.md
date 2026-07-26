@@ -133,6 +133,11 @@ This directory contains comprehensive design specifications and implementation g
     - Retry mechanisms with exponential backoff
     - Progress reporting strategy
 
+20. **[Locales Management](./locales.md)** ⭐ NEW (closes #4)
+    - How to add a new locale
+    - Managing existing locales
+    - Using translation hooks
+
 ### Quick Start
 
 To implement UI states in your components:

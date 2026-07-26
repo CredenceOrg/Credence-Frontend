@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:reset": "node scripts/dev-reset.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "generate:api": "openapi-typescript openapi.yaml -o src/api/generated.ts",

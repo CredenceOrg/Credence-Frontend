@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { validateAndNormalize } from '../lib/settingsSchema'
+import { SETTINGS_EVENTS, createTypedCustomEvent, type SettingsPayload } from '../events'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -10,15 +11,8 @@ export type AddressDisplayOption = 'full' | 'short' | 'friendly'
 /** Auto dismiss option literal union */
 export type AutoDismissOption = 'off' | '3s' | '5s' | '8s'
 
-/** The persisted settings payload (the subset of state written to localStorage). */
-export interface SettingsPayload {
-  themeMode: ThemeMode
-  network: NetworkOption
-  addressDisplay: AddressDisplayOption
-  toastsEnabled: boolean
-  autoDismiss: AutoDismissOption
-  reauthThresholdMinutes: number
-}
+/** Re-export SettingsPayload from centralized events schema */
+export type { SettingsPayload }
 
 export interface SettingsState {
   themeMode: ThemeMode
@@ -33,6 +27,7 @@ export interface SettingsState {
   setToastsEnabled: (b: boolean) => void
   setAutoDismiss: (s: AutoDismissOption) => void
   setReauthThresholdMinutes: (n: number) => void
+  resetToDefaults: () => void
   /**
    * Persist settings. Pass an explicit payload to save immediately (avoids the
    * stale-state race when called right after the individual setters); omit it to
@@ -175,6 +170,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const payload = next ?? { themeMode, network, addressDisplay, toastsEnabled, autoDismiss, reauthThresholdMinutes }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, payload))
+    }
   }
 
   const resetToDefaults = () => {

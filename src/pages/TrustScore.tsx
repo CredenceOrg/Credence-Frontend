@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import ActivityTimeline from '../components/ActivityTimeline'
 import './TrustScore.css'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
@@ -19,6 +18,7 @@ import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
+import { SAMPLE_ACTIVITY } from '../data/activity'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 
@@ -61,8 +61,6 @@ export default function TrustScore() {
     description:
       'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
   })
-
-  const { t } = useTranslation()
   const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork, addressDisplay } = useSettings()

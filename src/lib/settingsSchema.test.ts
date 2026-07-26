@@ -9,6 +9,7 @@ describe('validateAndNormalize', () => {
       addressDisplay: 'full',
       toastsEnabled: false,
       autoDismiss: '3s',
+      reauthThresholdMinutes: 15,
     }
     const result = validateAndNormalize(input)
     expect(result.ok).toBe(true)

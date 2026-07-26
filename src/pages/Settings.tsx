@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DOM_EVENTS } from '../events'
 import { useSettings, defaultPersistedSettings } from '../context/SettingsContext'
 import ThemeToggle from '../components/ThemeToggle'
 import { useToast } from '../components/ToastProvider'
@@ -13,15 +14,23 @@ import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
 import './Settings.css'
 
 
-function computeDiff(current: Omit<SettingsBlob, keyof unknown>, incoming: SettingsBlob): { key: string; from: string; to: string }[] {
+function computeDiff(current: SettingsBlob, incoming: SettingsBlob): { key: string; from: string; to: string }[] {
   const diffs: { key: string; from: string; to: string }[] = []
-  const keys: (keyof SettingsBlob)[] = ['themeMode', 'network', 'addressDisplay', 'toastsEnabled', 'autoDismiss']
+  const keys: (keyof SettingsBlob)[] = ['themeMode', 'network', 'addressDisplay', 'toastsEnabled', 'autoDismiss', 'reauthThresholdMinutes']
   for (const key of keys) {
-    if (String(current[key as keyof typeof current]) !== String(incoming[key])) {
-      diffs.push({ key, from: String(current[key as keyof typeof current]), to: String(incoming[key]) })
+    if (String(current[key]) !== String(incoming[key])) {
+      diffs.push({ key, from: String(current[key]), to: String(incoming[key]) })
     }
   }
   return diffs
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  themeMode: 'Theme Mode',
+  network: 'Network',
+  addressDisplay: 'Address Display',
+  toastsEnabled: 'Toasts Enabled',
+  autoDismiss: 'Auto Dismiss',
 }
 
 export default function Settings() {
@@ -113,8 +122,8 @@ export default function Settings() {
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault()
     }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
+    window.addEventListener(DOM_EVENTS.BEFORE_UNLOAD, handler)
+    return () => window.removeEventListener(DOM_EVENTS.BEFORE_UNLOAD, handler)
   }, [isDirty])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -136,8 +145,8 @@ export default function Settings() {
   }, [])
 
   const currentSettings = useMemo(() => {
-    return { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss])
+    return { themeMode, network, addressDisplay, toastsEnabled, autoDismiss, reauthThresholdMinutes }
+  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, reauthThresholdMinutes])
 
   const handleExport = useCallback(() => {
     const payload: SettingsBlob = {
@@ -146,6 +155,7 @@ export default function Settings() {
       addressDisplay,
       toastsEnabled,
       autoDismiss,
+      reauthThresholdMinutes,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -202,19 +212,27 @@ export default function Settings() {
     if (!importPreview) return
 
     setThemeMode(importPreview.themeMode)
-    setNetwork(importPreview.network)
-    setAddressDisplay(importPreview.addressDisplay)
+    setNetwork(importPreview.network as 'public' | 'test')
+    setAddressDisplay(importPreview.addressDisplay as 'full' | 'short' | 'friendly')
     setToastsEnabled(importPreview.toastsEnabled)
-    setAutoDismiss(importPreview.autoDismiss)
-    saveSettings(importPreview)
+    setAutoDismiss(importPreview.autoDismiss as 'off' | '3s' | '5s' | '8s')
+    setReauthThresholdMinutes(importPreview.reauthThresholdMinutes)
+    saveSettings({
+      themeMode: importPreview.themeMode,
+      network: importPreview.network as 'public' | 'test',
+      addressDisplay: importPreview.addressDisplay as 'full' | 'short' | 'friendly',
+      toastsEnabled: importPreview.toastsEnabled,
+      autoDismiss: importPreview.autoDismiss as 'off' | '3s' | '5s' | '8s',
+      reauthThresholdMinutes: importPreview.reauthThresholdMinutes,
+    })
     addToast('success', 'Settings imported successfully')
     resetImportState()
-  }, [importPreview, setThemeMode, setNetwork, setAddressDisplay, setToastsEnabled, setAutoDismiss, saveSettings, addToast, resetImportState])
+  }, [importPreview, setThemeMode, setNetwork, setAddressDisplay, setToastsEnabled, setAutoDismiss, setReauthThresholdMinutes, saveSettings, addToast, resetImportState])
 
   const handleImportCancel = useCallback(() => {
     resetImportState()
     addToast('info', t('settings.toasts.importCancelled'))
-  }, [resetImportState, addToast])
+  }, [resetImportState, addToast, t])
 
   const handleResetRequest = useCallback(() => {
     setResetConfirmOpen(true)
@@ -222,11 +240,12 @@ export default function Settings() {
 
   const handleResetConfirm = useCallback(() => {
     const nextDraft = {
-      themeMode: defaultPersistedSettings.themeMode as 'light' | 'dark' | 'system',
+      themeMode: defaultPersistedSettings.themeMode,
       network: defaultPersistedSettings.network,
       addressDisplay: defaultPersistedSettings.addressDisplay,
       toastsEnabled: defaultPersistedSettings.toastsEnabled,
       autoDismiss: defaultPersistedSettings.autoDismiss,
+      reauthThresholdMinutes: defaultPersistedSettings.reauthThresholdMinutes,
     }
 
     setDraft(nextDraft)
@@ -330,7 +349,7 @@ export default function Settings() {
         <FormField id="network-select" label={t('settings.network.stellarNetwork')}>
           <Select
             value={network}
-            onChange={setNetwork}
+            onChange={(val) => setNetwork(val as 'public' | 'test')}
             options={[
               { value: 'public', label: t('settings.network.public') },
               { value: 'test', label: t('settings.network.test') },
@@ -424,23 +443,25 @@ export default function Settings() {
         <p className="form-hint">Configure session re-authentication settings for accessing sensitive data.</p>
 
         <FormField id="reauth-threshold" label="Re-authentication Threshold (minutes)">
-          <input
-            type="number"
-            id="reauth-threshold"
-            min="1"
-            max="1440"
-            value={draft.reauthThresholdMinutes}
-            onChange={(e) => {
-              const value = parseInt(e.target.value, 10);
-              if (!isNaN(value) && value >= 1 && value <= 1440) {
-                updateDraft('reauthThresholdMinutes', value);
-              }
-            }}
-            style={{ width: '100%', padding: '0.5rem 0.75rem' }}
-          />
-          <span className="form-hint">
-            Require re-authentication after N minutes of session inactivity (1-1440 minutes, default: 15).
-          </span>
+          <div>
+            <input
+              type="number"
+              id="reauth-threshold"
+              min="1"
+              max="1440"
+              value={draft.reauthThresholdMinutes}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (!isNaN(value) && value >= 1 && value <= 1440) {
+                  updateDraft('reauthThresholdMinutes', value);
+                }
+              }}
+              style={{ width: '100%', padding: '0.5rem 0.75rem' }}
+            />
+            <span className="form-hint">
+              Require wallet re-authentication after this period of inactivity (1 to 1440 minutes).
+            </span>
+          </div>
         </FormField>
       </section>
 

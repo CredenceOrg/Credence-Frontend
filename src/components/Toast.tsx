@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react'
+import type { ToastSeverity, ToastData } from '../events'
 import './Toast.css'
 
-export type ToastSeverity = 'info' | 'success' | 'warning' | 'danger'
+export type { ToastSeverity, ToastData }
 
 const ICONS: Record<ToastSeverity, React.ReactNode> = {
   info: (
@@ -68,15 +69,6 @@ const ICONS: Record<ToastSeverity, React.ReactNode> = {
   ),
 }
 
-export interface ToastData {
-  id: string
-  severity: ToastSeverity
-  message: string
-  /** Resolved auto-dismiss duration. 0 means manual dismiss only. */
-  durationMs?: number
-  txHash?: string
-  network?: string
-}
 
 interface ToastProps {
   toast: ToastData

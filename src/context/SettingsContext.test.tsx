@@ -176,6 +176,7 @@ describe('SettingsContext persistence & theme application', () => {
       addressDisplay: 'short',
       toastsEnabled: true,
       autoDismiss: '5s',
+      reauthThresholdMinutes: 15,
     })
   })
 
@@ -368,6 +369,7 @@ describe('SettingsProvider', () => {
         addressDisplay: 'short',
         toastsEnabled: true,
         autoDismiss: '5s',
+        reauthThresholdMinutes: 15,
       })
     })
 
@@ -414,6 +416,7 @@ describe('SettingsProvider', () => {
         addressDisplay: 'short',
         toastsEnabled: true,
         autoDismiss: '5s',
+        reauthThresholdMinutes: 15,
       })
     })
   })

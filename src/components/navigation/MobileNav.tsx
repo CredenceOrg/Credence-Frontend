@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { PrefetchNavLink } from '../PrefetchNavLink'
 import { PRELOADS_BY_PATH } from '../../config/routes'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { DOM_EVENTS } from '../../events'
 import './MobileNav.css'
 import { useTranslation } from 'react-i18next'
 import { SECONDARY_NAV_LINKS } from '../../config/navLinks'
@@ -32,8 +33,8 @@ export default function MobileNav() {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+    return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
   }, [isOpen])
 
   useFocusTrap({
@@ -117,7 +118,7 @@ export default function MobileNav() {
                 onClick={close}
               >
                 {t(labelKey)}
-              </NavLink>
+              </PrefetchNavLink>
             </li>
           ))}
         </ul>

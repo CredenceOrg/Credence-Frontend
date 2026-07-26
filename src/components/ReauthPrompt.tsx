@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import Button from './Button'
@@ -18,7 +17,6 @@ export default function ReauthPrompt({
   onCancel,
   returnFocusRef,
 }: ReauthPromptProps) {
-  const { t } = useTranslation()
   const titleId = useId()
   const descId = useId()
   const announcementId = useId()

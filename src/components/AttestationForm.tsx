@@ -5,6 +5,7 @@ import { FormField } from './forms/FormField'
 import Button from './Button'
 import ConfirmDialog from './ConfirmDialog'
 import { useToast } from './ToastProvider'
+import { ATTESTATION_EVENTS, type AttestationPayload } from '../events'
 
 /**
  * Props for the AttestationForm component.
@@ -14,7 +15,7 @@ export interface AttestationFormProps {
    * Callback triggered when an attestation is successfully confirmed and submitted.
    * Receives the finalized attestation data.
    */
-  onSubmitSuccess?: (payload: { subject: string; type: string; evidence: string }) => void
+  onSubmitSuccess?: (payload: AttestationPayload) => void
   /**
    * Disables form fields and the submit action during submission or external loading.
    */
@@ -32,7 +33,7 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
   const { addToast } = useToast()
   const [subject, setSubject] = useState('')
   const [isSubjectValid, setIsSubjectValid] = useState(false)
-  const [type, setType] = useState('identity')
+  const [type, setType] = useState<string>(ATTESTATION_EVENTS.TYPES.IDENTITY)
   const [evidence, setEvidence] = useState('')
   const [errors, setErrors] = useState<{ subject?: string; evidence?: string }>({})
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -85,7 +86,7 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
     onSubmitSuccess?.({ subject, type, evidence })
     setSubject('')
     setEvidence('')
-    setType('identity')
+    setType(ATTESTATION_EVENTS.TYPES.IDENTITY)
     setErrors({})
   }
 
@@ -123,9 +124,9 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
             value={type}
             onChange={setType}
             options={[
-              { value: 'identity', label: 'Identity Verification' },
-              { value: 'peer-vouch', label: 'Peer Vouch' },
-              { value: 'credential', label: 'Credential / Certification' },
+              { value: ATTESTATION_EVENTS.TYPES.IDENTITY, label: 'Identity Verification' },
+              { value: ATTESTATION_EVENTS.TYPES.PEER_VOUCH, label: 'Peer Vouch' },
+              { value: ATTESTATION_EVENTS.TYPES.CREDENTIAL, label: 'Credential / Certification' },
             ]}
           />
         </FormField>
@@ -240,9 +241,9 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
                 Type
               </strong>
               <span style={{ fontSize: 'var(--credence-font-size-sm)' }}>
-                {type === 'identity'
+                {type === ATTESTATION_EVENTS.TYPES.IDENTITY
                   ? 'Identity Verification'
-                  : type === 'peer-vouch'
+                  : type === ATTESTATION_EVENTS.TYPES.PEER_VOUCH
                     ? 'Peer Vouch'
                     : 'Credential / Certification'}
               </span>

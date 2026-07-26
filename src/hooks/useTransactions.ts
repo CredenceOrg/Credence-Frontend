@@ -22,11 +22,6 @@ function addPendingTransaction(tx: Transaction): void {
   setPendingTransactions([tx, ...pending])
 }
 
-function removePendingTransaction(hash: string): void {
-  const pending = getPendingTransactions()
-  setPendingTransactions(pending.filter((tx) => tx.hash !== hash))
-}
-
 export interface UseTransactionsResult {
   data: Transaction[]
   isLoading: boolean

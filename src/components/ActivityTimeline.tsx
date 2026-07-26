@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback, type ReactElement } from 'react'
+import { useState, useCallback, type ReactElement } from 'react'
 import './ActivityTimeline.css'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
 
-import type { ActivityItem, ActivityTone } from '../data/activity'
+import type { ActivityItem, ActivityTone } from '../events'
 export type { ActivityItem, ActivityTone }
 
 export function toneToBadgeVariant(tone: string): string {
@@ -86,6 +86,12 @@ export default function ActivityTimeline({
     setExpandedId((prev) => (prev === id ? null : id))
   }, [])
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setExpandedId(null)
+    }
+  }, [])
+
   return (
     <section
       className={`activity-surface${compact ? ' activity-surface--compact' : ''}`}
@@ -110,6 +116,7 @@ export default function ActivityTimeline({
         <ul className="activity-timeline" aria-label="Recent timeline events">
           {items.map((item) => {
             const isExpanded = expandedId === item.id
+            const buttonId = `btn-${item.id}`
             const panelId = `details-${item.id}`
             return (
               <li className="activity-row" key={item.id}>
@@ -129,12 +136,7 @@ export default function ActivityTimeline({
 
                   <button
                     id={buttonId}
-                    ref={(el) => {
-                      if (el) triggerRefs.current.set(item.id, el)
-                      else triggerRefs.current.delete(item.id)
-                    }}
                     type="button"
-                    id={buttonId}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
                     onClick={() => toggleExpand(item.id)}
@@ -145,10 +147,6 @@ export default function ActivityTimeline({
                       }
                     }}
                     className="activity-row__disclosure"
-                    ref={(el) => {
-                      if (el) triggerRefs.current.set(item.id, el)
-                      else triggerRefs.current.delete(item.id)
-                    }}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>

@@ -23,7 +23,7 @@ describe('NetworkIndicator', () => {
   })
 
   it('renders "Unknown" pill for unknown network', () => {
-    vi.mocked(useSettings).mockReturnValue({ network: 'other' } as Partial<SettingsState> as SettingsState)
+    vi.mocked(useSettings).mockReturnValue({ network: 'other' as unknown as 'public' } as Partial<SettingsState> as SettingsState)
     render(<NetworkIndicator />)
     expect(screen.getByText('Unknown')).toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Unknown')).toBeInTheDocument()

@@ -2,7 +2,9 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import en from './locales/en.json'
-import { DOM_EVENTS } from '../events'
+import { getDefaultLocale } from '@/config/i18n'
+
+const defaultLocale = getDefaultLocale()
 
 i18n
   .use(LanguageDetector)
@@ -11,8 +13,8 @@ i18n
     resources: {
       en: { translation: en },
     },
-    fallbackLng: 'en',
-    lng: 'en',
+    fallbackLng: defaultLocale,
+    lng: defaultLocale,
     interpolation: {
       escapeValue: false,
     },
@@ -21,11 +23,8 @@ i18n
       caches: ['localStorage'],
     },
   })
-
-i18n.on(DOM_EVENTS.LANGUAGE_CHANGED, (lng) => {
+i18n.on('languageChanged', (lng) => {
   document.documentElement.lang = lng
 })
-
-document.documentElement.lang = i18n.language || 'en'
-
+document.documentElement.lang = i18n.language || defaultLocale
 export default i18n

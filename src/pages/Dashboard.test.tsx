@@ -2,6 +2,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ONBOARDING_COMPLETION_STORAGE_KEY, ONBOARDING_STEP_STORAGE_KEY } from '../config/onboarding'
 import Dashboard from './Dashboard'
 
 // Mocks needed because ActionCard now uses useToast, useCopyToClipboard, and useTranslation
@@ -128,90 +129,36 @@ describe('Dashboard', () => {
     expect(screen.queryByRole('heading', { name: /wallet required/i })).not.toBeInTheDocument()
   })
 
-  it('does not render pull-to-refresh UI on desktop', () => {
-    mockIsMobile = false
+  it('shows the onboarding tour on first visit and records completion when skipped', async () => {
+    const user = userEvent.setup()
+
     renderDashboard()
-    expect(screen.queryByText(/pull to refresh/i)).not.toBeInTheDocument()
+
+    expect(screen.getByText(/quick tour/i)).toBeInTheDocument()
+    expect(screen.getByText(/welcome to your dashboard/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /skip tour/i }))
+
+    expect(localStorage.getItem(ONBOARDING_COMPLETION_STORAGE_KEY)).toBeTruthy()
+    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBeNull()
   })
 
-  it('handles pull-to-refresh touch gesture on mobile', async () => {
-    mockIsMobile = true
+  it('persists progress when advancing the onboarding tour', async () => {
+    const user = userEvent.setup()
+
     renderDashboard()
 
-    const dashboardElement = screen.getByRole('heading', { name: 'Dashboard' }).closest('.dashboard')!
+    await user.click(screen.getByRole('button', { name: /next/i }))
 
-    // Fire touchStart
-    fireEvent.touchStart(dashboardElement, {
-      touches: [{ clientY: 100 }]
-    })
-
-    // Fire touchMove - pull down by 200px (pullDistance = 80px)
-    fireEvent.touchMove(dashboardElement, {
-      touches: [{ clientY: 300 }]
-    })
-
-    expect(screen.getByText(/release to refresh/i)).toBeInTheDocument()
-
-    // Fire touchEnd
-    await act(async () => {
-      fireEvent.touchEnd(dashboardElement)
-    })
-
-    expect(mockRefetch).toHaveBeenCalledTimes(1)
+    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBe('1')
+    expect(screen.getByText(/review active bonds/i)).toBeInTheDocument()
   })
 
-  it('does not trigger refetch on short pull', () => {
-    mockIsMobile = true
-    renderDashboard()
-
-    const dashboardElement = screen.getByRole('heading', { name: 'Dashboard' }).closest('.dashboard')!
-
-    fireEvent.touchStart(dashboardElement, {
-      touches: [{ clientY: 100 }]
-    })
-
-    // Pull down by 50px (pullDistance = 20px)
-    fireEvent.touchMove(dashboardElement, {
-      touches: [{ clientY: 150 }]
-    })
-
-    expect(screen.getByText(/pull to refresh/i)).toBeInTheDocument()
-
-    fireEvent.touchEnd(dashboardElement)
-
-    expect(mockRefetch).not.toHaveBeenCalled()
-  })
-
-  it('does not trigger pull-to-refresh when offline', () => {
-    mockIsMobile = true
-    const originalOnLine = navigator.onLine
-    Object.defineProperty(navigator, 'onLine', {
-      value: false,
-      configurable: true
-    })
+  it('resumes an interrupted onboarding tour from the saved step', () => {
+    localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, '2')
 
     renderDashboard()
 
-    const dashboardElement = screen.getByRole('heading', { name: 'Dashboard' }).closest('.dashboard')!
-
-    fireEvent.touchStart(dashboardElement, {
-      touches: [{ clientY: 100 }]
-    })
-
-    fireEvent.touchMove(dashboardElement, {
-      touches: [{ clientY: 300 }]
-    })
-
-    // Offline banner should be present, pull UI should not be displayed
-    expect(screen.getByText(/offline/i)).toBeInTheDocument()
-    expect(screen.queryByText(/pull to refresh/i)).not.toBeInTheDocument()
-
-    fireEvent.touchEnd(dashboardElement)
-    expect(mockRefetch).not.toHaveBeenCalled()
-
-    Object.defineProperty(navigator, 'onLine', {
-      value: originalOnLine,
-      configurable: true
-    })
+    expect(screen.getByText(/monitor recent activity/i)).toBeInTheDocument()
   })
 })

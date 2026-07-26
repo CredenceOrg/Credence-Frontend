@@ -1,9 +1,9 @@
-import { useState, useRef, useCallback, type ReactElement } from 'react'
+import { useState, useCallback, useRef, memo, type ReactElement } from 'react'
 import './ActivityTimeline.css'
+import { ACTIVITY_ITEMS, ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
-import './ActivityTimeline.css'
-import EmptyState from './states/EmptyState'
+import Badge from './Badge'
 
 export type ActivityTone = 'success' | 'warning' | 'info'
 
@@ -56,43 +56,32 @@ export function isTxHash(meta: string): boolean {
   return meta.toLowerCase().startsWith('tx')
 }
 
+export function toneToBadgeVariant(tone: ActivityTone): 'active' | 'grace-period' | 'locked' {
+  switch (tone) {
+    case 'success':
+      return 'active'
+    case 'warning':
+      return 'grace-period'
+    case 'info':
+    default:
+      return 'locked'
+  }
+}
+
+export function isTxHash(meta: string): boolean {
+  return /^tx\s+0x[\w.-]+$/i.test(meta.trim())
+}
+
 export interface ActivityTimelineProps {
   compact?: boolean
   items?: ActivityItem[]
 }
 
-export const SAMPLE_ACTIVITY: ActivityItem[] = [
-  {
-    id: 'evt-001',
-    timestamp: 'Apr 28, 14:22 UTC',
-    title: 'Attestation submitted',
-    description: 'Identity evidence package uploaded and signed for review.',
-    actor: 'Validator Node 12',
-    statusLabel: 'Accepted',
-    tone: 'success',
-    meta: 'Tx 0x93a1...22f4',
-  },
-  {
-    id: 'evt-002',
-    timestamp: 'Apr 27, 09:48 UTC',
-    title: 'Proof mismatch detected',
-    description: 'Signature payload differed from expected checksum for one field.',
-    actor: 'Automated Verifier',
-    statusLabel: 'Needs update',
-    tone: 'warning',
-    meta: 'Rule AV-17',
-  },
-  {
-    id: 'evt-003',
-    timestamp: 'Apr 26, 20:11 UTC',
-    title: 'Credential refreshed',
-    description: 'Expiration window extended after successful periodic check.',
-    actor: 'System process',
-    statusLabel: 'In review',
-    tone: 'info',
-    meta: 'Window +90d',
-  },
-]
+interface ActivityRowProps {
+  item: ActivityItem
+  isExpanded: boolean
+  onToggle: (id: string) => void
+}
 
 export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
 

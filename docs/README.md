@@ -110,34 +110,9 @@ This directory contains comprehensive design specifications and implementation g
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling
 
-**[Settings Auto-Save Indicator](./auto-save.md)** ⭐ NEW (closes #564)
-- Debounced `PATCH /settings` flow with `useDebouncedAutoSave` hook.
-- `<AutoSaveIndicator />` token-driven pill showing `Saving…` / `Saved just now` / "Couldn't save" with retry.
-- In-flight cancellation via `AbortController` so stale PATCHes can't overwrite newer state.
-
-16. **[Widget Cache & Per-Widget Refresh](./widget-cache.md)** ⭐ NEW (closes #561)
-    - Shared in-app cache for dashboard widgets so a refresh button on one card only invalidates that card's key — others keep their state.
-    - `useWidgetCache` hook + `<WidgetRefreshButton />` + token-driven styling.
-    - Coverage includes mount, key isolation, error surfacing, and reduced-motion.
-
-17. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
-    - Interceptors, retry policy, and error taxonomy for the API client
-    - `ApiError` structure and usage examples
-
-18. **[Feature Flags](./FEATURE_FLAGS.md)** ⭐ NEW
-    - How feature flags are read and implemented on the client side
-    - Compile-time dev gating (`import.meta.env.DEV`)
-    - Component-level boolean props (e.g., `isEarlyAccess`)
-    - Testing patterns and adding new flags
-
-19. **[Telemetry & Analytics](./telemetry.md)**
-    - Privacy-first approach (no telemetry collected)
-    - No PII handling or third-party analytics
-
-19. **[Feature Flag Lifecycle](./FEATURE_FLAG_LIFECYCLE.md)** ⭐ NEW
-    - How feature flags are proposed, implemented, monitored, and retired
-    - Flag types used in the codebase (build-time, env var, local-storage, target flag module)
-    - Lifecycle checklist for adding, monitoring, and retiring flags
+14. **[Security Checklist](./SECURITY_CHECKLIST_FRONTEND.md)**
+    - CSP policy, browser storage rules, third-party script posture, and dependency audit workflow
+    - Concrete review checklist for each security area
 
 ### Quick Start
 

@@ -77,8 +77,6 @@ The Vite dev server also proxies local API requests. Requests from the frontend 
 
 The dashboard includes a first-run onboarding tour for connected users. It is skippable, resumable, and stores progress in browser local storage under `credence:onboarding:step` and `credence:onboarding:onboardedAt`, so returning visitors can pick up where they left off or opt out permanently.
 
-Long-running lists now render through a shared windowed list primitive in `src/components/VirtualizedList.tsx`. It keeps large result sets responsive by only mounting the visible slice of items while preserving scroll position and keyboard navigation behavior.
-
 Shared API helpers live in `src/api/`. All request and response types are generated from the OpenAPI spec at [`openapi.yaml`](./openapi.yaml):
 
 ```bash
@@ -169,9 +167,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - [Feature Flags](docs/FEATURE_FLAGS.md) — How feature flags are read and implemented on the client side.
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
-- [API Client Policies](docs/API_CLIENT_POLICIES.md) — Interceptors, retry policy, and error taxonomy for the API client.
-- [Cookie-Secret Rotation Runbook](docs/COOKIE_SECRETS.md) — Rotation cadence, blast radius, and step-by-step procedure for backend session/CSRF cookie secrets.
-- [Event Schema Registry & Telemetry](docs/telemetry.md) — Centralized event schema definitions, event drift prevention, and privacy principles.
+- [Security Checklist](docs/SECURITY_CHECKLIST_FRONTEND.md) — CSP, storage, third-party scripts, and dependency posture for contributors.
 - [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
 
 ## Project layout

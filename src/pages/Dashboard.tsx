@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DOM_EVENTS } from '../events'
+import { Link, useSearchParams } from 'react-router-dom'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
 import AddressDisplay from '../components/AddressDisplay'
@@ -55,6 +54,24 @@ const activeBonds = [
   { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
 ] as const
 
+const shortcuts = [
+  {
+    to: '/bond',
+    label: 'Create bond',
+    description: 'Start a new USDC bond with trust-backed terms.',
+  },
+  {
+    to: '/trust',
+    label: 'View trust score',
+    description: 'See the details behind your on-chain reputation.',
+  },
+  {
+    to: '/attestations',
+    label: 'Review attestations',
+    description: 'Check recent attestations and protocol approvals.',
+  },
+] as const
+
 export default function Dashboard() {
   const { t } = useTranslation()
   useSeo({
@@ -63,6 +80,7 @@ export default function Dashboard() {
       'Monitor your trust score tier, outstanding bonds, pending grace periods, and recent identity attestations.',
   })
 
+  const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -97,106 +115,41 @@ export default function Dashboard() {
     setShowOnboarding(true)
   }, [connected])
 
-  const currentOnboardingStep = onboardingSteps[onboardingStep] ?? onboardingSteps[0]
-
-  const skipOnboarding = () => {
-    setShowOnboarding(false)
-    setOnboardingCompleted(true)
-    window.localStorage.setItem(ONBOARDING_COMPLETION_STORAGE_KEY, new Date().toISOString())
-  }
-
-  const goBackOnboarding = () => {
-    if (onboardingStep > 0) {
-      const prev = onboardingStep - 1
-      setOnboardingStep(prev)
-      window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(prev))
-    }
-  }
-
-  const advanceOnboarding = () => {
-    if (onboardingStep < onboardingSteps.length - 1) {
-      const next = onboardingStep + 1
-      setOnboardingStep(next)
-      window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(next))
-    } else {
-      skipOnboarding()
-    }
-  }
-
-  const shortcuts = [
-    { to: '/bond', label: t('dashboard.createBond'), description: t('dashboard.createBondDescription') },
-    { to: '/trust', label: t('dashboard.viewTrustScore'), description: t('dashboard.viewTrustScoreDescription') },
-    { to: '/attestations', label: t('dashboard.reviewAttestations'), description: t('dashboard.reviewAttestationsDescription') },
-  ]
-
   const showTrustScore = !widgetParam || widgetParam === 'trust-score'
   const showActiveBonds = !widgetParam || widgetParam === 'active-bonds'
   const showRecentActivity = !widgetParam || widgetParam === 'recent-activity'
   const showShortcuts = !widgetParam || widgetParam === 'shortcuts'
 
-  // Primary data query (disabled when offline via useQuery internally)
-  const fetchTrustScore = useCallback(() => {
-    if (!address) return Promise.reject(new Error('Wallet not connected'))
-    return apiFetch<TrustScore>(`/trust-score/${address}`)
-  }, [address])
+  const currentOnboardingStep = useMemo(() => onboardingSteps[onboardingStep], [onboardingStep])
 
-  const { data: trustData, refetch } = useQuery(fetchTrustScore, {
-    enabled: connected && !!address,
-  })
-
-  const displayScore = trustData?.score ?? TRUST_SCORE
-  const displayTier = (trustData?.tier ?? TRUST_TIER) as TrustTier
-
-  // Pull to refresh gestures
-  const touchStartRef = useRef<number>(0)
-  const [pullDistance, setPullDistance] = useState<number>(0)
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
-  const isMobile = useIsMobile()
-  const [online, setOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const handleOnline = () => setOnline(true)
-    const handleOffline = () => setOnline(false)
-    window.addEventListener(DOM_EVENTS.ONLINE, handleOnline)
-    window.addEventListener(DOM_EVENTS.OFFLINE, handleOffline)
-    return () => {
-      window.removeEventListener(DOM_EVENTS.ONLINE, handleOnline)
-      window.removeEventListener(DOM_EVENTS.OFFLINE, handleOffline)
-    }
-  }, [])
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isMobile || window.scrollY > 0 || isRefreshing || !online) return
-    touchStartRef.current = e.touches[0].clientY
+  const completeOnboarding = () => {
+    window.localStorage.removeItem(ONBOARDING_STEP_STORAGE_KEY)
+    window.localStorage.setItem(ONBOARDING_COMPLETION_STORAGE_KEY, new Date().toISOString())
+    setOnboardingCompleted(true)
+    setShowOnboarding(false)
   }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isMobile || window.scrollY > 0 || isRefreshing || !online) return
-    const currentY = e.touches[0].clientY
-    const diff = currentY - touchStartRef.current
-    if (diff > 0) {
-      const pull = Math.min(diff * 0.4, 80)
-      setPullDistance(pull)
-    }
+  const skipOnboarding = () => {
+    completeOnboarding()
   }
 
-  const handleTouchEnd = async () => {
-    if (!isMobile || isRefreshing || !online) return
-    if (pullDistance >= 60) {
-      setIsRefreshing(true)
-      setPullDistance(60)
-      try {
-        await refetch()
-      } catch (err) {
-        console.error('Failed to refresh dashboard data:', err)
-      } finally {
-        setIsRefreshing(false)
-        setPullDistance(0)
-      }
-    } else {
-      setPullDistance(0)
+  const advanceOnboarding = () => {
+    if (onboardingStep >= onboardingSteps.length - 1) {
+      completeOnboarding()
+      return
     }
+
+    const nextStep = onboardingStep + 1
+    window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(nextStep))
+    setOnboardingStep(nextStep)
+  }
+
+  const goBackOnboarding = () => {
+    if (onboardingStep === 0) return
+
+    const previousStep = onboardingStep - 1
+    window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(previousStep))
+    setOnboardingStep(previousStep)
   }
 
   return (

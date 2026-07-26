@@ -100,6 +100,7 @@ export default function ActivityTimeline({
   items = SAMPLE_ACTIVITY,
 }: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
   const count = items.length
   const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
@@ -108,11 +109,15 @@ export default function ActivityTimeline({
     setExpandedId((prev) => (prev === id ? null : id))
   }, [])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'Escape' || !expandedId) return
+      const openId = expandedId
       setExpandedId(null)
-    }
-  }, [])
+      triggerRefs.current.get(openId)?.focus()
+    },
+    [expandedId],
+  )
 
   return (
     <section
@@ -140,6 +145,7 @@ export default function ActivityTimeline({
             const isExpanded = expandedId === item.id
             const buttonId = `btn-${item.id}`
             const panelId = `details-${item.id}`
+            const buttonId = `trigger-${item.id}`
             return (
               <li className="activity-row" key={item.id}>
                 <div className="activity-row__rail" aria-hidden="true">

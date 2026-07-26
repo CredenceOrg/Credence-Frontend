@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -283,6 +284,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setAddressDisplay,
     setToastsEnabled,
     setAutoDismiss,
+    setQuietHoursEnabled,
+    setQuietHoursStart,
+    setQuietHoursEnd,
     saveSettings,
     cancelSettings,
     hasUnsavedChanges,

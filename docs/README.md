@@ -95,6 +95,10 @@ This directory contains comprehensive design specifications and implementation g
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling
 
+14. **[Performance Checklist](./PERFORMANCE_CHECKLIST.md)** ⭐ NEW
+    - Steps for performance review before shipping a widget
+    - Checklist for rendering, heavy dependencies, styling, and testing
+
 ### Quick Start
 
 To implement UI states in your components:

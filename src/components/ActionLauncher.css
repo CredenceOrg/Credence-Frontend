@@ -101,6 +101,10 @@
   gap: var(--credence-space-3);
 }
 
+.action-launcher__list-container {
+  min-height: 0;
+}
+
 .action-launcher__item {
   width: 100%;
   text-align: left;

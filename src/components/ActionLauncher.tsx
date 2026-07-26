@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import Button from './Button'
+import VirtualizedList from './VirtualizedList'
 import {
   ACTION_LAUNCHER_ITEMS,
   ACTION_LAUNCHER_RECENT_ACTIONS_KEY,
@@ -200,40 +201,50 @@ export default function ActionLauncher({
           {query.trim() === '' && recentActions.length > 0 && (
             <section className="action-launcher__section">
               <h3 className="action-launcher__section-heading">Recent actions</h3>
-              <ul className="action-launcher__list" role="list">
-                {recentActions.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      className="action-launcher__item"
-                      onClick={() => handleSelect(item)}
-                    >
-                      <span className="action-launcher__item-label">{item.label}</span>
-                      <span className="action-launcher__item-description">{item.description}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <VirtualizedList
+                items={recentActions}
+                itemHeight={72}
+                height={240}
+                className="action-launcher__list"
+                containerClassName="action-launcher__list-container"
+                getKey={(item) => item.id}
+                renderItem={(item) => (
+                  <button
+                    type="button"
+                    className="action-launcher__item"
+                    onClick={() => handleSelect(item)}
+                  >
+                    <span className="action-launcher__item-label">{item.label}</span>
+                    <span className="action-launcher__item-description">{item.description}</span>
+                  </button>
+                )}
+                emptyMessage={<p className="action-launcher__empty">No recent actions</p>}
+              />
             </section>
           )}
 
           <section className="action-launcher__section">
             <h3 className="action-launcher__section-heading">Actions</h3>
             {results.length > 0 ? (
-              <ul className="action-launcher__list" role="list">
-                {results.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      className="action-launcher__item"
-                      onClick={() => handleSelect(item)}
-                    >
-                      <span className="action-launcher__item-label">{item.label}</span>
-                      <span className="action-launcher__item-description">{item.description}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <VirtualizedList
+                items={results}
+                itemHeight={72}
+                height={320}
+                className="action-launcher__list"
+                containerClassName="action-launcher__list-container"
+                getKey={(item) => item.id}
+                renderItem={(item) => (
+                  <button
+                    type="button"
+                    className="action-launcher__item"
+                    onClick={() => handleSelect(item)}
+                  >
+                    <span className="action-launcher__item-label">{item.label}</span>
+                    <span className="action-launcher__item-description">{item.description}</span>
+                  </button>
+                )}
+                emptyMessage={<p className="action-launcher__empty">No matching actions</p>}
+              />
             ) : (
               <p className="action-launcher__empty">No matching actions</p>
             )}

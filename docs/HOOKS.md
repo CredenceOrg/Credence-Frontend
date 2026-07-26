@@ -36,6 +36,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useWallet`](#usewallet)
   - [`useProductUpdates`](#useproductupdates)
   - [`useSmartBack`](#usesmartback)
+  - [`useThrottledCallback`](#usethrottledcallback)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -756,6 +757,48 @@ function BackButton() {
       ← Back
     </button>
   )
+}
+```
+
+---
+
+### `useThrottledCallback`
+
+Source: [`src/hooks/useThrottledCallback.ts`](../src/hooks/useThrottledCallback.ts) · Constant: [`DEFAULT_SCROLL_THROTTLE_MS`](../src/config/scroll.ts)
+
+```ts
+function useThrottledCallback<T extends (...args: any[]) => any>(
+  callback: T,
+  delayMs?: number // default: 100ms (DEFAULT_SCROLL_THROTTLE_MS)
+): (...args: Parameters<T>) => void
+```
+
+Throttles execution of `callback` so it fires at most once per `delayMs` window. Designed for scroll-tracking, resize, and high-frequency event handlers to prevent excessive `setState` calls and layout re-computations.
+
+**Behavior notes**
+
+- **Leading call:** fires immediately on the first invocation.
+- **Trailing call:** subsequent calls during the delay window schedule a single execution with the latest arguments when the delay window elapses.
+- **Immediate mode (`delayMs <= 0`):** disables throttling and invokes the callback synchronously on every call.
+- **Cleanup:** clears pending timers on component unmount.
+
+```tsx
+import { useState, useEffect } from 'react'
+import { useThrottledCallback } from '../hooks/useThrottledCallback'
+
+function ScrollProgress() {
+  const [scrollY, setScrollY] = useState(0)
+
+  const handleScroll = useThrottledCallback(() => {
+    setScrollY(window.scrollY)
+  }, 100)
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
+  return <div>Scroll Position: {scrollY}px</div>
 }
 ```
 

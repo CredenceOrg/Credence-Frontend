@@ -98,12 +98,11 @@ export default function ThemeToggle() {
       type="button"
       className="theme-toggle"
       onClick={handleClick}
-      aria-label={`Switch to ${nextTheme} theme`}
+      aria-label="Toggle theme"
       aria-pressed={resolved === 'dark'}
-      title={`Switch to ${nextTheme} theme`}
+      title="Toggle theme"
     >
       {resolved === 'light' ? <MoonIcon /> : <SunIcon />}
-      <span className="sr-only">{`Switch to ${nextTheme} theme`}</span>
     </button>
   )
 }

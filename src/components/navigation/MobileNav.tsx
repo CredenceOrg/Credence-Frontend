@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { PrefetchNavLink } from '../PrefetchNavLink'
 import { PRELOADS_BY_PATH } from '../../config/routes'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
-import { DOM_EVENTS } from '../../events'
+import { useScrollPreserver } from '../../hooks/useScrollPreserver'
 import './MobileNav.css'
 import { useTranslation } from 'react-i18next'
 import { SECONDARY_NAV_LINKS } from '../../config/navLinks'
@@ -15,6 +15,8 @@ export default function MobileNav() {
   const hamburgerRef = useRef<HTMLButtonElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const location = useLocation()
+
+  useScrollPreserver({ isActive: isOpen })
 
   // Close on route change
   const prevPath = useRef(location.pathname)

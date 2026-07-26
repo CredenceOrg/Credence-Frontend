@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import Button from './Button'
 import './ConfirmDialog.css'
 
@@ -29,6 +30,8 @@ export default function ReauthPrompt({
     onCancel()
   }, [onCancel])
 
+  useScrollPreserver({ isActive: open })
+
   useFocusTrap({
     containerRef: dialogRef,
     isActive: open,
@@ -40,14 +43,6 @@ export default function ReauthPrompt({
   useEffect(() => {
     if (!open) {
       setIsSubmitting(false)
-      return
-    }
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
     }
   }, [open])
 

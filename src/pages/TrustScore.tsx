@@ -9,16 +9,16 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
-import ActivityTimeline, { ActivityItem } from '../components/ActivityTimeline'
 import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
+import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
-import { SAMPLE_ACTIVITY } from '../data/activity'
+import { useToast } from '../components/ToastProvider'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 
@@ -55,7 +55,6 @@ function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validati
 }
 
 export default function TrustScore() {
-  const { t } = useTranslation()
   useSeo({
     title: 'Trust Score',
     description:
@@ -64,6 +63,8 @@ export default function TrustScore() {
   const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork, addressDisplay } = useSettings()
+  const { copy, copied } = useCopyToClipboard()
+  const { addToast } = useToast()
   const networkMismatch = useNetworkMismatch()
   const [searchParams, setSearchParams] = useSearchParams()
   const [address, setAddress] = useState<string>(() => {
@@ -310,6 +311,28 @@ export default function TrustScore() {
                         aria-label={`Look up address ${displayLabel}`}
                       >
                         {displayLabel}
+                      </button>
+                      <button
+                        type="button"
+                        className="trustScore__recentCopyBtn"
+                        onClick={async () => {
+                          const success = await copy(item.address)
+                          if (success) {
+                            addToast('success', 'Address copied to clipboard')
+                          }
+                        }}
+                        aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}
+                      >
+                        {copied ? (
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                        )}
                       </button>
                     </li>
                   )

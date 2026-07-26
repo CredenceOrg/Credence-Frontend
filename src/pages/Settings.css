@@ -47,6 +47,46 @@
   color: var(--text-primary) !important;
 }
 
+.control-time {
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--credence-radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-base);
+  line-height: var(--credence-line-height-base);
+  transition:
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.control-time:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+  border-color: var(--credence-color-primary);
+}
+
+.control-time:hover:not(:disabled) {
+  border-color: var(--credence-color-primary);
+}
+
+.control-time:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quiet-hours-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.quiet-hours-fields .control-time {
+  width: 100%;
+}
+
 .settings-backup-row {
   display: flex;
   gap: 0.75rem;

@@ -4,17 +4,16 @@ This catalog is the source-facing reference for shared UI under `src/components/
 
 Related focused docs: [button system](./button-system.md), [notifications](./notifications.md), [design tokens](./DESIGN_TOKENS.md), [dark mode](./dark-mode.md), [focus patterns](./focus-patterns.md), [UI states](./UI_STATES_GUIDE.md), [TrustGauge quick reference](./TRUST_GAUGE_QUICK_REFERENCE.md), and [tier thresholds](./tier-thresholds.md).
 
-> **Per-route SEO metadata** — Use the [`useSeo`](../src/hooks/useSeo.ts) hook (documented in [HOOKS.md](./HOOKS.md#useseo)) to set `document.title` and `<meta name="description">` on a per-route basis. Every route-level page component should call `useSeo` with a descriptive `description` so search engines and social-card scrapers receive page-specific context rather than the static fallback in `index.html`.
+**Storybook**: Components that have stories are listed with their Storybook path and variant names. Run `npm run storybook` (defaults to port 6006) to browse and interact with them. Components without a Storybook entry have no story file yet.
 
 ## Styling ownership snapshot
 
 | Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |
 | ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| BottomNav              | `src/components/navigation/BottomNav.css`                                           | None.                                                                                                                     |
+| Progress               | `src/components/Progress.css`                                                       | None.                                                                                                                     |
 | Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
-| LoadingSpinner         | `src/components/LoadingSpinner.css`                                                | None.                                                                                                                     |
 | Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
-| StatusBadge            | `src/components/StatusBadge.css`                                                    | None.                                                                                                                     |
-| AnalyticsWidget        | `src/components/AnalyticsWidget.css`                                                | None.                                                                                                                     |
 | Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
 | Toast / ToastProvider  | `src/components/Toast.css`                                                          | None.                                                                                                                     |
 | ConfirmDialog          | `src/components/ConfirmDialog.css`                                                  | None.                                                                                                                     |
@@ -23,7 +22,6 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | TrustGauge             | `src/components/TrustGauge.css`                                                     | Uses inline CSS custom properties for dynamic progress, marker, thumb, and legend-dot colors; keep scoped until migrated. |
 | TierLadder             | `src/components/TierLadder.css` + `Badge.css`                                       | None.                                                                                                                     |
 | ActivityTimeline       | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                       |
-| TooltipOnOverflow      | `src/components/TooltipOnOverflow.css`                                              | None.                                                                                                                     |
 | FormField              | `src/components/forms/FormField.css`                                                | None.                                                                                                                     |
 | controls/Select        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
 | controls/Toggle        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
@@ -34,11 +32,11 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
 | Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
 | ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
+| Kbd                     | `src/components/Kbd.css`                                                            | None.                                                                                                                     |
 | KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
 | ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
-| SpeedDial              | `src/components/SpeedDial.css`                                                      | None.                                                                                                                     |
 
 ## Shared vocabularies
 
@@ -49,14 +47,6 @@ Source: [`Badge.tsx`](../src/components/Badge.tsx)
 `'bronze' | 'silver' | 'gold' | 'platinum' | 'active' | 'locked' | 'slashed' | 'grace-period' | 'unknown'`
 
 Unknown runtime strings normalize to the `unknown` visual style while preserving the supplied string as a fallback label only when no known label exists.
-
-### `StatusBadgeVariant`
-
-Source: [`StatusBadge.tsx`](../src/components/StatusBadge.tsx)
-
-`'pending' | 'active' | 'completed' | 'failed'`
-
-Lifecycle status for bonds and operations. Each variant maps to a distinct semantic colour family via `--credence-*` design tokens.
 
 ### `BannerSeverity`
 
@@ -97,7 +87,7 @@ Source: [`src/components/Button.tsx`](../src/components/Button.tsx). Focused doc
 | `children`          | `ReactNode`                                       | Required                                 |
 | Native button props | `ButtonHTMLAttributes<HTMLButtonElement>`         | Forwarded; `type` defaults to `'button'` |
 
-Accessibility: renders a native `<button>`, disables interaction while `disabled` or `isLoading`, sets `aria-busy` for loading state, hides spinner SVG from assistive tech, and inherits keyboard activation/focus behavior from the platform. Primary CTAs (`variant="primary"`) automatically receive `data-testid="primary-cta"` for test stability, unless overridden via props.
+Accessibility: renders a native `<button>`, disables interaction while `disabled` or `isLoading`, sets `aria-busy` for loading state, hides spinner SVG from assistive tech, and inherits keyboard activation/focus behavior from the platform.
 
 Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-color-info-surface`, `--credence-color-primary*`, `--credence-color-slate-*`, `--credence-color-white`, `--credence-focus-ring`, font, line-height, radius, spacing, surface, and text tokens.
 
@@ -107,196 +97,42 @@ Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-co
 </Button>
 ```
 
-## LoadingSpinner
+## PinWidgetButton
 
-Source: [`src/components/LoadingSpinner.tsx`](../src/components/LoadingSpinner.tsx). Storybook: `Components/LoadingSpinner`.
+Toggle button rendered on each dashboard widget card, allowing the user
+to pin/unpin it to the top row. Pinned state persists in `localStorage`
+under `credence:pinnedWidgets` (see `src/config/pinnedWidgets.ts`), capped
+at `MAX_PINNED_WIDGETS`.
 
-| Prop            | Type                        | Default      |
-| --------------- | --------------------------- | ------------ |
-| `label`         | `string`                    | `'Loading…'` |
-| `size`          | `'sm' \| 'md' \| 'lg'`      | `'md'`       |
-| `className`     | `string`                    | `''`         |
-| `iconClassName` | `string`                    | `''`         |
-| Native props    | `HTMLAttributes<HTMLSpanElement>` | Forwarded    |
+**Props**
+- `slug: string` — widget identifier
+- `isPinned: boolean`
+- `onToggle: (slug: string) => void`
 
-Accessibility: Renders an SVG loading spinner with `aria-hidden="true"` by default. When the user enables `prefers-reduced-motion: reduce`, the component automatically falls back to rendering static `"Loading…"` text (or custom `label` prop), complying with WCAG 2.1 AA animation requirements.
+**Styling**: uses `--spacing-xs`, `--radius-sm`, `--color-text-secondary`,
+`--color-bg-hover`, `--color-focus-ring` design tokens. No hard-coded values.
 
-Tokens: `--credence-font-family-base`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-space-*`, `--credence-motion-*`.
+**Accessibility**: `aria-pressed` reflects pin state; `aria-label` announces
+the pin/unpin action.
 
-```tsx
-<LoadingSpinner size="md" />
-<LoadingSpinner label="Processing…" />
-```
 
 ## Badge
 
-Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx). Contrast audit: [badge-contrast-audit.md](./badge-contrast-audit.md).
+Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx).
 
 | Prop        | Type                     | Default             |
 | ----------- | ------------------------ | ------------------- |
 | `variant`   | `BadgeVariant \| string` | Required            |
 | `label`     | `string`                 | Known variant label |
 | `className` | `string`                 | `''`                |
-| `srPrefix`  | `string`                 | —                   |
 
-**`srPrefix`** renders an `.sr-only` `<span>` _before_ the visible label so assistive technology can announce the badge in context (e.g. `srPrefix="Bond status:"` causes a screen reader to read `"Bond status: Slashed"` rather than just `"Slashed"`). No extra DOM is inserted when the prop is omitted.
-
-Accessibility: renders text in a `<span>` with a `title` attribute matching the display label (provides a tooltip on truncation). Status badges (`slashed`, `grace-period`, `locked`) carry safety-relevant meaning — the visible label is always non-empty so meaning is never communicated by color alone. Use `srPrefix` when a badge appears inside a list row or table cell where a screen reader needs additional context to interpret the label.
+Accessibility: renders text in a `<span>`; consumers should provide surrounding context when the badge alone is not descriptive.
 
 Tokens: tier/status color tokens, `--credence-font-size-xs`, `--credence-font-weight-semibold`, `--credence-radius-full`, `--credence-space-2`.
 
 ```tsx
 <Badge variant="gold" />
 <Badge variant="grace-period" label="Grace" />
-<Badge variant="slashed" srPrefix="Bond status:" />
-```
-
-## StatusBadge
-
-Source: [`src/components/StatusBadge.tsx`](../src/components/StatusBadge.tsx). Storybook: `Components/StatusBadge`.
-
-Displays a bond or operation lifecycle status as a colour-coded pill. Each variant maps to a distinct semantic colour family sourced entirely from `--credence-*` design tokens — no hard-coded colour values.
-
-| Prop        | Type                  | Default              |
-| ----------- | --------------------- | -------------------- |
-| `variant`   | `StatusBadgeVariant`  | Required             |
-| `label`     | `string`              | Capitalised variant  |
-| `className` | `string`              | `''`                 |
-| `srPrefix`  | `string`              | —                    |
-| `ariaLabel` | `string`              | Display label        |
-
-### `StatusBadgeVariant`
-
-`'pending' | 'active' | 'completed' | 'failed'`
-
-| Variant     | Semantic intent | Token family                     |
-| ----------- | --------------- | -------------------------------- |
-| `pending`   | Neutral/waiting | `--credence-color-warning-*`     |
-| `active`    | In progress     | `--credence-color-success-*`     |
-| `completed` | Resolved        | `--credence-color-info-*`        |
-| `failed`    | Error/danger    | `--credence-color-danger-*`      |
-
-**`srPrefix`** renders an `.sr-only` `<span>` _before_ the visible label so assistive technology can announce the badge in context (e.g. `srPrefix="Bond status:"` causes a screen reader to read `"Bond status: Failed"` rather than just `"Failed"`). No extra DOM is inserted when the prop is omitted.
-
-Accessibility: renders text in a `<span>` with `aria-label` set to the display label (or the `ariaLabel` prop override). The visible label is always non-empty so meaning is never communicated by colour alone. Use `srPrefix` when a badge appears inside a list row or table cell where a screen reader needs additional context.
-
-Tokens: `--credence-color-warning-surface`, `--credence-color-warning-border`, `--credence-color-warning-text`, `--credence-color-success-surface`, `--credence-color-success-border`, `--credence-color-success-text`, `--credence-color-info-surface`, `--credence-color-info-border`, `--credence-color-info-text`, `--credence-color-danger-surface`, `--credence-color-danger-border`, `--credence-color-danger-text`, `--credence-font-size-xs`, `--credence-font-weight-semibold`, `--credence-radius-full`, `--credence-space-2`.
-
-```tsx
-<StatusBadge variant="pending" />
-<StatusBadge variant="active" />
-<StatusBadge variant="completed" label="Done" />
-<StatusBadge variant="failed" srPrefix="Bond status:" />
-```
-
-## AnalyticsWidget
-
-Source: [`src/components/AnalyticsWidget.tsx`](../src/components/AnalyticsWidget.tsx). Storybook: `Components/AnalyticsWidget`.
-
-Displays one or two periods of numeric metrics in a card layout. When `previousPeriod` is supplied a **Compare periods** toggle appears in the header; enabling it renders the previous period column alongside the current period so operators can do a quick side-by-side comparison without leaving the dashboard.
-
-The component supports both **uncontrolled** (default) and **controlled** modes:
-- **Uncontrolled**: omit `compareEnabled` / `onCompareChange`; the widget manages toggle state internally, optionally seeded by `defaultCompare`.
-- **Controlled**: supply both `compareEnabled` and `onCompareChange` to lift toggle state to the parent.
-
-### Props
-
-| Prop              | Type                        | Default     |
-| ----------------- | --------------------------- | ----------- |
-| `title`           | `string`                    | Required    |
-| `currentPeriod`   | `AnalyticsPeriodData`       | Required    |
-| `previousPeriod`  | `AnalyticsPeriodData`       | —           |
-| `defaultCompare`  | `boolean`                   | `false`     |
-| `compareEnabled`  | `boolean`                   | —           |
-| `onCompareChange` | `(next: boolean) => void`   | —           |
-| `className`       | `string`                    | `''`        |
-
-### `AnalyticsPeriodData`
-
-| Field     | Type                  | Notes                                        |
-| --------- | --------------------- | -------------------------------------------- |
-| `label`   | `string`              | Short period label shown in the column header (e.g. `"Jul 2026"`). |
-| `metrics` | `AnalyticsMetric[]`   | One or more metrics to display.              |
-
-### `AnalyticsMetric`
-
-| Field    | Type                        | Notes                                           |
-| -------- | --------------------------- | ----------------------------------------------- |
-| `label`  | `string`                    | Human-readable metric name (e.g. `"Trust Score"`). |
-| `value`  | `number`                    | Numeric value for the period.                   |
-| `format` | `(value: number) => string` | Optional formatter; defaults to `String(value)`. |
-| `unit`   | `string`                    | Optional suffix appended after the formatted value (e.g. `"USDC"`). |
-
-### Accessibility
-
-- Renders as a `<section>` with `aria-label` set to the `title` prop so it is a named landmark.
-- Title renders as an `<h2>`.
-- The compare toggle is a native `role="switch"` button with `aria-checked` and an `aria-label`. Its visible label (`"Compare periods"`) is linked via `<label htmlFor>`.
-- Each period column carries `aria-label="<period.label> metrics"`.
-- Metrics are structured as a `<dl>` (definition list) with `<dt>` for labels and `<dd>` for values, so assistive technology can navigate key/value pairs.
-
-### Tokens
-
-`--credence-border-default`, `--credence-color-primary`, `--credence-color-slate-50`, `--credence-font-family-base`, `--credence-font-size-lg`, `--credence-font-size-sm`, `--credence-font-size-xl`, `--credence-font-size-xs`, `--credence-font-weight-bold`, `--credence-font-weight-regular`, `--credence-font-weight-semibold`, `--credence-line-height-tight`, `--credence-motion-duration-base`, `--credence-motion-easing-standard`, `--credence-radius-lg`, `--credence-radius-xl`, `--credence-space-1`, `--credence-space-2`, `--credence-space-3`, `--credence-space-4`, `--credence-space-6`, `--credence-surface-card`, `--credence-text-primary`, `--credence-text-secondary`.
-
-```tsx
-// Uncontrolled — single period, no compare toggle
-<AnalyticsWidget
-  title="Analytics Overview"
-  currentPeriod={{
-    label: 'Jul 2026',
-    metrics: [
-      { label: 'Trust Score', value: 684 },
-      { label: 'Active Bonds', value: 3 },
-      { label: 'Total Bonded', value: 4250, format: (v) => v.toLocaleString(), unit: 'USDC' },
-    ],
-  }}
-/>
-
-// Uncontrolled — compare mode on by default
-<AnalyticsWidget
-  title="Analytics Overview"
-  currentPeriod={currentPeriod}
-  previousPeriod={previousPeriod}
-  defaultCompare
-/>
-
-// Controlled — parent owns toggle state
-<AnalyticsWidget
-  title="Analytics Overview"
-  currentPeriod={currentPeriod}
-  previousPeriod={previousPeriod}
-  compareEnabled={isComparing}
-  onCompareChange={setIsComparing}
-/>
-```
-
-## TooltipOnOverflow
-
-Source: [`src/components/TooltipOnOverflow.tsx`](../src/components/TooltipOnOverflow.tsx).
-
-| Prop        | Type               | Default     |
-| ----------- | ------------------ | ----------- |
-| `content`   | `string`           | Required    |
-| `children`  | `React.ReactElement` | Required  |
-| `className` | `string`           | `''`        |
-
-Wraps a single child element and displays a tooltip **only when the child's text is visually truncated** (overflowing). The tooltip appears on hover and on keyboard focus — keyboard users can dismiss it with Escape.
-
-Accessibility (WCAG 2.1 AA):
-- Sets `aria-describedby` on the child to associate tooltip content with the trigger.
-- Renders `role="tooltip"` with `aria-hidden` toggled for visibility.
-- Dismissible with Escape while focused, without stealing focus.
-- Respects `prefers-reduced-motion`; disables fade animation when set.
-- Color contrast uses design tokens (`--credence-color-slate-900` / `--credence-color-white`) meeting AA ratios (≥4.5:1).
-- Arrow pointers are CSS pseudo-elements (no extra DOM).
-
-Tokens: `--credence-surface-card`, `--credence-text-primary`, `--credence-color-slate-900`, `--credence-color-white`, `--credence-space-1`, `--credence-space-2`, `--credence-radius-md`, `--credence-font-size-xs`, `--credence-font-family-base`, `--credence-line-height-tight`, `--credence-motion-duration-fast`, `--credence-motion-easing-standard`, `--credence-shadow-toast`.
-
-```tsx
-<TooltipOnOverflow content="GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H">
-  <code>GBRPYHIL2CI3...OX2H</code>
-</TooltipOnOverflow>
 ```
 
 ## Banner
@@ -358,18 +194,27 @@ function SaveButton() {
 
 Source: [`src/components/ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx). Focused docs: [focus patterns](./focus-patterns.md).
 
-| Prop             | Type                                                                                              | Default           |
-| ---------------- | ------------------------------------------------------------------------------------------------- | ----------------- |
-| `open`           | `boolean`                                                                                         | Required          |
-| `title`          | `string`                                                                                          | Required          |
-| `subtitle`       | `string`                                                                                          | `undefined`       |
-| `breakdown`      | `{ bondAmount: string; penaltyAmount: string; penaltyPercent: number; resultingBalance: string }` | Required          |
-| `onConfirm`      | `() => void`                                                                                      | Required          |
-| `onCancel`       | `() => void`                                                                                      | Required          |
-| `returnFocusRef` | `RefObject<HTMLElement \| null>`                                                                  | `undefined`       |
-| `confirmLabel`   | `string`                                                                                          | `'Withdraw bond'` |
+| Prop                | Type                              | Default                          |
+| ------------------- | --------------------------------- | -------------------------------- |
+| `open`              | `boolean`                         | Required                         |
+| `title`             | `string`                          | Required                         |
+| `subtitle`          | `string`                          | `undefined`                      |
+| `breakdown`         | `ConfirmDialogPenaltyBreakdown`   | `undefined`                      |
+| `description`       | `React.ReactNode`                 | `undefined`                      |
+| `children`          | `React.ReactNode`                 | `undefined`                      |
+| `onConfirm`         | `() => void`                      | Required                         |
+| `onCancel`          | `() => void`                      | Required                         |
+| `returnFocusRef`    | `RefObject<HTMLElement \| null>`  | `undefined`                      |
+| `confirmLabel`      | `string`                          | `'Withdraw bond'`                |
+| `confirmInputLabel` | `React.ReactNode`                 | `undefined`                      |
+| `confirmInputHint`  | `React.ReactNode`                 | `undefined`                      |
+| `variant`           | `'danger' \| 'info'`              | `'danger'`                       |
+| `confirmPhrase`     | `string`                          | `'CONFIRM'`                      |
+| `confirmHint`       | `string`                          | Wallet/funds irreversibility hint |
 
-Accessibility: renders in a portal with `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby`/`aria-describedby`, focus trap, initial focus on Cancel, Escape and backdrop cancellation, body scroll lock, and optional focus restoration. The destructive action is disabled until the user types `CONFIRM`; assertive sr-only announcements describe state changes.
+`ConfirmDialogPenaltyBreakdown` is `{ bondAmount: string; penaltyAmount: string; penaltyPercent: number; resultingBalance: string }`. When `breakdown` is omitted, the `description` prop or `children` slot is rendered in its place.
+
+Accessibility: renders in a portal with `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby`/`aria-describedby`, focus trap, initial focus on Cancel, Escape and backdrop cancellation, body scroll lock, and optional focus restoration. The confirm button is disabled until the user types the value of `confirmPhrase` (default: `CONFIRM`); assertive sr-only announcements describe state changes.
 
 Tokens: danger color tokens, font family/size/weight, line-height, motion, radius, spacing, surface, and text tokens.
 
@@ -400,12 +245,9 @@ Source: [`src/components/AddressInput.tsx`](../src/components/AddressInput.tsx).
 | `onChange`           | `(value: string) => void`    | Required            |
 | `onValidationChange` | `(isValid: boolean) => void` | `undefined`         |
 | `disabled`           | `boolean`                    | `false`             |
-| `isLoading`          | `boolean`                    | `false`             |
 | `className`          | `string`                     | `''`                |
-| `error`              | `string`                     | `undefined`         |
-| `selfAddress`        | `string`                     | `undefined`         |
 
-Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste and copy controls are native buttons with explicit aria labels and hidden SVGs. Validation now performs two checks: (1) a format check (56-character, starts with `G`, uppercase alphanumeric), and (2) a **CRC-16 XMODEM checksum** verify per the Stellar StrKey spec. Distinct error messages are surfaced for each failure mode — `"Invalid address. Stellar public keys are 56 characters starting with G."` for a format error, and `"Invalid address checksum. Please verify the address."` for a checksum mismatch — and both are exposed via `role="alert"` with `aria-invalid="true"` set on the `<input>` when any error is active.
+Accessibility: composes `FormField`, so label, hint, and error IDs wire through `htmlFor`, `aria-describedby`, and `aria-invalid`. Paste and copy controls are native buttons with explicit aria labels and hidden SVGs. Validation requires a 56-character Stellar public key starting with `G`; invalid feedback is exposed by the FormField alert.
 
 Tokens: border, danger, primary, slate, success, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
 
@@ -417,6 +259,8 @@ Tokens: border, danger, primary, slate, success, focus, font, line-height, motio
   onValidationChange={setAddressValid}
 />
 ```
+
+Storybook: `Components/Forms/AddressInput` — **Default** · **Filled** · **Invalid** · **Disabled** · **Loading**.
 
 ## AmountInput
 
@@ -439,6 +283,8 @@ Tokens: border, danger-border, slate, focus, font, motion, radius, spacing, surf
 ```tsx
 <AmountInput value={amount} onChange={setAmount} balance={availableUsdc} error={amountError} />
 ```
+
+Storybook: `Components/Forms/AmountInput` — **Default** · **Filled** · **OverBalance** · **Error** · **Disabled** · **Loading**.
 
 ## TrustGauge
 
@@ -503,12 +349,11 @@ Source: [`src/components/forms/FormField.tsx`](../src/components/forms/FormField
 | ---------- | -------------------- | ----------- |
 | `id`       | `string`             | Required    |
 | `label`    | `string`             | Required    |
-| `hint`         | `string`             | `undefined` |
-| `error`        | `string`             | `undefined` |
-| `srOnlyLabel`  | `boolean`            | `false`     |
-| `children`     | `React.ReactElement` | Required    |
+| `hint`     | `string`             | `undefined` |
+| `error`    | `string`             | `undefined` |
+| `children` | `React.ReactElement` | Required    |
 
-Accessibility: renders a `<label htmlFor={id}>`, optional hint, clones the child to inject `id`, merged `aria-describedby`, and `aria-invalid` when an error exists. Error text has `role="alert"`. Set `srOnlyLabel` when the visible UI relies on a placeholder or icon-only affordance but a programmatic label is still required for assistive technology.
+Accessibility: renders a `<label htmlFor={id}>`, optional hint, clones the child to inject `id`, merged `aria-describedby`, and `aria-invalid` when an error exists. Error text has `role="alert"`.
 
 Tokens: `--credence-color-danger-text`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-space-2`, `--credence-text-secondary`.
 
@@ -518,13 +363,7 @@ Tokens: `--credence-color-danger-text`, `--credence-font-size-sm`, `--credence-f
 </FormField>
 ```
 
-Placeholder-only layouts should still expose an accessible name:
-
-```tsx
-<FormField id="search" label="Search attestations" srOnlyLabel>
-  <input placeholder="Search attestations…" />
-</FormField>
-```
+Storybook: `Components/Forms/FormField` — **Default** · **WithHint** · **WithError** · **WithHintAndError**.
 
 ## controls/Select
 
@@ -552,6 +391,8 @@ Tokens: shared control CSS consumes border, primary, white, focus, font, line-he
 />
 ```
 
+Storybook: `Components/Controls/Select` — **Default** · **Error** · **Disabled** · **Loading**.
+
 ## controls/Toggle
 
 Source: [`src/components/controls/Toggle.tsx`](../src/components/controls/Toggle.tsx).
@@ -570,6 +411,8 @@ Tokens: shared control CSS consumes border, primary, white, focus, font, line-he
 ```tsx
 <Toggle checked={toastsEnabled} onChange={setToastsEnabled} ariaLabel="Enable notifications" />
 ```
+
+Storybook: `Components/Controls/Toggle` — **Off** · **On** · **Error** · **Disabled** · **Loading**.
 
 ## states/EmptyState
 
@@ -658,209 +501,122 @@ Tokens: warning color tokens, spacing, radius.
 />
 ```
 
-## ActionCard
+## BottomNav
 
-Source: [`src/components/ActionCard.tsx`](../src/components/ActionCard.tsx).
+Source: [`src/components/navigation/BottomNav.tsx`](../src/components/navigation/BottomNav.tsx).
 
-| Prop       | Type        | Default  |
-| ---------- | ----------- | -------- |
-| `title`    | `string`    | Required |
-| `children` | `ReactNode` | Required |
-| `onDismiss`| `() => void`| `undefined`|
+Fixed bottom navigation bar showing the 5 primary routes. Visible on viewports ≤ `BREAKPOINTS.MD` (768 px); hidden at wider widths via `display: none` in CSS.
 
-Accessibility: renders as a semantic `<article>` with the title in an `<h2>`. No additional ARIA attributes are needed; place inside a `<main>` or named landmark so context is clear. When `onDismiss` is provided, a fallback `<button>` with an `aria-label` is rendered for non-touch users, and native touch events handle the swipe gesture.
+| Prop | Type | Default |
+| ---- | ---- | ------- |
+| *(none)* | — | — |
 
-Tokens: `--credence-border-default`, `--credence-radius-xl`, `--credence-space-4`, `--credence-space-6`, `--credence-surface-card`, `--credence-text-primary`, `--credence-font-size-xl`, `--credence-line-height-tight`.
+The component accepts no props. Route state is derived internally via React Router's `useLocation`.
 
-```tsx
-<ActionCard title="Create bond">
-  <AmountInput value={amount} onChange={setAmount} balance={balance} />
-  <Button onClick={submit}>Submit</Button>
-</ActionCard>
-```
+**Rendered markup:** `<nav aria-label="Bottom navigation">` containing a `<ul role="list">` of 5 `<li>` items, each wrapping a React Router `NavLink`. `NavLink` automatically sets `aria-current="page"` on the active route's `<a>` element.
 
-## Disclaimer
+Accessibility: all tabs are native `<a>` elements reachable by Tab key in document order; active state is communicated both visually (primary-color border and text) and semantically (`aria-current="page"`); focus indicator uses `var(--credence-focus-ring)`; touch targets are ≥ 56 px tall (44 px WCAG minimum). Transitions are suppressed under `prefers-reduced-motion`.
 
-Source: [`src/components/Disclaimer.tsx`](../src/components/Disclaimer.tsx).
-
-| Prop        | Type     | Default        |
-| ----------- | -------- | -------------- |
-| `context`   | `string` | `undefined`    |
-| `termsHref` | `string` | `LINKS.terms`  |
-
-Accessibility: renders as `<aside aria-label="Risk disclaimer">`. The terms link has an explicit `aria-label="Read full terms and conditions"`. When `termsHref` resolves to a placeholder (`'#'` or empty), a `<span aria-disabled="true">` is rendered instead of an anchor so the element is inert for keyboard and AT users.
-
-Tokens: secondary text and spacing tokens via `Disclaimer.css`.
+Tokens: `--credence-surface-card` (background), `--credence-border-default` (top border), `--credence-color-primary` (active tab indicator), `--credence-text-secondary` (inactive label), `--credence-text-primary` (hover), `--credence-space-1`, `--credence-space-2` (padding), `--credence-font-size-xs` (label size), `--credence-font-weight-semibold` (label weight), `--credence-font-weight-bold` (active label), `--credence-motion-duration-fast`, `--credence-motion-easing-standard` (transitions), `--credence-focus-ring`.
 
 ```tsx
-<Disclaimer context="Early withdrawal forfeits accrued rewards." />
+// BottomNav is rendered by Layout — no props needed.
+// It reads the current route via React Router context automatically.
+<BottomNav />
 ```
 
-## ThemeToggle
+## Progress
 
-Source: [`src/components/ThemeToggle.tsx`](../src/components/ThemeToggle.tsx). Focused docs: [dark mode](./dark-mode.md).
+Source: [`src/components/Progress.tsx`](../src/components/Progress.tsx).
 
-No external props. Reads `themeMode` from `SettingsContext` and writes the explicit opposite on click; never exposes a prop API.
+| Prop         | Type                         | Default     |
+| ------------ | ---------------------------- | ----------- |
+| `value`      | `number`                     | `undefined` |
+| `min`        | `number`                     | `0`         |
+| `max`        | `number`                     | `100`       |
+| `aria-label` | `string`                     | Required    |
+| `className`  | `string`                     | `''`        |
+| `size`       | `'sm' \| 'md' \| 'lg'`       | `'md'`      |
 
-Accessibility: native `<button>` with `aria-label="Switch to {nextTheme} mode"` and `aria-pressed` reflecting whether the resolved theme is dark. Both icons are `aria-hidden`. Tracks the OS `prefers-color-scheme` media query while `themeMode` is `'system'` so `aria-pressed` and `aria-label` stay in sync with the document's `data-theme`.
+When `value` is supplied the bar is **determinate**: `aria-valuenow`, `aria-valuemin`, and `aria-valuemax` are set and the fill width reflects the completion percentage. When `value` is omitted the bar is **indeterminate**: none of the `aria-value*` attributes are set, which signals to assistive technology that the completion amount is unknown. Values outside `[min, max]` are clamped silently.
 
-Tokens: `--credence-focus-ring`, spacing, and icon sizing via `ThemeToggle.css`.
+Accessibility: `role="progressbar"` on the root; `aria-label` is required. The inner track and fill divs are `aria-hidden`. Indeterminate animation is suppressed under `prefers-reduced-motion`.
+
+Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track background), `--credence-radius-full`, `--credence-space-1/2/3` (track heights), `--credence-motion-duration-base`, `--credence-motion-duration-slow`, `--credence-motion-easing-standard`.
 
 ```tsx
-<ThemeToggle />
+{/* Determinate */}
+<Progress value={60} max={100} aria-label="Bond creation: step 3 of 5" />
+
+{/* Indeterminate */}
+<Progress aria-label="Loading trust score" />
 ```
+
+## Kbd
+
+Source: [`src/components/Kbd.tsx`](../src/components/Kbd.tsx).
+
+Renders a single keyboard key as a styled `<kbd>` element with a raised-button visual. Use this wherever the UI needs to display a keyboard shortcut consistently — in docs, tooltips, onboarding copy, or alongside the `KeyboardShortcutsDialog`.
+
+| Prop        | Type                    | Default       |
+| ----------- | ----------------------- | ------------- |
+| `children`  | `string`                | Required      |
+| `size`      | `'sm' \| 'md' \| 'lg'` | `'md'`        |
+| `className` | `string`                | `''`          |
+| `ariaLabel` | `string`                | `children`    |
+
+- `sm` — compact; suited for dense tooltips and inline prose.
+- `md` — default; matches the existing `KeyboardShortcutsDialog` key chip size.
+- `lg` — spacious; suited for large-print contexts and onboarding copy.
+
+Accessibility: renders a native `<kbd>` element (semantic keyboard text); sets `aria-label` to `children` by default. Supply `ariaLabel` when the visible symbol is ambiguous to assistive technology (e.g. `ariaLabel="Command"` for `"⌘"`).
+
+Tokens: `--credence-border-default`, `--credence-color-slate-600`, `--credence-color-slate-700`, `--credence-font-family-base`, `--credence-font-size-xs`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-radius-sm`, `--credence-space-1`, `--credence-space-2`, `--credence-space-3`, `--credence-surface-page`, `--credence-text-primary`.
+
+```tsx
+{/* Single key */}
+<Kbd>Esc</Kbd>
+
+{/* Composite shortcut — one <Kbd> per key */}
+<span aria-label="Ctrl + K">
+  <Kbd>Ctrl</Kbd>
+  {' + '}
+  <Kbd>K</Kbd>
+</span>
+
+{/* Platform symbol with accessible label */}
+<Kbd ariaLabel="Command">⌘</Kbd>
+
+{/* Small variant inline in a tooltip */}
+<Kbd size="sm">?</Kbd>
+```
+
+Storybook: `Components/Kbd` — **Default** · **Small** · **Medium** · **Large** · **ModifierKey** · **PlatformSymbol** · **AllSizes** · **CompositeShortcut** · **ThreeKeyShortcut** · **InlineProse**.
 
 ## KeyboardShortcutsDialog
 
-Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx). Focused docs: [keyboard interactions](./keyboard-interactions.md).
+Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx).
 
-| Prop             | Type                              | Default     |
-| ---------------- | --------------------------------- | ----------- |
-| `open`           | `boolean`                         | Required    |
-| `onClose`        | `() => void`                      | Required    |
-| `returnFocusRef` | `React.RefObject<HTMLElement \| null>` | `undefined` |
+Modal dialog that lists all global keyboard shortcuts grouped by category. Rendered via a React portal into `document.body`. Key chips inside the dialog are rendered with `<Kbd>`.
 
-Accessibility: portal-rendered modal with `role="dialog"`, `aria-modal="true"`, and a generated `aria-labelledby`. Focus is trapped while open. Escape and backdrop click both call `onClose`. Focus is restored to `returnFocusRef` on close, or to the previously active element when `returnFocusRef` is omitted. Shortcuts are grouped by category with visible section headings.
+| Prop             | Type                             | Default                |
+| ---------------- | -------------------------------- | ---------------------- |
+| `open`           | `boolean`                        | Required               |
+| `onClose`        | `() => void`                     | Required               |
+| `returnFocusRef` | `RefObject<HTMLElement \| null>` | Previously focused element |
 
-Tokens: border, surface, text, font, spacing, radius, and focus tokens via `KeyboardShortcutsDialog.css`.
+Shortcut data is sourced from `src/data/keyboardShortcuts.ts` (`KEYBOARD_SHORTCUTS`). Add entries there to have them reflected in the dialog automatically.
 
-```tsx
-const triggerRef = useRef<HTMLButtonElement>(null)
+`formatModifierKey(key, userAgent?)` is exported as a named helper: it translates `Ctrl → ⌘`, `Alt → ⌥`, and `Shift → ⇧` on macOS user-agents, and is a no-op on all other platforms.
 
-<button ref={triggerRef} onClick={() => setOpen(true)}>Keyboard shortcuts</button>
-<KeyboardShortcutsDialog open={open} onClose={() => setOpen(false)} returnFocusRef={triggerRef} />
-```
+Accessibility: `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby`/`aria-describedby`, focus trap (initial focus on close button), Escape and backdrop-click dismissal, body scroll lock, and optional focus restoration via `returnFocusRef`.
 
-## AttestationForm
-
-Source: [`src/components/AttestationForm.tsx`](../src/components/AttestationForm.tsx).
-
-| Prop              | Type                                                                   | Default     |
-| ----------------- | ---------------------------------------------------------------------- | ----------- |
-| `onSubmitSuccess` | `(payload: { subject: string; type: string; evidence: string }) => void` | `undefined` |
-| `disabled`        | `boolean`                                                              | `false`     |
-
-Accessibility: all form fields are wrapped in `FormField` so each has a `<label>`, hint, and error wired through `aria-describedby` and `aria-invalid`. The type selector uses `controls/Select` (native `<select>`). The evidence textarea has a live character counter associated via `aria-describedby`. Submission is confirmed via `ConfirmDialog` before calling `onSubmitSuccess`; success is announced via a toast.
-
-Tokens: inherits tokens from `AddressInput`, `Select`, `FormField`, and `Button`.
+Tokens: inherits from `KeyboardShortcutsDialog.css`; no hard-coded colours — all values reference `--credence-*` design tokens.
 
 ```tsx
-<AttestationForm
-  onSubmitSuccess={({ subject, type, evidence }) => recordAttestation(subject, type, evidence)}
+<KeyboardShortcutsDialog
+  open={shortcutsOpen}
+  onClose={() => setShortcutsOpen(false)}
+  returnFocusRef={triggerRef}
 />
 ```
-
-## CreateBondFlow
-
-Source: [`src/components/CreateBondFlow.tsx`](../src/components/CreateBondFlow.tsx).
-
-| Prop         | Type         | Default     |
-| ------------ | ------------ | ----------- |
-| `onComplete` | `() => void` | `undefined` |
-| `onCancel`   | `() => void` | `undefined` |
-
-A four-step wizard: **amount → duration → review → confirm**. Fetches the connected wallet's USDC balance and calculates early-withdrawal penalty in-flight. The final step uses `ConfirmDialog` for confirmation.
-
-Accessibility: each step manages focus on mount so keyboard users advance through the wizard without losing context. Reduced motion is respected via `useReducedMotion`. Success is announced via a toast; `onComplete` is called after the toast fires.
-
-Tokens: `CreateBondFlow.css` consumes border, radius, spacing, surface, text, font, and motion tokens.
-
-```tsx
-<CreateBondFlow onComplete={() => navigate('/bond')} onCancel={() => navigate('/bond')} />
-```
-
-## ErrorBoundary
-
-Source: [`src/components/ErrorBoundary.tsx`](../src/components/ErrorBoundary.tsx).
-
-| Prop       | Type                                         | Default                        |
-| ---------- | -------------------------------------------- | ------------------------------ |
-| `children` | `ReactNode`                                  | Required                       |
-| `fallback` | `(error: Error, reset: () => void) => ReactNode` | `undefined` (uses `ErrorState`) |
-
-Class component that catches render and lifecycle errors in its subtree. The default fallback renders a branded `ErrorState` with a "Retry" action (re-mounts the subtree without a full reload) and a "Go home" link. Supply `fallback` to override with custom error UI.
-
-Wire telemetry in `componentDidCatch` (currently logs to console) before shipping to production.
-
-Accessibility: no additional ARIA attributes; inherits accessibility from `ErrorState` or the custom `fallback` render.
-
-Tokens: none directly; delegates to `ErrorState`.
-
-```tsx
-<ErrorBoundary>
-  <BondPage />
-</ErrorBoundary>
-
-{/* Custom fallback */}
-<ErrorBoundary fallback={(err, reset) => <button onClick={reset}>Retry: {err.message}</button>}>
-  <TrustScorePage />
-</ErrorBoundary>
-```
-
-## SpeedDial
-
-Source: [`src/components/SpeedDial.tsx`](../src/components/SpeedDial.tsx).
-
-Mobile-only floating action button that expands to reveal **Send**, **Receive**, and **Swap** shortcuts. Hidden on screens wider than 768 px (CSS `display: none` outside the `@media (max-width: 768px)` block).
-
-| Prop      | Type                  | Default                       |
-| --------- | --------------------- | ----------------------------- |
-| `actions` | `SpeedDialAction[]`   | `SPEED_DIAL_DEFAULT_ACTIONS`  |
-
-### `SpeedDialAction`
-
-| Field       | Type            | Notes                                      |
-| ----------- | --------------- | ------------------------------------------ |
-| `id`        | `string`        | React key; must be unique across the list. |
-| `label`     | `string`        | Pill label next to the icon button.        |
-| `to`        | `string`        | Route passed to `useNavigate()` on click.  |
-| `icon`      | `React.ReactNode` | SVG rendered inside the mini button.     |
-| `ariaLabel` | `string?`       | Overrides `label` for the button's accessible name. |
-
-### Default actions
-
-| Action  | Route                          |
-| ------- | ------------------------------ |
-| Send    | `/transactions?action=send`    |
-| Receive | `/transactions?action=receive` |
-| Swap    | `/transactions?action=swap`    |
-
-### Accessibility contract
-
-- The whole widget is a `<nav>` with `aria-label="Quick actions"` so screen-reader users can navigate to or skip it.
-- The FAB has `aria-expanded` (reflects open/closed state) and `aria-controls="speed-dial-actions"` pointing to the action list.
-- When the menu opens, focus moves to the first action button.
-- **Escape** closes the menu and returns focus to the FAB.
-- **Tab / Shift+Tab** cycles within the open menu (FAB + action buttons) without leaking focus to the rest of the page.
-- Action buttons are `tabindex="-1"` while the menu is closed so they are not reachable by keyboard when invisible.
-- No `display: none` toggle in JS—CSS handles visibility so reduced-motion users see a static state without animation jank.
-
-### Tokens consumed
-
-`--credence-border-default`, `--credence-color-primary`, `--credence-color-primary-strong`, `--credence-color-slate-*`, `--credence-color-white`, `--credence-focus-ring`, `--credence-motion-duration-*`, `--credence-motion-easing-standard`, `--credence-radius-full`, `--credence-shadow-toast`, `--credence-space-*`, `--credence-surface-card`, `--credence-text-primary`.
-
-### Styling ownership
-
-`src/components/SpeedDial.css` — no inline styles.
-
-### Usage
-
-```tsx
-{/* Default — shows Send / Receive / Swap */}
-<SpeedDial />
-
-{/* Custom actions */}
-<SpeedDial
-  actions={[
-    {
-      id: 'bond',
-      label: 'New Bond',
-      to: '/bond/new',
-      icon: <BondIcon />,
-      ariaLabel: 'Create a new bond',
-    },
-  ]}
-/>
-```
-
-The component is mounted in `Layout.tsx` so it appears on every route automatically. It is invisible on desktop and becomes visible only when the viewport is ≤ 768 px.

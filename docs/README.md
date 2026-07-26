@@ -134,10 +134,15 @@ This directory contains comprehensive design specifications and implementation g
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 
-19. **[i18n Extraction Guide](./i18n-extraction.md)** ⭐ NEW
-    - Step-by-step instructions for contributors to extract hardcoded strings
-    - Explanation of the manual extraction process
-    - Examples of adding strings to locales and using the `useTranslation` hook
+19. **[Upload Handling](./upload-handling.md)** ⭐ NEW (closes #1)
+    - Chunked uploads for large files
+    - Retry mechanisms with exponential backoff
+    - Progress reporting strategy
+
+20. **[Locales Management](./locales.md)** ⭐ NEW (closes #4)
+    - How to add a new locale
+    - Managing existing locales
+    - Using translation hooks
 
 ### Quick Start
 

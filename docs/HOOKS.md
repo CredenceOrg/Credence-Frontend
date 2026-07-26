@@ -23,6 +23,7 @@ behavior notes, and a minimal usage example linking to source.
 - [Hooks (`src/hooks/`)](#hooks-srchooks)
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
+  - [`useForwardRef`](#useforwardref)
   - [`useMediaQuery`](#usemediaquery)
   - [`useQuery`](#usequery)
   - [`useApiMutation`](#useapimutation)
@@ -159,6 +160,77 @@ function Bond() {
   useDocumentTitle('Bond') // document.title === 'Bond · Credence'
   return <main>…</main>
 }
+```
+
+---
+
+### `useForwardRef`
+
+Source: [`src/hooks/useForwardRef.ts`](../src/hooks/useForwardRef.ts)
+
+```ts
+function useForwardRef<T>(
+  ref?: NestedRef<T>,
+  initialValue: T | null = null
+): MutableRefObject<T | null>
+
+// Also exported:
+setRef<T>(ref: NestedRef<T>, value: T | null): void
+
+type ReactRef<T> = ForwardedRef<T> | MutableRefObject<T | null> | null | undefined
+type NestedRef<T> = ReactRef<T> | NestedRef<T>[]
+```
+
+A custom hook that merges a local ref with external forwarded refs, solving the common
+wrapper-component pattern where a component needs both internal access to a DOM node and
+the ability to forward that node to a parent via `ref`, `React.forwardRef`, or a callback
+ref. Supports deeply nested arrays of refs and cleans up on unmount.
+
+**Parameters**
+
+| Parameter    | Required | Description                                                                  |
+| ------------ | :------: | ---------------------------------------------------------------------------- |
+| `ref`        |          | A single ref, callback ref, or nested array of refs to synchronise. Optional. |
+| `initialValue` |        | Initial value for the internal ref. Defaults to `null`.                      |
+
+**Returns** a `MutableRefObject<T | null>` that the component attaches to its DOM node via JSX `ref`.
+
+**Behavior notes**
+
+- **Ref merging:** any time the internal ref changes (inside a `useIsomorphicLayoutEffect`),
+  the value is propagated to every ref in the `ref` argument — object refs via `.current`,
+  callback refs via invocation, and arrays recursively.
+- **Cleanup:** on unmount, `null` is propagated to all provided refs, ensuring parent
+  components do not hold stale node references.
+- **Failing callbacks:** if a callback ref throws, the error is silently caught so that
+  other refs in the same array are still updated.
+- **Frozen/read-only objects:** assignments to read-only or frozen ref objects are
+  silently skipped.
+- **SSR-safe / cleanup:** uses `useLayoutEffect` in the browser and falls back to
+  `useEffect` during SSR; the cleanup function propagates `null` on unmount.
+
+```tsx
+import { forwardRef, type ReactNode } from 'react'
+import { useForwardRef } from '../hooks/useForwardRef'
+
+interface FancyInputProps {
+  label: string
+  children?: ReactNode
+}
+
+const FancyInput = forwardRef<HTMLInputElement, FancyInputProps>(
+  function FancyInput({ label, children }, forwardedRef) {
+    const internalRef = useForwardRef<HTMLInputElement>(forwardedRef)
+
+    return (
+      <label>
+        {label}
+        <input ref={internalRef} />
+        {children}
+      </label>
+    )
+  }
+)
 ```
 
 ---

@@ -25,6 +25,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useMediaQuery`](#usemediaquery)
   - [`useQuery`](#usequery)
+  - [`useApiMutation`](#useapimutation)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useReducedTransparency`](#usereducedtransparency)
   - [`useScrollPreserver`](#usescrollpreserver)
@@ -256,6 +257,52 @@ function MyComponent() {
       {isLoading ? <p>Loading...</p> : <p>Data: {JSON.stringify(data)}</p>}
     </div>
   )
+}
+```
+
+---
+
+### `useApiMutation`
+
+Source: [`src/hooks/useApiMutation.ts`](../src/hooks/useApiMutation.ts)
+
+```ts
+function useApiMutation<TData, TVariables, TContext = unknown>(
+  options: UseApiMutationOptions<TData, TVariables, TContext>,
+): UseApiMutationResult<TData, TVariables, TContext>
+```
+
+A lightweight mutation wrapper for API calls that supports optimistic updates and rollback helpers.
+
+**Parameters**
+
+| Option | Required | Description |
+| --- | :---: | --- |
+| `mutationFn` | ✓ | The async mutation function to execute. |
+| `onMutate` | | Runs before the request and can apply optimistic local state via the supplied helpers. |
+| `onSuccess` | | Runs after a successful mutation. |
+| `onError` | | Runs after a failed mutation. |
+| `onSettled` | | Runs after either outcome. |
+| `initialData` | | Initial value for `data`. |
+
+**Behavior notes**
+
+- `onMutate` receives `setData` and `rollback` helpers so callers can immediately update local state and revert it if the request fails.
+- `mutateAsync` returns the server result or throws the mutation error after rollback.
+- The hook exposes `status`, `isPending`, `isError`, `isSuccess`, and `reset` for simple UI state handling.
+
+```tsx
+import { useApiMutation } from '../hooks/useApiMutation'
+
+function SaveProfile() {
+  const mutation = useApiMutation({
+    mutationFn: (nextName: string) => apiFetch('/profile', { method: 'PATCH', body: { name: nextName } }),
+    onMutate: (name, { setData }) => {
+      setData((current) => ({ ...(current ?? {}), name }))
+    },
+  })
+
+  return <button onClick={() => void mutation.mutateAsync('Ada')}>Save</button>
 }
 ```
 

@@ -38,6 +38,14 @@ Every pull request and push to the `main` branch is validated by a GitHub Action
 
 If any of these steps fail, the CI workflow will fail, and the PR cannot be merged until the issues are resolved.
 
+## Locale Formatting & CLDR Compliance
+
+Locale-aware formatting helpers live in `src/lib/format.ts` for numbers, currencies, dates, times, percentages, and relative time intervals matching CLDR conventions.
+
+- **Locale Fallback**: Invalid or unsupported locale strings automatically fall back to `en-US` (`DEFAULT_LOCALE`) without throwing runtime errors.
+- **Deterministic Formatting**: Date and time helpers accept an explicit `timeZone` (defaulting to `'UTC'`) to guarantee host-independent test execution.
+- **CLDR Test Suite**: Comprehensive regression and property-style test assertions live in `src/lib/cldrFormat.test.ts` covering multi-locale rules (`en-US`, `de-DE`, `fr-FR`, `ja-JP`, `ar-EG`), fallback modes, and invalid inputs.
+
 ## Configuration
 
 Copy `.env.example` to `.env` when you need local link overrides:

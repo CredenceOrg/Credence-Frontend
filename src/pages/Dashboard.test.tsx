@@ -2,7 +2,6 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ONBOARDING_COMPLETION_STORAGE_KEY, ONBOARDING_STEP_STORAGE_KEY } from '../config/onboarding'
 import Dashboard from './Dashboard'
 
 // Mocks needed because ActionCard now uses useToast, useCopyToClipboard, and useTranslation
@@ -36,7 +35,7 @@ let mockQueryData = { score: 684, tier: 'gold' }
 let mockIsMobile = false
 
 vi.mock('../hooks/useQuery', () => ({
-  useQuery: (_fn: any, options: any) => {
+  useQuery: (_fn: unknown, options?: { enabled?: boolean }) => {
     const enabled = options?.enabled !== false
     return {
       data: enabled ? mockQueryData : undefined,

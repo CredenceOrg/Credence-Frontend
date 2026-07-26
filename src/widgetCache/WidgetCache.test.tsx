@@ -530,4 +530,90 @@ describe('useWidgetCache', () => {
     // Only one new fetch despite two mounted subscribers.
     expect(fetcher).toHaveBeenCalledTimes(2)
   })
+
+  // ---------------------------------------------------------------------------
+  // PII scrubbing before storage
+  // ---------------------------------------------------------------------------
+
+  it('scrubs_pii_from_fetcher_data_before_it_reaches_the_cache', async () => {
+    // This is the negative case that motivated the fix: before scrubbing was
+    // wired into `setEntry`, the raw fetcher payload — including PII —
+    // landed in the shared cache verbatim and was readable by any widget
+    // subscribed to this key.
+    const fetcher = vi.fn().mockResolvedValue({
+      id: 1,
+      trustScore: 92,
+      owner: { fullName: 'Dana Lee', email: 'dana@example.com' },
+    })
+
+    function Probe() {
+      const widget = useWidgetCache<{
+        id: number
+        trustScore: number
+        owner: { fullName: string; email: string }
+      }>('probe:pii', fetcher)
+      return (
+        <div>
+          <span data-testid="status">{widget.status}</span>
+          <span data-testid="email">{widget.data?.owner.email ?? ''}</span>
+          <span data-testid="score">{widget.data?.trustScore ?? ''}</span>
+        </div>
+      )
+    }
+
+    renderWithProvider(<Probe />)
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('success'))
+
+    // PII is redacted...
+    expect(screen.getByTestId('email')).toHaveTextContent('[REDACTED]')
+    // ...but non-PII data is preserved.
+    expect(screen.getByTestId('score')).toHaveTextContent('92')
+
+    const entry = __TESTING__.store.get<{ owner: { fullName: string; email: string } }>(
+      'probe:pii'
+    )
+    expect(entry.data?.owner.email).toBe('[REDACTED]')
+    expect(entry.data?.owner.fullName).toBe('[REDACTED]')
+  })
+
+  it('surfaces_a_typed_error_and_keeps_previous_data_when_a_payload_cannot_be_scrubbed', async () => {
+    // Explicit failure mode: a circular payload can't be safely deep-cloned
+    // and scrubbed, so the store must reject it via `entry.error` (typed
+    // `PIIScrubError`) rather than caching it raw or crashing the render.
+    const circular: Record<string, unknown> = { id: 1 }
+    circular.self = circular
+
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(['ok'])
+      .mockResolvedValueOnce(circular)
+
+    function Probe() {
+      const widget = useWidgetCache<unknown>('probe:pii-error', fetcher)
+      return (
+        <div>
+          <span data-testid="status">{widget.status}</span>
+          <span data-testid="error">{widget.error?.name ?? ''}</span>
+          <button type="button" onClick={widget.refresh}>
+            refresh
+          </button>
+        </div>
+      )
+    }
+
+    renderWithProvider(<Probe />)
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('success'))
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'refresh' }))
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('error'))
+    expect(screen.getByTestId('error')).toHaveTextContent('PIIScrubError')
+
+    // Previous (already-scrubbed) data is preserved, not overwritten with
+    // the raw, un-scrubbable payload.
+    const entry = __TESTING__.store.get('probe:pii-error')
+    expect(entry.data).toEqual(['ok'])
+  })
 })

@@ -51,6 +51,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
         .filter(Boolean)
         .join(' ')}
       aria-busy={isLoading}
+      aria-disabled={isDisabled}
       {...props}
     >
       {isLoading && (

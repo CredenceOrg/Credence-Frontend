@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AttestationForm from '../components/AttestationForm'
-import ActivityTimeline, { ActivityItem } from '../components/ActivityTimeline'
+import ActivityTimeline from '../components/ActivityTimeline'
 import { ACTIVITY_ITEMS } from '../data/activity'
 import Select from '../components/controls/Select'
+import { ATTESTATION_EVENTS, type AttestationPayload, type ActivityItem } from '../events'
 
 export default function Attestations() {
   const { t } = useTranslation()
   const [items, setItems] = useState<ActivityItem[]>(ACTIVITY_ITEMS)
   const [filterTone, setFilterTone] = useState<string>('all')
 
-  const handleSubmitSuccess = (payload: { subject: string; type: string; evidence: string }) => {
+  const handleSubmitSuccess = (payload: AttestationPayload) => {
     const formatTimestamp = () => {
       const now = new Date()
       return now.toLocaleDateString(undefined, {
@@ -25,9 +26,9 @@ export default function Attestations() {
     const newItem: ActivityItem = {
       id: `evt-new-${items.length + 1}`,
       timestamp: formatTimestamp(),
-      title: payload.type === 'identity' 
+      title: payload.type === ATTESTATION_EVENTS.TYPES.IDENTITY 
         ? t('activityTimeline.identityAttestation') 
-        : payload.type === 'peer-vouch' 
+        : payload.type === ATTESTATION_EVENTS.TYPES.PEER_VOUCH 
           ? t('activityTimeline.peerVouch') 
           : t('activityTimeline.credentialCertification'),
       description: payload.evidence,

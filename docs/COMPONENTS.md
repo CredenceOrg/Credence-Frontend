@@ -11,7 +11,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |
 | ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | BottomNav              | `src/components/navigation/BottomNav.css`                                           | None.                                                                                                                     |
-| Progress               | `src/components/Progress.css`                                                       | None.                                                                                                                     |
+| Progress               | `src/components/Progress.css`                                                       | `color` prop for colour variants (`primary`, `success`, `warning`, `danger`).                                                     |
 | Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
 | Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
 | Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
@@ -30,6 +30,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
 | SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
 | ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
+| VirtualizedList        | `src/components/VirtualizedList.tsx`                                               | No dedicated CSS file; uses consumer-provided layout and spacing.                                                          |
 | Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
 | ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
 | Kbd                     | `src/components/Kbd.css`                                                            | None.                                                                                                                     |
@@ -37,6 +38,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
 | ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
+| RepoAvatar             | `src/components/RepoAvatar.css`                                                     | None.                                                                                                                     |
 
 ## Shared vocabularies
 
@@ -158,6 +160,23 @@ Tokens: motion duration/easing tokens in CSS; severity color styling is componen
   Your bond evidence needs one more attestation.
 </Banner>
 ```
+
+## VirtualizedList
+
+Source: [`src/components/VirtualizedList.tsx`](../src/components/VirtualizedList.tsx).
+
+| Prop | Type | Default |
+| ---- | ---- | ------- |
+| `items` | `T[]` | Required |
+| `itemHeight` | `number` | `64` |
+| `overscan` | `number` | `3` |
+| `virtualizeThreshold` | `number` | `1000` |
+| `getKey` | `(item: T, index: number) => string \| number` | Required |
+| `renderItem` | `(item: T, index: number) => ReactNode` | Required |
+| `height` | `number` | `320` |
+| `emptyMessage` | `ReactNode` | `undefined` |
+
+The component renders only the visible window of a large list when the item count exceeds the configured threshold. It is used in the command launcher to keep search results responsive for very large result sets while preserving scroll behavior and keyboard access.
 
 ## Toast and ToastProvider
 
@@ -537,12 +556,13 @@ Source: [`src/components/Progress.tsx`](../src/components/Progress.tsx).
 | `aria-label` | `string`                     | Required    |
 | `className`  | `string`                     | `''`        |
 | `size`       | `'sm' \| 'md' \| 'lg'`       | `'md'`      |
+| `color`      | `'primary' \| 'success' \| 'warning' \| 'danger'` | `'primary'` |
 
 When `value` is supplied the bar is **determinate**: `aria-valuenow`, `aria-valuemin`, and `aria-valuemax` are set and the fill width reflects the completion percentage. When `value` is omitted the bar is **indeterminate**: none of the `aria-value*` attributes are set, which signals to assistive technology that the completion amount is unknown. Values outside `[min, max]` are clamped silently.
 
 Accessibility: `role="progressbar"` on the root; `aria-label` is required. The inner track and fill divs are `aria-hidden`. Indeterminate animation is suppressed under `prefers-reduced-motion`.
 
-Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track background), `--credence-radius-full`, `--credence-space-1/2/3` (track heights), `--credence-motion-duration-base`, `--credence-motion-duration-slow`, `--credence-motion-easing-standard`.
+Tokens: `--credence-color-primary` (fill, default), `--credence-color-success-border`, `--credence-color-warning-border`, `--credence-color-danger-action` (fill, variant colours), `--credence-color-slate-200` (track background), `--credence-radius-full`, `--credence-space-1/2/3` (track heights), `--credence-motion-duration-base`, `--credence-motion-duration-slow`, `--credence-motion-easing-standard`.
 
 ```tsx
 {/* Determinate */}
@@ -550,73 +570,39 @@ Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track b
 
 {/* Indeterminate */}
 <Progress aria-label="Loading trust score" />
+
+{/* Colour variants */}
+<Progress value={60} color="success" aria-label="Upload complete" />
+<Progress value={60} color="warning" aria-label="Upload paused" />
+<Progress value={60} color="danger" aria-label="Upload failed" />
+
+{/* Indeterminate with colour variant */}
+<Progress color="success" aria-label="Processing" />
 ```
 
-## Kbd
+## RepoAvatar
 
-Source: [`src/components/Kbd.tsx`](../src/components/Kbd.tsx).
+Source: [`src/components/RepoAvatar.tsx`](../src/components/RepoAvatar.tsx). Config: [`src/config/avatar.ts`](../src/config/avatar.ts).
 
-Renders a single keyboard key as a styled `<kbd>` element with a raised-button visual. Use this wherever the UI needs to display a keyboard shortcut consistently — in docs, tooltips, onboarding copy, or alongside the `KeyboardShortcutsDialog`.
+Repository avatar component supporting tokenised sizing presets (`sm`, `md`, `lg`) tied directly to `--credence-*` design tokens, image error fallback handling, and accessible ARIA attributes.
 
-| Prop        | Type                    | Default       |
-| ----------- | ----------------------- | ------------- |
-| `children`  | `string`                | Required      |
-| `size`      | `'sm' \| 'md' \| 'lg'` | `'md'`        |
-| `className` | `string`                | `''`          |
-| `ariaLabel` | `string`                | `children`    |
+| Prop | Type | Default | Description |
+| ---- | ---- | ------- | ----------- |
+| `src` | `string` | `undefined` | URL for the avatar image |
+| `name` | `string` | `undefined` | Repository or organization name, used for fallback initials generation |
+| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Preset tokenised size variant |
+| `alt` | `string` | `undefined` | Image alt text override |
+| `className` | `string` | `''` | Extra CSS class names |
 
-- `sm` — compact; suited for dense tooltips and inline prose.
-- `md` — default; matches the existing `KeyboardShortcutsDialog` key chip size.
-- `lg` — spacious; suited for large-print contexts and onboarding copy.
+Accessibility: renders `role="img"` with descriptive `aria-label`. When `src` is missing or fails to load, falls back cleanly to uppercase initials derived from `name` or a default repository icon.
 
-Accessibility: renders a native `<kbd>` element (semantic keyboard text); sets `aria-label` to `children` by default. Supply `ariaLabel` when the visible symbol is ambiguous to assistive technology (e.g. `ariaLabel="Command"` for `"⌘"`).
-
-Tokens: `--credence-border-default`, `--credence-color-slate-600`, `--credence-color-slate-700`, `--credence-font-family-base`, `--credence-font-size-xs`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-radius-sm`, `--credence-space-1`, `--credence-space-2`, `--credence-space-3`, `--credence-surface-page`, `--credence-text-primary`.
+Tokens: `--credence-avatar-size-sm`, `--credence-avatar-size-md`, `--credence-avatar-size-lg`, `--credence-space-6`, `--credence-space-8`, `--credence-space-12`, `--credence-radius-md`, `--credence-surface-card`, `--credence-border-default`, `--credence-text-primary`, `--credence-font-size-xs`, `--credence-font-size-sm`, `--credence-font-size-base`.
 
 ```tsx
-{/* Single key */}
-<Kbd>Esc</Kbd>
+{/* Default medium size with name fallback */}
+<RepoAvatar name="CredenceOrg/Credence-Frontend" />
 
-{/* Composite shortcut — one <Kbd> per key */}
-<span aria-label="Ctrl + K">
-  <Kbd>Ctrl</Kbd>
-  {' + '}
-  <Kbd>K</Kbd>
-</span>
-
-{/* Platform symbol with accessible label */}
-<Kbd ariaLabel="Command">⌘</Kbd>
-
-{/* Small variant inline in a tooltip */}
-<Kbd size="sm">?</Kbd>
+{/* Small size with image URL */}
+<RepoAvatar size="sm" src="https://example.com/avatar.png" name="CredenceOrg/Credence-Frontend" />
 ```
 
-Storybook: `Components/Kbd` — **Default** · **Small** · **Medium** · **Large** · **ModifierKey** · **PlatformSymbol** · **AllSizes** · **CompositeShortcut** · **ThreeKeyShortcut** · **InlineProse**.
-
-## KeyboardShortcutsDialog
-
-Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx).
-
-Modal dialog that lists all global keyboard shortcuts grouped by category. Rendered via a React portal into `document.body`. Key chips inside the dialog are rendered with `<Kbd>`.
-
-| Prop             | Type                             | Default                |
-| ---------------- | -------------------------------- | ---------------------- |
-| `open`           | `boolean`                        | Required               |
-| `onClose`        | `() => void`                     | Required               |
-| `returnFocusRef` | `RefObject<HTMLElement \| null>` | Previously focused element |
-
-Shortcut data is sourced from `src/data/keyboardShortcuts.ts` (`KEYBOARD_SHORTCUTS`). Add entries there to have them reflected in the dialog automatically.
-
-`formatModifierKey(key, userAgent?)` is exported as a named helper: it translates `Ctrl → ⌘`, `Alt → ⌥`, and `Shift → ⇧` on macOS user-agents, and is a no-op on all other platforms.
-
-Accessibility: `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby`/`aria-describedby`, focus trap (initial focus on close button), Escape and backdrop-click dismissal, body scroll lock, and optional focus restoration via `returnFocusRef`.
-
-Tokens: inherits from `KeyboardShortcutsDialog.css`; no hard-coded colours — all values reference `--credence-*` design tokens.
-
-```tsx
-<KeyboardShortcutsDialog
-  open={shortcutsOpen}
-  onClose={() => setShortcutsOpen(false)}
-  returnFocusRef={triggerRef}
-/>
-```

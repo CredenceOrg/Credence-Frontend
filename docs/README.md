@@ -124,9 +124,20 @@ This directory contains comprehensive design specifications and implementation g
     - Interceptors, retry policy, and error taxonomy for the API client
     - `ApiError` structure and usage examples
 
-18. **[Telemetry & Analytics](./telemetry.md)**
+18. **[Feature Flags](./FEATURE_FLAGS.md)** ⭐ NEW
+    - How feature flags are read and implemented on the client side
+    - Compile-time dev gating (`import.meta.env.DEV`)
+    - Component-level boolean props (e.g., `isEarlyAccess`)
+    - Testing patterns and adding new flags
+
+19. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
+
+19. **[i18n Extraction Guide](./i18n-extraction.md)** ⭐ NEW
+    - Step-by-step instructions for contributors to extract hardcoded strings
+    - Explanation of the manual extraction process
+    - Examples of adding strings to locales and using the `useTranslation` hook
 
 ### Quick Start
 
@@ -189,7 +200,7 @@ When adding new states or modifying existing ones:
 
 ### Design Review Process
 
-Before shipping new states:
+Before shipping new states or UI changes, refer to the [Design QA Checklist](./DESIGN_QA.md).
 
 1. Review against UI States Guide principles
 2. Validate microcopy with product team

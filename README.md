@@ -40,6 +40,14 @@ Every pull request and push to the `main` branch is validated by a GitHub Action
 
 If any of these steps fail, the CI workflow will fail, and the PR cannot be merged until the issues are resolved.
 
+## Locale Formatting & CLDR Compliance
+
+Locale-aware formatting helpers live in `src/lib/format.ts` for numbers, currencies, dates, times, percentages, and relative time intervals matching CLDR conventions.
+
+- **Locale Fallback**: Invalid or unsupported locale strings automatically fall back to `en-US` (`DEFAULT_LOCALE`) without throwing runtime errors.
+- **Deterministic Formatting**: Date and time helpers accept an explicit `timeZone` (defaulting to `'UTC'`) to guarantee host-independent test execution.
+- **CLDR Test Suite**: Comprehensive regression and property-style test assertions live in `src/lib/cldrFormat.test.ts` covering multi-locale rules (`en-US`, `de-DE`, `fr-FR`, `ja-JP`, `ar-EG`), fallback modes, and invalid inputs.
+
 ## Configuration
 
 Copy `.env.example` to `.env` when you need local link overrides:
@@ -50,18 +58,26 @@ cp .env.example .env
 
 The footer and legal links are resolved in `src/config/links.ts`. Use placeholder or canonical public URLs only; do not add secrets to Vite env files because `VITE_*` values are exposed to the browser build.
 
-| Variable            | Legacy alias   | Default fallback                                                  | Purpose                                                                     |
-| ------------------- | -------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `VITE_DOCS_URL`     | `VITE_DOCS`    | `/docs`                                                           | Documentation link used in the footer.                                      |
-| `VITE_TERMS_URL`    | `VITE_TERMS`   | `/legal/terms`                                                    | Terms of Service link used in the footer.                                   |
-| `VITE_PRIVACY_URL`  | `VITE_PRIVACY` | `/legal/privacy`                                                  | Privacy Policy link used in the footer.                                     |
-| `VITE_API_BASE_URL` | -              | `/api` in the browser, `http://localhost:3000` for the Vite proxy | Backend origin for local `/api` proxying or a direct API base URL override. |
+| Variable                             | Legacy alias   | Default fallback                                                  | Purpose                                                                     |
+| ------------------------------------ | -------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `VITE_DOCS_URL`                      | `VITE_DOCS`    | `/docs`                                                           | Documentation link used in the footer.                                      |
+| `VITE_TERMS_URL`                     | `VITE_TERMS`   | `/legal/terms`                                                    | Terms of Service link used in the footer.                                   |
+| `VITE_PRIVACY_URL`                   | `VITE_PRIVACY` | `/legal/privacy`                                                  | Privacy Policy link used in the footer.                                     |
+| `VITE_API_BASE_URL`                  | -              | `/api` in the browser, `http://localhost:3000` for the Vite proxy | Backend origin for local `/api` proxying or a direct API base URL override. |
+| `VITE_QUERY_CACHE_DEFAULT_TTL_MS`    | -              | `60000` (60s)                                                     | Default TTL duration in ms for query-cache entries.                         |
+| `VITE_QUERY_CACHE_STALE_TIME_MS`     | -              | `30000` (30s)                                                     | Stale-time duration in ms for query-cache entries.                          |
+| `VITE_QUERY_CACHE_GC_TIME_MS`        | -              | `300000` (5 min)                                                  | Garbage collection / cache eviction duration in ms.                         |
+| `VITE_QUERY_CACHE_ISSUER_TTL_MS`     | -              | `120000` (2 min)                                                  | TTL duration in ms for issuer dashboard query-cache entries.                |
+| `VITE_QUERY_CACHE_VERIFIER_TTL_MS`   | -              | `120000` (2 min)                                                  | TTL duration in ms for verifier dashboard query-cache entries.              |
+
 
 Precedence is `VITE_*_URL` first, then the legacy `VITE_*` alias, then the default fallback path. For example, `VITE_DOCS_URL` wins over `VITE_DOCS`; if neither is set, the app uses `/docs`.
 
 The Vite dev server also proxies local API requests. Requests from the frontend to `/api` are forwarded to `VITE_API_BASE_URL` by `vite.config.ts`, defaulting to `http://localhost:3000`, so run the backend on port `3000` when testing API-backed flows locally.
 
 The dashboard includes a first-run onboarding tour for connected users. It is skippable, resumable, and stores progress in browser local storage under `credence:onboarding:step` and `credence:onboarding:onboardedAt`, so returning visitors can pick up where they left off or opt out permanently.
+
+Long-running lists now render through a shared windowed list primitive in `src/components/VirtualizedList.tsx`. It keeps large result sets responsive by only mounting the visible slice of items while preserving scroll position and keyboard navigation behavior.
 
 Shared API helpers live in `src/api/`. All request and response types are generated from the OpenAPI spec at [`openapi.yaml`](./openapi.yaml):
 
@@ -70,6 +86,8 @@ npm run generate:api   # regenerate src/api/generated.ts after spec changes
 ```
 
 Use `apiFetch<T>()` for JSON requests so pages and hooks get consistent `/api` prefixing, typed `ApiError` failures, and `AbortSignal` cancellation support without coupling the client to React. Import named types from `src/api/types.ts`; for spec-verified operation types use `ApiResponse<operations['myOp']>`. See [docs/API_TYPES.md](./docs/API_TYPES.md) for the full codegen workflow.
+
+For mutation flows that need optimistic UI updates, the shared hook `useApiMutation()` in [src/hooks/useApiMutation.ts](./src/hooks/useApiMutation.ts) provides `onMutate`, `setData`, and `rollback` helpers so local state can be updated immediately and safely reverted on failure.
 
 The link variable intent and legal handoff notes are also tracked in `docs/footer-link-manifest.md`.
 
@@ -82,6 +100,7 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 | `npm run preview`      | Preview production build                              |
 | `npm run generate:api` | Regenerate `src/api/generated.ts` from `openapi.yaml` |
 | `npm run lint`         | Run ESLint                                            |
+| `npm run storybook`    | Start Storybook to view primitives in isolation       |
 
 ## Tech
 
@@ -143,13 +162,16 @@ landed, so the per-page wiring ships in follow-up PRs. The cache primitives
 See the [docs/](docs/) directory for detailed project documentation, including:
 
 - [Accessibility Checklist](docs/ACCESSIBILITY.md) - Required axe, screen reader, keyboard, and contrast checks before merging UI changes.
+- [Design QA Checklist](docs/DESIGN_QA.md) - Design-side review checks before shipping.
 - [Copy Tone Guide](docs/COPY_TONE.md) — How we phrase success, error, empty, and loading UI copy with dos and don'ts.
 - [Error UI Pattern Guide](docs/ERROR_UI.md) — Standard error surfaces guide (inline errors, banners, toasts, error states).
 - [Design Tokens Overview](docs/DESIGN_TOKENS.md) — Exhaustive list of CSS custom properties and semantic roles.
+- [Feature Flags](docs/FEATURE_FLAGS.md) — How feature flags are read and implemented on the client side.
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
 - [API Client Policies](docs/API_CLIENT_POLICIES.md) — Interceptors, retry policy, and error taxonomy for the API client.
 - [Cookie-Secret Rotation Runbook](docs/COOKIE_SECRETS.md) — Rotation cadence, blast radius, and step-by-step procedure for backend session/CSRF cookie secrets.
+- [Event Schema Registry & Telemetry](docs/telemetry.md) — Centralized event schema definitions, event drift prevention, and privacy principles.
 - [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
 
 ## Project layout
@@ -159,6 +181,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - `src/hooks/useDebouncedAutoSave.ts` — Generic debounced save lifecycle (`pending` / `saving` / `saved` / `error`)
 - `src/components/indicators/` — Status indicators (`AutoSaveIndicator`)
 - `src/config/autoSave.ts` — Central auto-save constants
+- `src/config/queryCache.ts` — Central query-cache TTL constants and env overrides
 - `src/widgetCache/` — Shared widget cache (`WidgetCacheProvider`, `useWidgetCache`)
 - `src/components/widget/` — Per-widget UI primitives (`WidgetRefreshButton`)
 - `src/config/widgetCache.ts` — Central widget-cache constants

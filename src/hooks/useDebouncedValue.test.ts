@@ -14,7 +14,7 @@ describe('useDebouncedValue', () => {
   it('returns the initial value immediately', () => {
     const { result } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'hello', delayMs: 200 } },
+      { initialProps: { value: 'hello', delayMs: 200 } }
     )
     expect(result.current).toBe('hello')
   })
@@ -22,54 +22,137 @@ describe('useDebouncedValue', () => {
   it('does not update the returned value before the delay elapses', () => {
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'a', delayMs: 200 } },
+      { initialProps: { value: 'a', delayMs: 200 } }
     )
     rerender({ value: 'b', delayMs: 200 })
     // Timer hasn't fired yet — should still be 'a'
     expect(result.current).toBe('a')
   })
 
-  it('updates the returned value after the delay elapses', () => {
+  it('retains_previous_value_one_millisecond_before_debounce_boundary', () => {
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'a', delayMs: 200 } },
+      { initialProps: { value: 'initial', delayMs: 200 } }
     )
-    rerender({ value: 'b', delayMs: 200 })
+
+    rerender({ value: 'updated', delayMs: 200 })
+
+    act(() => {
+      vi.advanceTimersByTime(199)
+    })
+
+    // Exactly 1ms before boundary: value MUST retain 'initial'
+    expect(result.current).toBe('initial')
+  })
+
+  it('updates_value_at_exact_debounce_boundary_delay_ms', () => {
+    const { result, rerender } = renderHook(
+      ({ value, delayMs }) => useDebouncedValue(value, delayMs),
+      { initialProps: { value: 'initial', delayMs: 200 } }
+    )
+
+    rerender({ value: 'updated', delayMs: 200 })
 
     act(() => {
       vi.advanceTimersByTime(200)
     })
 
-    expect(result.current).toBe('b')
+    // Exactly at boundary: value updates to 'updated'
+    expect(result.current).toBe('updated')
+  })
+
+  it('cancels_pending_timer_and_discards_queued_updates_on_unmount', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { result, rerender, unmount } = renderHook(
+      ({ value, delayMs }) => useDebouncedValue(value, delayMs),
+      { initialProps: { value: 'initial', delayMs: 200 } }
+    )
+
+    rerender({ value: 'pending_update', delayMs: 200 })
+    expect(result.current).toBe('initial')
+
+    // Unmount at 100ms (middle of delay window)
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    unmount()
+
+    // Advance past original timer boundary
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
+  it('resets_timer_and_skips_intermediate_value_when_updated_before_delay_elapses', () => {
+    const { result, rerender } = renderHook(
+      ({ value, delayMs }) => useDebouncedValue(value, delayMs),
+      { initialProps: { value: 'first', delayMs: 200 } }
+    )
+
+    // First change at t=0
+    rerender({ value: 'second', delayMs: 200 })
+
+    // Advance 150ms (before timer fires)
+    act(() => {
+      vi.advanceTimersByTime(150)
+    })
+    expect(result.current).toBe('first')
+
+    // Second change at t=150 (resets 200ms timer)
+    rerender({ value: 'third', delayMs: 200 })
+
+    // Advance another 150ms (total t=300, but only 150ms since 'third')
+    act(() => {
+      vi.advanceTimersByTime(150)
+    })
+    expect(result.current).toBe('first')
+
+    // Advance remaining 50ms (reaches 200ms since 'third')
+    act(() => {
+      vi.advanceTimersByTime(50)
+    })
+    // Value skips 'second' and updates directly to 'third'
+    expect(result.current).toBe('third')
   })
 
   it('collapses rapid bursts to only the final value', () => {
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'a', delayMs: 200 } },
+      { initialProps: { value: 'a', delayMs: 200 } }
     )
 
     rerender({ value: 'ab', delayMs: 200 })
-    act(() => { vi.advanceTimersByTime(100) })
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
 
     rerender({ value: 'abc', delayMs: 200 })
-    act(() => { vi.advanceTimersByTime(100) })
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
 
     rerender({ value: 'abcd', delayMs: 200 })
 
     // Only 200ms of *total* advance — the last change resets the timer
-    act(() => { vi.advanceTimersByTime(100) })
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
     expect(result.current).toBe('a')
 
     // Finish the remaining wait
-    act(() => { vi.advanceTimersByTime(100) })
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
     expect(result.current).toBe('abcd')
   })
 
   it('is synchronous when delayMs is 0', () => {
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'a', delayMs: 0 } },
+      { initialProps: { value: 'a', delayMs: 0 } }
     )
     expect(result.current).toBe('a')
 
@@ -81,7 +164,7 @@ describe('useDebouncedValue', () => {
   it('is synchronous when delayMs is negative', () => {
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'x', delayMs: -1 } },
+      { initialProps: { value: 'x', delayMs: -1 } }
     )
     expect(result.current).toBe('x')
 
@@ -92,7 +175,7 @@ describe('useDebouncedValue', () => {
   it('switches from debounced to synchronous when delayMs changes to 0', () => {
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'a', delayMs: 200 } },
+      { initialProps: { value: 'a', delayMs: 200 } }
     )
 
     rerender({ value: 'b', delayMs: 0 })
@@ -103,7 +186,7 @@ describe('useDebouncedValue', () => {
   it('switches from synchronous to debounced — value lags by delayMs on first transition', () => {
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'a', delayMs: 0 } },
+      { initialProps: { value: 'a', delayMs: 0 } }
     )
 
     rerender({ value: 'b', delayMs: 200 })
@@ -111,7 +194,9 @@ describe('useDebouncedValue', () => {
     // render hasn't settled yet
     expect(result.current).toBe('a')
 
-    act(() => { vi.advanceTimersByTime(200) })
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
     expect(result.current).toBe('b')
   })
 
@@ -119,7 +204,7 @@ describe('useDebouncedValue', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { unmount, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'a', delayMs: 200 } },
+      { initialProps: { value: 'a', delayMs: 200 } }
     )
 
     rerender({ value: 'b', delayMs: 200 })
@@ -128,7 +213,9 @@ describe('useDebouncedValue', () => {
 
     // Advance past the timer — if the timer hadn't been cleared this would
     // trigger a setState on an unmounted component and log a warning
-    act(() => { vi.advanceTimersByTime(200) })
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
 
     expect(warn).not.toHaveBeenCalled()
     warn.mockRestore()
@@ -138,7 +225,7 @@ describe('useDebouncedValue', () => {
     const obj = { x: 1 }
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: obj, delayMs: 200 } },
+      { initialProps: { value: obj, delayMs: 200 } }
     )
     const first = result.current
 
@@ -153,7 +240,7 @@ describe('useDebouncedValue', () => {
     const obj = { x: 1 }
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: obj, delayMs: 0 } },
+      { initialProps: { value: obj, delayMs: 0 } }
     )
     const first = result.current
 
@@ -166,7 +253,7 @@ describe('useDebouncedValue', () => {
   it('ignores delayMs change when value is unchanged', () => {
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'stable', delayMs: 200 } },
+      { initialProps: { value: 'stable', delayMs: 200 } }
     )
 
     rerender({ value: 'stable', delayMs: 500 })
@@ -177,12 +264,14 @@ describe('useDebouncedValue', () => {
   it('works with non-string types', () => {
     const { result, rerender } = renderHook(
       ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 0, delayMs: 100 } },
+      { initialProps: { value: 0, delayMs: 100 } }
     )
     expect(result.current).toBe(0)
 
     rerender({ value: 42, delayMs: 100 })
-    act(() => { vi.advanceTimersByTime(100) })
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
     expect(result.current).toBe(42)
   })
 })

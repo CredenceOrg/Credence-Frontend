@@ -9,4 +9,5 @@ export const TEST_IDS = {
   TX_BULK_DELETE_BUTTON: 'transactions-bulk-delete-button',
   TX_BULK_EXPORT_BUTTON: 'transactions-bulk-export-button',
   TX_BULK_CLEAR_BUTTON: 'transactions-bulk-clear-button',
+  SCAN_BUTTON: 'scan-button',
 } as const

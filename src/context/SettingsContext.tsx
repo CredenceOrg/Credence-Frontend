@@ -229,6 +229,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, payload))
+    }
   }
 
   const cancelSettings = () => {

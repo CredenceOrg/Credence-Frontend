@@ -82,6 +82,7 @@ The link variable intent and legal handoff notes are also tracked in `docs/foote
 | `npm run preview`      | Preview production build                              |
 | `npm run generate:api` | Regenerate `src/api/generated.ts` from `openapi.yaml` |
 | `npm run lint`         | Run ESLint                                            |
+| `npm run storybook`    | Start Storybook to view primitives in isolation       |
 
 ## Tech
 

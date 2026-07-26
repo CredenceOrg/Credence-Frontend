@@ -1,4 +1,5 @@
 import './Badge.css'
+import TooltipOnOverflow from './TooltipOnOverflow'
 
 export type BadgeVariant =
   | 'bronze'
@@ -25,6 +26,12 @@ export interface BadgeProps {
    * when this prop is omitted.
    */
   srPrefix?: string
+  /**
+   * Accessible label for the badge element. Defaults to the display label.
+   * Provide this prop when the badge appears in a context where screen readers
+   * need a more descriptive label than the visible text alone.
+   */
+  ariaLabel?: string
 }
 
 const DEFAULT_LABELS: Record<string, string> = {
@@ -40,18 +47,23 @@ const DEFAULT_LABELS: Record<string, string> = {
 }
 
 export default function Badge({ variant, label, className = '', srPrefix }: BadgeProps) {
-  const normalizedVariant =
-    variant.toLowerCase() in DEFAULT_LABELS ? variant.toLowerCase() : 'unknown'
+  const isKnown = variant.toLowerCase() in DEFAULT_LABELS
+  const normalizedVariant = isKnown ? variant.toLowerCase() : 'unknown'
 
-  const displayLabel = label || DEFAULT_LABELS[normalizedVariant] || variant
+  const displayLabel =
+    label ||
+    (normalizedVariant === 'unknown' && variant.toLowerCase() !== 'unknown'
+      ? variant
+      : DEFAULT_LABELS[normalizedVariant])
 
   return (
-    <span
-      className={`badge badge--${normalizedVariant} ${className}`.trim()}
-      title={displayLabel}
-    >
-      {srPrefix && <span className="sr-only">{srPrefix} </span>}
-      {displayLabel}
-    </span>
+    <TooltipOnOverflow content={displayLabel}>
+      <span
+        className={`badge badge--${normalizedVariant} ${className}`.trim()}
+      >
+        {srPrefix && <span className="sr-only">{srPrefix} </span>}
+        {displayLabel}
+      </span>
+    </TooltipOnOverflow>
   )
 }

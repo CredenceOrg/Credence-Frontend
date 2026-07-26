@@ -1,17 +1,26 @@
 /**
- * Checks if a given URL is external (off-origin).
- * It returns true for valid absolute HTTP/HTTPS URLs that do not match the current origin.
- * Relative URLs, in-app links (like /docs), and same-origin absolute URLs are considered internal.
- * It also handles malformed URLs safely by returning false or true depending on the strictness,
- * but typical requirement: if it can't be parsed, it's not a valid external URL, return false.
- * Placeholder '#' should return false.
+ * Checks if a given URL is external (off-origin) or a safe non-HTTP scheme.
+ *
+ * Returns `true` for:
+ * - Absolute HTTP/HTTPS URLs whose origin differs from the current page origin.
+ * - `mailto:` URLs (safe, opens the system mail client).
+ *
+ * Returns `false` for:
+ * - Relative paths (`/docs`, `./relative`).
+ * - Same-origin absolute URLs.
+ * - Placeholder `#` or empty/undefined values.
+ * - `javascript:` and any other non-allow-listed scheme (blocked for security).
+ * - Malformed strings that cannot be parsed as a URL.
  *
  * @param href The URL string to check.
- * @returns boolean True if the URL is external, false otherwise.
+ * @returns `true` if the URL should be treated as external / leaving the app.
  */
 export function isExternalUrl(href: string | undefined): boolean {
   if (!href || href === '#') return false;
   if (href.startsWith('/') || href.startsWith('.')) return false;
+
+  // Allow mailto: links — they open the system mail client, not the browser.
+  if (href.startsWith('mailto:')) return true;
 
   try {
     const url = new URL(href, window.location.href);

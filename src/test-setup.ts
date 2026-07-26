@@ -61,4 +61,22 @@ if (typeof window !== 'undefined') {
       value: window.localStorage,
     })
   }
+
+  // Polyfill ResizeObserver for components that use it (e.g. TooltipOnOverflow)
+  if (typeof globalThis.ResizeObserver === 'undefined') {
+    globalThis.ResizeObserver = class ResizeObserver {
+      private callback: ResizeObserverCallback
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback
+      }
+      observe() {
+        // Fire callback asynchronously so overflow detection runs after render
+        Promise.resolve().then(() => {
+          this.callback([], this)
+        })
+      }
+      unobserve() {}
+      disconnect() {}
+    }
+  }
 }

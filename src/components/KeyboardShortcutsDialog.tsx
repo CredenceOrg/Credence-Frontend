@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useId, useRef } from 'react'
+import { useCallback, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import { KEYBOARD_SHORTCUTS, type KeyboardShortcut } from '../data/keyboardShortcuts'
 import Button from './Button'
+import Kbd from './Kbd'
 import './KeyboardShortcutsDialog.css'
 
 export interface KeyboardShortcutsDialogProps {
@@ -29,6 +31,19 @@ function groupShortcuts(shortcuts: KeyboardShortcut[]): Map<string, KeyboardShor
   return map
 }
 
+/** Translates modifier keys to their platform-specific symbols (e.g. Mac). */
+export function formatModifierKey(key: string, userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''): string {
+  const isMac = /Mac|iPod|iPhone|iPad/.test(userAgent)
+  if (!isMac) return key
+
+  switch (key) {
+    case 'Ctrl': return '⌘'
+    case 'Alt': return '⌥'
+    case 'Shift': return '⇧'
+    default: return key
+  }
+}
+
 const GROUPED = groupShortcuts(KEYBOARD_SHORTCUTS)
 
 /**
@@ -53,6 +68,8 @@ export default function KeyboardShortcutsDialog({
     onClose()
   }, [onClose])
 
+  useScrollPreserver({ isActive: open })
+
   useFocusTrap({
     containerRef: dialogRef,
     isActive: open,
@@ -60,16 +77,6 @@ export default function KeyboardShortcutsDialog({
     returnFocusRef,
     onEscape: handleClose,
   })
-
-  // Lock body scroll while dialog is open (mirrors ConfirmDialog pattern)
-  useEffect(() => {
-    if (!open) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [open])
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
@@ -128,7 +135,7 @@ export default function KeyboardShortcutsDialog({
                               +
                             </span>
                           )}
-                          <kbd className="shortcuts-dialog__kbd">{key}</kbd>
+                          <Kbd className="shortcuts-dialog__kbd">{formatModifierKey(key)}</Kbd>
                         </span>
                       ))}
                     </span>

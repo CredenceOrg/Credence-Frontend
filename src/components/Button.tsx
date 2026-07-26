@@ -1,5 +1,6 @@
 import { ButtonHTMLAttributes, forwardRef, ReactNode } from 'react'
 import { TEST_IDS } from '../config/testIds'
+import LoadingSpinner from './LoadingSpinner'
 import './Button.css'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -11,6 +12,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean
   /** Button content */
   children: ReactNode
+  'data-testid'?: string
 }
 
 /**
@@ -52,32 +54,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       {...props}
     >
       {isLoading && (
-        <span className="credence-button__spinner" aria-hidden="true">
-          <svg
-            className="credence-button__spinner-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle
-              className="credence-button__spinner-track"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="3"
-            />
-            <circle
-              className="credence-button__spinner-head"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </svg>
-        </span>
+        <LoadingSpinner
+          className="credence-button__spinner"
+          iconClassName="credence-button__spinner-icon"
+          aria-hidden="true"
+        />
       )}
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {isLoading ? 'Sending…' : ''}

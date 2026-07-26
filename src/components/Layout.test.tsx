@@ -47,6 +47,13 @@ describe('Layout Integration', () => {
     expect(screen.getByRole('link', { name: /^credence$/i })).toBeInTheDocument()
   })
 
+  it('renders keyboard shortcuts button with accessible name', () => {
+    renderLayout()
+    expect(screen.getByRole('button', { name: /open keyboard shortcuts/i })).toHaveAccessibleName(
+      /open keyboard shortcuts/i
+    )
+  })
+
   it('renders theme toggle button', () => {
     renderLayout()
     expect(screen.getByRole('button', { name: /switch to/i })).toBeInTheDocument()
@@ -128,15 +135,30 @@ describe('Layout Integration', () => {
     fireEvent.click(hamburger)
 
     const drawer = document.getElementById('mobile-nav-drawer') as HTMLElement
-    const bondLink = screen
-      .getAllByRole('link', { name: /bond/i })
+    // The drawer now shows only secondary routes: Home and Settings.
+    const settingsLink = screen
+      .getAllByRole('link', { name: /settings/i })
       .find((link) => drawer.contains(link))
 
-    expect(bondLink).toBeDefined()
-    if (bondLink) {
-      fireEvent.click(bondLink)
+    expect(settingsLink).toBeDefined()
+    if (settingsLink) {
+      fireEvent.click(settingsLink)
     }
 
     expect(drawer).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  // --- BottomNav integration ---
+
+  it('renders BottomNav inside the layout', () => {
+    renderLayout()
+    expect(screen.getByRole('navigation', { name: /bottom navigation/i })).toBeInTheDocument()
+  })
+
+  it('BottomNav contains the 5 primary route tabs', () => {
+    renderLayout()
+    const bottomNav = screen.getByRole('navigation', { name: /bottom navigation/i })
+    const tabs = Array.from(bottomNav.querySelectorAll('a'))
+    expect(tabs).toHaveLength(5)
   })
 })

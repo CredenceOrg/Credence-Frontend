@@ -1,13 +1,45 @@
-import { useState, memo, type ReactElement } from 'react'
+import { useState, useRef, useCallback } from 'react'
+import Badge, { type BadgeVariant } from './Badge'
+import CopyableHash from './CopyableHash'
 import './ActivityTimeline.css'
 import EmptyState from './states/EmptyState'
-import CopyableHash from './CopyableHash'
 
+export type ActivityTone = 'success' | 'warning' | 'info'
 
+/**
+ * Maps ActivityTimeline tone values to Badge variants.
+ * Tones represent attestation status severity levels.
+ */
+export function toneToBadgeVariant(tone: ActivityTone): BadgeVariant {
+  const mapping: Record<ActivityTone, BadgeVariant> = {
+    success: 'active',
+    warning: 'grace-period',
+    info: 'locked',
+  }
+  return mapping[tone]
+}
+
+/**
+ * Detects if meta string represents a transaction hash.
+ * Returns true if meta starts with "Tx 0x" pattern.
+ */
+export function isTxHash(meta: string): boolean {
+  return /^Tx\s+0x/i.test(meta)
+}
+
+export interface ActivityItem {
+  id: string
+  timestamp: string
+  title: string
+  description: string
+  actor: string
+  statusLabel: string
+  tone: ActivityTone
+  meta: string
+}
 
 export interface ActivityTimelineProps {
   compact?: boolean
-  /** Timeline events to render. Defaults to sample data. Pass empty array for no data. */
   items?: ActivityItem[]
 }
 
@@ -20,7 +52,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
     actor: 'Validator Node 12',
     statusLabel: 'Accepted',
     tone: 'success',
-    meta: 'Tx 0x93a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1',
+    meta: 'Tx 0x93a1...22f4',
   },
   {
     id: 'evt-002',
@@ -44,67 +76,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
   },
 ]
 
-const ActivityRow = memo(function ActivityRow({ item, isExpanded, onToggle }: ActivityRowProps) {
-  return (
-    <li className="activity-row" key={item.id}>
-      <div className="activity-row__rail" aria-hidden="true">
-        <span className={`activity-row__node activity-row__node--${item.tone}`} />
-        <span className="activity-row__line" />
-      </div>
-
-      <time className="activity-row__time">{item.timestamp}</time>
-
-      <div className="activity-row__content">
-        <div className="activity-row__title-wrap">
-          <p className="activity-row__title">{item.title}</p>
-          <span className={`activity-row__status activity-row__status--${item.tone}`}>
-            {item.statusLabel}
-          </span>
-        </div>
-        <p className="activity-row__description">{item.description}</p>
-
-        <button
-          type="button"
-          aria-expanded={isExpanded}
-          aria-controls={`details-${item.id}`}
-          onClick={() => onToggle(item.id)}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            marginTop: 'var(--credence-space-2)',
-            color: 'var(--credence-text-secondary)',
-            cursor: 'pointer',
-            fontSize: 'var(--credence-font-size-sm)',
-            textDecoration: 'underline',
-            textAlign: 'left',
-          }}
-        >
-          {isExpanded ? 'Hide details' : 'Show details'}
-        </button>
-
-        {isExpanded && (
-          <div
-            id={`details-${item.id}`}
-            style={{
-              marginTop: 'var(--credence-space-3)',
-              padding: 'var(--credence-space-3)',
-              background: 'var(--credence-color-surface-hover)',
-              borderRadius: 'var(--credence-radius-md)',
-            }}
-          >
-            <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
-              <strong>Actor:</strong> {item.actor}
-            </p>
-            <p className="activity-row__meta">
-              <strong>Meta:</strong> {item.meta}
-            </p>
-          </div>
-        )}
-      </div>
-    </li>
-  )
-})
+export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
 
 /**
  * Attestation evidence detail panel component.
@@ -119,42 +91,21 @@ const ActivityRow = memo(function ActivityRow({ item, isExpanded, onToggle }: Ac
 export default function ActivityTimeline({
   compact = false,
   items = ACTIVITY_ITEMS,
-}: ActivityTimelineProps): ReactElement {
+}: ActivityTimelineProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
-  const expandedIdRef = useRef<string | null>(null)
 
   const count = items.length
   const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
-
-  // Keep the ref in sync with state
-  expandedIdRef.current = expandedId
-
-  const closePanel = useCallback(() => {
-    setExpandedId(null)
-  }, [])
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
   }, [])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === 'Escape' && expandedIdRef.current !== null) {
-        const triggerElement = triggerRefs.current.get(expandedIdRef.current)
-        closePanel()
-        if (triggerElement) {
-          triggerElement.focus()
-        }
-      }
-    },
-    [closePanel]
-  )
-
   return (
     <section
       className={`activity-surface${compact ? ' activity-surface--compact' : ''}`}
       aria-label="Activity and attestations"
+      onKeyDown={handleKeyDown}
     >
       <header className="activity-surface__header">
         <div>
@@ -167,15 +118,14 @@ export default function ActivityTimeline({
       {count === 0 ? (
         <EmptyState
           illustration="activity"
-          title="No recent activity"
-          description="New trust score events will appear here once bonds"
+          title="No activity yet"
+          description="Attestations and events will appear here once activity begins."
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">
           {items.map((item) => {
             const isExpanded = expandedId === item.id
             const panelId = `details-${item.id}`
-            const buttonId = `trigger-${item.id}`
             return (
               <li className="activity-row" key={item.id}>
                 <div className="activity-row__rail" aria-hidden="true">
@@ -193,40 +143,50 @@ export default function ActivityTimeline({
                   <p className="activity-row__description">{item.description}</p>
 
                   <button
+                    id={buttonId}
+                    ref={(el) => {
+                      if (el) triggerRefs.current.set(item.id, el)
+                      else triggerRefs.current.delete(item.id)
+                    }}
                     type="button"
-                    className="activity-row__toggle"
+                    id={buttonId}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
                     onClick={() => toggleExpand(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        toggleExpand(item.id)
+                      }
+                    }}
+                    className="activity-row__disclosure"
+                    ref={(el) => {
+                      if (el) triggerRefs.current.set(item.id, el)
+                      else triggerRefs.current.delete(item.id)
+                    }}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
 
-                  {isExpanded && (
-                    <div
-                      id={`details-${item.id}`}
-                      style={{
-                        marginTop: 'var(--credence-space-3)',
-                        padding: 'var(--credence-space-3)',
-                        background: 'var(--credence-surface-page)',
-                        borderRadius: 'var(--credence-radius-md)',
-                      }}
-                    >
-                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
-                        <strong>Actor:</strong> {item.actor}
-                      </p>
-                      <p className="activity-row__meta">
-                        <strong>Meta:</strong>{' '}
-                        {item.meta.startsWith('Tx ') ? (
-                          <>
-                            Tx <CopyableHash hash={item.meta.slice(3)} kind="tx" />
-                          </>
-                        ) : (
-                          item.meta
-                        )}
-                      </p>
-                    </div>
-                  )}
+                  <div
+                    id={panelId}
+                    className="activity-row__detail-panel"
+                    hidden={!isExpanded}
+                    onKeyDown={handleKeyDown}
+                    tabIndex={-1}
+                  >
+                    <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                      <strong>Actor:</strong> {item.actor}
+                    </p>
+                    <p className="activity-row__meta">
+                      <strong>Meta:</strong>{' '}
+                      {isTxHash(item.meta) ? (
+                        <CopyableHash hash={item.meta} />
+                      ) : (
+                        item.meta
+                      )}
+                    </p>
+                  </div>
                 </div>
               </li>
             )

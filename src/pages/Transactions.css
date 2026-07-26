@@ -95,6 +95,74 @@
   font-size: var(--credence-font-size-sm);
 }
 
+/* ── Selection column ─────────────────────────────────────────── */
+
+.transactions__selectHeader,
+.transactions__selectCell {
+  padding-left: var(--credence-space-3);
+  padding-right: var(--credence-space-3);
+  width: 2.75rem;
+}
+
+.transactions__selectHeader input[type='checkbox'],
+.transactions__selectCell input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--credence-color-primary);
+  margin: 0;
+}
+
+.transactions__selectHeader input[type='checkbox']:focus-visible,
+.transactions__selectCell input[type='checkbox']:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.transactions__row--selected {
+  background: var(--credence-color-info-surface);
+}
+
+[data-theme='dark'] .transactions__row--selected {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+/* ── Bulk Actions row ──────────────────────────────────────────── */
+
+.transactions__bulkActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--credence-space-3);
+  padding: var(--credence-space-3) var(--credence-space-4);
+  margin-bottom: var(--credence-space-3);
+  background: var(--credence-color-info-surface);
+  border: 1px solid var(--credence-color-primary);
+  border-radius: var(--credence-radius-lg);
+}
+
+.transactions__bulkActions[hidden] {
+  display: none;
+}
+
+[data-theme='dark'] .transactions__bulkActions {
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.transactions__bulkActions-count {
+  margin: 0;
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+.transactions__bulkActions-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--credence-space-2);
+}
+
 @media (max-width: 640px) {
   .transactions__table,
   .transactions__table thead,
@@ -133,6 +201,23 @@
     display: flex;
     align-items: center;
     gap: var(--credence-space-2);
+  }
+
+  /* Checkbox column acts as a compact row-affordance on mobile,
+     so suppress the data-label and shrink its visual weight. */
+  .transactions__table td.transactions__selectCell {
+    padding: var(--credence-space-1) 0 var(--credence-space-2);
+    justify-content: flex-end;
+  }
+
+  .transactions__table td.transactions__selectCell::before {
+    content: none;
+  }
+
+  /* The header's select-all checkbox should not render an empty header
+     label on mobile — collapse the column visually. */
+  .transactions__selectHeader {
+    width: auto;
   }
 
   .transactions__table td::before {

@@ -2,24 +2,24 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import Attestations from './Attestations'
 
-vi.mock('../components/ActivityTimeline', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../components/ActivityTimeline')>()
-  return {
-    ...actual,
-    ACTIVITY_ITEMS: [
-      {
-        id: 'evt-test-1',
-        timestamp: 'Test UTC',
-        title: 'Attestation submitted',
-        description: 'Identity evidence.',
-        actor: 'Validator',
-        statusLabel: 'Accepted',
-        tone: 'success',
-        meta: 'Tx 0x123',
-      }
-    ]
-  }
-})
+vi.mock('../data/activity', () => ({
+  ACTIVITY_ITEMS: [
+    {
+      id: 'evt-test-1',
+      timestamp: 'Test UTC',
+      title: 'Attestation submitted',
+      description: 'Identity evidence.',
+      actor: 'Validator',
+      statusLabel: 'Accepted',
+      tone: 'success',
+      meta: 'Tx 0x123',
+    }
+  ]
+}))
+
+vi.mock('../components/ToastProvider', () => ({
+  useToast: () => ({ addToast: vi.fn() }),
+}))
 
 describe('Attestations Page', () => {
   afterEach(() => {
@@ -55,11 +55,11 @@ describe('Attestations Page', () => {
     render(<Attestations />)
     const expandBtn = screen.getByRole('button', { name: /show details/i })
     
-    expect(screen.queryByText(/Tx 0x123/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Tx 0x123/)).not.toBeVisible()
     fireEvent.click(expandBtn)
     
     expect(expandBtn).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText(/Tx 0x123/)).toBeInTheDocument()
-    expect(screen.getByText(/Validator/)).toBeInTheDocument()
+    expect(screen.getByText(/Tx 0x123/)).toBeVisible()
+    expect(screen.getByText(/Validator/)).toBeVisible()
   })
 })

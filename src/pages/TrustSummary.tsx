@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './TrustSummary.css';
 import Badge from '../components/Badge';
 import TierLadder from '../components/TierLadder';
 import TrustGauge from '../components/TrustGauge';
+import TooltipOnOverflow from '../components/TooltipOnOverflow';
 import { useTrustScore } from '../hooks/useTrustScore';
 import { ApiError } from '../api/client';
 import { isValidStellarAddress } from '@/lib/stellar';
@@ -22,14 +22,14 @@ export default function TrustSummary() {
   const paramAddress = searchParams.get('address')?.trim() ?? '';
   const address = isValidStellarAddress(paramAddress) ? paramAddress : '';
 
-  const [copy, copied] = useCopyToClipboard();
+  const { copy, copied } = useCopyToClipboard();
 
   const { data, isLoading, error, refetch } = useTrustScore(address);
 
   if (!address) {
     return (
       <div className="trustSummary">
-        <EmptyState title="No address supplied" message="Provide a valid Stellar address via the ?address= query parameter." />
+        <EmptyState title="No address supplied" description="Provide a valid Stellar address via the ?address= query parameter." />
       </div>
     );
   }
@@ -41,7 +41,9 @@ export default function TrustSummary() {
       <header className="trustSummary__header">
         <h1>Trust Summary</h1>
         <div className="trustSummary__addressRow">
-          <code className="trustSummary__address" title={address}>{address}</code>
+          <TooltipOnOverflow content={address}>
+            <code className="trustSummary__address">{address}</code>
+          </TooltipOnOverflow>
           <button className="trustSummary__copyBtn" onClick={() => copy(address)} disabled={copied}>
             {copied ? 'Copied' : 'Copy'}
           </button>

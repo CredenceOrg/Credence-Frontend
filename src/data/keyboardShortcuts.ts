@@ -47,4 +47,9 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
     label: 'Toggle light / dark theme',
     keys: ['T'],
   },
+  {
+    group: 'Navigation',
+    label: 'Open action launcher',
+    keys: ['Ctrl', 'K'],
+  },
 ]

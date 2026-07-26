@@ -58,6 +58,8 @@ The CSP string is defined in [`src/config/security.ts`](../src/config/security.t
 
 The CSP header set by `vite.config.ts` only applies to the Vite dev server (`npm run dev`). For production, configure your web server or hosting platform to send the same `Content-Security-Policy` header with the static build output (`dist/`).
 
+For backend cookie-signing secrets (session and CSRF), see the [Cookie-Secret Rotation Runbook](./COOKIE_SECRETS.md).
+
 ### nginx example
 
 ```nginx
@@ -78,3 +80,64 @@ A negative test in [`src/config/security.test.ts`](../src/config/security.test.t
 - The policy does not contain a dangling or malformed directive.
 
 The test would fail without the CSP configuration in place.
+
+---
+
+## Subresource Integrity (SRI)
+
+### Threat model
+
+If a `<script src>` or `<link href>` loads a resource from a CDN or any cross-origin host, a compromised CDN can silently swap that resource for malicious code. The browser executes or applies whatever bytes it receives with no indication that they differ from the original. For a wallet-adjacent application this means an attacker could:
+
+- Exfiltrate private keys, seed phrases, or session tokens entered by the user.
+- Replace the wallet-connect UI with a phishing variant that harvests credentials.
+- Inject transaction-manipulation logic that operates silently in the background.
+
+SRI (`integrity="sha384-…" crossorigin="anonymous"`) instructs the browser to hash the received bytes and abort loading if the digest does not match the expected value. The `crossorigin` attribute is required alongside `integrity` because it forces the browser to make a CORS request, enabling inspection of the response bytes.
+
+### Rule
+
+**Every `<script src>` or `<link href>` that loads from a cross-origin URL must carry both `integrity` and `crossorigin` attributes.** Same-origin (relative) assets do not require SRI because they are served directly by the application's own infrastructure.
+
+```html
+<!-- ✅ Correct — CDN asset with SRI hash -->
+<script
+  src="https://cdn.jsdelivr.net/npm/some-lib@1.0/dist/lib.min.js"
+  integrity="sha384-<hash>"
+  crossorigin="anonymous"
+></script>
+
+<!-- ❌ Wrong — CDN asset without SRI -->
+<script src="https://cdn.jsdelivr.net/npm/some-lib@1.0/dist/lib.min.js"></script>
+```
+
+### Generating an SRI hash
+
+```bash
+# For a URL:
+curl -sL https://cdn.jsdelivr.net/npm/some-lib@1.0/dist/lib.min.js \
+  | openssl dgst -sha384 -binary | openssl base64 -A | xargs -I{} echo "sha384-{}"
+
+# Or use https://www.srihash.org
+```
+
+### Automated check
+
+[`src/lib/sriCheck.ts`](../src/lib/sriCheck.ts) provides a `checkSri(htmlSource)` function that parses any HTML string and returns a typed `SriResult`:
+
+```ts
+import { checkSri } from '../lib/sriCheck'
+
+const result = checkSri(htmlSource)
+if (!result.ok) {
+  // result.violations: SriViolation[]
+  // Each violation has: kind ('missing-integrity' | 'missing-crossorigin' | 'missing-both')
+  //                     asset.tag, asset.url, message
+}
+```
+
+The unit tests in [`src/lib/sriCheck.test.ts`](../src/lib/sriCheck.test.ts) include:
+
+- **Negative tests** — verify that CDN assets without `integrity`/`crossorigin` are flagged (these tests demonstrate the exact vulnerability).
+- **Positive tests** — verify that compliant assets pass.
+- **Regression test** — reads the actual `index.html` at the project root and asserts it contains no violations. This test will fail in CI if a future PR adds a CDN tag without an SRI hash.

@@ -1,0 +1,202 @@
+/*
+ * SpeedDial – mobile floating action button for Send / Receive / Swap.
+ * Only visible on screens ≤ 768px (BREAKPOINTS.MD).
+ * Uses design-token CSS custom properties exclusively; no hard-coded colours
+ * or spacing values.
+ */
+
+/* ── Container (hidden by default, shown on mobile) ─────────────────────── */
+
+.speedDial {
+  /* Hidden on desktop via max-width guard below */
+  display: none;
+  position: fixed;
+  bottom: var(--credence-space-6);
+  right: var(--credence-space-6);
+  z-index: 900; /* below MobileNav drawer (1000) but above page content */
+  align-items: flex-end;
+  flex-direction: column;
+  gap: var(--credence-space-3);
+}
+
+/* ── FAB (main toggle button) ────────────────────────────────────────────── */
+
+.speedDial__fab {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--credence-radius-full);
+  border: none;
+  background: var(--credence-color-primary);
+  color: var(--credence-color-white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition:
+    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    transform var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  flex-shrink: 0;
+  /* Ensure the button stacks on top of the action list */
+  order: 2;
+}
+
+.speedDial__fab:hover {
+  background: var(--credence-color-primary-strong);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.speedDial__fab:active {
+  transform: scale(0.95);
+}
+
+.speedDial__fab:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 3px;
+}
+
+/* Rotate the icon 45° when open to show a cross */
+.speedDial__fab--open .speedDial__fabIcon {
+  transform: rotate(45deg);
+}
+
+.speedDial__fabIcon {
+  transition: transform var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+  pointer-events: none;
+}
+
+/* ── Action list ─────────────────────────────────────────────────────────── */
+
+.speedDial__actions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-3);
+  align-items: flex-end;
+  order: 1;
+
+  /* Collapsed state */
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(var(--credence-space-4));
+  transition:
+    opacity var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    transform var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+}
+
+.speedDial__actions--open {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Individual action item ──────────────────────────────────────────────── */
+
+.speedDial__item {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-3);
+  justify-content: flex-end;
+}
+
+/* Text label pill */
+.speedDial__label {
+  padding: var(--credence-space-1) var(--credence-space-3);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  border-radius: var(--credence-radius-full);
+  border: 1px solid var(--credence-border-default);
+  box-shadow: var(--credence-shadow-toast);
+  white-space: nowrap;
+  pointer-events: none; /* clicks go to the action button */
+  user-select: none;
+}
+
+/* Mini icon button */
+.speedDial__action {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--credence-radius-full);
+  border: none;
+  background: var(--credence-surface-card);
+  color: var(--credence-color-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--credence-shadow-toast);
+  border: 1px solid var(--credence-border-default);
+  transition:
+    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    transform var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.speedDial__action:hover {
+  background: var(--credence-color-primary);
+  color: var(--credence-color-white);
+  border-color: var(--credence-color-primary);
+  transform: scale(1.08);
+}
+
+.speedDial__action:active {
+  transform: scale(0.95);
+}
+
+.speedDial__action:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 3px;
+}
+
+/* ── Dark-mode overrides ─────────────────────────────────────────────────── */
+
+[data-theme='dark'] .speedDial__fab {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] .speedDial__fab:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='dark'] .speedDial__action {
+  background: var(--credence-color-slate-700);
+  border-color: var(--credence-color-slate-600);
+}
+
+[data-theme='dark'] .speedDial__action:hover {
+  background: var(--credence-color-primary);
+  border-color: var(--credence-color-primary);
+  color: var(--credence-color-white);
+}
+
+[data-theme='dark'] .speedDial__label {
+  background: var(--credence-color-slate-700);
+  border-color: var(--credence-color-slate-600);
+}
+
+/* ── Reduced-motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .speedDial__fab,
+  .speedDial__fabIcon,
+  .speedDial__actions,
+  .speedDial__action {
+    transition: none;
+  }
+}
+
+/* ── Visibility guard: only show on ≤768px ───────────────────────────────── */
+
+@media (max-width: 768px) {
+  .speedDial {
+    display: flex;
+  }
+}

@@ -1,37 +1,61 @@
 import { describe, it, expect } from 'vitest'
 import { CSP, CSP_DIRECTIVES } from './security'
 
-describe('Content Security Policy', () => {
-  it('includes script-src with self only (no unsafe-inline or unsafe-eval)', () => {
-    const scriptMatch = CSP.match(/script-src\s+(.+?)(?:;|$)/)
-    expect(scriptMatch).not.toBeNull()
-    const scriptValue = scriptMatch![1]
-    expect(scriptValue.trim()).toBe("'self'")
-    expect(scriptValue).not.toContain("'unsafe-inline'")
-    expect(scriptValue).not.toContain("'unsafe-eval'")
+describe('CSP string', () => {
+  it("contains script-src 'self'", () => {
+    expect(CSP).toContain("script-src 'self'")
   })
 
-  it('includes style-src with self and unsafe-inline (required by Vite/React)', () => {
-    const styleMatch = CSP.match(/style-src\s+(.+?)(?:;|$)/)
-    expect(styleMatch).not.toBeNull()
-    const styleValue = styleMatch![1]
-    expect(styleValue.trim()).toBe("'self' 'unsafe-inline'")
+  it("does not allow 'unsafe-eval' in script-src", () => {
+    const scriptSrcMatch = CSP.match(/script-src([^;]*)/)
+    expect(scriptSrcMatch).not.toBeNull()
+    expect(scriptSrcMatch![1]).not.toContain("'unsafe-eval'")
   })
 
-  it('restricts form-action to self', () => {
-    expect(CSP).toContain("form-action 'self'")
+  it("does not allow 'unsafe-inline' in script-src", () => {
+    const scriptSrcMatch = CSP.match(/script-src([^;]*)/)
+    expect(scriptSrcMatch).not.toBeNull()
+    expect(scriptSrcMatch![1]).not.toContain("'unsafe-inline'")
   })
 
-  it('restricts frame-ancestors to none', () => {
+  it("contains style-src 'self' 'unsafe-inline'", () => {
+    expect(CSP).toContain("style-src 'self' 'unsafe-inline'")
+  })
+
+  it("contains frame-ancestors 'none'", () => {
     expect(CSP).toContain("frame-ancestors 'none'")
   })
 
-  it('does not allow unsafe-eval in any directive', () => {
-    expect(CSP).not.toContain("'unsafe-eval'")
+  it("contains base-uri 'self'", () => {
+    expect(CSP).toContain("base-uri 'self'")
   })
 
-  it('does not allow unsafe-inline in script-src', () => {
-    const scriptSrc = CSP_DIRECTIVES.scriptSrc
-    expect(scriptSrc).not.toContain("'unsafe-inline'")
+  it("contains form-action 'self'", () => {
+    expect(CSP).toContain("form-action 'self'")
+  })
+
+  it('has no dangling semicolons or empty directives', () => {
+    // No double semicolons and no leading/trailing semicolons
+    expect(CSP).not.toMatch(/;;/)
+    expect(CSP.trim()).not.toMatch(/^;/)
+    expect(CSP.trim()).not.toMatch(/;$/)
+  })
+
+  it('contains default-src', () => {
+    expect(CSP).toContain('default-src')
+  })
+})
+
+describe('CSP_DIRECTIVES object', () => {
+  it("scriptSrc contains only 'self'", () => {
+    expect(CSP_DIRECTIVES.scriptSrc).toEqual(["'self'"])
+  })
+
+  it("frameAncestors is 'none'", () => {
+    expect(CSP_DIRECTIVES.frameAncestors).toEqual(["'none'"])
+  })
+
+  it('styleSrc allows unsafe-inline (required for Vite CSS modules)', () => {
+    expect(CSP_DIRECTIVES.styleSrc).toContain("'unsafe-inline'")
   })
 })

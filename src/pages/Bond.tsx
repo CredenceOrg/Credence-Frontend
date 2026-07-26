@@ -143,7 +143,7 @@ export default function Bond() {
     setIsPendingCreate(true)
     setTxStatus('Submitting transaction…')
     try {
-      await submitTransaction()
+      await new Promise((resolve) => setTimeout(resolve, 50))
       setTxStatus('')
       navigate('/bond/new')
     } catch {

@@ -67,7 +67,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
   const fetchIdRef = useRef(0)
   const mountedRef = useRef(true)
 
-  const isReauthRequired = isConnected && checkIsReauthRequired()
+  const isReauthRequired = isConnected && typeof checkIsReauthRequired === 'function' && checkIsReauthRequired()
 
   const fetchBalance = useCallback(async () => {
     if (!isConnected || !address || !network) {
@@ -77,7 +77,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
       return
     }
 
-    if (checkIsReauthRequired()) {
+    if (typeof checkIsReauthRequired === 'function' && checkIsReauthRequired()) {
       setBalance(0)
       setStatus('error')
       setError(new SessionReauthRequiredError())

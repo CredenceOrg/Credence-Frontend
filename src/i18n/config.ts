@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import en from './locales/en.json'
+import { DOM_EVENTS } from '../events'
 
 i18n
   .use(LanguageDetector)
@@ -21,7 +22,7 @@ i18n
     },
   })
 
-i18n.on('languageChanged', (lng) => {
+i18n.on(DOM_EVENTS.LANGUAGE_CHANGED, (lng) => {
   document.documentElement.lang = lng
 })
 

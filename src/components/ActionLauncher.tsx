@@ -114,11 +114,9 @@ export default function ActionLauncher({
 
   const updateRecent = useCallback(
     (id: string) => {
-      setRecentActionIds((current) =>
-        clampRecentActions([id, ...current.filter((existing) => existing !== id)]),
-      )
+      setRecentActionIds(clampRecentActions([id, ...recentActionIds.filter((existing: string) => existing !== id)]))
     },
-    [setRecentActionIds],
+    [recentActionIds, setRecentActionIds],
   )
 
   const handleSelect = useCallback(

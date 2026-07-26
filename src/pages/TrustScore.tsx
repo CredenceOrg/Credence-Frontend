@@ -60,8 +60,6 @@ export default function TrustScore() {
     description:
       'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
   })
-
-  const { t } = useTranslation()
   const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork, addressDisplay } = useSettings()

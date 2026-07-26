@@ -1,4 +1,5 @@
 import { RefObject, useEffect, useRef } from 'react'
+import { DOM_EVENTS } from '../events'
 
 /**
  * CSS selector matching the elements that are eligible to receive keyboard focus
@@ -198,10 +199,10 @@ export function useFocusTrap({
       }
     }
 
-    container.addEventListener('keydown', handleKeyDown)
+    container.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
 
     return () => {
-      container.removeEventListener('keydown', handleKeyDown)
+      container.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
 
       if (!returnFocusOnDeactivate) return
 

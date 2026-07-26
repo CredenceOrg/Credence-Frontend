@@ -171,6 +171,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - [API Client Policies](docs/API_CLIENT_POLICIES.md) — Interceptors, retry policy, and error taxonomy for the API client.
 - [Cookie-Secret Rotation Runbook](docs/COOKIE_SECRETS.md) — Rotation cadence, blast radius, and step-by-step procedure for backend session/CSRF cookie secrets.
 - [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
+- [Offline Strategy](docs/PWA.md) — What's cached, what's queued, and what happens on cache miss.
 
 ## Project layout
 

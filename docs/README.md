@@ -131,6 +131,10 @@ This directory contains comprehensive design specifications and implementation g
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 
+19. **[Offline Strategy](./PWA.md)**
+    - What's cached (localStorage keys, in-memory widget cache), what's queued (pending transactions, auto-save retry), and what happens on cache miss
+    - Offline-aware hooks (`useQuery`, `useWidgetCache`), offline banner, install prompt behaviour
+
 ### Quick Start
 
 To implement UI states in your components:

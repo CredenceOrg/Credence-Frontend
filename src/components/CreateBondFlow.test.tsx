@@ -280,7 +280,7 @@ describe('CreateBondFlow – step 3 review', () => {
 
   it('shows bond amount row', async () => {
     await reachStep3('1000', 30)
-    expect(screen.getByTestId('review-bond-amount')).toHaveTextContent('1000 USDC')
+    expect(screen.getByTestId('review-bond-amount')).toHaveTextContent('1,000 USDC')
   })
 
   it('shows duration row', async () => {

@@ -11,6 +11,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |
 | ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | BottomNav              | `src/components/navigation/BottomNav.css`                                           | None.                                                                                                                     |
+| Progress               | `src/components/Progress.css`                                                       | None.                                                                                                                     |
 | Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
 | Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
 | Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
@@ -31,10 +32,12 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
 | Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
 | ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
+| Kbd                     | `src/components/Kbd.css`                                                            | None.                                                                                                                     |
 | KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
 | AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
 | CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
 | ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
+| RepoAvatar             | `src/components/RepoAvatar.css`                                                     | None.                                                                                                                     |
 
 ## Shared vocabularies
 
@@ -522,3 +525,57 @@ Tokens: `--credence-surface-card` (background), `--credence-border-default` (top
 // It reads the current route via React Router context automatically.
 <BottomNav />
 ```
+
+## Progress
+
+Source: [`src/components/Progress.tsx`](../src/components/Progress.tsx).
+
+| Prop         | Type                         | Default     |
+| ------------ | ---------------------------- | ----------- |
+| `value`      | `number`                     | `undefined` |
+| `min`        | `number`                     | `0`         |
+| `max`        | `number`                     | `100`       |
+| `aria-label` | `string`                     | Required    |
+| `className`  | `string`                     | `''`        |
+| `size`       | `'sm' \| 'md' \| 'lg'`       | `'md'`      |
+
+When `value` is supplied the bar is **determinate**: `aria-valuenow`, `aria-valuemin`, and `aria-valuemax` are set and the fill width reflects the completion percentage. When `value` is omitted the bar is **indeterminate**: none of the `aria-value*` attributes are set, which signals to assistive technology that the completion amount is unknown. Values outside `[min, max]` are clamped silently.
+
+Accessibility: `role="progressbar"` on the root; `aria-label` is required. The inner track and fill divs are `aria-hidden`. Indeterminate animation is suppressed under `prefers-reduced-motion`.
+
+Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track background), `--credence-radius-full`, `--credence-space-1/2/3` (track heights), `--credence-motion-duration-base`, `--credence-motion-duration-slow`, `--credence-motion-easing-standard`.
+
+```tsx
+{/* Determinate */}
+<Progress value={60} max={100} aria-label="Bond creation: step 3 of 5" />
+
+{/* Indeterminate */}
+<Progress aria-label="Loading trust score" />
+```
+
+## RepoAvatar
+
+Source: [`src/components/RepoAvatar.tsx`](../src/components/RepoAvatar.tsx). Config: [`src/config/avatar.ts`](../src/config/avatar.ts).
+
+Repository avatar component supporting tokenised sizing presets (`sm`, `md`, `lg`) tied directly to `--credence-*` design tokens, image error fallback handling, and accessible ARIA attributes.
+
+| Prop | Type | Default | Description |
+| ---- | ---- | ------- | ----------- |
+| `src` | `string` | `undefined` | URL for the avatar image |
+| `name` | `string` | `undefined` | Repository or organization name, used for fallback initials generation |
+| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Preset tokenised size variant |
+| `alt` | `string` | `undefined` | Image alt text override |
+| `className` | `string` | `''` | Extra CSS class names |
+
+Accessibility: renders `role="img"` with descriptive `aria-label`. When `src` is missing or fails to load, falls back cleanly to uppercase initials derived from `name` or a default repository icon.
+
+Tokens: `--credence-avatar-size-sm`, `--credence-avatar-size-md`, `--credence-avatar-size-lg`, `--credence-space-6`, `--credence-space-8`, `--credence-space-12`, `--credence-radius-md`, `--credence-surface-card`, `--credence-border-default`, `--credence-text-primary`, `--credence-font-size-xs`, `--credence-font-size-sm`, `--credence-font-size-base`.
+
+```tsx
+{/* Default medium size with name fallback */}
+<RepoAvatar name="CredenceOrg/Credence-Frontend" />
+
+{/* Small size with image URL */}
+<RepoAvatar size="sm" src="https://example.com/avatar.png" name="CredenceOrg/Credence-Frontend" />
+```
+

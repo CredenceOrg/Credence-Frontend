@@ -4,6 +4,7 @@ import Select from './controls/Select'
 import { FormField } from './forms/FormField'
 import Button from './Button'
 import ConfirmDialog from './ConfirmDialog'
+import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { useToast } from './ToastProvider'
 import { ATTESTATION_EVENTS, type AttestationPayload } from '../events'
 
@@ -31,6 +32,7 @@ export interface AttestationFormProps {
  */
 export default function AttestationForm({ onSubmitSuccess, disabled = false }: AttestationFormProps) {
   const { addToast } = useToast()
+  const { copy, copied } = useCopyToClipboard()
   const [subject, setSubject] = useState('')
   const [isSubjectValid, setIsSubjectValid] = useState(false)
   const [type, setType] = useState<string>(ATTESTATION_EVENTS.TYPES.IDENTITY)
@@ -224,9 +226,45 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
               >
                 Subject
               </strong>
-              <code style={{ fontSize: 'var(--credence-font-size-sm)', wordBreak: 'break-all' }}>
-                {subject}
-              </code>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--credence-space-2)' }}>
+                <code style={{ fontSize: 'var(--credence-font-size-sm)', wordBreak: 'break-all', flex: 1 }}>
+                  {subject}
+                </code>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const success = await copy(subject)
+                    if (success) {
+                      addToast('success', 'Subject address copied to clipboard')
+                    }
+                  }}
+                  aria-label={copied ? 'Copied' : 'Copy subject address'}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 'var(--credence-space-1)',
+                    border: 'none',
+                    borderRadius: 'var(--credence-radius-sm)',
+                    background: 'transparent',
+                    color: 'var(--credence-text-secondary)',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {copied ? (
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             <div>
               <strong

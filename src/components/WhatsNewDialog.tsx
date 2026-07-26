@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useProductUpdates } from '../hooks/useProductUpdates'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import type { ProductUpdate } from '../data/productUpdates'
 import Button from './Button'
 import './WhatsNewDialog.css'
@@ -53,6 +54,8 @@ export default function WhatsNewDialog({
 
   const handleClose = useCallback(() => onClose(), [onClose])
 
+  useScrollPreserver({ isActive: open })
+
   useFocusTrap({
     containerRef: dialogRef,
     isActive: open,
@@ -63,12 +66,7 @@ export default function WhatsNewDialog({
 
   useEffect(() => {
     if (!open) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     markAllRead()
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
   }, [open, markAllRead])
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {

@@ -315,6 +315,9 @@ const { t } = useTranslation()
 ;<EmptyState title="No active bonds" description="You do not have any active bonds yet." />
 ```
 
+> [!NOTE]
+> For a step-by-step guide on how to extract hardcoded strings into the i18n files, see the [i18n Extraction Guide](./i18n-extraction.md).
+
 Exception: toast messages currently use hard-coded English strings in the codebase
 (e.g., `addToast('success', 'Bond created successfully.')`). When adding new toast
 strings, follow the existing pattern, and prefer action-oriented past-tense sentences.

@@ -128,6 +128,11 @@ This directory contains comprehensive design specifications and implementation g
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 
+19. **[i18n Extraction Guide](./i18n-extraction.md)** ⭐ NEW
+    - Step-by-step instructions for contributors to extract hardcoded strings
+    - Explanation of the manual extraction process
+    - Examples of adding strings to locales and using the `useTranslation` hook
+
 ### Quick Start
 
 To implement UI states in your components:

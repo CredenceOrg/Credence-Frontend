@@ -128,6 +128,11 @@ This directory contains comprehensive design specifications and implementation g
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 
+19. **[Upload Handling](./upload-handling.md)** ⭐ NEW (closes #1)
+    - Chunked uploads for large files
+    - Retry mechanisms with exponential backoff
+    - Progress reporting strategy
+
 ### Quick Start
 
 To implement UI states in your components:

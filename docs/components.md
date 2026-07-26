@@ -27,6 +27,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | ActivityTimeline       | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                       |
 | TooltipOnOverflow      | `src/components/TooltipOnOverflow.css`                                              | None.                                                                                                                     |
 | FormField              | `src/components/forms/FormField.css`                                                | None.                                                                                                                     |
+| FilePicker             | `src/components/FilePicker.css` + `FormField.css`                                   | None.                                                                                                                     |
 | controls/Select        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
 | controls/Toggle        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
 | states/EmptyState      | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
@@ -565,6 +566,47 @@ Placeholder-only layouts should still expose an accessible name:
   <input placeholder="Search attestations…" />
 </FormField>
 ```
+
+## FilePicker
+
+Source: [`src/components/FilePicker.tsx`](../src/components/FilePicker.tsx).
+
+| Prop           | Type                          | Default                                  |
+| -------------- | ----------------------------- | ---------------------------------------- |
+| `id`           | `string`                      | Auto-generated                           |
+| `label`        | `string`                      | `'Upload files'`                         |
+| `hint`         | `string`                      | `undefined`                              |
+| `error`        | `string`                      | `undefined`                              |
+| `files`        | `File[]`                      | Required                                 |
+| `onChange`     | `(files: File[]) => void`     | Required                                 |
+| `accept`       | `string`                      | `undefined`                              |
+| `multiple`     | `boolean`                     | `false`                                  |
+| `disabled`     | `boolean`                     | `false`                                  |
+| `required`     | `boolean`                     | `false`                                  |
+| `maxSizeBytes` | `number`                      | `undefined`                              |
+| `className`    | `string`                      | `''`                                     |
+| `title`        | `string`                      | Context-sensitive drag-and-drop prompt   |
+| `dropHint`     | `string`                      | Accept format hint                       |
+| `ariaLabel`    | `string`                      | `undefined`                              |
+
+Accessibility: renders a dropzone with `role="button"`, `aria-roledescription="file drop zone"`, keyboard activation via Space/Enter, and `aria-controls` linking to live announcement regions. Drag state changes are announced via `aria-live="polite"` regions. File additions and rejections trigger screen-reader announcements. The dropzone is linked to `FormField` for label, hint, and error display. Hidden native `<input type="file">` is `aria-hidden` and focus is managed via the dropzone. File list items include remove buttons with descriptive `aria-label` attributes. Keyboard instructions are provided via sr-only text. Supports `prefers-reduced-motion` and dark mode.
+
+Tokens: border, danger, info, primary, slate, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
+
+```tsx
+<FilePicker
+  id="evidence"
+  label="Upload evidence"
+  files={files}
+  onChange={setFiles}
+  accept=".pdf,image/*"
+  multiple
+  maxSizeBytes={10 * 1024 * 1024}
+  hint="PDF or images. Max 10 MB per file."
+/>
+```
+
+Storybook: `Components/Forms/FilePicker` — **Default** · **SingleFile** · **MultipleFiles** · **WithFiles** · **WithError** · **Disabled** · **DisabledWithFiles** · **WithSizeLimit** · **Required** · **DragActivePreview**.
 
 ## controls/Select
 

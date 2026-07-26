@@ -178,10 +178,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 
 - `src/pages/` — Home, Bond, Trust Score
 - `src/components/` — Layout, shared UI (including the in-app Changelog drawer sourced from `/changelog.json`); see the [shared components catalog](docs/COMPONENTS.md) for props, Storybook stories, accessibility notes, styling ownership, and token usage
-- `src/hooks/useDebouncedAutoSave.ts` — Generic debounced save lifecycle (`pending` / `saving` / `saved` / `error`)
-- `src/components/indicators/` — Status indicators (`AutoSaveIndicator`)
-- `src/config/autoSave.ts` — Central auto-save constants
-- `src/config/queryCache.ts` — Central query-cache TTL constants and env overrides
+- Long lists now use a windowed rendering path once they reach the configured threshold in [src/config/listing.ts](src/config/listing.ts), keeping large update lists responsive without changing the public component API
 - `src/widgetCache/` — Shared widget cache (`WidgetCacheProvider`, `useWidgetCache`)
 - `src/components/widget/` — Per-widget UI primitives (`WidgetRefreshButton`)
 - `src/config/widgetCache.ts` — Central widget-cache constants

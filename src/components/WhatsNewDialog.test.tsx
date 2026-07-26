@@ -85,6 +85,50 @@ describe('WhatsNewDialog / ChangelogDrawer', () => {
     expect(list.querySelectorAll('li')).toHaveLength(PRODUCT_UPDATES.length)
   })
 
+  it('renders the long-list windowing wrapper for large datasets', () => {
+    const longUpdates = Array.from({ length: 1005 }, (_, index) => ({
+      ...PRODUCT_UPDATES[0],
+      id: `update-${index}`,
+      title: `Update ${index}`,
+      description: `Description ${index}`,
+    }))
+
+    vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
+      updates: longUpdates,
+      unreadCount: 0,
+      isLoading: false,
+      error: null,
+      markAllRead: mockMarkAllRead,
+      refetch: mockRefetch,
+    })
+
+    render(<WhatsNewDialog open={true} onClose={() => undefined} />)
+    const list = screen.getByRole('list', { name: /recent product updates/i })
+    expect(list.querySelectorAll('li').length).toBeGreaterThan(0)
+  })
+
+  it('uses the supplied container height for the long-list viewport', () => {
+    const longUpdates = Array.from({ length: 1005 }, (_, index) => ({
+      ...PRODUCT_UPDATES[0],
+      id: `update-${index}`,
+      title: `Update ${index}`,
+      description: `Description ${index}`,
+    }))
+
+    vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
+      updates: longUpdates,
+      unreadCount: 0,
+      isLoading: false,
+      error: null,
+      markAllRead: mockMarkAllRead,
+      refetch: mockRefetch,
+    })
+
+    render(<WhatsNewDialog open={true} onClose={() => undefined} />)
+    const list = screen.getByRole('list', { name: /recent product updates/i })
+    expect(list).toHaveStyle({ height: '420px' })
+  })
+
   it('renders the title and description for each update', () => {
     render(<WhatsNewDialog open={true} onClose={() => undefined} />)
     for (const update of PRODUCT_UPDATES) {

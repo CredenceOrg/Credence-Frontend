@@ -119,6 +119,7 @@
   padding: var(--credence-space-4) var(--credence-space-5);
   display: grid;
   gap: var(--credence-space-5);
+  min-height: 0;
 }
 
 .whats-new-dialog__item {

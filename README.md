@@ -162,6 +162,7 @@ landed, so the per-page wiring ships in follow-up PRs. The cache primitives
 See the [docs/](docs/) directory for detailed project documentation, including:
 
 - [Accessibility Checklist](docs/ACCESSIBILITY.md) - Required axe, screen reader, keyboard, and contrast checks before merging UI changes.
+- [Design QA Checklist](docs/DESIGN_QA.md) - Design-side review checks before shipping.
 - [Copy Tone Guide](docs/COPY_TONE.md) — How we phrase success, error, empty, and loading UI copy with dos and don'ts.
 - [Error UI Pattern Guide](docs/ERROR_UI.md) — Standard error surfaces guide (inline errors, banners, toasts, error states).
 - [Design Tokens Overview](docs/DESIGN_TOKENS.md) — Exhaustive list of CSS custom properties and semantic roles.

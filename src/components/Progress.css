@@ -19,6 +19,23 @@
   border-radius: var(--credence-radius-full, 9999px);
 }
 
+/* Colour variants — fill colour */
+.progress--color-primary .progress__fill {
+  background-color: var(--credence-color-primary, #3b82d4);
+}
+
+.progress--color-success .progress__fill {
+  background-color: var(--credence-color-success-border, #15803d);
+}
+
+.progress--color-warning .progress__fill {
+  background-color: var(--credence-color-warning-border, #f59e0b);
+}
+
+.progress--color-danger .progress__fill {
+  background-color: var(--credence-color-danger-action, #dc2626);
+}
+
 /* Track */
 .progress__track {
   width: 100%;

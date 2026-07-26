@@ -208,6 +208,82 @@ describe('Progress', () => {
   })
 
   // -------------------------------------------------------------------------
+  // Colour variants
+  // -------------------------------------------------------------------------
+  describe('colour variants', () => {
+    it('applies .progress--color-primary by default', () => {
+      const { container } = render(<Progress value={50} aria-label="Loading" />)
+      expect(container.querySelector('.progress--color-primary')).not.toBeNull()
+    })
+
+    it('applies .progress--color-success for color="success"', () => {
+      const { container } = render(
+        <Progress value={50} color="success" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-success')).not.toBeNull()
+    })
+
+    it('applies .progress--color-warning for color="warning"', () => {
+      const { container } = render(
+        <Progress value={50} color="warning" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-warning')).not.toBeNull()
+    })
+
+    it('applies .progress--color-danger for color="danger"', () => {
+      const { container } = render(
+        <Progress value={50} color="danger" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-danger')).not.toBeNull()
+    })
+
+    it('colour variant class is present in indeterminate mode', () => {
+      const { container } = render(
+        <Progress color="success" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-success')).not.toBeNull()
+    })
+
+    it('colour variant class combines correctly with size class', () => {
+      const { container } = render(
+        <Progress value={50} size="lg" color="danger" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--lg')).not.toBeNull()
+      expect(container.querySelector('.progress--color-danger')).not.toBeNull()
+    })
+
+    it('does not apply .progress--color-primary when a non-default variant is set', () => {
+      const { container } = render(
+        <Progress value={50} color="success" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-primary')).toBeNull()
+    })
+
+    it('does not apply .progress--color-success when a different variant is set', () => {
+      const { container } = render(
+        <Progress value={50} color="warning" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-success')).toBeNull()
+    })
+
+    it('colour variant does not interfere with striped class', () => {
+      const { container } = render(
+        <Progress value={50} color="danger" striped aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-danger')).not.toBeNull()
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+    })
+
+    it('colour variant does not interfere with animated class', () => {
+      const { container } = render(
+        <Progress value={50} color="warning" animated aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-warning')).not.toBeNull()
+      expect(container.querySelector('.progress--animated')).not.toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
   // className prop
   // -------------------------------------------------------------------------
   describe('className prop', () => {

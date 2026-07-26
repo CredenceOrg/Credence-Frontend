@@ -11,7 +11,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |
 | ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | BottomNav              | `src/components/navigation/BottomNav.css`                                           | None.                                                                                                                     |
-| Progress               | `src/components/Progress.css`                                                       | None.                                                                                                                     |
+| Progress               | `src/components/Progress.css`                                                       | `color` prop for colour variants (`primary`, `success`, `warning`, `danger`).                                                     |
 | Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
 | Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
 | Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
@@ -538,12 +538,13 @@ Source: [`src/components/Progress.tsx`](../src/components/Progress.tsx).
 | `aria-label` | `string`                     | Required    |
 | `className`  | `string`                     | `''`        |
 | `size`       | `'sm' \| 'md' \| 'lg'`       | `'md'`      |
+| `color`      | `'primary' \| 'success' \| 'warning' \| 'danger'` | `'primary'` |
 
 When `value` is supplied the bar is **determinate**: `aria-valuenow`, `aria-valuemin`, and `aria-valuemax` are set and the fill width reflects the completion percentage. When `value` is omitted the bar is **indeterminate**: none of the `aria-value*` attributes are set, which signals to assistive technology that the completion amount is unknown. Values outside `[min, max]` are clamped silently.
 
 Accessibility: `role="progressbar"` on the root; `aria-label` is required. The inner track and fill divs are `aria-hidden`. Indeterminate animation is suppressed under `prefers-reduced-motion`.
 
-Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track background), `--credence-radius-full`, `--credence-space-1/2/3` (track heights), `--credence-motion-duration-base`, `--credence-motion-duration-slow`, `--credence-motion-easing-standard`.
+Tokens: `--credence-color-primary` (fill, default), `--credence-color-success-border`, `--credence-color-warning-border`, `--credence-color-danger-action` (fill, variant colours), `--credence-color-slate-200` (track background), `--credence-radius-full`, `--credence-space-1/2/3` (track heights), `--credence-motion-duration-base`, `--credence-motion-duration-slow`, `--credence-motion-easing-standard`.
 
 ```tsx
 {/* Determinate */}
@@ -551,6 +552,14 @@ Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track b
 
 {/* Indeterminate */}
 <Progress aria-label="Loading trust score" />
+
+{/* Colour variants */}
+<Progress value={60} color="success" aria-label="Upload complete" />
+<Progress value={60} color="warning" aria-label="Upload paused" />
+<Progress value={60} color="danger" aria-label="Upload failed" />
+
+{/* Indeterminate with colour variant */}
+<Progress color="success" aria-label="Processing" />
 ```
 
 ## RepoAvatar

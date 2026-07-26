@@ -134,15 +134,10 @@ This directory contains comprehensive design specifications and implementation g
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 
-19. **[Upload Handling](./upload-handling.md)** ⭐ NEW (closes #1)
-    - Chunked uploads for large files
-    - Retry mechanisms with exponential backoff
-    - Progress reporting strategy
-
-20. **[Locales Management](./locales.md)** ⭐ NEW (closes #4)
-    - How to add a new locale
-    - Managing existing locales
-    - Using translation hooks
+19. **[Feature Flag Lifecycle](./FEATURE_FLAG_LIFECYCLE.md)** ⭐ NEW
+    - How feature flags are proposed, implemented, monitored, and retired
+    - Flag types used in the codebase (build-time, env var, local-storage, target flag module)
+    - Lifecycle checklist for adding, monitoring, and retiring flags
 
 ### Quick Start
 

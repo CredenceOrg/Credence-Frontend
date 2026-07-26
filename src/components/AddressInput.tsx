@@ -2,10 +2,11 @@ import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
 import QRScannerModal from './QRScannerModal'
 import './AddressInput.css'
-import { isValidStellarAddress, truncateAddress, sanitizeAddressInput, AddressSanitizationError } from '@/lib/stellar'
+import { isValidStellarAddress, sanitizeAddressInput, AddressSanitizationError, formatAddressForDisplay } from '@/lib/stellar'
 import useCopyToClipboard from '@/hooks/useCopyToClipboard'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { TEST_IDS } from '@/config/testIds'
+import { useSettings } from '@/context/SettingsContext'
 
 export interface AddressInputProps {
   id: string
@@ -171,9 +172,11 @@ export default function AddressInput({
 
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
   const [sanitizationError, setSanitizationError] = useState<AddressSanitizationError | null>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
   const { copy, copied } = useCopyToClipboard()
+  const { addressDisplay } = useSettings()
 
   const debouncedValue = useDebouncedValue(value, 200)
   const isValid = isValidStellarAddress(debouncedValue)
@@ -304,7 +307,7 @@ export default function AddressInput({
       {showSuccess && value && (
         <div className="address-input-echo">
           <span className="address-input-echo-label">Recognized:</span>
-          <code className="address-input-echo-value">{truncateAddress(value)}</code>
+          <code className="address-input-echo-value">{formatAddressForDisplay(value, addressDisplay)}</code>
           <button
             type="button"
             onClick={handleCopy}

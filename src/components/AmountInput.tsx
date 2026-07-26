@@ -81,9 +81,10 @@ export default function AmountInput({
   const isInvalid = Boolean(activeError) || ariaInvalid === 'true'
 
   // Notify caller when internal validity changes.
+  // A non-empty value is invalid when it exceeds balance OR falls below min.
   useEffect(() => {
-    onValidityChange?.(!isOverBalance)
-  }, [isOverBalance, onValidityChange])
+    onValidityChange?.(!isOverBalance && !isBelowMin)
+  }, [isOverBalance, isBelowMin, onValidityChange])
 
   const displayValue = useMemo(() => {
     if (isFocused) return value

@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { isExternalUrl } from './isExternalUrl';
 
 describe('isExternalUrl', () => {
+  const originalLocation = window.location
+
   beforeAll(() => {
     // @ts-expect-error - location is non-optional
     delete window.location;

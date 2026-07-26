@@ -113,7 +113,7 @@ describe('useWallet', () => {
     expect(result.current.isConnected).toBe(false)
   })
 
-  it('does not block connection on network mismatch and reports actual network', async () => {
+  it('blocks connection on network mismatch — mainnet settings with testnet wallet', async () => {
     mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
     mocks.mockFetchFreighterNetwork.mockResolvedValue('test')
 
@@ -123,10 +123,26 @@ describe('useWallet', () => {
       await result.current.connect()
     })
 
-    expect(result.current.error).toBeNull()
-    expect(result.current.isConnected).toBe(true)
-    expect(result.current.address).toBe(TEST_ADDRESS)
+    expect(result.current.error).toMatchObject({ code: 'network_mismatch' })
+    expect(result.current.isConnected).toBe(false)
+    expect(result.current.address).toBe('')
     expect(result.current.network).toBe('test')
+  })
+
+  it('blocks connection on network mismatch — testnet settings with mainnet wallet', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockFetchFreighterNetwork.mockResolvedValue('public')
+
+    const { result } = renderHook(() => useWallet('test'))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(result.current.error).toMatchObject({ code: 'network_mismatch' })
+    expect(result.current.isConnected).toBe(false)
+    expect(result.current.address).toBe('')
+    expect(result.current.network).toBe('public')
   })
 
   it('surfaces unknown error when client throws', async () => {

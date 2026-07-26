@@ -56,7 +56,7 @@ describe('Layout Integration', () => {
 
   it('renders theme toggle button', () => {
     renderLayout()
-    expect(screen.getByRole('button', { name: /switch to/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument()
   })
 
   it('renders desktop navigation links', () => {

@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback } from 'react'
-import Badge, { type BadgeVariant } from './Badge'
-import CopyableHash from './CopyableHash'
+import { useState, useCallback, useRef, memo, type ReactElement } from 'react'
 import './ActivityTimeline.css'
+import { ACTIVITY_ITEMS, ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
 import EmptyState from './states/EmptyState'
+import CopyableHash from './CopyableHash'
+import Badge from './Badge'
 
 export type ActivityTone = 'success' | 'warning' | 'info'
 
@@ -38,43 +39,49 @@ export interface ActivityItem {
   meta: string
 }
 
+export function toneToBadgeVariant(tone: string): string {
+  switch (tone) {
+    case 'success':
+      return 'active'
+    case 'warning':
+      return 'grace-period'
+    case 'info':
+      return 'locked'
+    default:
+      return 'active'
+  }
+}
+
+export function isTxHash(meta: string): boolean {
+  return meta.toLowerCase().startsWith('tx')
+}
+
+export function toneToBadgeVariant(tone: ActivityTone): 'active' | 'grace-period' | 'locked' {
+  switch (tone) {
+    case 'success':
+      return 'active'
+    case 'warning':
+      return 'grace-period'
+    case 'info':
+    default:
+      return 'locked'
+  }
+}
+
+export function isTxHash(meta: string): boolean {
+  return /^tx\s+0x[\w.-]+$/i.test(meta.trim())
+}
+
 export interface ActivityTimelineProps {
   compact?: boolean
   items?: ActivityItem[]
 }
 
-export const SAMPLE_ACTIVITY: ActivityItem[] = [
-  {
-    id: 'evt-001',
-    timestamp: 'Apr 28, 14:22 UTC',
-    title: 'Attestation submitted',
-    description: 'Identity evidence package uploaded and signed for review.',
-    actor: 'Validator Node 12',
-    statusLabel: 'Accepted',
-    tone: 'success',
-    meta: 'Tx 0x93a1...22f4',
-  },
-  {
-    id: 'evt-002',
-    timestamp: 'Apr 27, 09:48 UTC',
-    title: 'Proof mismatch detected',
-    description: 'Signature payload differed from expected checksum for one field.',
-    actor: 'Automated Verifier',
-    statusLabel: 'Needs update',
-    tone: 'warning',
-    meta: 'Rule AV-17',
-  },
-  {
-    id: 'evt-003',
-    timestamp: 'Apr 26, 20:11 UTC',
-    title: 'Credential refreshed',
-    description: 'Expiration window extended after successful periodic check.',
-    actor: 'System process',
-    statusLabel: 'In review',
-    tone: 'info',
-    meta: 'Window +90d',
-  },
-]
+interface ActivityRowProps {
+  item: ActivityItem
+  isExpanded: boolean
+  onToggle: (id: string) => void
+}
 
 export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
 
@@ -90,9 +97,10 @@ export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
  */
 export default function ActivityTimeline({
   compact = false,
-  items = ACTIVITY_ITEMS,
-}: ActivityTimelineProps) {
+  items = SAMPLE_ACTIVITY,
+}: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
   const count = items.length
   const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
@@ -100,6 +108,16 @@ export default function ActivityTimeline({
   const toggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
   }, [])
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'Escape' || !expandedId) return
+      const openId = expandedId
+      setExpandedId(null)
+      triggerRefs.current.get(openId)?.focus()
+    },
+    [expandedId],
+  )
 
   return (
     <section
@@ -125,7 +143,9 @@ export default function ActivityTimeline({
         <ul className="activity-timeline" aria-label="Recent timeline events">
           {items.map((item) => {
             const isExpanded = expandedId === item.id
+            const buttonId = `btn-${item.id}`
             const panelId = `details-${item.id}`
+            const buttonId = `trigger-${item.id}`
             return (
               <li className="activity-row" key={item.id}>
                 <div className="activity-row__rail" aria-hidden="true">
@@ -144,12 +164,7 @@ export default function ActivityTimeline({
 
                   <button
                     id={buttonId}
-                    ref={(el) => {
-                      if (el) triggerRefs.current.set(item.id, el)
-                      else triggerRefs.current.delete(item.id)
-                    }}
                     type="button"
-                    id={buttonId}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
                     onClick={() => toggleExpand(item.id)}
@@ -160,33 +175,33 @@ export default function ActivityTimeline({
                       }
                     }}
                     className="activity-row__disclosure"
-                    ref={(el) => {
-                      if (el) triggerRefs.current.set(item.id, el)
-                      else triggerRefs.current.delete(item.id)
-                    }}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
 
-                  <div
-                    id={panelId}
-                    className="activity-row__detail-panel"
-                    hidden={!isExpanded}
-                    onKeyDown={handleKeyDown}
-                    tabIndex={-1}
-                  >
-                    <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
-                      <strong>Actor:</strong> {item.actor}
-                    </p>
-                    <p className="activity-row__meta">
-                      <strong>Meta:</strong>{' '}
-                      {isTxHash(item.meta) ? (
-                        <CopyableHash hash={item.meta} />
-                      ) : (
-                        item.meta
-                      )}
-                    </p>
-                  </div>
+                  {isExpanded && (
+                    <div
+                      id={`details-${item.id}`}
+                      style={{
+                        marginTop: 'var(--credence-space-3)',
+                        padding: 'var(--credence-space-3)',
+                        background: 'var(--credence-surface-page)',
+                        borderRadius: 'var(--credence-radius-md)',
+                      }}
+                    >
+                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                        <strong>Actor:</strong> {item.actor}
+                      </p>
+                      <p className="activity-row__meta">
+                        <strong>Meta:</strong>{' '}
+                        {isTxHash(item.meta) ? (
+                          <CopyableHash hash={item.meta} kind="tx" />
+                        ) : (
+                          item.meta
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </li>
             )

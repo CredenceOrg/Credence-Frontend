@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
 import Banner from '../components/Banner'
+import ActivityTimeline, { type ActivityItem, SAMPLE_ACTIVITY } from '../components/ActivityTimeline'
 import Disclaimer from '../components/Disclaimer'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
@@ -60,8 +61,6 @@ export default function TrustScore() {
     description:
       'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
   })
-
-  const { t } = useTranslation()
   const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork, addressDisplay } = useSettings()

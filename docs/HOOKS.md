@@ -23,8 +23,11 @@ behavior notes, and a minimal usage example linking to source.
 - [Hooks (`src/hooks/`)](#hooks-srchooks)
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
+  - [`useForwardRef`](#useforwardref)
   - [`useMediaQuery`](#usemediaquery)
+  - [`useApiQuery`](#useapiquery)
   - [`useQuery`](#usequery)
+  - [`useApiMutation`](#useapimutation)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useReducedTransparency`](#usereducedtransparency)
   - [`useScrollPreserver`](#usescrollpreserver)
@@ -34,6 +37,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useWallet`](#usewallet)
   - [`useProductUpdates`](#useproductupdates)
   - [`useSmartBack`](#usesmartback)
+  - [`useKeyboardShortcut`](#usekeyboardshortcut)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -162,6 +166,77 @@ function Bond() {
 
 ---
 
+### `useForwardRef`
+
+Source: [`src/hooks/useForwardRef.ts`](../src/hooks/useForwardRef.ts)
+
+```ts
+function useForwardRef<T>(
+  ref?: NestedRef<T>,
+  initialValue: T | null = null
+): MutableRefObject<T | null>
+
+// Also exported:
+setRef<T>(ref: NestedRef<T>, value: T | null): void
+
+type ReactRef<T> = ForwardedRef<T> | MutableRefObject<T | null> | null | undefined
+type NestedRef<T> = ReactRef<T> | NestedRef<T>[]
+```
+
+A custom hook that merges a local ref with external forwarded refs, solving the common
+wrapper-component pattern where a component needs both internal access to a DOM node and
+the ability to forward that node to a parent via `ref`, `React.forwardRef`, or a callback
+ref. Supports deeply nested arrays of refs and cleans up on unmount.
+
+**Parameters**
+
+| Parameter    | Required | Description                                                                  |
+| ------------ | :------: | ---------------------------------------------------------------------------- |
+| `ref`        |          | A single ref, callback ref, or nested array of refs to synchronise. Optional. |
+| `initialValue` |        | Initial value for the internal ref. Defaults to `null`.                      |
+
+**Returns** a `MutableRefObject<T | null>` that the component attaches to its DOM node via JSX `ref`.
+
+**Behavior notes**
+
+- **Ref merging:** any time the internal ref changes (inside a `useIsomorphicLayoutEffect`),
+  the value is propagated to every ref in the `ref` argument — object refs via `.current`,
+  callback refs via invocation, and arrays recursively.
+- **Cleanup:** on unmount, `null` is propagated to all provided refs, ensuring parent
+  components do not hold stale node references.
+- **Failing callbacks:** if a callback ref throws, the error is silently caught so that
+  other refs in the same array are still updated.
+- **Frozen/read-only objects:** assignments to read-only or frozen ref objects are
+  silently skipped.
+- **SSR-safe / cleanup:** uses `useLayoutEffect` in the browser and falls back to
+  `useEffect` during SSR; the cleanup function propagates `null` on unmount.
+
+```tsx
+import { forwardRef, type ReactNode } from 'react'
+import { useForwardRef } from '../hooks/useForwardRef'
+
+interface FancyInputProps {
+  label: string
+  children?: ReactNode
+}
+
+const FancyInput = forwardRef<HTMLInputElement, FancyInputProps>(
+  function FancyInput({ label, children }, forwardedRef) {
+    const internalRef = useForwardRef<HTMLInputElement>(forwardedRef)
+
+    return (
+      <label>
+        {label}
+        <input ref={internalRef} />
+        {children}
+      </label>
+    )
+  }
+)
+```
+
+---
+
 ### `useMediaQuery`
 
 Source: [`src/hooks/useMediaQuery.ts`](../src/hooks/useMediaQuery.ts)
@@ -200,6 +275,82 @@ const isWide = useMediaQuery('(min-width: 1024px)')
 function ActivityCard() {
   const isMobile = useIsMobile()
   return <h2>{isMobile ? 'Recent Activity' : 'Recent Activity Timeline'}</h2>
+}
+```
+
+---
+
+### `useApiQuery`
+
+Source: [`src/hooks/useApiQuery.ts`](../src/hooks/useApiQuery.ts) · Built on [`apiFetch`](../src/api/client.ts)
+
+```ts
+function useApiQuery<T>(
+  path: string,
+  options?: UseApiQueryOptions,
+): UseApiQueryResult<T>
+
+interface UseApiQueryOptions {
+  enabled?: boolean     // default: true
+  staleTimeMs?: number  // default: WIDGET_CACHE_DEFAULTS.STALE_TIME_MS (30 000)
+}
+
+interface UseApiQueryResult<T> {
+  data: T | undefined
+  isLoading: boolean
+  error: ApiError | null
+  isStale: boolean
+  refetch: () => Promise<void>
+}
+
+// Also exported: invalidateApiQuery(path), clearApiQueryCache()
+```
+
+Type-safe, cache-aware wrapper around `apiFetch` for GET requests. Caches responses keyed by API path and serves cached data within the configured `staleTime`. Abolishes the repetitive abort-controller / mounted-ref boilerplate that domain hooks (`useTrustScore`, `useTransactions`) currently manage by hand.
+
+**Parameters**
+
+| Option        | Required | Description                                                                  |
+| ------------- | :------: | ---------------------------------------------------------------------------- |
+| `path`        |    ✓     | API path passed to `apiFetch` (e.g. `'/trust-score/GABC…'`).               |
+| `enabled`     |          | Set `false` to skip the initial fetch. Default `true`.                      |
+| `staleTimeMs` |          | Time in ms before cached data is considered stale. Default `30 000`.        |
+
+**Behavior notes**
+
+- **Cache:** in-memory `Map` keyed by `path`. Cached data is served synchronously on mount (no loading flash). Cache entries are shared across all hook instances — mounting a second component with the same path reuses the cached result.
+- **Stale-while-revalidate:** when data is within `staleTimeMs`, the hook returns it directly and skips the network call. `refetch()` always bypasses stale-time checks and hits the network.
+- **`isStale`:** set to `true` when the current `data` is older than `staleTimeMs`. Useful for showing a subtle "refreshing" indicator without a full loading spinner.
+- **Abort safety:** in-flight requests are aborted when the component unmounts or when `refetch()` is called again (superseded). Stale responses and `AbortError`s are silently discarded.
+- **Offline-safe:** when `navigator.onLine` is `false`, the hook skips the fetch and sets `isLoading: false`.
+- **Race-condition protection:** run IDs guarantee only the latest triggered fetch updates component state.
+- **Manual invalidation:** call `invalidateApiQuery(path)` to evict a single entry (the next mount/refetch will re-fetch). Call `clearApiQueryCache()` to wipe everything (useful in tests).
+- **SSR-safe / cleanup:** all DOM/navigator checks are guarded; the active `AbortController` is aborted on unmount.
+
+```tsx
+import { useApiQuery } from '../hooks/useApiQuery'
+import type { TrustScore } from '../api/types'
+
+function TrustScoreCard({ address }: { address: string }) {
+  const { data, isLoading, error, isStale, refetch } = useApiQuery<TrustScore>(
+    `/trust-score/${address}`,
+  )
+
+  if (isLoading) return <p>Loading…</p>
+  if (error) {
+    return (
+      <p role="alert">
+        {error.message} <button onClick={refetch}>Retry</button>
+      </p>
+    )
+  }
+
+  return (
+    <div>
+      {isStale && <span className="stale-badge">Refreshing…</span>}
+      <p>Score: {data?.score}</p>
+    </div>
+  )
 }
 ```
 
@@ -256,6 +407,52 @@ function MyComponent() {
       {isLoading ? <p>Loading...</p> : <p>Data: {JSON.stringify(data)}</p>}
     </div>
   )
+}
+```
+
+---
+
+### `useApiMutation`
+
+Source: [`src/hooks/useApiMutation.ts`](../src/hooks/useApiMutation.ts)
+
+```ts
+function useApiMutation<TData, TVariables, TContext = unknown>(
+  options: UseApiMutationOptions<TData, TVariables, TContext>,
+): UseApiMutationResult<TData, TVariables, TContext>
+```
+
+A lightweight mutation wrapper for API calls that supports optimistic updates and rollback helpers.
+
+**Parameters**
+
+| Option | Required | Description |
+| --- | :---: | --- |
+| `mutationFn` | ✓ | The async mutation function to execute. |
+| `onMutate` | | Runs before the request and can apply optimistic local state via the supplied helpers. |
+| `onSuccess` | | Runs after a successful mutation. |
+| `onError` | | Runs after a failed mutation. |
+| `onSettled` | | Runs after either outcome. |
+| `initialData` | | Initial value for `data`. |
+
+**Behavior notes**
+
+- `onMutate` receives `setData` and `rollback` helpers so callers can immediately update local state and revert it if the request fails.
+- `mutateAsync` returns the server result or throws the mutation error after rollback.
+- The hook exposes `status`, `isPending`, `isError`, `isSuccess`, and `reset` for simple UI state handling.
+
+```tsx
+import { useApiMutation } from '../hooks/useApiMutation'
+
+function SaveProfile() {
+  const mutation = useApiMutation({
+    mutationFn: (nextName: string) => apiFetch('/profile', { method: 'PATCH', body: { name: nextName } }),
+    onMutate: (name, { setData }) => {
+      setData((current) => ({ ...(current ?? {}), name }))
+    },
+  })
+
+  return <button onClick={() => void mutation.mutateAsync('Ada')}>Save</button>
 }
 ```
 
@@ -637,6 +834,66 @@ function BackButton() {
       ← Back
     </button>
   )
+}
+```
+
+---
+
+### `useKeyboardShortcut`
+
+Source: [`src/hooks/useKeyboardShortcut.ts`](../src/hooks/useKeyboardShortcut.ts)
+
+```ts
+function useKeyboardShortcut(
+  keysOrConfig: ShortcutKeys | UseKeyboardShortcutConfig,
+  callback?: ShortcutCallback,
+  options?: UseKeyboardShortcutOptions
+): void
+
+type ShortcutKeys = string | string[] | (string | string[])[]
+
+interface UseKeyboardShortcutOptions {
+  enabled?: boolean // default: true
+  preventDefault?: boolean // default: true
+  stopPropagation?: boolean // default: false
+  ignoreInputElements?: boolean // default: true
+  target?: React.RefObject<HTMLElement | null> | Window | Document | null
+  userAgent?: string
+}
+```
+
+Platform-aware keyboard shortcut primitive that abstracts OS modifier differences (`Mod` / `Ctrl` vs `Cmd`, `Alt` vs `Option`) and enforces WCAG 2.1 AA accessibility guidelines by ignoring global keybindings when focused on editable form controls (`<input>`, `<textarea>`, `<select>`, `[contenteditable]`).
+
+**Parameters & Options**
+
+| Option | Required | Default | Description |
+| --- | :---: | :---: | --- |
+| `keys` | ✓ | | Key combination(s) e.g. `['Mod', 'K']`, `['Alt', 'S']`, `'Ctrl+Shift+P'`, or `[['Mod', 'K'], ['Alt', 'K']]`. |
+| `onShortcut` / `callback` | ✓ | | Handler function invoked when a matching shortcut is pressed. |
+| `enabled` | | `true` | Engage (`true`) / disengage (`false`) the event listener. |
+| `preventDefault` | | `true` | Invokes `event.preventDefault()` when shortcut matches. |
+| `stopPropagation` | | `false` | Invokes `event.stopPropagation()` when shortcut matches. |
+| `ignoreInputElements` | | `true` | Excludes key events originating inside editable input controls for accessibility compliance. |
+| `target` | | `window` | Custom DOM element or ref to attach the listener to. |
+| `userAgent` | | `navigator.userAgent` | User agent override for platform detection testing or SSR. |
+
+**Behavior notes**
+
+- **Platform key abstraction:** `Mod`, `CmdOrCtrl`, or `CtrlOrCmd` automatically maps to `Meta` (⌘) on macOS/iOS and `Ctrl` on Windows/Linux.
+- **Alt/Option normalization:** `Option` and `Alt` tokens both match `event.altKey`.
+- **WCAG compliance:** suppresses global shortcuts inside text inputs unless `ignoreInputElements: false` is explicitly set.
+- **SSR-safe / cleanup:** event listeners attach inside `useEffect` and tear down automatically on unmount or deactivation.
+
+```tsx
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+
+function CommandLauncher() {
+  const [open, setOpen] = useState(false)
+
+  // Opens launcher on Cmd+K (Mac) or Ctrl+K (Windows/Linux)
+  useKeyboardShortcut(['Mod', 'K'], () => setOpen(true))
+
+  return <LauncherModal open={open} onClose={() => setOpen(false)} />
 }
 ```
 

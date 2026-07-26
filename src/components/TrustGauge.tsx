@@ -118,6 +118,9 @@ export default function TrustGauge({
       <div
         className="trust-gauge__container"
         role="progressbar"
+        tabIndex={0}
+        aria-live="polite"
+        aria-atomic="true"
         aria-valuenow={score}
         aria-valuemin={0}
         aria-valuemax={MAX_SCORE}

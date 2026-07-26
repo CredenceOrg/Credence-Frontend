@@ -58,6 +58,11 @@ This directory contains comprehensive design specifications and implementation g
    - Capitalization, punctuation, and i18n conventions
    - PR review checklist for user-facing strings
 
+7. **[Form Validation Timing](./FORM_VALIDATION_TIMING.md)** ⭐ NEW
+   - Practical guidance for when to use `onChange`, `onBlur`, and `onSubmit`
+   - Concrete examples for controlled input state, field-level validation, and final submission checks
+   - Recommended pattern for Credence forms and common mistakes to avoid
+
 8. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
    - Standardized states (Default, Error, Disabled, Loading) for all input components
    - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
@@ -115,6 +120,9 @@ This directory contains comprehensive design specifications and implementation g
     - Session timeout (inactivity logout) flow
     - Key code paths and cross-references
 
+14. **[Security Checklist](./SECURITY_CHECKLIST_FRONTEND.md)**
+    - CSP policy, browser storage rules, third-party script posture, and dependency audit workflow
+    - Concrete review checklist for each security area
 **[Settings Auto-Save Indicator](./auto-save.md)** ⭐ NEW (closes #564)
 - Debounced `PATCH /settings` flow with `useDebouncedAutoSave` hook.
 - `<AutoSaveIndicator />` token-driven pill showing `Saving…` / `Saved just now` / "Couldn't save" with retry.
@@ -132,6 +140,10 @@ This directory contains comprehensive design specifications and implementation g
 19. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
+
+19. **[Offline Strategy](./PWA.md)**
+    - What's cached (localStorage keys, in-memory widget cache), what's queued (pending transactions, auto-save retry), and what happens on cache miss
+    - Offline-aware hooks (`useQuery`, `useWidgetCache`), offline banner, install prompt behaviour
 
 ### Quick Start
 
@@ -194,7 +206,7 @@ When adding new states or modifying existing ones:
 
 ### Design Review Process
 
-Before shipping new states:
+Before shipping new states or UI changes, refer to the [Design QA Checklist](./DESIGN_QA.md).
 
 1. Review against UI States Guide principles
 2. Validate microcopy with product team

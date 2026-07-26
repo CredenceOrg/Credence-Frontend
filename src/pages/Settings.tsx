@@ -32,8 +32,8 @@ function computeDiff(current: Omit<SettingsBlob, keyof unknown>, incoming: Setti
     'quietHoursEnd',
   ]
   for (const key of keys) {
-    if (String(current[key as keyof typeof current]) !== String(incoming[key])) {
-      diffs.push({ key, from: String(current[key as keyof typeof current]), to: String(incoming[key]) })
+    if (String(current[key]) !== String(incoming[key])) {
+      diffs.push({ key, from: String(current[key]), to: String(incoming[key]) })
     }
   }
   return diffs
@@ -230,8 +230,8 @@ export default function Settings() {
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault()
     }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
+    window.addEventListener(DOM_EVENTS.BEFORE_UNLOAD, handler)
+    return () => window.removeEventListener(DOM_EVENTS.BEFORE_UNLOAD, handler)
   }, [isDirty])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -338,8 +338,8 @@ export default function Settings() {
     if (!importPreview) return
 
     setThemeMode(importPreview.themeMode)
-    setNetwork(importPreview.network)
-    setAddressDisplay(importPreview.addressDisplay)
+    setNetwork(importPreview.network as 'public' | 'test')
+    setAddressDisplay(importPreview.addressDisplay as 'full' | 'short' | 'friendly')
     setToastsEnabled(importPreview.toastsEnabled)
     setAutoDismiss(importPreview.autoDismiss)
     setQuietHoursEnabled(importPreview.quietHoursEnabled ?? false)

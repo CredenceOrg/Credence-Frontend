@@ -57,3 +57,12 @@ export const Loading: Story = {
     isLoading: true,
   },
 };
+
+export const BelowMin: Story = {
+  name: 'Below minimum',
+  args: {
+    value: '5.00',
+    balance: 1000,
+    min: 10,
+  },
+};

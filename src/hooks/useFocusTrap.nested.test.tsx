@@ -21,7 +21,7 @@
  */
 
 import { render, act } from '@testing-library/react'
-import React, { useRef } from 'react'
+import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useFocusTrap } from './useFocusTrap'
 

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { DOM_EVENTS } from './events'
 
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -27,7 +28,7 @@ function renderAppAt(path: string) {
 }
 
 function createBeforeInstallPromptEvent() {
-  const event = new Event('beforeinstallprompt') as Event & {
+  const event = new Event(DOM_EVENTS.BEFORE_INSTALL_PROMPT) as Event & {
     preventDefault: () => void
     prompt: () => Promise<void>
     userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>

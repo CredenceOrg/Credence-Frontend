@@ -137,6 +137,14 @@ export interface components {
        */
       message: string;
     };
+    /** @description The authenticated tenant context. */
+    Tenant: {
+      /**
+       * @description Stable public identifier for the active tenant (Stellar public key).
+       * @example GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+       */
+      tenantId: string;
+    };
   };
   responses: {
     /** @description The request was malformed or contained invalid parameters. */

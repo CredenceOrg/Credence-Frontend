@@ -58,3 +58,33 @@ export const Loading: Story = {
     isLoading: true,
   },
 };
+
+/**
+ * The "Recognized:" echo uses the `addressDisplay` setting from SettingsContext.
+ * These stories show how each mode renders — wire them up in Storybook by
+ * decorating with a SettingsProvider override if needed.
+ *
+ * "full"     → GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H
+ * "short"    → GBRPYHIL2CI3...X2H   (default)
+ * "friendly" → GBRPYH…X2H
+ */
+export const EchoFull: Story = {
+  name: 'Echo – full address',
+  args: {
+    value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
+  },
+};
+
+export const EchoShort: Story = {
+  name: 'Echo – short address (default)',
+  args: {
+    value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
+  },
+};
+
+export const EchoFriendly: Story = {
+  name: 'Echo – friendly address',
+  args: {
+    value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
+  },
+};

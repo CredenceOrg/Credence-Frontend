@@ -1,15 +1,6 @@
-export type ActivityTone = 'success' | 'warning' | 'info'
+import type { ActivityTone, ActivityItem } from '../events'
 
-export interface ActivityItem {
-  id: string
-  timestamp: string
-  title: string
-  description: string
-  actor: string
-  statusLabel: string
-  tone: ActivityTone
-  meta: string
-}
+export type { ActivityTone, ActivityItem }
 
 export const SAMPLE_ACTIVITY: ActivityItem[] = [
   {

@@ -58,6 +58,11 @@ This directory contains comprehensive design specifications and implementation g
    - Capitalization, punctuation, and i18n conventions
    - PR review checklist for user-facing strings
 
+7. **[Form Validation Timing](./FORM_VALIDATION_TIMING.md)** ⭐ NEW
+   - Practical guidance for when to use `onChange`, `onBlur`, and `onSubmit`
+   - Concrete examples for controlled input state, field-level validation, and final submission checks
+   - Recommended pattern for Credence forms and common mistakes to avoid
+
 8. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
    - Standardized states (Default, Error, Disabled, Loading) for all input components
    - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls

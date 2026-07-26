@@ -164,7 +164,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - [Copy Tone Guide](docs/COPY_TONE.md) — How we phrase success, error, empty, and loading UI copy with dos and don'ts.
 - [Error UI Pattern Guide](docs/ERROR_UI.md) — Standard error surfaces guide (inline errors, banners, toasts, error states).
 - [Design Tokens Overview](docs/DESIGN_TOKENS.md) — Exhaustive list of CSS custom properties and semantic roles.
-- [Feature Flags](docs/FEATURE_FLAGS.md) — How feature flags are read and implemented on the client side.
+- [Form Validation Timing](docs/FORM_VALIDATION_TIMING.md) — When to use `onChange`, `onBlur`, and `onSubmit` for form validation.
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — Runtime structure, provider tree, and data flow seams.
 - [Security Checklist](docs/SECURITY_CHECKLIST_FRONTEND.md) — CSP, storage, third-party scripts, and dependency posture for contributors.

@@ -50,12 +50,18 @@ cp .env.example .env
 
 The footer and legal links are resolved in `src/config/links.ts`. Use placeholder or canonical public URLs only; do not add secrets to Vite env files because `VITE_*` values are exposed to the browser build.
 
-| Variable            | Legacy alias   | Default fallback                                                  | Purpose                                                                     |
-| ------------------- | -------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `VITE_DOCS_URL`     | `VITE_DOCS`    | `/docs`                                                           | Documentation link used in the footer.                                      |
-| `VITE_TERMS_URL`    | `VITE_TERMS`   | `/legal/terms`                                                    | Terms of Service link used in the footer.                                   |
-| `VITE_PRIVACY_URL`  | `VITE_PRIVACY` | `/legal/privacy`                                                  | Privacy Policy link used in the footer.                                     |
-| `VITE_API_BASE_URL` | -              | `/api` in the browser, `http://localhost:3000` for the Vite proxy | Backend origin for local `/api` proxying or a direct API base URL override. |
+| Variable                             | Legacy alias   | Default fallback                                                  | Purpose                                                                     |
+| ------------------------------------ | -------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `VITE_DOCS_URL`                      | `VITE_DOCS`    | `/docs`                                                           | Documentation link used in the footer.                                      |
+| `VITE_TERMS_URL`                     | `VITE_TERMS`   | `/legal/terms`                                                    | Terms of Service link used in the footer.                                   |
+| `VITE_PRIVACY_URL`                   | `VITE_PRIVACY` | `/legal/privacy`                                                  | Privacy Policy link used in the footer.                                     |
+| `VITE_API_BASE_URL`                  | -              | `/api` in the browser, `http://localhost:3000` for the Vite proxy | Backend origin for local `/api` proxying or a direct API base URL override. |
+| `VITE_QUERY_CACHE_DEFAULT_TTL_MS`    | -              | `60000` (60s)                                                     | Default TTL duration in ms for query-cache entries.                         |
+| `VITE_QUERY_CACHE_STALE_TIME_MS`     | -              | `30000` (30s)                                                     | Stale-time duration in ms for query-cache entries.                          |
+| `VITE_QUERY_CACHE_GC_TIME_MS`        | -              | `300000` (5 min)                                                  | Garbage collection / cache eviction duration in ms.                         |
+| `VITE_QUERY_CACHE_ISSUER_TTL_MS`     | -              | `120000` (2 min)                                                  | TTL duration in ms for issuer dashboard query-cache entries.                |
+| `VITE_QUERY_CACHE_VERIFIER_TTL_MS`   | -              | `120000` (2 min)                                                  | TTL duration in ms for verifier dashboard query-cache entries.              |
+
 
 Precedence is `VITE_*_URL` first, then the legacy `VITE_*` alias, then the default fallback path. For example, `VITE_DOCS_URL` wins over `VITE_DOCS`; if neither is set, the app uses `/docs`.
 
@@ -160,6 +166,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - `src/hooks/useDebouncedAutoSave.ts` — Generic debounced save lifecycle (`pending` / `saving` / `saved` / `error`)
 - `src/components/indicators/` — Status indicators (`AutoSaveIndicator`)
 - `src/config/autoSave.ts` — Central auto-save constants
+- `src/config/queryCache.ts` — Central query-cache TTL constants and env overrides
 - `src/widgetCache/` — Shared widget cache (`WidgetCacheProvider`, `useWidgetCache`)
 - `src/components/widget/` — Per-widget UI primitives (`WidgetRefreshButton`)
 - `src/config/widgetCache.ts` — Central widget-cache constants

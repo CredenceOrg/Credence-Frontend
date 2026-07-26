@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { DOM_EVENTS } from '../events'
 import './SpeedDial.css'
 
 /** A single action shown in the speed-dial menu. */
@@ -172,8 +173,8 @@ export default function SpeedDial({ actions = DEFAULT_ACTIONS }: SpeedDialProps)
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+    return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
   }, [isOpen, close])
 
   /* Close when clicking outside */
@@ -193,8 +194,8 @@ export default function SpeedDial({ actions = DEFAULT_ACTIONS }: SpeedDialProps)
       }
     }
 
-    window.addEventListener('pointerdown', handlePointerDown)
-    return () => window.removeEventListener('pointerdown', handlePointerDown)
+    window.addEventListener(DOM_EVENTS.POINTER_DOWN, handlePointerDown)
+    return () => window.removeEventListener(DOM_EVENTS.POINTER_DOWN, handlePointerDown)
   }, [isOpen, close])
 
   /* Move focus into the list when it opens */

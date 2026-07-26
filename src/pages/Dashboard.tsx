@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { DOM_EVENTS } from '../events'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
 import AddressDisplay from '../components/AddressDisplay'
@@ -15,7 +16,6 @@ import {
   ONBOARDING_STEP_STORAGE_KEY,
 } from '../config/onboarding'
 import { useWallet } from '../context/WalletContext'
-import { useTranslation } from 'react-i18next'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
 import { useQuery } from '../hooks/useQuery'
@@ -55,20 +55,6 @@ const activeBonds = [
   { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
 ] as const
 
-const shortcuts = [
-  { to: '/bond', label: 'Create bond', description: 'Lock more USDC into reputation bonds.' },
-  {
-    to: '/trust',
-    label: 'View trust score',
-    description: 'Look up score details and tier context.',
-  },
-  {
-    to: '/attestations',
-    label: 'Review attestations',
-    description: 'Open recent evidence and claims.',
-  },
-]
-
 export default function Dashboard() {
   const { t } = useTranslation()
   useSeo({
@@ -77,9 +63,7 @@ export default function Dashboard() {
       'Monitor your trust score tier, outstanding bonds, pending grace periods, and recent identity attestations.',
   })
 
-  const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
-  const { t } = useTranslation()
   const location = useLocation()
   const [searchParams] = useSearchParams()
 
@@ -112,6 +96,32 @@ export default function Dashboard() {
 
     setShowOnboarding(true)
   }, [connected])
+
+  const currentOnboardingStep = onboardingSteps[onboardingStep] ?? onboardingSteps[0]
+
+  const skipOnboarding = () => {
+    setShowOnboarding(false)
+    setOnboardingCompleted(true)
+    window.localStorage.setItem(ONBOARDING_COMPLETION_STORAGE_KEY, new Date().toISOString())
+  }
+
+  const goBackOnboarding = () => {
+    if (onboardingStep > 0) {
+      const prev = onboardingStep - 1
+      setOnboardingStep(prev)
+      window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(prev))
+    }
+  }
+
+  const advanceOnboarding = () => {
+    if (onboardingStep < onboardingSteps.length - 1) {
+      const next = onboardingStep + 1
+      setOnboardingStep(next)
+      window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(next))
+    } else {
+      skipOnboarding()
+    }
+  }
 
   const shortcuts = [
     { to: '/bond', label: t('dashboard.createBond'), description: t('dashboard.createBondDescription') },
@@ -148,11 +158,11 @@ export default function Dashboard() {
     if (typeof window === 'undefined') return
     const handleOnline = () => setOnline(true)
     const handleOffline = () => setOnline(false)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
+    window.addEventListener(DOM_EVENTS.ONLINE, handleOnline)
+    window.addEventListener(DOM_EVENTS.OFFLINE, handleOffline)
     return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener(DOM_EVENTS.ONLINE, handleOnline)
+      window.removeEventListener(DOM_EVENTS.OFFLINE, handleOffline)
     }
   }, [])
 

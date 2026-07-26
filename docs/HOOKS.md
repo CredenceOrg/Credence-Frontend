@@ -23,8 +23,11 @@ behavior notes, and a minimal usage example linking to source.
 - [Hooks (`src/hooks/`)](#hooks-srchooks)
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
+  - [`useForwardRef`](#useforwardref)
   - [`useMediaQuery`](#usemediaquery)
+  - [`useOnceMounted`](#useoncemounted)
   - [`useQuery`](#usequery)
+  - [`useApiMutation`](#useapimutation)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useReducedTransparency`](#usereducedtransparency)
   - [`useScrollPreserver`](#usescrollpreserver)
@@ -34,6 +37,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useWallet`](#usewallet)
   - [`useProductUpdates`](#useproductupdates)
   - [`useSmartBack`](#usesmartback)
+  - [`useThrottledCallback`](#usethrottledcallback)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -162,6 +166,77 @@ function Bond() {
 
 ---
 
+### `useForwardRef`
+
+Source: [`src/hooks/useForwardRef.ts`](../src/hooks/useForwardRef.ts)
+
+```ts
+function useForwardRef<T>(
+  ref?: NestedRef<T>,
+  initialValue: T | null = null
+): MutableRefObject<T | null>
+
+// Also exported:
+setRef<T>(ref: NestedRef<T>, value: T | null): void
+
+type ReactRef<T> = ForwardedRef<T> | MutableRefObject<T | null> | null | undefined
+type NestedRef<T> = ReactRef<T> | NestedRef<T>[]
+```
+
+A custom hook that merges a local ref with external forwarded refs, solving the common
+wrapper-component pattern where a component needs both internal access to a DOM node and
+the ability to forward that node to a parent via `ref`, `React.forwardRef`, or a callback
+ref. Supports deeply nested arrays of refs and cleans up on unmount.
+
+**Parameters**
+
+| Parameter    | Required | Description                                                                  |
+| ------------ | :------: | ---------------------------------------------------------------------------- |
+| `ref`        |          | A single ref, callback ref, or nested array of refs to synchronise. Optional. |
+| `initialValue` |        | Initial value for the internal ref. Defaults to `null`.                      |
+
+**Returns** a `MutableRefObject<T | null>` that the component attaches to its DOM node via JSX `ref`.
+
+**Behavior notes**
+
+- **Ref merging:** any time the internal ref changes (inside a `useIsomorphicLayoutEffect`),
+  the value is propagated to every ref in the `ref` argument — object refs via `.current`,
+  callback refs via invocation, and arrays recursively.
+- **Cleanup:** on unmount, `null` is propagated to all provided refs, ensuring parent
+  components do not hold stale node references.
+- **Failing callbacks:** if a callback ref throws, the error is silently caught so that
+  other refs in the same array are still updated.
+- **Frozen/read-only objects:** assignments to read-only or frozen ref objects are
+  silently skipped.
+- **SSR-safe / cleanup:** uses `useLayoutEffect` in the browser and falls back to
+  `useEffect` during SSR; the cleanup function propagates `null` on unmount.
+
+```tsx
+import { forwardRef, type ReactNode } from 'react'
+import { useForwardRef } from '../hooks/useForwardRef'
+
+interface FancyInputProps {
+  label: string
+  children?: ReactNode
+}
+
+const FancyInput = forwardRef<HTMLInputElement, FancyInputProps>(
+  function FancyInput({ label, children }, forwardedRef) {
+    const internalRef = useForwardRef<HTMLInputElement>(forwardedRef)
+
+    return (
+      <label>
+        {label}
+        <input ref={internalRef} />
+        {children}
+      </label>
+    )
+  }
+)
+```
+
+---
+
 ### `useMediaQuery`
 
 Source: [`src/hooks/useMediaQuery.ts`](../src/hooks/useMediaQuery.ts)
@@ -200,6 +275,47 @@ const isWide = useMediaQuery('(min-width: 1024px)')
 function ActivityCard() {
   const isMobile = useIsMobile()
   return <h2>{isMobile ? 'Recent Activity' : 'Recent Activity Timeline'}</h2>
+}
+```
+
+---
+
+### `useOnceMounted`
+
+Source: [`src/hooks/useOnceMounted.ts`](../src/hooks/useOnceMounted.ts)
+
+```ts
+function useOnceMounted(callback: () => void | (() => void)): void
+```
+
+Runs the provided callback exactly once per component mount, even under React 18 StrictMode
+where effects are intentionally double-invoked in development.
+
+**Parameters**
+
+| Parameter  | Required | Description                                                                          |
+| ---------- | :------: | ------------------------------------------------------------------------------------ |
+| `callback` |    ✓     | The function to run once on mount. May optionally return a cleanup function invoked on unmount. |
+
+**Behavior notes**
+
+- **StrictMode-resilient:** uses a `useRef` gate so the callback fires exactly once even when
+  React 18 StrictMode double-invokes effects (mount → cleanup → mount again).
+- **True remount:** a full unmount followed by a fresh component mount will trigger the
+  callback again — the guard is per-component-instance.
+- **Cleanup:** if the callback returns a function, it is stored and invoked on unmount (or
+  during StrictMode's simulated unmount before the effect re-runs).
+- The callback is stored in a ref so re-renders with a different function reference do
+  not re-trigger the effect.
+
+```tsx
+import { useOnceMounted } from '../hooks/useOnceMounted'
+
+function PageViewTracker({ page }: { page: string }) {
+  useOnceMounted(() => {
+    analytics.track('page_view', { page })
+  })
+  return <main>…</main>
 }
 ```
 
@@ -256,6 +372,52 @@ function MyComponent() {
       {isLoading ? <p>Loading...</p> : <p>Data: {JSON.stringify(data)}</p>}
     </div>
   )
+}
+```
+
+---
+
+### `useApiMutation`
+
+Source: [`src/hooks/useApiMutation.ts`](../src/hooks/useApiMutation.ts)
+
+```ts
+function useApiMutation<TData, TVariables, TContext = unknown>(
+  options: UseApiMutationOptions<TData, TVariables, TContext>,
+): UseApiMutationResult<TData, TVariables, TContext>
+```
+
+A lightweight mutation wrapper for API calls that supports optimistic updates and rollback helpers.
+
+**Parameters**
+
+| Option | Required | Description |
+| --- | :---: | --- |
+| `mutationFn` | ✓ | The async mutation function to execute. |
+| `onMutate` | | Runs before the request and can apply optimistic local state via the supplied helpers. |
+| `onSuccess` | | Runs after a successful mutation. |
+| `onError` | | Runs after a failed mutation. |
+| `onSettled` | | Runs after either outcome. |
+| `initialData` | | Initial value for `data`. |
+
+**Behavior notes**
+
+- `onMutate` receives `setData` and `rollback` helpers so callers can immediately update local state and revert it if the request fails.
+- `mutateAsync` returns the server result or throws the mutation error after rollback.
+- The hook exposes `status`, `isPending`, `isError`, `isSuccess`, and `reset` for simple UI state handling.
+
+```tsx
+import { useApiMutation } from '../hooks/useApiMutation'
+
+function SaveProfile() {
+  const mutation = useApiMutation({
+    mutationFn: (nextName: string) => apiFetch('/profile', { method: 'PATCH', body: { name: nextName } }),
+    onMutate: (name, { setData }) => {
+      setData((current) => ({ ...(current ?? {}), name }))
+    },
+  })
+
+  return <button onClick={() => void mutation.mutateAsync('Ada')}>Save</button>
 }
 ```
 
@@ -637,6 +799,48 @@ function BackButton() {
       ← Back
     </button>
   )
+}
+```
+
+---
+
+### `useThrottledCallback`
+
+Source: [`src/hooks/useThrottledCallback.ts`](../src/hooks/useThrottledCallback.ts) · Constant: [`DEFAULT_SCROLL_THROTTLE_MS`](../src/config/scroll.ts)
+
+```ts
+function useThrottledCallback<T extends (...args: any[]) => any>(
+  callback: T,
+  delayMs?: number // default: 100ms (DEFAULT_SCROLL_THROTTLE_MS)
+): (...args: Parameters<T>) => void
+```
+
+Throttles execution of `callback` so it fires at most once per `delayMs` window. Designed for scroll-tracking, resize, and high-frequency event handlers to prevent excessive `setState` calls and layout re-computations.
+
+**Behavior notes**
+
+- **Leading call:** fires immediately on the first invocation.
+- **Trailing call:** subsequent calls during the delay window schedule a single execution with the latest arguments when the delay window elapses.
+- **Immediate mode (`delayMs <= 0`):** disables throttling and invokes the callback synchronously on every call.
+- **Cleanup:** clears pending timers on component unmount.
+
+```tsx
+import { useState, useEffect } from 'react'
+import { useThrottledCallback } from '../hooks/useThrottledCallback'
+
+function ScrollProgress() {
+  const [scrollY, setScrollY] = useState(0)
+
+  const handleScroll = useThrottledCallback(() => {
+    setScrollY(window.scrollY)
+  }, 100)
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
+  return <div>Scroll Position: {scrollY}px</div>
 }
 ```
 

@@ -5,7 +5,6 @@ import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWa
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useToast } from '../components/ToastProvider'
 import SessionTimeoutModal from '../components/SessionTimeoutModal'
-import { SessionReauthRequiredError } from '../lib/sessionErrors'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean

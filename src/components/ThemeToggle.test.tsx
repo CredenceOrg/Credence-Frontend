@@ -71,8 +71,8 @@ describe('ThemeToggle', () => {
 
   it('shows "Switch to dark theme" label on light theme', () => {
     renderToggle()
-    expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Switch to dark theme')
-    expect(screen.getByRole('button')).toHaveAccessibleName('Switch to dark theme')
+    expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Toggle theme')
+    expect(screen.getByRole('button')).toHaveAccessibleName('Toggle theme')
   })
 
   it('clicking switches themeMode and flips aria-pressed', () => {
@@ -80,8 +80,8 @@ describe('ThemeToggle', () => {
     const btn = screen.getByRole('button')
     fireEvent.click(btn)
     expect(btn).toHaveAttribute('aria-pressed', 'true')
-    expect(btn).toHaveAttribute('aria-label', 'Switch to light theme')
-    expect(btn).toHaveAccessibleName('Switch to light theme')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+    expect(btn).toHaveAccessibleName('Toggle theme')
   })
 
   it('clicking twice returns to original state', () => {
@@ -90,7 +90,7 @@ describe('ThemeToggle', () => {
     fireEvent.click(btn)
     fireEvent.click(btn)
     expect(btn).toHaveAttribute('aria-pressed', 'false')
-    expect(btn).toHaveAttribute('aria-label', 'Switch to dark theme')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
   })
 
   it('resolves system→dark correctly when OS prefers dark', () => {
@@ -98,7 +98,7 @@ describe('ThemeToggle', () => {
     renderToggle()
     const btn = screen.getByRole('button')
     expect(btn).toHaveAttribute('aria-pressed', 'true')
-    expect(btn).toHaveAttribute('aria-label', 'Switch to light theme')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
   })
 
   it('clicking from system+dark resolves to light', () => {
@@ -107,7 +107,7 @@ describe('ThemeToggle', () => {
     const btn = screen.getByRole('button')
     fireEvent.click(btn)
     expect(btn).toHaveAttribute('aria-pressed', 'false')
-    expect(btn).toHaveAttribute('aria-label', 'Switch to dark theme')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
   })
 
   it('does NOT write data-theme directly (SettingsContext owns it)', () => {
@@ -140,12 +140,12 @@ describe('ThemeToggle', () => {
     renderToggle()
     const btn = screen.getByRole('button')
     expect(btn).toHaveAttribute('aria-pressed', 'false')
-    expect(btn).toHaveAttribute('aria-label', 'Switch to dark theme')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
 
     // OS flips to dark while still in system mode
     emitSystemThemeChange(true)
     expect(btn).toHaveAttribute('aria-pressed', 'true')
-    expect(btn).toHaveAttribute('aria-label', 'Switch to light theme')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
     // Toggle stays consistent with the document data-theme owned by SettingsContext
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
 
@@ -164,7 +164,7 @@ describe('ThemeToggle', () => {
     // OS swings to light, but explicit dark must remain
     emitSystemThemeChange(false)
     expect(btn).toHaveAttribute('aria-pressed', 'true')
-    expect(btn).toHaveAttribute('aria-label', 'Switch to light theme')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
   })
 
   it('never writes an orphan "theme" localStorage key', () => {

@@ -35,8 +35,8 @@ export default function MobileNav() {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+    return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
   }, [isOpen])
 
   useFocusTrap({

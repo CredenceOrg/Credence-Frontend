@@ -3,19 +3,20 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { PrefetchNavLink } from './PrefetchNavLink'
 import { PRELOADS_BY_PATH } from '../config/routes'
 import { useTranslation } from 'react-i18next'
+import { DOM_EVENTS } from '../events'
 import ThemeToggle from './ThemeToggle'
 import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
-import SpeedDial from './SpeedDial'
+import Banner from './Banner'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
-import { useProductUpdates } from '../hooks/useProductUpdates'
 import './Layout.css'
 
 
@@ -55,7 +56,6 @@ export default function Layout() {
 
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
-  const openLauncher = useCallback(() => setLauncherOpen(true), [])
   const closeLauncher = useCallback(() => setLauncherOpen(false), [])
   const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
 
@@ -76,9 +76,9 @@ export default function Layout() {
       setShowInstallPrompt(true)
     }
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener)
+    window.addEventListener(DOM_EVENTS.BEFORE_INSTALL_PROMPT, handleBeforeInstallPrompt as EventListener)
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener)
+      window.removeEventListener(DOM_EVENTS.BEFORE_INSTALL_PROMPT, handleBeforeInstallPrompt as EventListener)
     }
   }, [installPromptDismissed])
 
@@ -110,8 +110,8 @@ export default function Layout() {
       setShortcutsOpen(true)
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+    return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
   }, [])
 
   return (
@@ -201,6 +201,12 @@ export default function Layout() {
         open={shortcutsOpen}
         onClose={closeShortcuts}
         returnFocusRef={shortcutsButtonRef}
+      />
+
+      <ActionLauncher
+        open={launcherOpen}
+        onClose={closeLauncher}
+        onOpenKeyboardShortcuts={openShortcuts}
       />
 
       <WhatsNewDialog

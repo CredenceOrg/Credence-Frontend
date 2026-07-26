@@ -14,7 +14,8 @@ vi.mock('../hooks/useTrustScore', () => ({
 }));
 
 vi.mock('../hooks/useCopyToClipboard', () => ({
-  useCopyToClipboard: vi.fn(() => [vi.fn(), false])
+  default: vi.fn(() => ({ copy: vi.fn(), copied: false })),
+  useCopyToClipboard: vi.fn(() => ({ copy: vi.fn(), copied: false })),
 }));
 
 vi.mock('@/lib/stellar', () => ({
@@ -22,11 +23,11 @@ vi.mock('@/lib/stellar', () => ({
 }));
 
 vi.mock('../components/Badge', () => ({
-  default: (props: any) => <div data-testid="badge" {...props} />
+  default: (props: Record<string, unknown>) => <div data-testid="badge" {...props} />
 }));
 
 vi.mock('../components/TrustGauge', () => ({
-  default: (props: any) => <div data-testid="gauge" {...props} />
+  default: (props: Record<string, unknown>) => <div data-testid="gauge" {...props} />
 }));
 
 vi.mock('../components/TierLadder', () => ({
@@ -34,14 +35,14 @@ vi.mock('../components/TierLadder', () => ({
 }));
 
 vi.mock('../components/states', () => ({
-  EmptyState: ({ title, message, description }: any) => (
+  EmptyState: ({ title, message, description }: { title?: string; message?: string; description?: string }) => (
     <div data-testid="empty">
       <h2>{title}</h2>
       <p>{description || message}</p>
     </div>
   ),
-  ErrorState: (props: any) => <div data-testid="error" {...props} />, 
-  LoadingSkeleton: (props: any) => <div data-testid="loading" {...props} />
+  ErrorState: (props: Record<string, unknown>) => <div data-testid="error" {...props} />, 
+  LoadingSkeleton: (props: Record<string, unknown>) => <div data-testid="loading" {...props} />
 }));
 
 describe('TrustSummary component', () => {
@@ -72,9 +73,7 @@ describe('TrustSummary component', () => {
   });
 
   test('Print button triggers window.print', () => {
-    const printMock = vi.fn();
-    // @ts-ignore
-    window.print = printMock;
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {})
     render(
       <MemoryRouter initialEntries={["/trust/summary?address=GABCD12345"]}>
         <Routes>
@@ -83,6 +82,6 @@ describe('TrustSummary component', () => {
       </MemoryRouter>
     );
     fireEvent.click(screen.getByRole('button', { name: /print/i }));
-    expect(printMock).toHaveBeenCalled();
+    expect(printSpy).toHaveBeenCalled();
   });
 });

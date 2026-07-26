@@ -139,6 +139,139 @@ describe('useInfiniteQuery', () => {
     expect(fetchPage).toHaveBeenCalledTimes(1)
   })
 
+  // ---------------------------------------------------------------------------
+  // Empty page
+  // ---------------------------------------------------------------------------
+
+  it('handles_empty_first_page_with_no_items_and_sets_status_to_success', async () => {
+    const fetchPage = vi
+      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .mockResolvedValueOnce({ items: [], nextCursor: null })
+
+    render(<FeedHarness fetchPage={fetchPage} />)
+
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('success'))
+    expect(screen.getByTestId('items').textContent).toBe('')
+    expect(screen.getByTestId('hasNextPage').textContent).toBe('false')
+    expect(fetchPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('handles_empty_first_page_with_nextCursor_and_allows_fetching_next_page', async () => {
+    // The first page returns no items but indicates more data is available.
+    const fetchPage = vi
+      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .mockResolvedValueOnce({ items: [], nextCursor: 'cursor-1' })
+      .mockResolvedValueOnce({ items: [{ id: 'a' }], nextCursor: null })
+
+    render(<FeedHarness fetchPage={fetchPage} />)
+
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('success'))
+    expect(screen.getByTestId('items').textContent).toBe('')
+    expect(screen.getByTestId('hasNextPage').textContent).toBe('true')
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'next' }).click()
+    })
+
+    await waitFor(() => expect(screen.getByTestId('items').textContent).toBe('a'))
+    expect(fetchPage).toHaveBeenCalledWith(null)
+    expect(fetchPage).toHaveBeenCalledWith('cursor-1')
+  })
+
+  it('handles_empty_subsequent_page_and_appends_nothing', async () => {
+    const fetchPage = vi
+      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .mockResolvedValueOnce({ items: [{ id: 'a' }, { id: 'b' }], nextCursor: 'cursor-1' })
+      .mockResolvedValueOnce({ items: [], nextCursor: null })
+
+    render(<FeedHarness fetchPage={fetchPage} />)
+
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('success'))
+    expect(screen.getByTestId('items').textContent).toBe('a,b')
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'next' }).click()
+    })
+
+    // Items from the first page are preserved; empty second page adds nothing.
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('success'))
+    expect(screen.getByTestId('items').textContent).toBe('a,b')
+    expect(screen.getByTestId('hasNextPage').textContent).toBe('false')
+  })
+
+  // ---------------------------------------------------------------------------
+  // Error on subsequent page
+  // ---------------------------------------------------------------------------
+
+  it('preserves_existing_data_when_subsequent_page_errors', async () => {
+    const fetchPage = vi
+      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .mockResolvedValueOnce({ items: [{ id: 'a' }, { id: 'b' }], nextCursor: 'cursor-1' })
+      .mockRejectedValueOnce(new Error('network failure'))
+
+    function ErrorOnSecondPageHarness({
+      fetchPage,
+    }: {
+      fetchPage: (cursor: string | null) => Promise<FeedPage>
+    }) {
+      const query = useInfiniteQuery<FeedItem, string | null>({
+        queryKey: 'feed-err-p2',
+        fetchPage,
+      })
+      return (
+        <div>
+          <div data-testid="status">{query.status}</div>
+          <div data-testid="error">{query.error?.message ?? ''}</div>
+          <div data-testid="items">{query.data.map((item) => item.id).join(',')}</div>
+          <button type="button" onClick={() => void query.fetchNextPage()}>
+            next
+          </button>
+        </div>
+      )
+    }
+
+    render(<ErrorOnSecondPageHarness fetchPage={fetchPage} />)
+
+    // First page loads successfully.
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('success'))
+    expect(screen.getByTestId('items').textContent).toBe('a,b')
+
+    // Trigger the second page fetch which fails.
+    await act(async () => {
+      screen.getByRole('button', { name: 'next' }).click()
+    })
+
+    // Status should be error, but first-page items must be preserved.
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('error'))
+    expect(screen.getByTestId('error').textContent).toBe('network failure')
+    expect(screen.getByTestId('items').textContent).toBe('a,b')
+  })
+
+  it('constructs_a_generic_error_message_when_fetch_rejects_with_a_non_Error_value', async () => {
+    const fetchPage = vi
+      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .mockRejectedValueOnce('string rejection')
+
+    function ErrorHarness() {
+      const query = useInfiniteQuery<FeedItem, string | null>({
+        queryKey: 'feed-nonerror',
+        fetchPage,
+      })
+      return (
+        <div>
+          <div data-testid="status">{query.status}</div>
+          <div data-testid="error">{query.error?.message ?? ''}</div>
+          <div data-testid="items">{query.data.map((item) => item.id).join(',')}</div>
+        </div>
+      )
+    }
+
+    render(<ErrorHarness />)
+
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('error'))
+    expect(screen.getByTestId('error').textContent).toBe('Failed to fetch page')
+  })
+
   it('isFetchingNextPage_is_true_while_page_is_in_flight_and_false_after_resolve', async () => {
     let resolveNextPage!: (value: FeedPage) => void
     const nextPagePromise = new Promise<FeedPage>((res) => {

@@ -124,7 +124,13 @@ This directory contains comprehensive design specifications and implementation g
     - Interceptors, retry policy, and error taxonomy for the API client
     - `ApiError` structure and usage examples
 
-18. **[Telemetry & Analytics](./telemetry.md)**
+18. **[Feature Flags](./FEATURE_FLAGS.md)** ⭐ NEW
+    - How feature flags are read and implemented on the client side
+    - Compile-time dev gating (`import.meta.env.DEV`)
+    - Component-level boolean props (e.g., `isEarlyAccess`)
+    - Testing patterns and adding new flags
+
+19. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 

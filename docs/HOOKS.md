@@ -34,6 +34,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useWallet`](#usewallet)
   - [`useProductUpdates`](#useproductupdates)
   - [`useSmartBack`](#usesmartback)
+  - [`useKeyboardShortcut`](#usekeyboardshortcut)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -637,6 +638,66 @@ function BackButton() {
       ← Back
     </button>
   )
+}
+```
+
+---
+
+### `useKeyboardShortcut`
+
+Source: [`src/hooks/useKeyboardShortcut.ts`](../src/hooks/useKeyboardShortcut.ts)
+
+```ts
+function useKeyboardShortcut(
+  keysOrConfig: ShortcutKeys | UseKeyboardShortcutConfig,
+  callback?: ShortcutCallback,
+  options?: UseKeyboardShortcutOptions
+): void
+
+type ShortcutKeys = string | string[] | (string | string[])[]
+
+interface UseKeyboardShortcutOptions {
+  enabled?: boolean // default: true
+  preventDefault?: boolean // default: true
+  stopPropagation?: boolean // default: false
+  ignoreInputElements?: boolean // default: true
+  target?: React.RefObject<HTMLElement | null> | Window | Document | null
+  userAgent?: string
+}
+```
+
+Platform-aware keyboard shortcut primitive that abstracts OS modifier differences (`Mod` / `Ctrl` vs `Cmd`, `Alt` vs `Option`) and enforces WCAG 2.1 AA accessibility guidelines by ignoring global keybindings when focused on editable form controls (`<input>`, `<textarea>`, `<select>`, `[contenteditable]`).
+
+**Parameters & Options**
+
+| Option | Required | Default | Description |
+| --- | :---: | :---: | --- |
+| `keys` | ✓ | | Key combination(s) e.g. `['Mod', 'K']`, `['Alt', 'S']`, `'Ctrl+Shift+P'`, or `[['Mod', 'K'], ['Alt', 'K']]`. |
+| `onShortcut` / `callback` | ✓ | | Handler function invoked when a matching shortcut is pressed. |
+| `enabled` | | `true` | Engage (`true`) / disengage (`false`) the event listener. |
+| `preventDefault` | | `true` | Invokes `event.preventDefault()` when shortcut matches. |
+| `stopPropagation` | | `false` | Invokes `event.stopPropagation()` when shortcut matches. |
+| `ignoreInputElements` | | `true` | Excludes key events originating inside editable input controls for accessibility compliance. |
+| `target` | | `window` | Custom DOM element or ref to attach the listener to. |
+| `userAgent` | | `navigator.userAgent` | User agent override for platform detection testing or SSR. |
+
+**Behavior notes**
+
+- **Platform key abstraction:** `Mod`, `CmdOrCtrl`, or `CtrlOrCmd` automatically maps to `Meta` (⌘) on macOS/iOS and `Ctrl` on Windows/Linux.
+- **Alt/Option normalization:** `Option` and `Alt` tokens both match `event.altKey`.
+- **WCAG compliance:** suppresses global shortcuts inside text inputs unless `ignoreInputElements: false` is explicitly set.
+- **SSR-safe / cleanup:** event listeners attach inside `useEffect` and tear down automatically on unmount or deactivation.
+
+```tsx
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+
+function CommandLauncher() {
+  const [open, setOpen] = useState(false)
+
+  // Opens launcher on Cmd+K (Mac) or Ctrl+K (Windows/Linux)
+  useKeyboardShortcut(['Mod', 'K'], () => setOpen(true))
+
+  return <LauncherModal open={open} onClose={() => setOpen(false)} />
 }
 ```
 

@@ -23,6 +23,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import Button from './Button'
+import { TEST_IDS } from '../config/testIds'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -45,6 +46,22 @@ describe('Button – default rendering', () => {
     render(<Button>Click me</Button>)
     expect(getBtn()).toBeInTheDocument()
     expect(screen.getByText('Click me')).toBeInTheDocument()
+  })
+
+  it('exposes the primary CTA as a named, keyboard-focusable button', () => {
+    render(
+      <Button variant="primary" data-testid={TEST_IDS.PRIMARY_CTA}>
+        Create bond
+      </Button>
+    )
+
+    const button = screen.getByRole('button', { name: /create bond/i })
+    expect(button).toHaveAttribute('data-testid', TEST_IDS.PRIMARY_CTA)
+    expect(button).toHaveAccessibleName('Create bond')
+    expect(button).toHaveClass('credence-button--primary')
+
+    button.focus()
+    expect(button).toHaveFocus()
   })
 
   it('wraps children in a content span (always present)', () => {
@@ -211,6 +228,18 @@ describe('Button – disabled prop', () => {
     )
     fireEvent.click(getBtn())
     expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('marks disabled primary CTAs as aria-disabled', () => {
+    render(
+      <Button variant="primary" disabled>
+        Create bond
+      </Button>
+    )
+
+    const button = getBtn(/create bond/i)
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('is not aria-busy when only disabled (not loading)', () => {

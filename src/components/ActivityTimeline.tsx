@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react'
-import Badge, { type BadgeVariant } from './Badge'
+import { useState, useRef, useCallback, type ReactElement } from 'react'
+import './ActivityTimeline.css'
+import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import './ActivityTimeline.css'
 import EmptyState from './states/EmptyState'
@@ -36,6 +37,23 @@ export interface ActivityItem {
   statusLabel: string
   tone: ActivityTone
   meta: string
+}
+
+export function toneToBadgeVariant(tone: string): string {
+  switch (tone) {
+    case 'success':
+      return 'active'
+    case 'warning':
+      return 'grace-period'
+    case 'info':
+      return 'locked'
+    default:
+      return 'active'
+  }
+}
+
+export function isTxHash(meta: string): boolean {
+  return meta.toLowerCase().startsWith('tx')
 }
 
 export interface ActivityTimelineProps {
@@ -90,8 +108,8 @@ export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
  */
 export default function ActivityTimeline({
   compact = false,
-  items = ACTIVITY_ITEMS,
-}: ActivityTimelineProps) {
+  items = SAMPLE_ACTIVITY,
+}: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const count = items.length
@@ -166,25 +184,29 @@ export default function ActivityTimeline({
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>
 
-                  <div
-                    id={panelId}
-                    className="activity-row__detail-panel"
-                    hidden={!isExpanded}
-                    onKeyDown={handleKeyDown}
-                    tabIndex={-1}
-                  >
-                    <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
-                      <strong>Actor:</strong> {item.actor}
-                    </p>
-                    <p className="activity-row__meta">
-                      <strong>Meta:</strong>{' '}
-                      {isTxHash(item.meta) ? (
-                        <CopyableHash hash={item.meta} />
-                      ) : (
-                        item.meta
-                      )}
-                    </p>
-                  </div>
+                  {isExpanded && (
+                    <div
+                      id={`details-${item.id}`}
+                      style={{
+                        marginTop: 'var(--credence-space-3)',
+                        padding: 'var(--credence-space-3)',
+                        background: 'var(--credence-surface-page)',
+                        borderRadius: 'var(--credence-radius-md)',
+                      }}
+                    >
+                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                        <strong>Actor:</strong> {item.actor}
+                      </p>
+                      <p className="activity-row__meta">
+                        <strong>Meta:</strong>{' '}
+                        {isTxHash(item.meta) ? (
+                          <CopyableHash hash={item.meta} kind="tx" />
+                        ) : (
+                          item.meta
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </li>
             )

@@ -37,7 +37,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useWallet`](#usewallet)
   - [`useProductUpdates`](#useproductupdates)
   - [`useSmartBack`](#usesmartback)
-  - [`useThrottledCallback`](#usethrottledcallback)
+  - [`useKeyboardShortcut`](#usekeyboardshortcut)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -804,43 +804,61 @@ function BackButton() {
 
 ---
 
-### `useThrottledCallback`
+### `useKeyboardShortcut`
 
-Source: [`src/hooks/useThrottledCallback.ts`](../src/hooks/useThrottledCallback.ts) · Constant: [`DEFAULT_SCROLL_THROTTLE_MS`](../src/config/scroll.ts)
+Source: [`src/hooks/useKeyboardShortcut.ts`](../src/hooks/useKeyboardShortcut.ts)
 
 ```ts
-function useThrottledCallback<T extends (...args: any[]) => any>(
-  callback: T,
-  delayMs?: number // default: 100ms (DEFAULT_SCROLL_THROTTLE_MS)
-): (...args: Parameters<T>) => void
+function useKeyboardShortcut(
+  keysOrConfig: ShortcutKeys | UseKeyboardShortcutConfig,
+  callback?: ShortcutCallback,
+  options?: UseKeyboardShortcutOptions
+): void
+
+type ShortcutKeys = string | string[] | (string | string[])[]
+
+interface UseKeyboardShortcutOptions {
+  enabled?: boolean // default: true
+  preventDefault?: boolean // default: true
+  stopPropagation?: boolean // default: false
+  ignoreInputElements?: boolean // default: true
+  target?: React.RefObject<HTMLElement | null> | Window | Document | null
+  userAgent?: string
+}
 ```
 
-Throttles execution of `callback` so it fires at most once per `delayMs` window. Designed for scroll-tracking, resize, and high-frequency event handlers to prevent excessive `setState` calls and layout re-computations.
+Platform-aware keyboard shortcut primitive that abstracts OS modifier differences (`Mod` / `Ctrl` vs `Cmd`, `Alt` vs `Option`) and enforces WCAG 2.1 AA accessibility guidelines by ignoring global keybindings when focused on editable form controls (`<input>`, `<textarea>`, `<select>`, `[contenteditable]`).
+
+**Parameters & Options**
+
+| Option | Required | Default | Description |
+| --- | :---: | :---: | --- |
+| `keys` | ✓ | | Key combination(s) e.g. `['Mod', 'K']`, `['Alt', 'S']`, `'Ctrl+Shift+P'`, or `[['Mod', 'K'], ['Alt', 'K']]`. |
+| `onShortcut` / `callback` | ✓ | | Handler function invoked when a matching shortcut is pressed. |
+| `enabled` | | `true` | Engage (`true`) / disengage (`false`) the event listener. |
+| `preventDefault` | | `true` | Invokes `event.preventDefault()` when shortcut matches. |
+| `stopPropagation` | | `false` | Invokes `event.stopPropagation()` when shortcut matches. |
+| `ignoreInputElements` | | `true` | Excludes key events originating inside editable input controls for accessibility compliance. |
+| `target` | | `window` | Custom DOM element or ref to attach the listener to. |
+| `userAgent` | | `navigator.userAgent` | User agent override for platform detection testing or SSR. |
 
 **Behavior notes**
 
-- **Leading call:** fires immediately on the first invocation.
-- **Trailing call:** subsequent calls during the delay window schedule a single execution with the latest arguments when the delay window elapses.
-- **Immediate mode (`delayMs <= 0`):** disables throttling and invokes the callback synchronously on every call.
-- **Cleanup:** clears pending timers on component unmount.
+- **Platform key abstraction:** `Mod`, `CmdOrCtrl`, or `CtrlOrCmd` automatically maps to `Meta` (⌘) on macOS/iOS and `Ctrl` on Windows/Linux.
+- **Alt/Option normalization:** `Option` and `Alt` tokens both match `event.altKey`.
+- **WCAG compliance:** suppresses global shortcuts inside text inputs unless `ignoreInputElements: false` is explicitly set.
+- **SSR-safe / cleanup:** event listeners attach inside `useEffect` and tear down automatically on unmount or deactivation.
 
 ```tsx
-import { useState, useEffect } from 'react'
-import { useThrottledCallback } from '../hooks/useThrottledCallback'
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
 
-function ScrollProgress() {
-  const [scrollY, setScrollY] = useState(0)
+function CommandLauncher() {
+  const [open, setOpen] = useState(false)
 
-  const handleScroll = useThrottledCallback(() => {
-    setScrollY(window.scrollY)
-  }, 100)
+  // Opens launcher on Cmd+K (Mac) or Ctrl+K (Windows/Linux)
+  useKeyboardShortcut(['Mod', 'K'], () => setOpen(true))
 
-  useEffect(() => {
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [handleScroll])
-
-  return <div>Scroll Position: {scrollY}px</div>
+  return <LauncherModal open={open} onClose={() => setOpen(false)} />
 }
 ```
 

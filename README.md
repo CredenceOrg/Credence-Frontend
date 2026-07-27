@@ -172,6 +172,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - [Cookie-Secret Rotation Runbook](docs/COOKIE_SECRETS.md) — Rotation cadence, blast radius, and step-by-step procedure for backend session/CSRF cookie secrets.
 - [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
 - [Offline Strategy](docs/PWA.md) — What's cached, what's queued, and what happens on cache miss.
+- [Bundle Size Baseline](docs/BUNDLE.md) — Current production bundle sizes, per-route breakdowns, and profiling guide.
 
 ## Project layout
 

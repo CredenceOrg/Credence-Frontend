@@ -1,0 +1,46 @@
+/* StatusBadge — lifecycle status indicator (pending / active / completed / failed).
+   All colours are sourced from --credence-* design tokens; no hard-coded values. */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--credence-space-2);
+  border-radius: var(--credence-radius-full);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  background: var(--status-badge-bg);
+  color: var(--status-badge-color);
+  border-color: var(--status-badge-border);
+}
+
+/* pending — neutral / informational */
+.status-badge--pending {
+  --status-badge-bg: var(--credence-color-warning-surface);
+  --status-badge-color: var(--credence-color-warning-text);
+  --status-badge-border: var(--credence-color-warning-border);
+}
+
+/* active — success / in-progress */
+.status-badge--active {
+  --status-badge-bg: var(--credence-color-success-surface);
+  --status-badge-color: var(--credence-color-success-text);
+  --status-badge-border: var(--credence-color-success-border);
+}
+
+/* completed — info / resolved */
+.status-badge--completed {
+  --status-badge-bg: var(--credence-color-info-surface);
+  --status-badge-color: var(--credence-color-info-text);
+  --status-badge-border: var(--credence-color-info-border);
+}
+
+/* failed — danger */
+.status-badge--failed {
+  --status-badge-bg: var(--credence-color-danger-surface);
+  --status-badge-color: var(--credence-color-danger-text);
+  --status-badge-border: var(--credence-color-danger-border);
+}

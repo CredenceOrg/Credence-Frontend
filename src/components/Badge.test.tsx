@@ -1,281 +1,217 @@
-import { useRef } from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
-import Banner from './Banner'
-import type { BannerSeverity } from './Banner'
+import { render, screen } from '@testing-library/react'
+import { describe, it, expect } from 'vitest'
+import Badge from './Badge'
 
-// Mock the CSS import so Vitest doesn't choke on it
-vi.mock('./Banner.css', () => ({}))
+vi.mock('./Badge.css', () => ({}))
+vi.mock('./TooltipOnOverflow.css', () => ({}))
+vi.mock('../hooks/useReducedMotion', () => ({
+  useReducedMotion: () => false,
+}))
 
-// requestAnimationFrame is used by Banner to defer focus-return until after
-// the caller has unmounted the banner. We stub it to invoke synchronously so
-// dismiss/focus assertions are deterministic and don't depend on jsdom's
-// internal rAF-to-setTimeout shim.
-beforeEach(() => {
-  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(((cb: FrameRequestCallback) => {
-    cb(0)
-    return 0
-  }) as typeof window.requestAnimationFrame)
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
-
-describe('Banner', () => {
-  describe('role mapping by severity', () => {
-    const URGENT: BannerSeverity[] = ['critical', 'warning']
-    const POLITE: BannerSeverity[] = ['info', 'success']
-
-    it.each(URGENT)('%s severity renders role="alert"', (severity) => {
-      render(<Banner severity={severity}>Message</Banner>)
-      expect(screen.getByRole('alert')).toBeInTheDocument()
-      expect(screen.queryByRole('status')).toBeNull()
+describe('Badge', () => {
+  describe('variant normalization', () => {
+    it('renders a known tier variant with the correct label', () => {
+      render(<Badge variant="gold" />)
+      expect(screen.getByText('Gold')).toBeInTheDocument()
     })
 
-    it.each(POLITE)('%s severity renders role="status"', (severity) => {
-      render(<Banner severity={severity}>Message</Banner>)
-      expect(screen.getByRole('status')).toBeInTheDocument()
-      expect(screen.queryByRole('alert')).toBeNull()
+    it('renders a known status variant with the correct label', () => {
+      render(<Badge variant="slashed" />)
+      expect(screen.getByText('Slashed')).toBeInTheDocument()
+    })
+
+    it('renders grace-period with "Grace Period" label', () => {
+      render(<Badge variant="grace-period" />)
+      expect(screen.getByText('Grace Period')).toBeInTheDocument()
+    })
+
+    it('normalizes an unknown variant string to the unknown style', () => {
+      render(<Badge variant="foo-bar" />)
+      const el = document.querySelector('.badge--unknown')
+      expect(el).not.toBeNull()
+    })
+
+    it('unknown variant normalizes to "Unknown" label (DEFAULT_LABELS takes precedence over raw string)', () => {
+      render(<Badge variant="foo-bar" />)
+      expect(screen.getByText('Unknown')).toBeInTheDocument()
+    })
+
+    it('treats an empty string as unknown', () => {
+      render(<Badge variant="" />)
+      expect(document.querySelector('.badge--unknown')).not.toBeNull()
     })
 
     it.each([
-      ['info', 'Information banner'],
-      ['success', 'Success banner'],
-      ['warning', 'Warning banner'],
-      ['critical', 'Critical banner'],
-    ] as const)('%s severity sets aria-label "%s"', (severity, expectedLabel) => {
-      render(<Banner severity={severity}>Message</Banner>)
-      expect(screen.getByLabelText(expectedLabel)).toBeInTheDocument()
+      ['bronze', 'Bronze'],
+      ['silver', 'Silver'],
+      ['gold', 'Gold'],
+      ['platinum', 'Platinum'],
+      ['active', 'Active'],
+      ['locked', 'Locked'],
+      ['slashed', 'Slashed'],
+      ['grace-period', 'Grace Period'],
+      ['unknown', 'Unknown'],
+    ] as const)('variant "%s" renders label "%s"', (variant, expectedLabel) => {
+      render(<Badge variant={variant} />)
+      expect(screen.getByText(expectedLabel)).toBeInTheDocument()
     })
   })
 
-  describe('severity icon selection', () => {
-    // Each severity renders exactly one aria-hidden SVG icon inside the banner
-    // (a second aria-hidden SVG — the arrow — only appears when action.href is set,
-    // so these assertions scope to the icon wrapper to stay unambiguous).
-    it.each(['info', 'success', 'warning', 'critical'] as const)(
-      '%s severity renders an aria-hidden icon',
-      (severity) => {
-        render(<Banner severity={severity}>Message</Banner>)
-        const region = screen.getByRole(severity === 'critical' || severity === 'warning' ? 'alert' : 'status')
-        const icon = region.querySelector('svg[aria-hidden="true"]')
-        expect(icon).not.toBeNull()
-        expect(icon).toHaveAttribute('aria-hidden', 'true')
-      }
-    )
+  describe('label override', () => {
+    it('renders the custom label instead of the default', () => {
+      render(<Badge variant="gold" label="Top tier" />)
+      expect(screen.getByText('Top tier')).toBeInTheDocument()
+      expect(screen.queryByText('Gold')).toBeNull()
+    })
 
-    it('renders a different icon path for each severity', () => {
-      const paths = (['info', 'success', 'warning', 'critical'] as const).map((severity) => {
-        const { unmount } = render(<Banner severity={severity}>Message</Banner>)
-        const region = screen.getByRole(severity === 'critical' || severity === 'warning' ? 'alert' : 'status')
-        const path = region.querySelector('svg[aria-hidden="true"] path')?.getAttribute('d')
+    it('custom label applies to an unknown variant', () => {
+      render(<Badge variant="custom-tier" label="My Badge" />)
+      expect(screen.getByText('My Badge')).toBeInTheDocument()
+    })
+  })
+
+  describe('TooltipOnOverflow integration', () => {
+    it('wraps badge in a TooltipOnOverflow with the display label as content', () => {
+      render(<Badge variant="slashed" />)
+      // The badge label is still rendered
+      expect(screen.getByText('Slashed')).toBeInTheDocument()
+      // The wrapper span from TooltipOnOverflow exists
+      const wrapper = document.querySelector('.tooltip-on-overflow__wrapper')
+      expect(wrapper).toBeInTheDocument()
+    })
+
+    it('passes custom label to TooltipOnOverflow content', () => {
+      render(<Badge variant="gold" label="Custom label" />)
+      expect(screen.getByText('Custom label')).toBeInTheDocument()
+      const wrapper = document.querySelector('.tooltip-on-overflow__wrapper')
+      expect(wrapper).toBeInTheDocument()
+    })
+
+    it('no longer renders a title attribute on the badge span', () => {
+      render(<Badge variant="mystery-tier" />)
+      const badge = document.querySelector('.badge')
+      expect(badge).not.toHaveAttribute('title')
+    })
+  })
+
+  describe('className prop', () => {
+    it('appends extra class names to the badge root', () => {
+      render(<Badge variant="active" className="my-extra-class" />)
+      const badge = document.querySelector('.badge')
+      expect(badge).toHaveClass('my-extra-class')
+    })
+
+    it('does not produce a trailing space in the class when no className is given', () => {
+      render(<Badge variant="active" />)
+      const badge = document.querySelector('.badge')
+      // className should not start or end with a space
+      expect(badge?.className).not.toMatch(/^\s|\s$/)
+    })
+  })
+
+  describe('srPrefix — screen-reader-only context prefix', () => {
+    it('is absent from the DOM when srPrefix is not supplied', () => {
+      render(<Badge variant="slashed" />)
+      // The .sr-only span should not be present
+      expect(document.querySelector('.sr-only')).toBeNull()
+    })
+
+    it('renders a sr-only span when srPrefix is provided', () => {
+      render(<Badge variant="slashed" srPrefix="Bond status:" />)
+      const srSpan = document.querySelector('.sr-only')
+      expect(srSpan).not.toBeNull()
+      expect(srSpan).toHaveTextContent('Bond status:')
+    })
+
+    it('accessible name includes both prefix and visible label', () => {
+      render(<Badge variant="slashed" srPrefix="Bond status:" />)
+      // The full text content should be "Bond status:  Slashed" (note: trailing space after prefix)
+      const badge = document.querySelector('.badge')
+      expect(badge?.textContent).toContain('Bond status:')
+      expect(badge?.textContent).toContain('Slashed')
+    })
+
+    it('srPrefix still applies when a custom label is used', () => {
+      render(<Badge variant="locked" label="In lock-up" srPrefix="Status:" />)
+      expect(document.querySelector('.sr-only')).toHaveTextContent('Status:')
+      expect(screen.getByText('In lock-up')).toBeInTheDocument()
+    })
+
+    it('srPrefix works on an unknown variant (label normalizes to Unknown)', () => {
+      render(<Badge variant="experimental" srPrefix="Tier:" />)
+      expect(document.querySelector('.sr-only')).toHaveTextContent('Tier:')
+      expect(screen.getByText('Unknown')).toBeInTheDocument()
+    })
+  })
+
+  describe('aria-label', () => {
+    it.each([
+      ['bronze', 'Bronze'],
+      ['silver', 'Silver'],
+      ['gold', 'Gold'],
+      ['platinum', 'Platinum'],
+      ['active', 'Active'],
+      ['locked', 'Locked'],
+      ['slashed', 'Slashed'],
+      ['grace-period', 'Grace Period'],
+      ['unknown', 'Unknown'],
+    ] as const)('variant "%s" sets aria-label to "%s"', (variant, expected) => {
+      render(<Badge variant={variant} />)
+      expect(screen.getByTitle(expected)).toHaveAttribute('aria-label', expected)
+    })
+
+    it('custom ariaLabel overrides the default', () => {
+      render(<Badge variant="slashed" ariaLabel="Status: Slashed" />)
+      expect(screen.getByTitle('Slashed')).toHaveAttribute('aria-label', 'Status: Slashed')
+    })
+
+    it('ariaLabel applies alongside a custom label', () => {
+      render(<Badge variant="gold" label="Top Tier" ariaLabel="Tier: Gold" />)
+      expect(screen.getByTitle('Top Tier')).toHaveAttribute('aria-label', 'Tier: Gold')
+    })
+
+    it('ariaLabel works on an unknown variant', () => {
+      render(<Badge variant="experimental" ariaLabel="Experimental tier" />)
+      const badge = document.querySelector('.badge')
+      expect(badge).toHaveAttribute('aria-label', 'Experimental tier')
+    })
+
+    it('no variant produces an empty aria-label', () => {
+      const variants = ['bronze', 'silver', 'gold', 'platinum', 'active', 'locked', 'slashed', 'grace-period', 'unknown', '']
+      for (const v of variants) {
+        const { unmount } = render(<Badge variant={v} />)
+        const badge = document.querySelector('.badge')
+        expect(badge).not.toBeNull()
+        expect(badge?.getAttribute('aria-label')).toBeTruthy()
         unmount()
-        return path
-      })
-      // All four severity icons must be visually distinct
-      expect(new Set(paths).size).toBe(4)
-    })
-  })
-
-  describe('action prop', () => {
-    it('renders a link when action.href is provided', () => {
-      render(
-        <Banner severity="info" action={{ label: 'Learn more', href: 'https://example.com/docs' }}>
-          Message
-        </Banner>
-      )
-      const link = screen.getByRole('link', { name: 'Learn more' })
-      expect(link).toHaveAttribute('href', 'https://example.com/docs')
-      expect(screen.queryByRole('button', { name: 'Learn more' })).toBeNull()
-    })
-
-    it('renders a button when action.onClick is provided (no href)', () => {
-      const onActionClick = vi.fn()
-      render(
-        <Banner severity="info" action={{ label: 'Retry', onClick: onActionClick }}>
-          Message
-        </Banner>
-      )
-      const button = screen.getByRole('button', { name: 'Retry' })
-      expect(screen.queryByRole('link', { name: 'Retry' })).toBeNull()
-
-      fireEvent.click(button)
-      expect(onActionClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('renders a link, not a button, when both href and onClick are provided (href wins)', () => {
-      const onActionClick = vi.fn()
-      render(
-        <Banner
-          severity="info"
-          action={{ label: 'Go', href: 'https://example.com', onClick: onActionClick }}
-        >
-          Message
-        </Banner>
-      )
-      expect(screen.getByRole('link', { name: 'Go' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Go' })).toBeNull()
-    })
-
-    it('renders no action element when action is omitted', () => {
-      render(<Banner severity="info">Message</Banner>)
-      expect(screen.queryByRole('link')).toBeNull()
-      // Only the dismiss button could be a 'button'; this banner is not dismissible,
-      // so there should be no buttons at all.
-      expect(screen.queryByRole('button')).toBeNull()
-    })
-  })
-
-  describe('title rendering', () => {
-    it('renders the title when provided', () => {
-      render(
-        <Banner severity="info" title="Heads up">
-          Message body
-        </Banner>
-      )
-      expect(screen.getByText('Heads up')).toBeInTheDocument()
-      expect(screen.getByText('Message body')).toBeInTheDocument()
-    })
-
-    it('renders no title element when omitted', () => {
-      render(<Banner severity="info">Message body</Banner>)
-      expect(screen.queryByText('Heads up')).toBeNull()
-    })
-  })
-
-  describe('dismissible behavior', () => {
-    it('persistent banner (dismissible omitted) has no close button', () => {
-      render(<Banner severity="info">Message</Banner>)
-      expect(screen.queryByRole('button', { name: 'Dismiss banner' })).toBeNull()
-    })
-
-    it('persistent banner (dismissible=false) has no close button', () => {
-      render(
-        <Banner severity="info" dismissible={false}>
-          Message
-        </Banner>
-      )
-      expect(screen.queryByRole('button', { name: 'Dismiss banner' })).toBeNull()
-    })
-
-    it('dismissible banner renders a close button', () => {
-      render(
-        <Banner severity="info" dismissible>
-          Message
-        </Banner>
-      )
-      expect(screen.getByRole('button', { name: 'Dismiss banner' })).toBeInTheDocument()
-    })
-
-    it('clicking the close button calls onDismiss', () => {
-      const onDismiss = vi.fn()
-      render(
-        <Banner severity="info" dismissible onDismiss={onDismiss}>
-          Message
-        </Banner>
-      )
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
-      expect(onDismiss).toHaveBeenCalledTimes(1)
-    })
-
-    it('Escape on the close button calls onDismiss', () => {
-      const onDismiss = vi.fn()
-      render(
-        <Banner severity="info" dismissible onDismiss={onDismiss}>
-          Message
-        </Banner>
-      )
-      const closeBtn = screen.getByRole('button', { name: 'Dismiss banner' })
-      closeBtn.focus()
-      fireEvent.keyDown(closeBtn, { key: 'Escape' })
-      expect(onDismiss).toHaveBeenCalledTimes(1)
-    })
-
-    it('a non-Escape key on the close button does not dismiss', () => {
-      const onDismiss = vi.fn()
-      render(
-        <Banner severity="info" dismissible onDismiss={onDismiss}>
-          Message
-        </Banner>
-      )
-      const closeBtn = screen.getByRole('button', { name: 'Dismiss banner' })
-      closeBtn.focus()
-      fireEvent.keyDown(closeBtn, { key: 'Enter' })
-      expect(onDismiss).not.toHaveBeenCalled()
-    })
-
-    it('dismissing via click returns focus to returnFocusRef when provided', () => {
-      function Harness() {
-        const ref = useRef<HTMLButtonElement>(null)
-        return (
-          <>
-            <button ref={ref} type="button">
-              Trigger
-            </button>
-            <Banner severity="info" dismissible returnFocusRef={ref}>
-              Message
-            </Banner>
-          </>
-        )
       }
-      render(<Harness />)
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
-      expect(screen.getByRole('button', { name: 'Trigger' })).toHaveFocus()
     })
 
-    it('dismissing via Escape returns focus to returnFocusRef when provided', () => {
-      function Harness() {
-        const ref = useRef<HTMLButtonElement>(null)
-        return (
-          <>
-            <button ref={ref} type="button">
-              Trigger
-            </button>
-            <Banner severity="info" dismissible returnFocusRef={ref}>
-              Message
-            </Banner>
-          </>
-        )
-      }
-      render(<Harness />)
-      const closeBtn = screen.getByRole('button', { name: 'Dismiss banner' })
-      closeBtn.focus()
-      fireEvent.keyDown(closeBtn, { key: 'Escape' })
-      expect(screen.getByRole('button', { name: 'Trigger' })).toHaveFocus()
+    it('aria-label is present when srPrefix is also provided', () => {
+      render(<Badge variant="grace-period" srPrefix="Status:" ariaLabel="Grace Period" />)
+      expect(screen.getByTitle('Grace Period')).toHaveAttribute('aria-label', 'Grace Period')
     })
+  })
 
-    it('dismissing returns focus to document.body when returnFocusRef is not provided', () => {
-      render(
-        <Banner severity="info" dismissible>
-          Message
-        </Banner>
-      )
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
-      expect(document.body).toHaveFocus()
-    })
-
-    it('dismissing returns focus to document.body when returnFocusRef.current is null', () => {
-      const nullRef = { current: null }
-      render(
-        <Banner severity="info" dismissible returnFocusRef={nullRef as React.RefObject<HTMLElement>}>
-          Message
-        </Banner>
-      )
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
-      expect(document.body).toHaveFocus()
-    })
-
-    it('dismiss works even when onDismiss is not provided (focus still returns)', () => {
-      render(
-        <Banner severity="info" dismissible>
-          Message
-        </Banner>
-      )
-      // Should not throw despite no onDismiss handler
-      expect(() => {
-        fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
-      }).not.toThrow()
-      expect(document.body).toHaveFocus()
+  describe('color-only regression — visible label is always non-empty', () => {
+    it.each([
+      'slashed',
+      'grace-period',
+      'locked',
+      'active',
+      'bronze',
+      'silver',
+      'gold',
+      'platinum',
+      'unknown',
+    ] as const)('severity variant "%s" always has a non-empty text label', (variant) => {
+      render(<Badge variant={variant} />)
+      const badge = document.querySelector('.badge')
+      // Strip whitespace from any sr-only prefix to get visible text
+      const visibleText = badge?.querySelector('.sr-only')
+        ? badge.textContent?.replace(badge.querySelector('.sr-only')!.textContent ?? '', '').trim()
+        : badge?.textContent?.trim()
+      expect(visibleText?.length).toBeGreaterThan(0)
     })
   })
 })

@@ -6,17 +6,21 @@ interface FormFieldProps {
   label: string
   hint?: string
   error?: string
+  /** When true, the label is visually hidden but remains linked to the control via htmlFor/id. */
+  srOnlyLabel?: boolean
   children: React.ReactElement
 }
 
-export function FormField({ id, label, hint, error, children }: FormFieldProps) {
+export function FormField({ id, label, hint, error, srOnlyLabel = false, children }: FormFieldProps) {
   const hintId = hint ? `${id}-hint` : undefined
   const errorId = error ? `${id}-error` : undefined
   const existingDescribedBy = children.props['aria-describedby'] as string | undefined
 
   return (
     <div className="form-field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} className={srOnlyLabel ? 'sr-only' : undefined}>
+        {label}
+      </label>
 
       {hint && (
         <span id={hintId} className="form-hint">

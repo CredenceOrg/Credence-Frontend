@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   getPenaltyRateForDuration,
   computeBondSlashBreakdown,
+  getPenaltyRate,
+  computeWithdrawBreakdown,
+  calcUnlockDate,
+  type MockBond,
 } from './bondPenalty'
 
 // ---------------------------------------------------------------------------
@@ -147,5 +151,115 @@ describe('computeBondSlashBreakdown', () => {
     expect(result).toHaveProperty('resultingBalance')
     expect(result).toHaveProperty('penaltyUsdc')
     expect(result).toHaveProperty('resultingUsdc')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// getPenaltyRate
+// ---------------------------------------------------------------------------
+
+describe('getPenaltyRate', () => {
+  it('returns 0.2 for "locked" status', () => {
+    expect(getPenaltyRate('locked')).toBe(0.2)
+  })
+
+  it('returns 0.1 for "grace-period" status', () => {
+    expect(getPenaltyRate('grace-period')).toBe(0.1)
+  })
+
+  it('returns 0 for "active" status', () => {
+    expect(getPenaltyRate('active')).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// computeWithdrawBreakdown
+// ---------------------------------------------------------------------------
+
+describe('computeWithdrawBreakdown', () => {
+  it('computes 20% penalty for locked status', () => {
+    const bond: MockBond = { id: 1, amountUsdc: 1000, status: 'locked' }
+    const result = computeWithdrawBreakdown(bond)
+    expect(result.penaltyPercent).toBe(20)
+    expect(result.penaltyUsdc).toBeCloseTo(200, 5)
+    expect(result.resultingUsdc).toBeCloseTo(800, 5)
+    expect(result.bondAmount).toBe('1,000 USDC')
+    expect(result.penaltyAmount).toBe('200 USDC')
+    expect(result.resultingBalance).toBe('800 USDC')
+  })
+
+  it('computes 10% penalty for grace-period status', () => {
+    const bond: MockBond = { id: 1, amountUsdc: 500, status: 'grace-period' }
+    const result = computeWithdrawBreakdown(bond)
+    expect(result.penaltyPercent).toBe(10)
+    expect(result.penaltyUsdc).toBeCloseTo(50, 5)
+    expect(result.resultingUsdc).toBeCloseTo(450, 5)
+    expect(result.bondAmount).toBe('500 USDC')
+    expect(result.penaltyAmount).toBe('50 USDC')
+    expect(result.resultingBalance).toBe('450 USDC')
+  })
+
+  it('computes 0% penalty for active status', () => {
+    const bond: MockBond = { id: 1, amountUsdc: 750, status: 'active' }
+    const result = computeWithdrawBreakdown(bond)
+    expect(result.penaltyPercent).toBe(0)
+    expect(result.penaltyUsdc).toBe(0)
+    expect(result.resultingUsdc).toBe(750)
+    expect(result.bondAmount).toBe('750 USDC')
+    expect(result.penaltyAmount).toBe('0 USDC')
+    expect(result.resultingBalance).toBe('750 USDC')
+  })
+
+  it('satisfies conservation invariant (penaltyUsdc + resultingUsdc === bond amount)', () => {
+    const bond: MockBond = { id: 1, amountUsdc: 2500, status: 'locked' }
+    const result = computeWithdrawBreakdown(bond)
+    expect(result.penaltyUsdc + result.resultingUsdc).toBeCloseTo(bond.amountUsdc, 10)
+  })
+
+  it('handles zero-amount bond', () => {
+    const bond: MockBond = { id: 1, amountUsdc: 0, status: 'locked' }
+    const result = computeWithdrawBreakdown(bond)
+    expect(result.penaltyUsdc).toBe(0)
+    expect(result.resultingUsdc).toBe(0)
+  })
+
+  it('handles fractional USDC amounts', () => {
+    const bond: MockBond = { id: 1, amountUsdc: 333.33, status: 'locked' }
+    const result = computeWithdrawBreakdown(bond)
+    expect(result.penaltyUsdc).toBeCloseTo(66.666, 3)
+    expect(result.resultingUsdc).toBeCloseTo(266.664, 3)
+  })
+
+  it('handles very large amounts', () => {
+    const bond: MockBond = { id: 1, amountUsdc: 1_000_000, status: 'grace-period' }
+    const result = computeWithdrawBreakdown(bond)
+    expect(result.bondAmount).toBe('1,000,000 USDC')
+    expect(result.penaltyAmount).toBe('100,000 USDC')
+    expect(result.resultingBalance).toBe('900,000 USDC')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// calcUnlockDate
+// ---------------------------------------------------------------------------
+
+describe('calcUnlockDate', () => {
+  it('calculates the correct unlock date', () => {
+    const mockDate = new Date('2026-01-01T00:00:00Z')
+    vi.useFakeTimers()
+    vi.setSystemTime(mockDate)
+    
+    const date30 = calcUnlockDate(30)
+    const date90 = calcUnlockDate(90)
+    const date180 = calcUnlockDate(180)
+    
+    expect(date30).toMatch(/2026/)
+    expect(date30).toMatch(/Jan|January/)
+    expect(date90).toMatch(/2026/)
+    expect(date90).toMatch(/Apr|April/)
+    expect(date180).toMatch(/2026/)
+    expect(date180).toMatch(/Jun|June/)
+    
+    vi.useRealTimers()
   })
 })

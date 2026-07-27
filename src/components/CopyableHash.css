@@ -1,0 +1,67 @@
+.copyable-hash {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-spacing-xs, 0.25rem);
+  font-family: var(--credence-font-mono, monospace);
+  font-size: 0.9em;
+  color: var(--credence-color-text, inherit);
+}
+
+.copyable-hash__text {
+  /* Let it breathe slightly if used inline */
+  line-height: 1;
+}
+
+.copyable-hash__copy-btn,
+.copyable-hash__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--credence-radius-sm, 0.25rem);
+  color: var(--credence-color-text-muted, #666);
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.copyable-hash__copy-btn:hover,
+.copyable-hash__link:hover {
+  color: var(--credence-color-text, #111);
+  background-color: var(--credence-color-surface-hover, rgba(0, 0, 0, 0.05));
+}
+
+.copyable-hash__copy-btn:focus-visible,
+.copyable-hash__link:focus-visible {
+  outline: 2px solid var(--credence-color-primary, #0055ff);
+  outline-offset: 2px;
+}
+
+.copyable-hash__copy-btn--copied {
+  color: var(--credence-color-success, #008800);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .copyable-hash__copy-btn--copied svg {
+    animation: credence-copy-pulse 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+}
+
+@keyframes credence-copy-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

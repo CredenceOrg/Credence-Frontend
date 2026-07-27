@@ -134,7 +134,7 @@ describe('ConfirmDialog', () => {
     it('confirm button remains disabled for partial input', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFI')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
@@ -142,7 +142,7 @@ describe('ConfirmDialog', () => {
     it('confirm button remains disabled for wrong case input', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'confirm')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
@@ -150,7 +150,7 @@ describe('ConfirmDialog', () => {
     it('confirm button becomes enabled when "CONFIRM" is typed exactly', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
     })
@@ -166,7 +166,7 @@ describe('ConfirmDialog', () => {
     it('confirm button has aria-disabled="false" after "CONFIRM" entered', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toHaveAttribute(
         'aria-disabled',
@@ -187,7 +187,7 @@ describe('ConfirmDialog', () => {
     it('calls onConfirm when "CONFIRM" is typed and confirm button is clicked', async () => {
       const user = userEvent.setup()
       const { onConfirm } = renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
       expect(onConfirm).toHaveBeenCalledOnce()
@@ -321,7 +321,7 @@ describe('ConfirmDialog', () => {
     it('resets the confirm input when reopened', async () => {
       const user = userEvent.setup()
       const { rerender, onConfirm, onCancel } = renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
 
       rerender(
@@ -343,7 +343,7 @@ describe('ConfirmDialog', () => {
         />
       )
 
-      expect(screen.getByRole('textbox', { name: /type confirm/i })).toHaveValue('')
+      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toHaveValue('')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
   })
@@ -411,13 +411,13 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
   describe('default phrase behaviour (unchanged)', () => {
     it('default phrase is CONFIRM', () => {
       renderDialog()
-      expect(screen.getByRole('textbox', { name: /type confirm/i })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toBeInTheDocument()
     })
 
     it('confirm button disabled until "CONFIRM" typed with default phrase', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
     })
@@ -432,7 +432,7 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
     it('gates the confirm button on the custom phrase, not CONFIRM', async () => {
       const user = userEvent.setup()
       renderGenericDialog({ confirmPhrase: 'DELETE' })
-      const input = screen.getByRole('textbox', { name: /type delete/i })
+      const input = screen.getByRole('textbox', { name: /type.*delete/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Clear draft' })).toBeDisabled()
     })
@@ -440,7 +440,7 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
     it('enables the confirm button when the custom phrase is typed exactly', async () => {
       const user = userEvent.setup()
       renderGenericDialog({ confirmPhrase: 'DELETE' })
-      const input = screen.getByRole('textbox', { name: /type delete/i })
+      const input = screen.getByRole('textbox', { name: /type.*delete/i })
       await user.type(input, 'DELETE')
       expect(screen.getByRole('button', { name: 'Clear draft' })).toBeEnabled()
     })
@@ -448,7 +448,7 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
     it('comparison remains case-sensitive', async () => {
       const user = userEvent.setup()
       renderGenericDialog({ confirmPhrase: 'DELETE' })
-      const input = screen.getByRole('textbox', { name: /type delete/i })
+      const input = screen.getByRole('textbox', { name: /type.*delete/i })
       await user.type(input, 'delete')
       expect(screen.getByRole('button', { name: 'Clear draft' })).toBeDisabled()
     })
@@ -498,7 +498,7 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
     it('renders breakdown, default phrase and default hint unchanged', () => {
       renderDialog()
       expect(screen.getByText('Bond amount')).toBeInTheDocument()
-      expect(screen.getByRole('textbox', { name: /type confirm/i })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toBeInTheDocument()
       expect(screen.getByText(/Funds will be sent to your connected wallet/)).toBeInTheDocument()
     })
   })

@@ -9,6 +9,9 @@ describe('validateAndNormalize', () => {
       addressDisplay: 'full',
       toastsEnabled: false,
       autoDismiss: '3s',
+      quietHoursEnabled: true,
+      quietHoursStart: '23:00',
+      quietHoursEnd: '06:00',
     }
     const result = validateAndNormalize(input)
     expect(result.ok).toBe(true)
@@ -34,6 +37,9 @@ describe('validateAndNormalize', () => {
       expect(result.data.addressDisplay).toBe('short')
       expect(result.data.toastsEnabled).toBe(true)
       expect(result.data.autoDismiss).toBe('5s')
+      expect(result.data.quietHoursEnabled).toBe(false)
+      expect(result.data.quietHoursStart).toBe('22:00')
+      expect(result.data.quietHoursEnd).toBe('07:00')
     }
   })
 
@@ -150,16 +156,102 @@ describe('validateAndNormalize', () => {
     })
   })
 
+  describe('quietHours validation', () => {
+    it('accepts each quiet hours field independently', () => {
+      const enabledOnly = validateAndNormalize({ quietHoursEnabled: true })
+      expect(enabledOnly.ok).toBe(true)
+      if (enabledOnly.ok) {
+        expect(enabledOnly.data.quietHoursEnabled).toBe(true)
+        expect(enabledOnly.data.quietHoursStart).toBe('22:00') // default
+        expect(enabledOnly.data.quietHoursEnd).toBe('07:00') // default
+      }
+
+      const startOnly = validateAndNormalize({ quietHoursStart: '10:30' })
+      expect(startOnly.ok).toBe(true)
+      if (startOnly.ok) {
+        expect(startOnly.data.quietHoursStart).toBe('10:30')
+        expect(startOnly.data.quietHoursEnd).toBe('07:00') // default
+      }
+
+      const endOnly = validateAndNormalize({ quietHoursEnd: '05:30' })
+      expect(endOnly.ok).toBe(true)
+      if (endOnly.ok) {
+        expect(endOnly.data.quietHoursEnd).toBe('05:30')
+      }
+    })
+
+    it('coerces quietHoursEnabled truthy values to true', () => {
+      const r1 = validateAndNormalize({ quietHoursEnabled: 1 })
+      if (r1.ok) expect(r1.data.quietHoursEnabled).toBe(true)
+
+      const r2 = validateAndNormalize({ quietHoursEnabled: 'yes' })
+      if (r2.ok) expect(r2.data.quietHoursEnabled).toBe(true)
+    })
+
+    it.each([
+      ['25:00', 'invalid hour'],
+      ['12:60', 'invalid minute'],
+      ['12-00', 'wrong separator'],
+      ['9:00', 'unpadded hour'],
+      ['', 'empty'],
+    ])('rejects quietHoursStart %s (%s)', (input) => {
+      const result = validateAndNormalize({ quietHoursStart: input })
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors[0]).toMatch(/quietHoursStart/)
+      }
+    })
+
+    it.each([
+      ['25:00', 'invalid hour'],
+      ['12:60', 'invalid minute'],
+      ['ab:cd', 'non-numeric'],
+    ])('rejects quietHoursEnd %s (%s)', (input) => {
+      const result = validateAndNormalize({ quietHoursEnd: input })
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors[0]).toMatch(/quietHoursEnd/)
+      }
+    })
+
+    it('rejects non-string quietHoursStart', () => {
+      const result = validateAndNormalize({ quietHoursStart: 123 })
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors[0]).toMatch(/quietHoursStart/)
+      }
+    })
+
+    it('maintains backwards compatibility with pre-quiet hours exports', () => {
+      const legacy = {
+        themeMode: 'light',
+        network: 'public',
+        addressDisplay: 'short',
+        toastsEnabled: true,
+        autoDismiss: '5s',
+      }
+      const result = validateAndNormalize(legacy)
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.data.quietHoursEnabled).toBe(false)
+        expect(result.data.quietHoursStart).toBe('22:00')
+        expect(result.data.quietHoursEnd).toBe('07:00')
+      }
+    })
+  })
+
   it('collects multiple errors at once', () => {
     const result = validateAndNormalize({
       themeMode: 'bad',
       network: 'bad',
       addressDisplay: 'bad',
       autoDismiss: 'bad',
+      quietHoursStart: 'bad',
+      quietHoursEnd: 'bad',
     })
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toHaveLength(4)
+      expect(result.errors).toHaveLength(6)
     }
   })
 
@@ -192,5 +284,8 @@ describe('defaultSettings', () => {
     expect(d.addressDisplay).toBe('short')
     expect(d.toastsEnabled).toBe(true)
     expect(d.autoDismiss).toBe('5s')
+    expect(d.quietHoursEnabled).toBe(false)
+    expect(d.quietHoursStart).toBe('22:00')
+    expect(d.quietHoursEnd).toBe('07:00')
   })
 })

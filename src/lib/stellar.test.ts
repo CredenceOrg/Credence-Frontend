@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { isValidStellarAddress, truncateAddress } from './stellar'
+import { isValidStellarAddress, truncateAddress, formatAddressForDisplay } from './stellar'
 
-// A valid 56-character Stellar public key
-const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA' // 56 chars
+// A valid 56-character Stellar public key (passes CRC-16 XMODEM checksum)
+const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H' // 56 chars
 
 describe('isValidStellarAddress', () => {
   it('returns true for valid Stellar public keys', () => {
     expect(isValidStellarAddress(VALID_KEY)).toBe(true)
-    // Another valid key
-    expect(isValidStellarAddress('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H')).toBe(
-      true
+    // Another valid key (also passes checksum)
+    expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(
+      false // this key fails the CRC-16 checksum
     )
   })
 
@@ -39,6 +39,11 @@ describe('isValidStellarAddress', () => {
     expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN!')).toBe(
       false
     ) // special char
+  })
+
+  it('returns false for a format-valid key that fails the CRC-16 checksum', () => {
+    // GAAZI4... is 56 chars, starts with G, uppercase alphanumeric, but fails checksum
+    expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(false)
   })
 
   it('returns false for wrong prefix', () => {
@@ -140,5 +145,47 @@ describe('truncateAddress', () => {
     const result = truncateAddress(VALID_KEY)
     expect(result).toContain('...')
     expect(result).not.toContain('…') // U+2026 typographic ellipsis
+  })
+})
+
+describe('formatAddressForDisplay', () => {
+  it('returns full address when mode is "full"', () => {
+    expect(formatAddressForDisplay(VALID_KEY, 'full')).toBe(VALID_KEY)
+  })
+
+  it('returns short (truncated) address when mode is "short"', () => {
+    const expected = `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    expect(formatAddressForDisplay(VALID_KEY, 'short')).toBe(expected)
+  })
+
+  it('returns friendly (very short) address when mode is "friendly"', () => {
+    // first 6 + U+2026 + last 4
+    const expected = `${VALID_KEY.substring(0, 6)}\u2026${VALID_KEY.substring(VALID_KEY.length - 4)}`
+    expect(formatAddressForDisplay(VALID_KEY, 'friendly')).toBe(expected)
+  })
+
+  it('falls back to short when mode is undefined', () => {
+    const expected = `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    expect(formatAddressForDisplay(VALID_KEY, undefined)).toBe(expected)
+  })
+
+  it('falls back to short when mode is unknown', () => {
+    const expected = `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    expect(formatAddressForDisplay(VALID_KEY, 'bogus')).toBe(expected)
+  })
+
+  it('returns empty string for empty / null / undefined input', () => {
+    expect(formatAddressForDisplay('', 'full')).toBe('')
+    expect(formatAddressForDisplay(null, 'full')).toBe('')
+    expect(formatAddressForDisplay(undefined, 'short')).toBe('')
+  })
+
+  it('trims whitespace before formatting', () => {
+    expect(formatAddressForDisplay('  ' + VALID_KEY + '  ', 'full')).toBe(VALID_KEY)
+  })
+
+  it('friendly mode returns short address unchanged when it is short enough (≤10 chars)', () => {
+    const short = 'GABC12345'
+    expect(formatAddressForDisplay(short, 'friendly')).toBe(short)
   })
 })

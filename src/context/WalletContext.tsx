@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSettings } from './SettingsContext'
 import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWallet'
@@ -8,6 +8,9 @@ import SessionTimeoutModal from '../components/SessionTimeoutModal'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean
+  lastReauthTime: number | null
+  reauth: () => Promise<void>
+  isReauthRequired: () => boolean
 }
 
 const defaultWalletState: WalletContextValue = {
@@ -19,6 +22,9 @@ const defaultWalletState: WalletContextValue = {
   connect: async () => {},
   disconnect: () => {},
   network: null,
+  lastReauthTime: null,
+  reauth: async () => {},
+  isReauthRequired: () => false,
 }
 
 const WalletContext = createContext<WalletContextValue>(defaultWalletState)
@@ -37,15 +43,27 @@ const IDLE_TIMEOUT_MS = 15 * 60 * 1000
 const WARNING_THRESHOLD_MS = 60 * 1000
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const { network } = useSettings()
+  const { network, reauthThresholdMinutes } = useSettings()
   const wallet = useWalletState(network)
   const { addToast } = useToast()
   const navigate = useNavigate()
   const [showWarning, setShowWarning] = useState(false)
+  const [lastReauthTime, setLastReauthTime] = useState<number | null>(null)
+
+  // Set last reauth time when wallet connects
+  useEffect(() => {
+    if (wallet.isConnected && lastReauthTime === null) {
+      setLastReauthTime(Date.now())
+    }
+    if (!wallet.isConnected) {
+      setLastReauthTime(null)
+    }
+  }, [wallet.isConnected, lastReauthTime])
 
   const handleLogout = useCallback(() => {
     wallet.disconnect()
     setShowWarning(false)
+    setLastReauthTime(null)
     navigate('/signin')
     addToast('warning', 'Logged out due to inactivity.')
   }, [wallet, navigate, addToast])
@@ -53,6 +71,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const handleStayLoggedIn = useCallback(() => {
     setShowWarning(false)
   }, [])
+
+  const reauth = useCallback(async () => {
+    // Reconnect wallet as re-authentication
+    await wallet.connect()
+    setLastReauthTime(Date.now())
+  }, [wallet])
+
+  const isReauthRequired = useCallback(() => {
+    if (!wallet.isConnected || lastReauthTime === null) {
+      return true
+    }
+    const elapsedMs = Date.now() - lastReauthTime
+    const thresholdMs = reauthThresholdMinutes * 60 * 1000
+    return elapsedMs >= thresholdMs
+  }, [wallet.isConnected, lastReauthTime, reauthThresholdMinutes])
 
   useIdleTimeout({
     timeoutMs: wallet.isConnected ? IDLE_TIMEOUT_MS - WARNING_THRESHOLD_MS : 0,
@@ -77,6 +110,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const value = {
     ...wallet,
     connected: wallet.isConnected,
+    lastReauthTime,
+    reauth,
+    isReauthRequired,
   }
 
   return (

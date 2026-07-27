@@ -1,4 +1,6 @@
 import { ButtonHTMLAttributes, forwardRef, ReactNode } from 'react'
+import { TEST_IDS } from '../config/testIds'
+import LoadingSpinner from './LoadingSpinner'
 import './Button.css'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -10,6 +12,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean
   /** Button content */
   children: ReactNode
+  'data-testid'?: string
 }
 
 /**
@@ -25,16 +28,19 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
     children,
     className = '',
     type = 'button',
+    'data-testid': dataTestId,
     ...props
   },
   ref
 ) {
   const isDisabled = disabled || isLoading
+  const finalTestId = dataTestId ?? (variant === 'primary' ? TEST_IDS.PRIMARY_CTA : undefined)
 
   return (
     <button
       ref={ref}
       type={type}
+      data-testid={finalTestId}
       disabled={isDisabled}
       className={[
         'credence-button',
@@ -45,36 +51,19 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
         .filter(Boolean)
         .join(' ')}
       aria-busy={isLoading}
+      aria-disabled={isDisabled}
       {...props}
     >
       {isLoading && (
-        <span className="credence-button__spinner" aria-hidden="true">
-          <svg
-            className="credence-button__spinner-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle
-              className="credence-button__spinner-track"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="3"
-            />
-            <circle
-              className="credence-button__spinner-head"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </svg>
-        </span>
+        <LoadingSpinner
+          className="credence-button__spinner"
+          iconClassName="credence-button__spinner-icon"
+          aria-hidden="true"
+        />
       )}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {isLoading ? 'Sending…' : ''}
+      </span>
       <span className={isLoading ? 'credence-button__content--loading' : ''}>{children}</span>
     </button>
   )

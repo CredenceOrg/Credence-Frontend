@@ -1,7 +1,3 @@
-:root {
-  /* no-op: tokens come from src/index.css */
-}
-
 .createBondFlow {
   display: grid;
   gap: var(--credence-space-6);
@@ -58,6 +54,22 @@
   }
 }
 
+/* Very small screens (360px): ensure flow content fits without overflow */
+@media (max-width: 360px) {
+  .createBondFlow__durationButton {
+    padding: var(--credence-space-3);
+    font-size: var(--credence-font-size-sm);
+  }
+
+  .createBondFlow__reviewCard {
+    padding: var(--credence-space-3);
+  }
+
+  .createBondFlow__nav {
+    gap: var(--credence-space-2);
+  }
+}
+
 /* Duration button: defaults to secondary/unselected state */
 .createBondFlow__durationButton {
   flex: 1;
@@ -91,9 +103,8 @@
 
 /* Error alert text */
 .createBondFlow__error {
-  color: var(--credence-color-danger);
+  color: var(--credence-color-danger-text);
   font-weight: var(--credence-font-weight-semibold);
-  role: alert;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -157,7 +168,7 @@
 }
 
 .createBondFlow__penaltyAmount {
-  color: var(--credence-color-danger);
+  color: var(--credence-color-danger-action);
   font-weight: var(--credence-font-weight-semibold);
 }
 
@@ -185,7 +196,7 @@
 }
 
 .createBondFlow__resultValue--danger {
-  color: var(--credence-color-danger);
+  color: var(--credence-color-danger-text);
 }
 
 .createBondFlow__resultValue--normal {
@@ -295,7 +306,7 @@
 .createBondFlow__cancelButton {
   padding: var(--credence-space-3) var(--credence-space-4);
   background: var(--credence-surface-page);
-  color: var(--credence-color-danger);
+  color: var(--credence-color-danger-action);
   border: 1px solid var(--credence-border-default);
   border-radius: var(--credence-radius-lg);
   cursor: pointer;

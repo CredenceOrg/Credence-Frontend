@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { DOM_EVENTS } from '../events'
 import {
   checkFreighterInstalled,
   createWalletWatcher,
@@ -30,6 +31,11 @@ export interface UseWalletState {
   disconnect: () => void
   /** Freighter network reported by the wallet, or null when unavailable. */
   network: CredenceNetwork | null
+}
+
+function parseNetwork(s: string): CredenceNetwork | null {
+  if (s === 'public' || s === 'test') return s
+  return null
 }
 
 /**
@@ -94,7 +100,17 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       }
 
       setAddress(result.address)
-      await syncNetwork()
+      const freighterNetwork = await syncNetwork()
+
+      if (freighterNetwork && parseNetwork(_settingsNetwork) && freighterNetwork !== parseNetwork(_settingsNetwork)) {
+        setAddress('')
+        setError({
+          code: 'network_mismatch',
+          message: `Wallet is on ${freighterNetwork} network, expected ${_settingsNetwork}.`,
+        })
+        return
+      }
+
       await startWatcher()
     } catch {
       setError({
@@ -104,7 +120,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
     } finally {
       setIsConnecting(false)
     }
-  }, [startWatcher, syncNetwork])
+  }, [startWatcher, syncNetwork, _settingsNetwork])
 
   const disconnect = useCallback(() => {
     stopWatcher()
@@ -148,8 +164,8 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       void syncNetwork()
     }
 
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
+    window.addEventListener(DOM_EVENTS.FOCUS, handleFocus)
+    return () => window.removeEventListener(DOM_EVENTS.FOCUS, handleFocus)
   }, [address, syncNetwork])
 
   return {

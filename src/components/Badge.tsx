@@ -1,4 +1,5 @@
 import './Badge.css'
+import TooltipOnOverflow from './TooltipOnOverflow'
 
 export type BadgeVariant =
   | 'bronze'
@@ -18,6 +19,19 @@ export interface BadgeProps {
   label?: string
   /** Additional class names appended to the badge root. */
   className?: string
+  /**
+   * Optional screen-reader-only prefix rendered before the visible label so
+   * assistive technology can announce the badge in context (e.g. `"Bond status:"`
+   * produces `"Bond status: Slashed"` when read aloud). No extra DOM is added
+   * when this prop is omitted.
+   */
+  srPrefix?: string
+  /**
+   * Accessible label for the badge element. Defaults to the display label.
+   * Provide this prop when the badge appears in a context where screen readers
+   * need a more descriptive label than the visible text alone.
+   */
+  ariaLabel?: string
 }
 
 const DEFAULT_LABELS: Record<string, string> = {
@@ -32,11 +46,24 @@ const DEFAULT_LABELS: Record<string, string> = {
   unknown: 'Unknown',
 }
 
-export default function Badge({ variant, label, className = '' }: BadgeProps) {
-  const normalizedVariant =
-    variant.toLowerCase() in DEFAULT_LABELS ? variant.toLowerCase() : 'unknown'
+export default function Badge({ variant, label, className = '', srPrefix }: BadgeProps) {
+  const isKnown = variant.toLowerCase() in DEFAULT_LABELS
+  const normalizedVariant = isKnown ? variant.toLowerCase() : 'unknown'
 
-  const displayLabel = label || DEFAULT_LABELS[normalizedVariant] || variant
+  const displayLabel =
+    label ||
+    (normalizedVariant === 'unknown' && variant.toLowerCase() !== 'unknown'
+      ? variant
+      : DEFAULT_LABELS[normalizedVariant])
 
-  return <span className={`badge badge--${normalizedVariant} ${className}`}>{displayLabel}</span>
+  return (
+    <TooltipOnOverflow content={displayLabel}>
+      <span
+        className={`badge badge--${normalizedVariant} ${className}`.trim()}
+      >
+        {srPrefix && <span className="sr-only">{srPrefix} </span>}
+        {displayLabel}
+      </span>
+    </TooltipOnOverflow>
+  )
 }

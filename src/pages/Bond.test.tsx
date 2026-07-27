@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Bond from './Bond'
 
 const mockAddToast = vi.fn()
@@ -53,6 +53,10 @@ vi.mock('react-router-dom', () => ({
       {children}
     </a>
   ),
+}))
+
+vi.mock('../components/ConfirmDialog', () => ({
+  default: vi.fn(() => null),
 }))
 
 describe('Bond Page', () => {
@@ -126,7 +130,9 @@ describe('Bond Page', () => {
     const [lockedBtn] = screen.getAllByRole('button', { name: /show penalty/i })
     await user.click(lockedBtn)
     expect(screen.getByText('Penalty (20%)')).toBeInTheDocument()
-    expect(screen.getByText(/− 200 USDC/i)).toBeInTheDocument()
+    const penaltyAmount = screen.getByText('−200 USDC')
+    expect(penaltyAmount).toBeInTheDocument()
+    expect(penaltyAmount).toHaveClass('bond__penaltyAmount')
     expect(screen.getAllByText('800 USDC').length).toBeGreaterThanOrEqual(1)
   })
 
@@ -137,7 +143,9 @@ describe('Bond Page', () => {
     const penaltyBtns = screen.getAllByRole('button', { name: /show penalty/i })
     await user.click(penaltyBtns[1])
     expect(screen.getByText('Penalty (10%)')).toBeInTheDocument()
-    expect(screen.getByText(/− 50 USDC/i)).toBeInTheDocument()
+    const penaltyAmount = screen.getByText('−50 USDC')
+    expect(penaltyAmount).toBeInTheDocument()
+    expect(penaltyAmount).toHaveClass('bond__penaltyAmount')
     expect(screen.getAllByText('450 USDC').length).toBeGreaterThanOrEqual(1)
   })
 
@@ -147,18 +155,19 @@ describe('Bond Page', () => {
   })
 
   it('navigates to /bond/new when Create bond is clicked while connected', async () => {
-    const user = userEvent.setup()
+    vi.useFakeTimers()
     render(<Bond />)
-    await user.click(screen.getByRole('button', { name: /^Create bond$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+    await vi.runAllTimersAsync()
     expect(mockNavigate).toHaveBeenCalledWith('/bond/new')
     expect(mockConnect).not.toHaveBeenCalled()
+    vi.useRealTimers()
   })
 
-  it('calls connect when Create bond is clicked while disconnected', async () => {
-    const user = userEvent.setup()
+  it('calls connect when Create bond is clicked while disconnected', () => {
     mockConnected = false
     render(<Bond />)
-    await user.click(screen.getByRole('button', { name: /connect wallet to continue/i }))
+    fireEvent.click(screen.getByRole('button', { name: /connect wallet to continue/i }))
     expect(mockConnect).toHaveBeenCalledTimes(1)
     expect(mockNavigate).not.toHaveBeenCalled()
   })
@@ -194,8 +203,7 @@ describe('Bond Page', () => {
     expect(screen.getByRole('button', { name: /switch app to test \(testnet\)/i })).toBeInTheDocument()
   })
 
-  it('switches the app network to the connected wallet network from the mismatch banner', async () => {
-    const user = userEvent.setup()
+  it('switches the app network to the connected wallet network from the mismatch banner', () => {
     mockWalletNetwork = 'test'
     mockNetworkMismatch = {
       mismatch: true,
@@ -204,7 +212,87 @@ describe('Bond Page', () => {
     }
     render(<Bond />)
 
-    await user.click(screen.getByRole('button', { name: /switch app to test \(testnet\)/i }))
+    fireEvent.click(screen.getByRole('button', { name: /switch app to test \(testnet\)/i }))
     expect(mockSetNetwork).toHaveBeenCalledWith('test')
+  })
+
+  describe('transaction pending states', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('create bond button enters aria-busy while transaction is in flight', async () => {
+      render(<Bond />)
+
+      const createBtn = screen.getByRole('button', { name: /^Create bond$/i })
+      expect(createBtn).not.toHaveAttribute('aria-busy', 'true')
+
+      fireEvent.click(createBtn)
+      expect(screen.getByRole('button', { name: /create bond/i })).toHaveAttribute(
+        'aria-busy',
+        'true'
+      )
+
+      await vi.runAllTimersAsync()
+    })
+
+    it('aria-live region announces "Submitting transaction…" while in flight', async () => {
+      render(<Bond />)
+
+      fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+      const statusAnnouncer = screen.getAllByRole('status').find((el) => el.classList.contains('sr-only'))!
+      expect(statusAnnouncer).toHaveTextContent('Submitting transaction…')
+
+      await vi.runAllTimersAsync()
+    })
+
+    it('aria-live region is cleared after transaction completes', async () => {
+      render(<Bond />)
+
+      fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+      await vi.runAllTimersAsync()
+
+      const statusAnnouncer = screen.getAllByRole('status').find((el) => el.classList.contains('sr-only'))!
+      expect(statusAnnouncer).toHaveTextContent('')
+    })
+
+    it('navigates to /bond/new after create transaction completes', async () => {
+      render(<Bond />)
+
+      fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+      await vi.runAllTimersAsync()
+
+      expect(mockNavigate).toHaveBeenCalledWith('/bond/new')
+    })
+
+    it('prevents double-submit: second click while pending is a no-op', async () => {
+      render(<Bond />)
+
+      const createBtn = screen.getByRole('button', { name: /^Create bond$/i })
+      fireEvent.click(createBtn)
+
+      // Button is now disabled (aria-busy + disabled), second click should not fire
+      fireEvent.click(createBtn)
+
+      await vi.runAllTimersAsync()
+
+      // navigate should only have been called once despite two clicks
+      expect(mockNavigate).toHaveBeenCalledTimes(1)
+    })
+
+    it('create bond button resets to non-loading after transaction completes', async () => {
+      render(<Bond />)
+
+      fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
+      await vi.runAllTimersAsync()
+
+      const btn = screen.getByRole('button', { name: /^Create bond$/i })
+      expect(btn).not.toHaveAttribute('aria-busy', 'true')
+      expect(btn).not.toBeDisabled()
+    })
   })
 })

@@ -1,0 +1,169 @@
+import { useCallback, useEffect, useId, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useProductUpdates } from '../hooks/useProductUpdates'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
+import type { ProductUpdate } from '../data/productUpdates'
+import Button from './Button'
+import WindowedList from './WindowedList'
+import './WhatsNewDialog.css'
+
+export interface WhatsNewDialogProps {
+  open: boolean
+  onClose: () => void
+  /**
+   * Optional ref whose element will receive focus after the dialog closes.
+   * When omitted, focus returns to whichever element was active before opening.
+   */
+  returnFocusRef?: React.RefObject<HTMLElement | null>
+}
+
+const TAG_LABELS: Record<ProductUpdate['tag'], string> = {
+  feature: 'New',
+  improvement: 'Improved',
+  fix: 'Fixed',
+}
+
+function formatDate(isoDate: string): string {
+  const date = new Date(`${isoDate}T00:00:00Z`)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+/**
+ * Slide-in drawer listing recent product updates ("What's New" / Changelog).
+ *
+ * - Sourced from JSON feed (`/changelog.json`) with fallback to static items.
+ * - Renders via a React portal into `document.body`.
+ * - Focus is trapped inside while open; restored on close.
+ * - Escape and backdrop click close the drawer.
+ * - Marks all updates as read on open, clearing the notification badge and persisting state.
+ */
+export default function WhatsNewDialog({
+  open,
+  onClose,
+  returnFocusRef,
+}: WhatsNewDialogProps) {
+  const titleId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const { updates, unreadCount, isLoading, error, markAllRead, refetch } = useProductUpdates()
+
+  const handleClose = useCallback(() => onClose(), [onClose])
+
+  useScrollPreserver({ isActive: open })
+
+  useFocusTrap({
+    containerRef: dialogRef,
+    isActive: open,
+    initialFocusRef: closeButtonRef,
+    returnFocusRef,
+    onEscape: handleClose,
+  })
+
+  useEffect(() => {
+    if (!open) return
+    markAllRead()
+  }, [open, markAllRead])
+
+  const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) handleClose()
+  }
+
+  if (!open) return null
+
+  return createPortal(
+    <div
+      className="whats-new-dialog__backdrop"
+      onClick={handleBackdropClick}
+      aria-hidden={false}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="whats-new-dialog"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="whats-new-dialog__header">
+          <div className="whats-new-dialog__title-container">
+            <h2 id={titleId} className="whats-new-dialog__title">
+              What&rsquo;s New
+            </h2>
+            {unreadCount > 0 && (
+              <span className="whats-new-dialog__unread-badge">
+                {unreadCount} unread
+              </span>
+            )}
+          </div>
+          <Button
+            ref={closeButtonRef}
+            type="button"
+            variant="ghost"
+            className="whats-new-dialog__close"
+            aria-label="Close What's New"
+            onClick={handleClose}
+          >
+            <span aria-hidden="true">&#x2715;</span>
+          </Button>
+        </header>
+
+        {isLoading && updates.length === 0 ? (
+          <div className="whats-new-dialog__loading" role="status" aria-live="polite">
+            <div className="whats-new-dialog__spinner" />
+            <p>Loading changelog...</p>
+          </div>
+        ) : error && updates.length === 0 ? (
+          <div className="whats-new-dialog__error" role="alert">
+            <p>Unable to load product updates.</p>
+            <Button type="button" variant="secondary" onClick={refetch}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <WindowedList
+            className="whats-new-dialog__list"
+            role="list"
+            ariaLabel="Recent product updates"
+            items={updates}
+            itemHeight={118}
+            containerHeight={420}
+            getItemKey={(update) => update.id}
+            renderItem={(update) => (
+              <li className="whats-new-dialog__item">
+                <div className="whats-new-dialog__item-meta">
+                  <span
+                    className={`whats-new-dialog__tag whats-new-dialog__tag--${update.tag}`}
+                    aria-label={TAG_LABELS[update.tag] ?? update.tag}
+                  >
+                    {TAG_LABELS[update.tag] ?? update.tag}
+                  </span>
+                  <time className="whats-new-dialog__date" dateTime={update.date}>
+                    {formatDate(update.date)}
+                  </time>
+                </div>
+                <p className="whats-new-dialog__item-title">{update.title}</p>
+                <p className="whats-new-dialog__item-description">{update.description}</p>
+              </li>
+            )}
+          />
+        )}
+
+        <footer className="whats-new-dialog__footer">
+          <Button type="button" variant="secondary" onClick={handleClose}>
+            Close
+          </Button>
+        </footer>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+/** Alias export for ChangelogDrawer to provide descriptive component name. */
+export const ChangelogDrawer = WhatsNewDialog

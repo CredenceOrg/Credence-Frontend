@@ -1,0 +1,1 @@
+export const SWIPE_DISMISS_THRESHOLD = 100;

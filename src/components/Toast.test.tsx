@@ -30,9 +30,13 @@ const SEVERITY_CASES = [
   iconSelector: string
 }[]
 
-function renderToast(severity: ToastSeverity, message = `${severity} notification`) {
+function renderToast(
+  severity: ToastSeverity,
+  message = `${severity} notification`,
+  durationMs = 5000
+) {
   const onDismiss = vi.fn()
-  const toast = { id: `toast-${severity}`, severity, message }
+  const toast = { id: `toast-${severity}`, severity, message, durationMs }
 
   const view = render(<Toast toast={toast} onDismiss={onDismiss} />)
 
@@ -61,6 +65,15 @@ describe('Toast', () => {
     }
   )
 
+  it('renders a progress indicator for auto-dismissible toasts', () => {
+    renderToast('info', 'Auto dismissing toast', 5000)
+
+    const progressBar = screen.getByRole('progressbar', { name: /time remaining/i })
+    expect(progressBar).toHaveAttribute('aria-valuemin', '0')
+    expect(progressBar).toHaveAttribute('aria-valuemax', '100')
+    expect(progressBar).toHaveAttribute('aria-valuenow', '100')
+  })
+
   it('passes the toast id to onDismiss when the severity-labelled button is clicked', async () => {
     const user = userEvent.setup()
     const { onDismiss, toast } = renderToast('warning')
@@ -69,5 +82,52 @@ describe('Toast', () => {
 
     expect(onDismiss).toHaveBeenCalledTimes(1)
     expect(onDismiss).toHaveBeenCalledWith(toast.id)
+  })
+
+  it('passes the toast id to onDismiss when removed via keyboard (Enter)', async () => {
+    const user = userEvent.setup()
+    const { onDismiss, toast } = renderToast('warning')
+
+    const button = screen.getByRole('button', { name: 'Dismiss warning notification' })
+    button.focus()
+    await user.keyboard('{Enter}')
+
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(onDismiss).toHaveBeenCalledWith(toast.id)
+  })
+
+  it('passes the toast id to onDismiss when removed via keyboard (Space)', async () => {
+    const user = userEvent.setup()
+    const { onDismiss, toast } = renderToast('warning')
+
+    const button = screen.getByRole('button', { name: 'Dismiss warning notification' })
+    button.focus()
+    await user.keyboard(' ')
+
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+    expect(onDismiss).toHaveBeenCalledWith(toast.id)
+  })
+
+  it('has the correct aria-label accessible name', () => {
+    renderToast('info')
+    expect(screen.getByRole('button', { name: 'Dismiss info notification' })).toHaveAccessibleName('Dismiss info notification')
+  })
+
+  it('countdown matches configured duration', () => {
+    vi.useFakeTimers()
+    try {
+      const { onDismiss, toast } = renderToast('info', 'Timeout toast', 3000)
+
+      // Advance by 2999ms, should not dismiss
+      vi.advanceTimersByTime(2999)
+      expect(onDismiss).not.toHaveBeenCalled()
+
+      // Advance 1 more ms, should dismiss
+      vi.advanceTimersByTime(1)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+      expect(onDismiss).toHaveBeenCalledWith(toast.id)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

@@ -1,22 +1,22 @@
-import { useRef, useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { PrefetchNavLink } from '../PrefetchNavLink'
+import { PRELOADS_BY_PATH } from '../../config/routes'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useScrollPreserver } from '../../hooks/useScrollPreserver'
 import './MobileNav.css'
-
-const NAV_LINKS = [
-  { to: '/', label: 'Home' },
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/bond', label: 'Bond' },
-  { to: '/trust', label: 'Trust Score' },
-  { to: '/transactions', label: 'Transactions' },
-  { to: '/settings', label: 'Settings' },
-]
+import { useTranslation } from 'react-i18next'
+import { SECONDARY_NAV_LINKS } from '../../config/navLinks'
 
 export default function MobileNav() {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const hamburgerRef = useRef<HTMLButtonElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
   const location = useLocation()
+
+  useScrollPreserver({ isActive: isOpen })
 
   // Close on route change
   const prevPath = useRef(location.pathname)
@@ -25,9 +25,24 @@ export default function MobileNav() {
     if (isOpen) setIsOpen(false)
   }
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setIsOpen(false)
+      }
+    }
+
+    window.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+    return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+  }, [isOpen])
+
   useFocusTrap({
     containerRef: drawerRef,
     isActive: isOpen,
+    initialFocusRef: closeButtonRef,
     returnFocusRef: hamburgerRef,
     onEscape: () => setIsOpen(false),
   })
@@ -38,6 +53,7 @@ export default function MobileNav() {
     <>
       <button
         ref={hamburgerRef}
+        type="button"
         className="mobileNav-hamburger"
         aria-label="Open navigation menu"
         aria-expanded={isOpen}
@@ -52,6 +68,7 @@ export default function MobileNav() {
             strokeLinecap="round"
           />
         </svg>
+        <span className="sr-only">Open navigation menu</span>
       </button>
 
       {isOpen && <div className="mobileNav-backdrop" onClick={close} aria-hidden="true" />}
@@ -62,9 +79,17 @@ export default function MobileNav() {
         className={`mobileNav-drawer${isOpen ? ' mobileNav-drawer--open' : ''}`}
         aria-label="Mobile navigation"
         aria-hidden={!isOpen}
+        role="dialog"
+        aria-modal="true"
       >
         <div className="mobileNav-drawerHeader">
-          <button className="mobileNav-close" aria-label="Close navigation menu" onClick={close}>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            className="mobileNav-close"
+            aria-label="Close navigation menu"
+            onClick={close}
+          >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
                 d="M4 4l12 12M16 4L4 16"
@@ -73,15 +98,17 @@ export default function MobileNav() {
                 strokeLinecap="round"
               />
             </svg>
+            <span className="sr-only">Close navigation menu</span>
           </button>
         </div>
 
         <ul className="mobileNav-links" role="list">
-          {NAV_LINKS.map(({ to, label }) => (
+          {SECONDARY_NAV_LINKS.map(({ to, labelKey }) => (
             <li key={to}>
-              <NavLink
+              <PrefetchNavLink
                 to={to}
                 end={to === '/'}
+                preload={PRELOADS_BY_PATH[to]}
                 className={({ isActive }) =>
                   `mobileNav-link${isActive ? ' mobileNav-link--active' : ''}`
                 }
@@ -92,8 +119,8 @@ export default function MobileNav() {
                 }
                 onClick={close}
               >
-                {label}
-              </NavLink>
+                {t(labelKey)}
+              </PrefetchNavLink>
             </li>
           ))}
         </ul>

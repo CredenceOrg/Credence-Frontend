@@ -23,6 +23,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import Button from './Button'
+import { TEST_IDS } from '../config/testIds'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,10 +48,26 @@ describe('Button – default rendering', () => {
     expect(screen.getByText('Click me')).toBeInTheDocument()
   })
 
+  it('exposes the primary CTA as a named, keyboard-focusable button', () => {
+    render(
+      <Button variant="primary" data-testid={TEST_IDS.PRIMARY_CTA}>
+        Create bond
+      </Button>
+    )
+
+    const button = screen.getByRole('button', { name: /create bond/i })
+    expect(button).toHaveAttribute('data-testid', TEST_IDS.PRIMARY_CTA)
+    expect(button).toHaveAccessibleName('Create bond')
+    expect(button).toHaveClass('credence-button--primary')
+
+    button.focus()
+    expect(button).toHaveFocus()
+  })
+
   it('wraps children in a content span (always present)', () => {
     const { container } = render(<Button>Content</Button>)
     const btn = container.querySelector('button')
-    const contentSpan = btn?.querySelector('span:not(.credence-button__spinner)')
+    const contentSpan = btn?.querySelector('span:not(.credence-button__spinner):not(.sr-only)')
     expect(contentSpan).toBeInTheDocument()
     expect(contentSpan?.textContent).toBe('Content')
   })
@@ -213,6 +230,18 @@ describe('Button – disabled prop', () => {
     expect(handler).not.toHaveBeenCalled()
   })
 
+  it('marks disabled primary CTAs as aria-disabled', () => {
+    render(
+      <Button variant="primary" disabled>
+        Create bond
+      </Button>
+    )
+
+    const button = getBtn(/create bond/i)
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('is not aria-busy when only disabled (not loading)', () => {
     render(<Button disabled>Disabled only</Button>)
     const btn = getBtn()
@@ -246,6 +275,20 @@ describe('Button – isLoading state', () => {
     const { container } = render(<Button isLoading>Loading</Button>)
     const spinner = container.querySelector('.credence-button__spinner')
     expect(spinner).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('announces "Sending…" to screen readers when isLoading=true', () => {
+    const { container } = render(<Button isLoading>Loading</Button>)
+    const liveRegion = container.querySelector('.sr-only[aria-live="polite"]')
+    expect(liveRegion).toBeInTheDocument()
+    expect(liveRegion?.textContent).toBe('Sending…')
+  })
+
+  it('does not announce "Sending…" when isLoading is false', () => {
+    const { container } = render(<Button isLoading={false}>Loading</Button>)
+    const liveRegion = container.querySelector('.sr-only[aria-live="polite"]')
+    expect(liveRegion).toBeInTheDocument()
+    expect(liveRegion?.textContent).toBe('')
   })
 
   it('renders the spinner SVG with the correct class', () => {

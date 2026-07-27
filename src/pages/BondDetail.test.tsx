@@ -27,6 +27,26 @@ vi.mock('../context/WalletContext', () => ({
   }),
 }))
 
+vi.mock('../components/ConnectWalletModal', () => ({
+  __esModule: true,
+  default: ({
+    open,
+    onClose,
+  }: {
+    open: boolean
+    onClose: () => void
+  }) => {
+    if (!open) return null
+    return (
+      <div role="dialog" aria-label="Connect Freighter Wallet">
+        <h2>Connect Freighter Wallet</h2>
+        <button onClick={onClose}>Cancel</button>
+        <button>Connect</button>
+      </div>
+    )
+  },
+}))
+
 vi.mock('../components/ConfirmDialog', () => ({
   __esModule: true,
   default: ({ open, title, onConfirm, onCancel }: { open: boolean; title: string; onConfirm: () => void; onCancel: () => void }) => {
@@ -128,7 +148,9 @@ describe('BondDetail Page', () => {
     expect(screen.getByText('Current Early-Withdrawal Penalty')).toBeInTheDocument()
     expect(screen.getByText('20%')).toBeInTheDocument()
     expect(screen.getByText('USDC Penalty Amount')).toBeInTheDocument()
-    expect(screen.getByText('200 USDC')).toBeInTheDocument()
+    const penaltyAmount = screen.getByText('−200 USDC')
+    expect(penaltyAmount).toBeInTheDocument()
+    expect(penaltyAmount).toHaveClass('bond-detail__penalty-amount')
     expect(screen.getByText('Resulting Balance Received')).toBeInTheDocument()
     expect(screen.getByText('800 USDC')).toBeInTheDocument()
   })
@@ -169,7 +191,7 @@ describe('BondDetail Page', () => {
     expect(screen.getByRole('heading', { name: /Confirm bond withdrawal/i })).toBeInTheDocument()
   })
 
-  it('calls connect when withdraw button is clicked while disconnected', () => {
+  it('opens the ConnectWalletModal when withdraw is clicked while disconnected', () => {
     mockConnected = false
 
     render(
@@ -181,8 +203,8 @@ describe('BondDetail Page', () => {
     const withdrawBtn = screen.getByRole('button', { name: /connect wallet to withdraw/i })
     fireEvent.click(withdrawBtn)
 
-    expect(mockConnect).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mockConnect).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: /connect freighter wallet/i })).toBeInTheDocument()
   })
 
   it('confirm dialog allows cancellation', () => {

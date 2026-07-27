@@ -29,7 +29,9 @@ beforeEach(() => {
     return 0
   })
   Object.defineProperty(HTMLElement.prototype, 'offsetParent', {
-    get() { return this.parentNode },
+    get() {
+      return this.parentNode
+    },
     configurable: true,
   })
 })
@@ -82,9 +84,7 @@ describe('KeyboardShortcutsDialog — rendering', () => {
 
   it('renders a close button with an accessible label', () => {
     renderDialog()
-    expect(
-      screen.getByRole('button', { name: /close keyboard shortcuts/i })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /close keyboard shortcuts/i })).toBeInTheDocument()
   })
 })
 
@@ -474,12 +474,7 @@ describe('KeyboardShortcutsDialog — global Shift+? shortcut guard', () => {
       if (event.key !== '?') return
       const target = event.target as HTMLElement
       const tag = target.tagName
-      if (
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT' ||
-        target.isContentEditable
-      ) {
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
         return
       }
       setter(true)
@@ -670,12 +665,7 @@ describe('KeyboardShortcutsDialog — global Shift+? shortcut guard', () => {
       if (event.key !== '?') return
       const target = event.target as HTMLElement
       const tag = target.tagName
-      if (
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT' ||
-        target.isContentEditable
-      ) {
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
         return
       }
       setter(true)

@@ -55,11 +55,9 @@ describe('ConfirmDialog', () => {
       cb(0)
       return 0
     })
-    vi.spyOn(window, 'scrollTo').mockImplementation(
-      (options?: ScrollToOptions) => {
-        if (options?.top !== undefined) scrollY = options.top
-      }
-    )
+    vi.spyOn(window, 'scrollTo').mockImplementation((options?: ScrollToOptions) => {
+      if (options?.top !== undefined) scrollY = options.top
+    })
     Object.defineProperty(window, 'scrollY', {
       get: () => scrollY,
       configurable: true,
@@ -392,11 +390,9 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
       cb(0)
       return 0
     })
-    vi.spyOn(window, 'scrollTo').mockImplementation(
-      (options?: ScrollToOptions) => {
-        if (options?.top !== undefined) scrollY = options.top
-      }
-    )
+    vi.spyOn(window, 'scrollTo').mockImplementation((options?: ScrollToOptions) => {
+      if (options?.top !== undefined) scrollY = options.top
+    })
     Object.defineProperty(window, 'scrollY', {
       get: () => scrollY,
       configurable: true,

@@ -1,159 +1,77 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
+import Button from '../components/Button'
+import './NotFound.css'
 
 export default function NotFound() {
   const navigate = useNavigate()
 
   return (
-    <div
-      style={{
-        textAlign: 'center',
-        padding: 'var(--credence-space-12) var(--credence-space-6)',
-        maxWidth: '28rem',
-        margin: '0 auto',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '50vh',
-      }}
-    >
-      {/* 404 Icon */}
-      <div
-        style={{
-          width: '64px',
-          height: '64px',
-          borderRadius: 'var(--credence-radius-full)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto var(--credence-space-4)',
-          fontSize: '2.5rem',
-          background: 'var(--credence-color-danger-surface-strong)',
-        }}
-      >
-        ❌
+    <div className="not-found-page">
+      {/* 404 Icon Visual */}
+      <div className="not-found-page__visual" aria-hidden="true">
+        🔍
       </div>
 
-      {/* Heading */}
-      <h1
-        style={{
-          fontSize: 'var(--credence-font-size-xl)',
-          fontWeight: 'var(--credence-font-weight-bold)',
-          color: 'var(--credence-text-primary)',
-          marginBottom: 'var(--credence-space-2)',
-        }}
-      >
-        Page Not Found
-      </h1>
+      {/* Subheading/Code */}
+      <p className="not-found-page__code">Error 404</p>
 
-      {/* Subheading */}
-      <p
-        style={{
-          fontSize: 'var(--credence-font-size-lg)',
-          fontWeight: 'var(--credence-font-weight-semibold)',
-          color: 'var(--credence-color-danger-text)',
-          marginBottom: 'var(--credence-space-4)',
-        }}
-      >
-        404
-      </p>
+      {/* Heading */}
+      <h1 className="not-found-page__title">Page Not Found</h1>
 
       {/* Description */}
-      <p
-        style={{
-          color: 'var(--credence-text-secondary)',
-          fontSize: 'var(--credence-font-size-sm)',
-          lineHeight: 'var(--credence-line-height-base)',
-          marginBottom: 'var(--credence-space-6)',
-        }}
-      >
-        The page you're looking for doesn't exist. It may have been moved or removed.
+      <p className="not-found-page__description">
+        We couldn't find the page you are looking for. It might have been moved, deleted, or the URL
+        might be incorrect.
       </p>
 
       {/* Recovery Actions */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--credence-space-3)',
-          width: '100%',
-        }}
-      >
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            padding: 'var(--credence-space-3) var(--credence-space-6)',
-            background: 'var(--credence-color-primary-soft)',
-            color: 'var(--credence-color-white)',
-            border: 'none',
-            borderRadius: 'var(--credence-radius-lg)',
-            fontWeight: 'var(--credence-font-weight-semibold)',
-            fontSize: 'var(--credence-font-size-sm)',
-            cursor: 'pointer',
-            transition: 'background 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--credence-color-primary)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--credence-color-primary-soft)'
-          }}
-        >
+      <div className="not-found-page__actions">
+        <Button variant="primary" onClick={() => navigate('/')} style={{ minWidth: '140px' }}>
           Back to Home
-        </button>
-
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            padding: 'var(--credence-space-3) var(--credence-space-6)',
-            background: 'transparent',
-            color: 'var(--credence-text-primary)',
-            border: '1px solid var(--credence-border-default)',
-            borderRadius: 'var(--credence-radius-lg)',
-            fontWeight: 'var(--credence-font-weight-semibold)',
-            fontSize: 'var(--credence-font-size-sm)',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--credence-border-default)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'
-          }}
-        >
+        </Button>
+        <Button variant="secondary" onClick={() => navigate(-1)} style={{ minWidth: '140px' }}>
           Go Back
-        </button>
+        </Button>
       </div>
 
-      {/* Secondary Help Text */}
-      <p
-        style={{
-          color: 'var(--credence-text-secondary)',
-          fontSize: 'var(--credence-font-size-xs)',
-          lineHeight: 'var(--credence-line-height-sm)',
-          marginTop: 'var(--credence-space-6)',
-        }}
-      >
-        Use the navigation above to find what you're looking for, or{' '}
-        <a
-          href="/"
-          style={{
-            color: 'var(--credence-color-primary)',
-            textDecoration: 'none',
-            fontWeight: 'var(--credence-font-weight-semibold)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.textDecoration = 'underline'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.textDecoration = 'none'
-          }}
-        >
-          return home
-        </a>
-        .
-      </p>
+      {/* Quick Recovery Links */}
+      <div className="not-found-page__quick-links-container">
+        <h2 className="not-found-page__quick-links-title">Quick Navigation</h2>
+        <ul className="not-found-page__quick-links-list">
+          <li className="not-found-page__link-item">
+            <Link to="/" className="not-found-page__link">
+              <span className="not-found-page__link-icon" aria-hidden="true">
+                📊
+              </span>
+              <span>Dashboard</span>
+            </Link>
+          </li>
+          <li className="not-found-page__link-item">
+            <Link to="/bond" className="not-found-page__link">
+              <span className="not-found-page__link-icon" aria-hidden="true">
+                🔒
+              </span>
+              <span>Bond Management</span>
+            </Link>
+          </li>
+          <li className="not-found-page__link-item">
+            <Link to="/trust" className="not-found-page__link">
+              <span className="not-found-page__link-icon" aria-hidden="true">
+                ⭐
+              </span>
+              <span>Trust Score Lookup</span>
+            </Link>
+          </li>
+          <li className="not-found-page__link-item">
+            <Link to="/settings" className="not-found-page__link">
+              <span className="not-found-page__link-icon" aria-hidden="true">
+                ⚙️
+              </span>
+              <span>Settings</span>
+            </Link>
+          </li>
+        </ul>
+      </div>
     </div>
   )
 }

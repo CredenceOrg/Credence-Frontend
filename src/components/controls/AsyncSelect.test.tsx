@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import AsyncSelect from './AsyncSelect'
 
 describe('AsyncSelect', () => {
-  it('shows loading state initially and populates options after load', async () => {
+  it('renders_loading_state_and_populates_options_on_success', async () => {
     const mockOptions = [
       { value: '1', label: 'Option 1' },
       { value: '2', label: 'Option 2' },
@@ -12,7 +12,7 @@ describe('AsyncSelect', () => {
     const loadOptions = vi.fn().mockResolvedValue(mockOptions)
     const onChange = vi.fn()
 
-    render(
+    const { container } = render(
       <AsyncSelect
         value="1"
         onChange={onChange}
@@ -21,9 +21,9 @@ describe('AsyncSelect', () => {
       />
     )
 
-    // Should have loading class initially
-    expect(screen.getByRole('combobox')).toHaveClass('control-select', 'control-select')
     expect(screen.getByRole('combobox')).toBeDisabled()
+    expect(container.querySelector('.control-select-wrapper')).toHaveClass('control-select-wrapper--loading')
+    expect(container.querySelector('.control-select-spinner')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(loadOptions).toHaveBeenCalled()
@@ -33,12 +33,15 @@ describe('AsyncSelect', () => {
       expect(screen.getByRole('combobox')).not.toBeDisabled()
     })
 
+    expect(container.querySelector('.control-select-wrapper')).not.toHaveClass('control-select-wrapper--loading')
+    expect(container.querySelector('.control-select-spinner')).not.toBeInTheDocument()
+
     const options = screen.getAllByRole('option')
     expect(options).toHaveLength(2)
     expect(options[0]).toHaveTextContent('Option 1')
   })
 
-  it('handles load errors by displaying error message', async () => {
+  it('renders_error_state_on_load_failure', async () => {
     const loadOptions = vi.fn().mockRejectedValue(new Error('Failed to load'))
     const onChange = vi.fn()
 
@@ -56,7 +59,33 @@ describe('AsyncSelect', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('combobox')).toHaveClass('control-select--error')
+      const combobox = screen.getByRole('combobox')
+      expect(combobox).toHaveClass('control-select--error')
+      expect(combobox).toHaveAttribute('aria-invalid', 'true')
     })
+  })
+
+  it('renders_empty_state_when_no_options_returned', async () => {
+    const loadOptions = vi.fn().mockResolvedValue([])
+    const onChange = vi.fn()
+
+    render(
+      <AsyncSelect
+        value=""
+        onChange={onChange}
+        loadOptions={loadOptions}
+        ariaLabel="Empty Select"
+      />
+    )
+
+    await waitFor(() => {
+      expect(loadOptions).toHaveBeenCalled()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox')).not.toBeDisabled()
+    })
+
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
   })
 })

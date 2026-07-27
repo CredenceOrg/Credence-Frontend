@@ -80,7 +80,6 @@ export default function Dashboard() {
       'Monitor your trust score tier, outstanding bonds, pending grace periods, and recent identity attestations.',
   })
 
-  const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
   const location = useLocation()
   const [searchParams] = useSearchParams()

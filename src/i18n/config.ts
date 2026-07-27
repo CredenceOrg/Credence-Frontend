@@ -4,6 +4,8 @@ import LanguageDetector from 'i18next-browser-languagedetector'
 import en from './locales/en.json'
 import { handleLanguageChanged, setPreviousLng } from './localeBreadcrumb'
 
+const defaultLocale = 'en'
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)

@@ -200,13 +200,7 @@ export default function Bond() {
   return (
     <div className="bond__container">
       {/* aria-live region announces async transaction progress to assistive tech */}
-      <div
-        id={txStatusId}
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-      >
+      <div id={txStatusId} role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {txStatus}
       </div>
 
@@ -215,9 +209,7 @@ export default function Bond() {
         description={t('bond.description')}
       />
 
-      <Banner severity="info">
-        {t('bond.infoBanner')}
-      </Banner>
+      <Banner severity="info">{t('bond.infoBanner')}</Banner>
 
       {!isConnected && (
         <Banner
@@ -241,7 +233,7 @@ export default function Bond() {
           <span id={mismatchBannerId}>
             {t('bond.networkMismatchDescription', {
               expected: networkMismatch.expected,
-              actual: networkMismatch.actual
+              actual: networkMismatch.actual,
             })}
           </span>
         </Banner>
@@ -254,16 +246,14 @@ export default function Bond() {
             status: slashExposureBond.status === 'locked' ? 'locked' : 'in grace period',
             penaltyAmount: slashBannerBreakdown.penaltyAmount,
             percent: slashBannerBreakdown.penaltyPercent,
-            result: slashBannerBreakdown.resultingBalance
+            result: slashBannerBreakdown.resultingBalance,
           })}
         </Banner>
       )}
 
       <div className="bond__cardGrid">
         <ActionCard title={t('bond.createNewBond')}>
-          <p style={{ color: 'var(--credence-text-secondary)', margin: 0 }}>
-            {t('bond.createBondDescription')}
-          </p>
+          <p className="bond__cardDescription">{t('bond.createBondDescription')}</p>
 
           <FormField
             id="bond-amount-quick"
@@ -318,7 +308,7 @@ export default function Bond() {
                   bond={bond}
                   isConnected={isConnected}
                   onWithdraw={requestWithdraw}
-                    onConnect={() => setConnectModalOpen(true)}
+                  onConnect={() => setConnectModalOpen(true)}
                 />
               ))}
             </ul>
@@ -333,7 +323,7 @@ export default function Bond() {
             title={t('bond.confirmWithdrawal')}
             subtitle={t('bond.withdrawalSubtitle', {
               id: withdrawTarget.id,
-              amount: formatUsdc(withdrawTarget.amountUsdc)
+              amount: formatUsdc(withdrawTarget.amountUsdc),
             })}
             breakdown={withdrawBreakdown}
             onConfirm={confirmWithdraw}
@@ -350,9 +340,7 @@ export default function Bond() {
         returnFocusRef={connectTriggerRef}
       />
 
-      <Disclaimer
-        context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
-      />
+      <Disclaimer context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply." />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
+import type { ToastSeverity, ToastData } from '../events'
 import './Toast.css'
 
 export type { ToastSeverity, ToastData }
@@ -67,7 +68,6 @@ const ICONS: Record<ToastSeverity, React.ReactNode> = {
     </svg>
   ),
 }
-
 
 interface ToastProps {
   toast: ToastData

@@ -36,6 +36,7 @@ Always prefer tokens over hard-coded values when writing custom CSS. This ensure
 ### Typography
 These control font families, sizing, weights, and line heights.
 - `--credence-font-family-base`: The primary system font stack.
+- `--credence-font-family-mono`: Monospace font stack for hashes, addresses, and code snippets.
 - `--credence-font-size-xs` to `--credence-font-size-xl`: Font scales (e.g. `xs` is `0.75rem`, `base` is `1rem`).
 - `--credence-font-weight-regular`, `-semibold`, `-bold`: Font weights (400, 600, 700).
 - `--credence-line-height-tight`, `-base`, `-relaxed`: Line heights (1.25, 1.5, 1.6).

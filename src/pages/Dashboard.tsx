@@ -15,6 +15,7 @@ import {
   ONBOARDING_STEP_STORAGE_KEY,
 } from '../config/onboarding'
 import { useWallet } from '../context/WalletContext'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
 import './Dashboard.css'
@@ -78,6 +79,7 @@ export default function Dashboard() {
   })
 
   const { address, connected, connect, isConnecting } = useWallet()
+  const reducedMotion = useReducedMotion()
   const location = useLocation()
   const [searchParams] = useSearchParams()
 
@@ -158,7 +160,7 @@ export default function Dashboard() {
         isMobile && pullDistance > 0
           ? { transform: `translateY(${pullDistance}px)`, transition: 'none' }
           : isMobile
-            ? { transform: 'translateY(0)', transition: 'transform 0.3s ease-out' }
+            ? { transform: 'translateY(0)', transition: reducedMotion ? 'none' : 'transform 0.3s ease-out' }
             : undefined
       }
     >

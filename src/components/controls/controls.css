@@ -68,6 +68,13 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .control-select-spinner,
+  .control-toggle-spinner {
+    animation: none !important;
+  }
+}
+
 /* ── Toggle ──────────────────────────────────────────── */
 
 .control-toggle-wrapper {

@@ -206,7 +206,7 @@
   cursor: pointer;
   padding: 0;
   text-decoration: underline;
-  transition: color 0.15s ease-in-out;
+  transition: color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 
 .trustScore__clearButton:hover,
@@ -248,8 +248,8 @@
   width: 100%;
   text-align: left;
   transition:
-    background-color 0.15s ease-in-out,
-    border-color 0.15s ease-in-out;
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 
 .trustScore__recentItemBtn:hover {
@@ -273,7 +273,7 @@
   color: var(--credence-text-secondary);
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: all var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 
 .trustScore__recentCopyBtn:hover {

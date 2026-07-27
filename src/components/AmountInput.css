@@ -74,6 +74,12 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .amountInput__spinner {
+    animation: none !important;
+  }
+}
+
 .amountInput__maxButton {
   padding: var(--credence-space-2) var(--credence-space-3);
   border-radius: var(--credence-radius-md);

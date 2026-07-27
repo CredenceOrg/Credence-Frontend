@@ -10,6 +10,7 @@ import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/states/EmptyState'
+import { ErrorState } from '../components/states'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
 import ConnectWalletModal from '../components/ConnectWalletModal'
@@ -19,6 +20,37 @@ import { useSeo } from '../hooks/useSeo'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
 import { getPenaltyRate, computeWithdrawBreakdown, type MockBond } from '../lib/bondPenalty'
+
+/**
+ * Error-channel decision table for Bond actions
+ * ─────────────────────────────────────────────
+ * | Failure mode              | Channel                          | Why                        |
+ * | Network error (create)    | critical Banner (dismissible)    | Persistent — user must act |
+ * | Wallet rejected (create)  | critical Banner (dismissible)    | Persistent — user must act |
+ * | Amount < minimum          | inline FormField error           | Immediate field-level hint |
+ * | Network error (withdraw)  | critical Banner (dismissible)    | Persistent — user must act |
+ * | Wallet rejected (withdraw)| critical Banner (dismissible)    | Persistent — user must act |
+ * | Withdraw success (clean)  | success Toast                    | Transient confirmation     |
+ * | Withdraw success (slashed)| warning Toast                    | Transient + info           |
+ */
+function bondErrorType(err: unknown): 'network' | 'backend' | 'validation' | 'generic' {
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase()
+    if (msg.includes('network') || msg.includes('fetch') || msg.includes('offline')) {
+      return 'network'
+    }
+    if (msg.includes('rejected') || msg.includes('denied') || msg.includes('user refused')) {
+      return 'generic'
+    }
+    if (msg.includes('invalid') || msg.includes('validation')) {
+      return 'validation'
+    }
+    if (msg.includes('server') || msg.includes('500') || msg.includes('503')) {
+      return 'backend'
+    }
+  }
+  return 'generic'
+}
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
@@ -133,6 +165,17 @@ export default function Bond() {
   const [txStatus, setTxStatus] = useState('')
   const txStatusId = useId()
 
+  // Persistent error state for create/withdraw failures (wallet rejected, network down, etc.)
+  // These surface as dismissible critical Banners rather than transient Toasts.
+  const [createError, setCreateError] = useState<{ type: ReturnType<typeof bondErrorType>; message: string } | null>(null)
+  const [withdrawError, setWithdrawError] = useState<{ type: ReturnType<typeof bondErrorType>; message: string } | null>(null)
+  const createErrorBannerId = 'bond-create-error'
+  const withdrawErrorBannerId = 'bond-withdraw-error'
+
+  // Simulated bonds-fetch error state — replace with real data-fetch hook error when available.
+  // When the bond list fails to load, surface an inline ErrorState inside the Active Bonds card.
+  const [bondsError] = useState<{ type: ReturnType<typeof bondErrorType>; message: string } | null>(null)
+
   const bonds = initialBonds
 
   const handleCreateBond = useCallback(async () => {
@@ -141,19 +184,35 @@ export default function Bond() {
       return
     }
     if (isPendingCreate) return
+
+    // Client-side amount validation — surfaces inline in the FormField
+    const parsed = parseFloat(bondAmount)
+    if (!bondAmount || isNaN(parsed) || parsed < MIN_BOND_AMOUNT) {
+      setBondAmountError(
+        `Minimum bond amount is ${MIN_BOND_AMOUNT} USDC. Please enter a valid amount.`
+      )
+      return
+    }
+
+    setCreateError(null)
     setIsPendingCreate(true)
     setTxStatus('Submitting transaction…')
     try {
       await new Promise((resolve) => setTimeout(resolve, 50))
       setTxStatus('')
       navigate('/bond/new')
-    } catch {
+    } catch (err) {
       setTxStatus('')
-      addToast('danger', 'Transaction failed. Please try again.')
+      const errType = bondErrorType(err)
+      const errMessage =
+        err instanceof Error
+          ? err.message
+          : 'Transaction failed. Please check your wallet and try again.'
+      setCreateError({ type: errType, message: errMessage })
     } finally {
       setIsPendingCreate(false)
     }
-  }, [isConnected, connect, navigate, isPendingCreate, addToast])
+  }, [isConnected, connect, navigate, isPendingCreate, bondAmount])
 
   const withdrawBreakdown = useMemo(
     () => (withdrawTarget ? computeWithdrawBreakdown(withdrawTarget) : null),
@@ -176,17 +235,35 @@ export default function Bond() {
     if (!withdrawTarget || !withdrawBreakdown) return
     if (isPendingWithdraw) return
 
+    setWithdrawError(null)
     setIsPendingWithdraw(true)
     setTxStatus('Submitting transaction…')
 
-    const { penaltyUsdc } = withdrawBreakdown
-    if (penaltyUsdc > 0) {
-      addToast(
-        'warning',
-        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
-      )
-    } else {
-      addToast('success', 'Bond withdrawn successfully.')
+    try {
+      // Simulated async transaction — replace with real contract call
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      setTxStatus('')
+
+      const { penaltyUsdc } = withdrawBreakdown
+      if (penaltyUsdc > 0) {
+        addToast(
+          'warning',
+          `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
+        )
+      } else {
+        addToast('success', 'Bond withdrawn successfully.')
+      }
+      setWithdrawTarget(null)
+    } catch (err) {
+      setTxStatus('')
+      const errType = bondErrorType(err)
+      const errMessage =
+        err instanceof Error
+          ? err.message
+          : 'Withdrawal failed. Please check your wallet and try again.'
+      setWithdrawError({ type: errType, message: errMessage })
+    } finally {
+      setIsPendingWithdraw(false)
     }
   }, [withdrawTarget, withdrawBreakdown, addToast, isPendingWithdraw])
 
@@ -251,6 +328,47 @@ export default function Bond() {
         </Banner>
       )}
 
+      {/* Persistent error banner for bond-create failures (wallet rejected, network down).
+          Dismissed by the user or cleared automatically on the next successful attempt. */}
+      {createError && (
+        <div role="alert" id={createErrorBannerId}>
+          <Banner
+            severity="critical"
+            title={
+              createError.type === 'network'
+                ? 'Connection error'
+                : createError.type === 'backend'
+                  ? 'Service unavailable'
+                  : 'Transaction failed'
+            }
+            dismissible
+            onDismiss={() => setCreateError(null)}
+          >
+            {createError.message}
+          </Banner>
+        </div>
+      )}
+
+      {/* Persistent error banner for bond-withdraw failures. */}
+      {withdrawError && (
+        <div role="alert" id={withdrawErrorBannerId}>
+          <Banner
+            severity="critical"
+            title={
+              withdrawError.type === 'network'
+                ? 'Connection error'
+                : withdrawError.type === 'backend'
+                  ? 'Service unavailable'
+                  : 'Withdrawal failed'
+            }
+            dismissible
+            onDismiss={() => setWithdrawError(null)}
+          >
+            {withdrawError.message}
+          </Banner>
+        </div>
+      )}
+
       <div className="bond__cardGrid">
         <ActionCard title={t('bond.createNewBond')}>
           <p className="bond__cardDescription">{t('bond.createBondDescription')}</p>
@@ -282,7 +400,13 @@ export default function Bond() {
             fullWidth
             disabled={networkMismatch.mismatch || (isConnected ? isPendingCreate : isConnecting)}
             isLoading={isConnected ? isPendingCreate : isConnecting}
-            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+            aria-describedby={
+              networkMismatch.mismatch
+                ? mismatchBannerId
+                : createError
+                  ? createErrorBannerId
+                  : undefined
+            }
             aria-haspopup={!isConnected ? 'dialog' : undefined}
           >
             {isConnected ? t('bond.createBond') : t('bond.connectToContinue')}
@@ -290,7 +414,20 @@ export default function Bond() {
         </ActionCard>
 
         <ActionCard title={t('bond.activeBonds')}>
-          {bonds.length === 0 ? (
+          {bondsError ? (
+            <div role="alert">
+              <ErrorState
+                type={bondsError.type}
+                title={
+                  bondsError.type === 'network'
+                    ? 'Could not load bonds'
+                    : 'Failed to load bonds'
+                }
+                message={bondsError.message}
+                action={{ label: 'Try again', onClick: () => { /* retry bonds fetch */ } }}
+              />
+            </div>
+          ) : bonds.length === 0 ? (
             <EmptyState
               illustration="bond"
               title={t('bond.noActiveBonds')}

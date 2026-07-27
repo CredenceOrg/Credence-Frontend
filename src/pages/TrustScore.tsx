@@ -321,6 +321,8 @@ export default function TrustScore() {
                           const success = await copy(item.address)
                           if (success) {
                             addToast('success', 'Address copied to clipboard')
+                          } else {
+                            addToast('danger', 'Could not copy address. Please copy it manually.')
                           }
                         }}
                         aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}

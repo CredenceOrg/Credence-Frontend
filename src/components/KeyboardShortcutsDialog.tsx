@@ -32,15 +32,22 @@ function groupShortcuts(shortcuts: KeyboardShortcut[]): Map<string, KeyboardShor
 }
 
 /** Translates modifier keys to their platform-specific symbols (e.g. Mac). */
-export function formatModifierKey(key: string, userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''): string {
+export function formatModifierKey(
+  key: string,
+  userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+): string {
   const isMac = /Mac|iPod|iPhone|iPad/.test(userAgent)
   if (!isMac) return key
 
   switch (key) {
-    case 'Ctrl': return '⌘'
-    case 'Alt': return '⌥'
-    case 'Shift': return '⇧'
-    default: return key
+    case 'Ctrl':
+      return '⌘'
+    case 'Alt':
+      return '⌥'
+    case 'Shift':
+      return '⇧'
+    default:
+      return key
   }
 }
 
@@ -87,11 +94,7 @@ export default function KeyboardShortcutsDialog({
   if (!open) return null
 
   return createPortal(
-    <div
-      className="shortcuts-dialog__backdrop"
-      onClick={handleBackdropClick}
-      aria-hidden={false}
-    >
+    <div className="shortcuts-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
       <div
         ref={dialogRef}
         role="dialog"

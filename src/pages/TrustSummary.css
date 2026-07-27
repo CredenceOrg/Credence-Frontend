@@ -2,39 +2,39 @@
 .trustSummary {
   max-width: 800px;
   margin: 0 auto;
-  padding: 1rem;
-  font-family: 'Inter', sans-serif;
-  color: #222;
+  padding: var(--credence-space-4);
+  font-family: var(--credence-font-family-base);
+  color: var(--credence-text-primary);
 }
 
 .trustSummary__header {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--credence-space-2);
   align-items: flex-start;
-  margin-bottom: 1rem;
+  margin-bottom: var(--credence-space-4);
 }
 
 .trustSummary__addressRow {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--credence-space-2);
   word-break: break-all;
 }
 
 .trustSummary__address {
-  font-family: monospace;
-  background: #f5f5f5;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  font-family: var(--credence-font-family-mono);
+  background: var(--credence-color-slate-100);
+  padding: var(--credence-space-1) var(--credence-space-2);
+  border-radius: var(--credence-radius-sm);
 }
 
 .trustSummary__copyBtn,
 .trustSummary__printBtn {
-  background: #0066ff;
-  color: #fff;
+  background: var(--credence-color-primary);
+  color: var(--credence-color-white);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--credence-radius-sm);
   padding: 0.4rem 0.8rem;
   cursor: pointer;
 }

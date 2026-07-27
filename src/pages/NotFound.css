@@ -19,7 +19,7 @@
   justify-content: center;
   margin: 0 auto var(--credence-space-4);
   background: var(--credence-color-danger-surface-strong);
-  color: var(--credence-color-white, #ffffff);
+  color: var(--credence-color-white);
 }
 
 .not-found-title {

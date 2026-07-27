@@ -130,7 +130,7 @@
 }
 
 .trustScore__clearButton:focus-visible {
-  outline: 2px solid var(--credence-brand-primary);
+  outline: 2px solid var(--credence-color-primary);
   outline-offset: 2px;
   border-radius: var(--credence-radius-sm);
 }
@@ -170,7 +170,7 @@
 }
 
 .trustScore__recentItemBtn:focus-visible {
-  outline: 2px solid var(--credence-brand-primary);
+  outline: 2px solid var(--credence-color-primary);
   outline-offset: 2px;
 }
 
@@ -194,6 +194,6 @@
 }
 
 .trustScore__recentCopyBtn:focus-visible {
-  outline: 2px solid var(--credence-brand-primary);
+  outline: 2px solid var(--credence-color-primary);
   outline-offset: 2px;
 }

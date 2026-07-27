@@ -20,10 +20,22 @@ function renderDialog(overrides: Partial<Parameters<typeof KeyboardShortcutsDial
 // Setup / teardown
 // ---------------------------------------------------------------------------
 
+let scrollY = 0
+
 beforeEach(() => {
+  scrollY = 0
   vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
     cb(0)
     return 0
+  })
+  vi.spyOn(window, 'scrollTo').mockImplementation(
+    (options?: ScrollToOptions) => {
+      if (options?.top !== undefined) scrollY = options.top
+    }
+  )
+  Object.defineProperty(window, 'scrollY', {
+    get: () => scrollY,
+    configurable: true,
   })
 })
 
@@ -145,6 +157,40 @@ describe('KeyboardShortcutsDialog — body scroll lock', () => {
     document.body.style.overflow = ''
     renderDialog({ open: false })
     expect(document.body.style.overflow).toBe('')
+  })
+
+  it('preserves window scroll position when dialog opens', () => {
+    window.scrollTo({ top: 500 })
+    renderDialog({ open: true })
+    expect(window.scrollY).toBe(500)
+  })
+
+  it('preserves window scroll position when dialog closes via prop change', () => {
+    window.scrollTo({ top: 350 })
+    const { rerender, onClose } = renderDialog({ open: true })
+    rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
+    expect(window.scrollY).toBe(350)
+  })
+
+  it('preserves scrolled content position through open-close-open cycle', () => {
+    window.scrollTo({ top: 800 })
+    const { rerender, onClose } = renderDialog({ open: true })
+    // close
+    rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
+    expect(window.scrollY).toBe(800)
+    // reopen
+    rerender(<KeyboardShortcutsDialog open={true} onClose={onClose} />)
+    expect(window.scrollY).toBe(800)
+  })
+
+  it('restores previous overflow value even when body overflow is changed externally while open', () => {
+    document.body.style.overflow = 'scroll'
+    const { rerender, onClose } = renderDialog({ open: true })
+    expect(document.body.style.overflow).toBe('hidden')
+    // External mutation while dialog is open
+    document.body.style.overflow = 'visible'
+    rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
+    expect(document.body.style.overflow).toBe('scroll')
   })
 })
 

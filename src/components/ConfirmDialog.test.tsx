@@ -46,11 +46,23 @@ function renderGenericDialog(overrides: Partial<Parameters<typeof ConfirmDialog>
   return { ...result, onConfirm, onCancel }
 }
 
+let scrollY = 0
+
 describe('ConfirmDialog', () => {
   beforeEach(() => {
+    scrollY = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       cb(0)
       return 0
+    })
+    vi.spyOn(window, 'scrollTo').mockImplementation(
+      (options?: ScrollToOptions) => {
+        if (options?.top !== undefined) scrollY = options.top
+      }
+    )
+    Object.defineProperty(window, 'scrollY', {
+      get: () => scrollY,
+      configurable: true,
     })
   })
 
@@ -233,6 +245,76 @@ describe('ConfirmDialog', () => {
       renderDialog({ open: false })
       expect(document.body.style.overflow).toBe('')
     })
+
+    it('preserves window scroll position when dialog opens', () => {
+      window.scrollTo({ top: 500 })
+      renderDialog({ open: true })
+      expect(window.scrollY).toBe(500)
+    })
+
+    it('preserves window scroll position when dialog closes via prop change', () => {
+      window.scrollTo({ top: 350 })
+      const { rerender, onConfirm, onCancel } = renderDialog({ open: true })
+      rerender(
+        <ConfirmDialog
+          open={false}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(window.scrollY).toBe(350)
+    })
+
+    it('preserves scrolled content position through open-close-open cycle', () => {
+      window.scrollTo({ top: 800 })
+      const { rerender, onConfirm, onCancel } = renderDialog({ open: true })
+      // close
+      rerender(
+        <ConfirmDialog
+          open={false}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(window.scrollY).toBe(800)
+      // reopen
+      rerender(
+        <ConfirmDialog
+          open={true}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(window.scrollY).toBe(800)
+    })
+
+    it('restores previous overflow value even when body overflow is changed externally while open', () => {
+      // Simulate a scenario where the page has a custom overflow, dialog opens,
+      // some other code mutates body.style.overflow, then dialog closes.
+      // The cleanup should still restore the value that was present *before* the
+      // dialog opened.
+      document.body.style.overflow = 'scroll'
+      const { rerender, onConfirm, onCancel } = renderDialog({ open: true })
+      expect(document.body.style.overflow).toBe('hidden')
+      // External mutation while dialog is open
+      document.body.style.overflow = 'visible'
+      rerender(
+        <ConfirmDialog
+          open={false}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(document.body.style.overflow).toBe('scroll')
+    })
   })
 
   describe('state reset on close', () => {
@@ -305,9 +387,19 @@ describe('ConfirmDialog', () => {
 
 describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
   beforeEach(() => {
+    scrollY = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       cb(0)
       return 0
+    })
+    vi.spyOn(window, 'scrollTo').mockImplementation(
+      (options?: ScrollToOptions) => {
+        if (options?.top !== undefined) scrollY = options.top
+      }
+    )
+    Object.defineProperty(window, 'scrollY', {
+      get: () => scrollY,
+      configurable: true,
     })
   })
 

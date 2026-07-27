@@ -17,14 +17,7 @@ import {
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
-import { useQuery } from '../hooks/useQuery'
-import { useIsMobile } from '../hooks/useMediaQuery'
-import { apiFetch } from '../api/client'
-import type { TrustScore, TrustTier } from '../api/types'
 import './Dashboard.css'
-
-const TRUST_SCORE = 684
-const TRUST_TIER = 'gold'
 
 const onboardingSteps = [
   {
@@ -84,7 +77,6 @@ export default function Dashboard() {
       'Monitor your trust score tier, outstanding bonds, pending grace periods, and recent identity attestations.',
   })
 
-  const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
   const location = useLocation()
   const [searchParams] = useSearchParams()

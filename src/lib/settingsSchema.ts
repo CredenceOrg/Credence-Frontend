@@ -20,8 +20,6 @@ const VALID_THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system']
 const VALID_NETWORKS = ['public', 'test'] as const
 const VALID_ADDRESS_DISPLAYS = ['full', 'short', 'friendly'] as const
 const VALID_AUTO_DISMISS = ['off', '3s', '5s', '8s'] as const
-const MIN_REAUTH_THRESHOLD = 1
-const MAX_REAUTH_THRESHOLD = 1440
 
 const DEFAULT_SETTINGS: SettingsBlob = {
   themeMode: 'system',

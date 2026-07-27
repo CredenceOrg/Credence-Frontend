@@ -11,6 +11,7 @@ import PageHeader from '../components/PageHeader'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
+import { CopyIcon, CheckIcon } from '../components/icons'
 import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
@@ -326,14 +327,9 @@ export default function TrustScore() {
                         aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}
                       >
                         {copied ? (
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
+                          <CheckIcon width={14} height={14} viewBox="0 0 24 24" />
                         ) : (
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                          </svg>
+                          <CopyIcon width={14} height={14} viewBox="0 0 24 24" />
                         )}
                       </button>
                     </li>

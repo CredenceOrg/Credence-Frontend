@@ -3,7 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
 import Banner from '../components/Banner'
-import ActivityTimeline, { type ActivityItem, SAMPLE_ACTIVITY } from '../components/ActivityTimeline'
+import ActivityTimeline, {
+  type ActivityItem,
+  SAMPLE_ACTIVITY,
+} from '../components/ActivityTimeline'
 import Disclaimer from '../components/Disclaimer'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
@@ -62,6 +65,7 @@ export default function TrustScore() {
     description:
       'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
   })
+  const { t } = useTranslation()
   const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork, addressDisplay } = useSettings()
@@ -81,10 +85,7 @@ export default function TrustScore() {
   const [lookupAddress, setLookupAddress] = useState('')
   const pendingLookupRef = useRef(false)
 
-  const [history, setHistory] = useLocalStorage<RecentLookupItem[]>(
-    'credence:recent-lookups',
-    []
-  )
+  const [history, setHistory] = useLocalStorage<RecentLookupItem[]>('credence:recent-lookups', [])
 
   const safeHistory = useMemo(() => {
     if (!Array.isArray(history)) return []
@@ -112,7 +113,10 @@ export default function TrustScore() {
       if (isValidStellarAddress(lookupAddress)) {
         const current = Array.isArray(history) ? history : []
         const filtered = current.filter(
-          (item) => item && typeof item === 'object' && item.address.toLowerCase() !== lookupAddress.toLowerCase()
+          (item) =>
+            item &&
+            typeof item === 'object' &&
+            item.address.toLowerCase() !== lookupAddress.toLowerCase()
         )
         const newItem: RecentLookupItem = {
           address: lookupAddress,
@@ -151,7 +155,7 @@ export default function TrustScore() {
       return
     }
 
-    if (!isAddressValid) {
+    if (!isAddressValid || isLoading) {
       return
     }
 
@@ -173,7 +177,10 @@ export default function TrustScore() {
     // Move to top of history immediately
     const current = Array.isArray(history) ? history : []
     const filtered = current.filter(
-      (item) => item && typeof item === 'object' && item.address.toLowerCase() !== recentAddress.toLowerCase()
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        item.address.toLowerCase() !== recentAddress.toLowerCase()
     )
     const newItem: RecentLookupItem = {
       address: recentAddress,
@@ -208,9 +215,7 @@ export default function TrustScore() {
         }
       />
       <TierLadder />
-      <Banner severity="info">
-        {t('trustScore.infoBanner')}
-      </Banner>
+      <Banner severity="info">{t('trustScore.infoBanner')}</Banner>
 
       {!isConnected && (
         <Banner
@@ -234,7 +239,7 @@ export default function TrustScore() {
           <span id={mismatchBannerId}>
             {t('trustScore.networkMismatchDescription', {
               expected: networkMismatch.expected,
-              actual: networkMismatch.actual
+              actual: networkMismatch.actual,
             })}
           </span>
         </Banner>
@@ -326,11 +331,25 @@ export default function TrustScore() {
                         aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}
                       >
                         {copied ? (
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         ) : (
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                           </svg>
@@ -359,6 +378,7 @@ export default function TrustScore() {
             variant="primary"
             fullWidth
             disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
+            isLoading={isConnected && isLoading}
             aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
             className="trustScore__buttonRow"
           >
@@ -374,9 +394,7 @@ export default function TrustScore() {
         </div>
       </div>
 
-      <Disclaimer
-        context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments."
-      />
+      <Disclaimer context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments." />
     </div>
   )
 }

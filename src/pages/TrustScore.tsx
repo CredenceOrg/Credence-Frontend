@@ -7,10 +7,10 @@ import ActivityTimeline, {
   type ActivityItem,
   SAMPLE_ACTIVITY,
 } from '../components/ActivityTimeline'
+import ConnectGate from '../components/ConnectGate'
 import Disclaimer from '../components/Disclaimer'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
-import PageHeader from '../components/PageHeader'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG, pointsToNextTier } from '../components/TrustGauge'
@@ -194,11 +194,6 @@ export default function TrustScore() {
     setHistory([])
   }
 
-  const useConnectedAddress = () => {
-    if (!walletAddress) return
-    setAddress(walletAddress)
-  }
-
   const activity: ActivityItem[] = data ? SAMPLE_ACTIVITY : []
 
   const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
@@ -240,7 +235,7 @@ export default function TrustScore() {
           {isLoading && (
             <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading trust score">
               <p className="sr-only">{t('trustScore.loading')}</p>
-              <LoadingSkeleton variant="card" />
+              <LoadingSkeleton variant="trust-score" />
             </div>
           )}
 
@@ -386,76 +381,7 @@ export default function TrustScore() {
                   })}
                 </ul>
               </div>
-              <ul className="trustScore__recentList" aria-labelledby="recent-lookups-heading">
-                {safeHistory.map((item) => {
-                  const displayLabel = formatAddress(item.address, addressDisplay, walletAddress)
-                  return (
-                    <li key={item.address} className="trustScore__recentListItem">
-                      <button
-                        type="button"
-                        className="trustScore__recentItemBtn"
-                        onClick={() => handleSelectRecent(item.address)}
-                        aria-label={`Look up address ${displayLabel}`}
-                      >
-                        {displayLabel}
-                      </button>
-                      <button
-                        type="button"
-                        className="trustScore__recentCopyBtn"
-                        onClick={async () => {
-                          const success = await copy(item.address)
-                          if (success) {
-                            addToast('success', 'Address copied to clipboard')
-                          }
-                        }}
-                        aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}
-                      >
-                        {copied ? (
-                          <svg
-                            viewBox="0 0 24 24"
-                            width="14"
-                            height="14"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        ) : (
-                          <svg
-                            viewBox="0 0 24 24"
-                            width="14"
-                            height="14"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                          </svg>
-                        )}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          )}
-          {isConnected && walletAddress && (
-            <Button
-              type="button"
-              onClick={handleLookup}
-              variant="primary"
-              fullWidth
-              disabled={
-                !isConnected || networkMismatch.mismatch || (isConnected ? !isAddressValid : false)
-              }
-              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
-              className="trustScore__buttonRow"
-            >
-              {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
-            </Button>
-          )}
+            )}
           <Button
             type="button"
             onClick={handleLookup}
@@ -469,6 +395,7 @@ export default function TrustScore() {
             {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
           </Button>
         </div>
+        </ConnectGate>
 
         <div className="trustScore__card">
           <h2 className="trustScore__cardTitle">

@@ -11,6 +11,7 @@ import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/states/EmptyState'
+import { LoadingSkeleton } from '../components/states'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
 import ConnectWalletModal from '../components/ConnectWalletModal'
@@ -133,6 +134,9 @@ export default function Bond() {
   const [isPendingWithdraw, setIsPendingWithdraw] = useState(false)
   const [txStatus, setTxStatus] = useState('')
   const txStatusId = useId()
+
+  // TODO: replace with real loading state when bond list is fetched from the API
+  const isLoadingBonds = false
 
   const bonds = initialBonds
 
@@ -307,7 +311,12 @@ export default function Bond() {
           hideWhenDisconnected={true}
         >
           <ActionCard title={t('bond.activeBonds')}>
-            {bonds.length === 0 ? (
+            {isLoadingBonds ? (
+              // Skeleton shown while bond list is loading from the API
+              <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading bonds">
+                <LoadingSkeleton variant="bond-row" rows={3} />
+              </div>
+            ) : bonds.length === 0 ? (
               <EmptyState
                 illustration="bond"
                 title={t('bond.noActiveBonds')}

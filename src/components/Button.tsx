@@ -5,7 +5,9 @@ import './Button.css'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Visual style variant */
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'link'
+  /** Size variant */
+  size?: 'sm' | 'md' | 'lg'
   /** Loading state - shows spinner and disables interaction */
   isLoading?: boolean
   /** Full width button */
@@ -22,6 +24,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
     variant = 'primary',
+    size = 'md',
     isLoading = false,
     fullWidth = false,
     disabled,
@@ -45,6 +48,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       className={[
         'credence-button',
         `credence-button--${variant}`,
+        `credence-button--${size}`,
         fullWidth ? 'credence-button--full-width' : '',
         className,
       ]

@@ -6,16 +6,16 @@ All primary interactive elements (such as links, buttons, and focus rings) must 
 
 ### Light Theme Contrast Targets
 
-* **Background (`--credence-surface-card`)**: `#ffffff` (White)
-* **Primary (`--credence-color-primary`)**: `#075985` (Tailwind `sky-800`) — Contrast Ratio > 7:1 against white
-* **Primary Strong (`--credence-color-primary-strong`)**: `#0c4a6e` (Tailwind `sky-900`) — Contrast Ratio > 8.5:1 against white
-* **Primary Soft (`--credence-color-primary-soft`)**: `#0284c7` (Tailwind `sky-600`) — *(Used for non-text or large text where 4.5:1 AA is sufficient)*
+- **Background (`--credence-surface-card`)**: `#ffffff` (White)
+- **Primary (`--credence-color-primary`)**: `#075985` (Tailwind `sky-800`) — Contrast Ratio > 7:1 against white
+- **Primary Strong (`--credence-color-primary-strong`)**: `#0c4a6e` (Tailwind `sky-900`) — Contrast Ratio > 8.5:1 against white
+- **Primary Soft (`--credence-color-primary-soft`)**: `#0284c7` (Tailwind `sky-600`) — _(Used for non-text or large text where 4.5:1 AA is sufficient)_
 
 ### Dark Theme Contrast Targets
 
-* **Background (`--credence-surface-card`)**: `#1e293b` (Tailwind `slate-800`)
-* **Primary (`--credence-color-primary`)**: `#7dd3fc` (Tailwind `sky-300`) — Contrast Ratio > 7:1 against slate-800
-* **Primary Strong (`--credence-color-primary-strong`)**: `#bae6fd` (Tailwind `sky-200`) — Contrast Ratio > 10:1 against slate-800
+- **Background (`--credence-surface-card`)**: `#1e293b` (Tailwind `slate-800`)
+- **Primary (`--credence-color-primary`)**: `#7dd3fc` (Tailwind `sky-300`) — Contrast Ratio > 7:1 against slate-800
+- **Primary Strong (`--credence-color-primary-strong`)**: `#bae6fd` (Tailwind `sky-200`) — Contrast Ratio > 10:1 against slate-800
 
 ### Notes
 

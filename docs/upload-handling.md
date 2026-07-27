@@ -17,17 +17,17 @@ To reliably support large files (e.g., attestation evidence or large reports) ov
 
 ```typescript
 // Example: Chunking logic
-const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
+const CHUNK_SIZE = 5 * 1024 * 1024 // 5MB
 
 async function uploadFile(file: File) {
-  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-  
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-    const start = chunkIndex * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, file.size);
-    const chunk = file.slice(start, end);
-    
-    await uploadChunk(chunk, chunkIndex, totalChunks, file.name);
+    const start = chunkIndex * CHUNK_SIZE
+    const end = Math.min(start + CHUNK_SIZE, file.size)
+    const chunk = file.slice(start, end)
+
+    await uploadChunk(chunk, chunkIndex, totalChunks, file.name)
   }
 }
 ```
@@ -44,14 +44,14 @@ Network requests can fail. We use exponential backoff with jitter to retry faile
 // Example: Retry mechanism
 async function uploadWithRetry(chunk: Blob, retries = 0): Promise<void> {
   try {
-    await api.post('/upload/chunk', chunk);
+    await api.post('/upload/chunk', chunk)
   } catch (error) {
-    if (retries >= 3) throw error;
-    
-    const delay = 1000 * Math.pow(2, retries) + Math.random() * 500;
-    await new Promise(resolve => setTimeout(resolve, delay));
-    
-    return uploadWithRetry(chunk, retries + 1);
+    if (retries >= 3) throw error
+
+    const delay = 1000 * Math.pow(2, retries) + Math.random() * 500
+    await new Promise((resolve) => setTimeout(resolve, delay))
+
+    return uploadWithRetry(chunk, retries + 1)
   }
 }
 ```
@@ -62,14 +62,14 @@ Users need visual feedback during long uploads. Progress is calculated based on 
 
 ```typescript
 // Example: Progress calculation
-let uploadedBytes = 0;
+let uploadedBytes = 0
 
 function onChunkSuccess(chunkSize: number, totalSize: number) {
-  uploadedBytes += chunkSize;
-  const percentComplete = Math.round((uploadedBytes / totalSize) * 100);
-  
+  uploadedBytes += chunkSize
+  const percentComplete = Math.round((uploadedBytes / totalSize) * 100)
+
   // Update UI (e.g., progress bar, aria-valuenow)
-  updateProgressBar(percentComplete);
+  updateProgressBar(percentComplete)
 }
 ```
 

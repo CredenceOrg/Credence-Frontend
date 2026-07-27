@@ -167,7 +167,9 @@
   cursor: pointer;
   width: 100%;
   text-align: left;
-  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  transition:
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out;
 }
 
 .trustScore__recentItemBtn:hover {

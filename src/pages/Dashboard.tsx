@@ -29,22 +29,26 @@ const TRUST_TIER = 'gold'
 const onboardingSteps = [
   {
     title: 'Welcome to your dashboard',
-    description: 'Start with the trust score overview to see how your on-chain reputation is trending.',
+    description:
+      'Start with the trust score overview to see how your on-chain reputation is trending.',
     target: 'trust-score',
   },
   {
     title: 'Review active bonds',
-    description: 'Track the bonds you already have on the books and the next unlocks from the summary card.',
+    description:
+      'Track the bonds you already have on the books and the next unlocks from the summary card.',
     target: 'active-bonds',
   },
   {
     title: 'Monitor recent activity',
-    description: 'Follow the latest attestations and protocol updates to stay current with your account.',
+    description:
+      'Follow the latest attestations and protocol updates to stay current with your account.',
     target: 'recent-activity',
   },
   {
     title: 'Jump to key workflows',
-    description: 'Use the shortcuts section to move quickly into bond creation, trust review, or attestations.',
+    description:
+      'Use the shortcuts section to move quickly into bond creation, trust review, or attestations.',
     target: 'shortcuts',
   },
 ] as const
@@ -162,8 +166,8 @@ export default function Dashboard() {
         isMobile && pullDistance > 0
           ? { transform: `translateY(${pullDistance}px)`, transition: 'none' }
           : isMobile
-          ? { transform: 'translateY(0)', transition: 'transform 0.3s ease-out' }
-          : undefined
+            ? { transform: 'translateY(0)', transition: 'transform 0.3s ease-out' }
+            : undefined
       }
     >
       {isMobile && (pullDistance > 0 || isRefreshing) && (
@@ -195,8 +199,8 @@ export default function Dashboard() {
             {isRefreshing
               ? t('dashboard.refreshing', 'Refreshing...')
               : pullDistance >= 60
-              ? t('dashboard.releaseToRefresh', 'Release to refresh')
-              : t('dashboard.pullToRefresh', 'Pull to refresh')}
+                ? t('dashboard.releaseToRefresh', 'Release to refresh')
+                : t('dashboard.pullToRefresh', 'Pull to refresh')}
           </span>
         </div>
       )}
@@ -210,9 +214,7 @@ export default function Dashboard() {
       <header className="dashboard__header">
         <div>
           <h1 className="dashboard__title">{t('dashboard.title')}</h1>
-          <p className="dashboard__description">
-            {t('dashboard.description')}
-          </p>
+          <p className="dashboard__description">{t('dashboard.description')}</p>
         </div>
         {connected && address && (
           <div className="dashboard__wallet" aria-label="Connected wallet">
@@ -263,7 +265,9 @@ export default function Dashboard() {
                   {onboardingStep + 1}/{onboardingSteps.length}
                 </span>
               </div>
-              <p className="dashboard__onboardingDescription">{currentOnboardingStep.description}</p>
+              <p className="dashboard__onboardingDescription">
+                {currentOnboardingStep.description}
+              </p>
               <div className="dashboard__onboardingActions">
                 <Button type="button" variant="ghost" onClick={skipOnboarding}>
                   Skip tour
@@ -293,7 +297,10 @@ export default function Dashboard() {
                     <p className="dashboard__metric">{displayScore}</p>
                     <p className="dashboard__metricLabel">Current score</p>
                   </div>
-                  <Badge variant={displayTier} label={`${displayTier.charAt(0).toUpperCase()}${displayTier.slice(1)} Tier`} />
+                  <Badge
+                    variant={displayTier}
+                    label={`${displayTier.charAt(0).toUpperCase()}${displayTier.slice(1)} Tier`}
+                  />
                 </div>
                 <TrustGauge
                   score={displayScore}
@@ -345,7 +352,11 @@ export default function Dashboard() {
                     </Link>
                   ))}
                 </div>
-                <Button type="button" variant="secondary" onClick={() => window.scrollTo({ top: 0 })}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => window.scrollTo({ top: 0 })}
+                >
                   Back to summary
                 </Button>
               </ActionCard>
@@ -354,11 +365,7 @@ export default function Dashboard() {
         </>
       )}
 
-      {connected && (
-        <Banner severity="info">
-          {t('dashboard.mockDataBanner')}
-        </Banner>
-      )}
+      {connected && <Banner severity="info">{t('dashboard.mockDataBanner')}</Banner>}
     </div>
   )
 }

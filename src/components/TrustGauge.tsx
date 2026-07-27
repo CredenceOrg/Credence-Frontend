@@ -56,10 +56,13 @@ export const TIER_CONFIG = {
 } as const
 
 /** Pre-computed map for O(1) tier index lookups */
-const TIER_INDEX_MAP = TIER_ORDER.reduce((acc, tier, index) => {
-  acc[tier] = index
-  return acc
-}, {} as Record<TrustTier, number>)
+const TIER_INDEX_MAP = TIER_ORDER.reduce(
+  (acc, tier, index) => {
+    acc[tier] = index
+    return acc
+  },
+  {} as Record<TrustTier, number>
+)
 /**
  * Calculate points remaining to reach the next tier
  * @param score Current score

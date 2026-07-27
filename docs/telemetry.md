@@ -7,6 +7,7 @@ This document describes the telemetry and analytics practices for the Credence F
 **No telemetry or analytics data is collected by this application.**
 
 The Credence Frontend is designed with privacy as a core principle. We do not:
+
 - Track user behavior
 - Collect personal identifiable information (PII)
 - Use third-party analytics services (e.g., Google Analytics, Segment, Amplitude, Mixpanel)
@@ -21,6 +22,7 @@ This document describes the telemetry principles and centralized event schema ar
 **No telemetry or analytics data is transmitted to external servers.**
 
 The Credence Frontend is designed with privacy as a core principle. We do not:
+
 - Track user behavior externally
 - Collect personal identifiable information (PII)
 - Use third-party analytics services (e.g., Google Analytics, Segment, Amplitude, Mixpanel)
@@ -38,9 +40,10 @@ src/events/schema.ts (re-exported via src/events/index.ts)
 
 ### Why Centralization Prevents Schema Drift
 
-In distributed front-end codebases, event name string literals and payload type interfaces often drift across producers (event emitters/forms/pages) and consumers (components/hooks/handlers). 
+In distributed front-end codebases, event name string literals and payload type interfaces often drift across producers (event emitters/forms/pages) and consumers (components/hooks/handlers).
 
 Centralization provides:
+
 1. **Single Source of Truth**: All event names, constants, and payload interfaces are defined once.
 2. **Compile-Time Safety**: TypeScript strictly enforces payload shapes across all publishers and subscribers.
 3. **Deterministic Serialization**: Helper utilities (`serializeEventPayload`, `deserializeEventPayload`) ensure payload structures remain consistent.
@@ -51,6 +54,7 @@ Centralization provides:
 ## Event Catalog
 
 ### 1. System & DOM Events (`DOM_EVENTS`)
+
 - `BEFORE_INSTALL_PROMPT`: PWA installation trigger
 - `VISIBILITY_CHANGE`: Document tab visibility monitoring
 - `MOUSE_MOVE`, `KEY_DOWN`, `MOUSE_DOWN`, `TOUCH_START`, `SCROLL`, `WHEEL`: User activity events for idle timeout management
@@ -61,6 +65,7 @@ Centralization provides:
 - `LANGUAGE_CHANGED`: i18n locale change notification
 
 ### 2. Domain Events & Payloads
+
 - **Attestation Events (`ATTESTATION_EVENTS`)**: `AttestationPayload` (`identity`, `peer-vouch`, `credential`)
 - **Transaction Events (`TRANSACTION_EVENTS`)**: `TransactionEventPayload` (`bond`, `withdraw`, `attestation`) with status (`pending`, `confirmed`, `failed`)
 - **Bond Lifecycle (`BOND_EVENTS`)**: `BondEventPayload` with status (`active`, `pending`, `settled`, `slashed`, `cancelled`)
@@ -74,12 +79,14 @@ Centralization provides:
 ## How to Work with Event Schemas
 
 ### Adding a New Event
+
 1. Open [src/events/schema.ts](file:///c:/Users/ICT%20LASIEC/Credence-Frontend/src/events/schema.ts).
 2. Define the new event name constant under the appropriate domain object (or add a new domain object).
 3. Export the payload interface `export interface MyNewEventPayload { ... }`.
 4. Add unit test coverage in [src/events/schema.test.ts](file:///c:/Users/ICT%20LASIEC/Credence-Frontend/src/events/schema.test.ts).
 
 ### Modifying Existing Events Safely
+
 1. Always preserve backwards compatibility for public/persisted fields.
 2. If introducing new fields, make them optional (`field?: type`) to avoid breaking existing consumers.
 3. If breaking changes are unavoidable:
@@ -94,4 +101,3 @@ Centralization provides:
 - [Architecture Overview](./ARCHITECTURE.md)
 - [State Management](./STATE_MANAGEMENT.md)
 - [Security Documentation](./SECURITY.md)
-

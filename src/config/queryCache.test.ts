@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import {
-  parseTtlEnv,
-  QUERY_CACHE_DEFAULTS,
-} from './queryCache'
+import { parseTtlEnv, QUERY_CACHE_DEFAULTS } from './queryCache'
 
 describe('parseTtlEnv helper', () => {
   const DEFAULT_VAL = 60_000
@@ -48,7 +45,8 @@ describe('QUERY_CACHE_TTLS resolution precedence', () => {
   })
 
   const getQueryCacheTtls = async () => {
-    return ((await vi.importActual('./queryCache')) as typeof import('./queryCache')).QUERY_CACHE_TTLS
+    return ((await vi.importActual('./queryCache')) as typeof import('./queryCache'))
+      .QUERY_CACHE_TTLS
   }
 
   it('uses default values when no environment variables are set', async () => {

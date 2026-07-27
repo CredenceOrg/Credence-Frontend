@@ -22,7 +22,9 @@ describe('AsyncSelect', () => {
     )
 
     expect(screen.getByRole('combobox')).toBeDisabled()
-    expect(container.querySelector('.control-select-wrapper')).toHaveClass('control-select-wrapper--loading')
+    expect(container.querySelector('.control-select-wrapper')).toHaveClass(
+      'control-select-wrapper--loading'
+    )
     expect(container.querySelector('.control-select-spinner')).toBeInTheDocument()
 
     await waitFor(() => {
@@ -33,7 +35,9 @@ describe('AsyncSelect', () => {
       expect(screen.getByRole('combobox')).not.toBeDisabled()
     })
 
-    expect(container.querySelector('.control-select-wrapper')).not.toHaveClass('control-select-wrapper--loading')
+    expect(container.querySelector('.control-select-wrapper')).not.toHaveClass(
+      'control-select-wrapper--loading'
+    )
     expect(container.querySelector('.control-select-spinner')).not.toBeInTheDocument()
 
     const options = screen.getAllByRole('option')

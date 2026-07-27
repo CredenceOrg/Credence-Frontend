@@ -30,7 +30,10 @@ export interface AttestationFormProps {
  * - Evidence text is required and cannot exceed 500 characters.
  * - Confirms the submission using a customized ConfirmDialog.
  */
-export default function AttestationForm({ onSubmitSuccess, disabled = false }: AttestationFormProps) {
+export default function AttestationForm({
+  onSubmitSuccess,
+  disabled = false,
+}: AttestationFormProps) {
   const { addToast } = useToast()
   const { copy, copied } = useCopyToClipboard()
   const [subject, setSubject] = useState('')
@@ -175,13 +178,7 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
           </div>
         </div>
 
-        <Button
-          ref={submitButtonRef}
-          type="submit"
-          variant="primary"
-          disabled={disabled}
-          fullWidth
-        >
+        <Button ref={submitButtonRef} type="submit" variant="primary" disabled={disabled} fullWidth>
           Submit Attestation
         </Button>
       </form>
@@ -226,8 +223,16 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
               >
                 Subject
               </strong>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--credence-space-2)' }}>
-                <code style={{ fontSize: 'var(--credence-font-size-sm)', wordBreak: 'break-all', flex: 1 }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--credence-space-2)' }}
+              >
+                <code
+                  style={{
+                    fontSize: 'var(--credence-font-size-sm)',
+                    wordBreak: 'break-all',
+                    flex: 1,
+                  }}
+                >
                   {subject}
                 </code>
                 <button
@@ -254,11 +259,25 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
                   }}
                 >
                   {copied ? (
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                     </svg>

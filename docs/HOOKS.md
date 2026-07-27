@@ -190,10 +190,10 @@ ref. Supports deeply nested arrays of refs and cleans up on unmount.
 
 **Parameters**
 
-| Parameter    | Required | Description                                                                  |
-| ------------ | :------: | ---------------------------------------------------------------------------- |
-| `ref`        |          | A single ref, callback ref, or nested array of refs to synchronise. Optional. |
-| `initialValue` |        | Initial value for the internal ref. Defaults to `null`.                      |
+| Parameter      | Required | Description                                                                   |
+| -------------- | :------: | ----------------------------------------------------------------------------- |
+| `ref`          |          | A single ref, callback ref, or nested array of refs to synchronise. Optional. |
+| `initialValue` |          | Initial value for the internal ref. Defaults to `null`.                       |
 
 **Returns** a `MutableRefObject<T | null>` that the component attaches to its DOM node via JSX `ref`.
 
@@ -220,19 +220,20 @@ interface FancyInputProps {
   children?: ReactNode
 }
 
-const FancyInput = forwardRef<HTMLInputElement, FancyInputProps>(
-  function FancyInput({ label, children }, forwardedRef) {
-    const internalRef = useForwardRef<HTMLInputElement>(forwardedRef)
+const FancyInput = forwardRef<HTMLInputElement, FancyInputProps>(function FancyInput(
+  { label, children },
+  forwardedRef
+) {
+  const internalRef = useForwardRef<HTMLInputElement>(forwardedRef)
 
-    return (
-      <label>
-        {label}
-        <input ref={internalRef} />
-        {children}
-      </label>
-    )
-  }
-)
+  return (
+    <label>
+      {label}
+      <input ref={internalRef} />
+      {children}
+    </label>
+  )
+})
 ```
 
 ---
@@ -243,7 +244,7 @@ Source: [`src/hooks/useMediaQuery.ts`](../src/hooks/useMediaQuery.ts)
 
 ```ts
 function useMediaQuery(query: string): boolean
-function useIsMobile(): boolean  // shorthand: (max-width: 767px)
+function useIsMobile(): boolean // shorthand: (max-width: 767px)
 ```
 
 Subscribes to a CSS media query and returns whether it currently matches. The exported
@@ -251,8 +252,8 @@ breakpoint helper `useIsMobile` wraps the 768 px mobile threshold used throughou
 
 **Parameters**
 
-| Parameter | Required | Description                                         |
-| --------- | :------: | --------------------------------------------------- |
+| Parameter | Required | Description                                                  |
+| --------- | :------: | ------------------------------------------------------------ |
 | `query`   |    ✓     | A valid CSS media query string, e.g. `'(max-width: 767px)'`. |
 
 **Behavior notes**
@@ -285,14 +286,11 @@ function ActivityCard() {
 Source: [`src/hooks/useApiQuery.ts`](../src/hooks/useApiQuery.ts) · Built on [`apiFetch`](../src/api/client.ts)
 
 ```ts
-function useApiQuery<T>(
-  path: string,
-  options?: UseApiQueryOptions,
-): UseApiQueryResult<T>
+function useApiQuery<T>(path: string, options?: UseApiQueryOptions): UseApiQueryResult<T>
 
 interface UseApiQueryOptions {
-  enabled?: boolean     // default: true
-  staleTimeMs?: number  // default: WIDGET_CACHE_DEFAULTS.STALE_TIME_MS (30 000)
+  enabled?: boolean // default: true
+  staleTimeMs?: number // default: WIDGET_CACHE_DEFAULTS.STALE_TIME_MS (30 000)
 }
 
 interface UseApiQueryResult<T> {
@@ -310,11 +308,11 @@ Type-safe, cache-aware wrapper around `apiFetch` for GET requests. Caches respon
 
 **Parameters**
 
-| Option        | Required | Description                                                                  |
-| ------------- | :------: | ---------------------------------------------------------------------------- |
-| `path`        |    ✓     | API path passed to `apiFetch` (e.g. `'/trust-score/GABC…'`).               |
-| `enabled`     |          | Set `false` to skip the initial fetch. Default `true`.                      |
-| `staleTimeMs` |          | Time in ms before cached data is considered stale. Default `30 000`.        |
+| Option        | Required | Description                                                          |
+| ------------- | :------: | -------------------------------------------------------------------- |
+| `path`        |    ✓     | API path passed to `apiFetch` (e.g. `'/trust-score/GABC…'`).         |
+| `enabled`     |          | Set `false` to skip the initial fetch. Default `true`.               |
+| `staleTimeMs` |          | Time in ms before cached data is considered stale. Default `30 000`. |
 
 **Behavior notes**
 
@@ -333,7 +331,7 @@ import type { TrustScore } from '../api/types'
 
 function TrustScoreCard({ address }: { address: string }) {
   const { data, isLoading, error, isStale, refetch } = useApiQuery<TrustScore>(
-    `/trust-score/${address}`,
+    `/trust-score/${address}`
   )
 
   if (isLoading) return <p>Loading…</p>
@@ -361,10 +359,7 @@ function TrustScoreCard({ address }: { address: string }) {
 Source: [`src/hooks/useQuery.ts`](../src/hooks/useQuery.ts)
 
 ```ts
-function useQuery<T>(
-  queryFn: () => Promise<T>,
-  options?: UseQueryOptions,
-): UseQueryResult<T>
+function useQuery<T>(queryFn: () => Promise<T>, options?: UseQueryOptions): UseQueryResult<T>
 
 interface UseQueryOptions {
   enabled?: boolean // default: true
@@ -382,9 +377,9 @@ A custom hook that wraps an asynchronous query function to fetch and manage data
 
 **Parameters**
 
-| Option    | Required | Description                                                  |
-| --------- | :------: | ------------------------------------------------------------ |
-| `queryFn` |    ✓     | An asynchronous function returning a Promise.               |
+| Option    | Required | Description                                                    |
+| --------- | :------: | -------------------------------------------------------------- |
+| `queryFn` |    ✓     | An asynchronous function returning a Promise.                  |
 | `enabled` |          | Set to `false` to prevent the initial request. Default `true`. |
 
 **Behavior notes**
@@ -403,7 +398,9 @@ function MyComponent() {
 
   return (
     <div>
-      <button onClick={refetch} disabled={isLoading}>Refresh</button>
+      <button onClick={refetch} disabled={isLoading}>
+        Refresh
+      </button>
       {isLoading ? <p>Loading...</p> : <p>Data: {JSON.stringify(data)}</p>}
     </div>
   )
@@ -418,7 +415,7 @@ Source: [`src/hooks/useApiMutation.ts`](../src/hooks/useApiMutation.ts)
 
 ```ts
 function useApiMutation<TData, TVariables, TContext = unknown>(
-  options: UseApiMutationOptions<TData, TVariables, TContext>,
+  options: UseApiMutationOptions<TData, TVariables, TContext>
 ): UseApiMutationResult<TData, TVariables, TContext>
 ```
 
@@ -426,14 +423,14 @@ A lightweight mutation wrapper for API calls that supports optimistic updates an
 
 **Parameters**
 
-| Option | Required | Description |
-| --- | :---: | --- |
-| `mutationFn` | ✓ | The async mutation function to execute. |
-| `onMutate` | | Runs before the request and can apply optimistic local state via the supplied helpers. |
-| `onSuccess` | | Runs after a successful mutation. |
-| `onError` | | Runs after a failed mutation. |
-| `onSettled` | | Runs after either outcome. |
-| `initialData` | | Initial value for `data`. |
+| Option        | Required | Description                                                                            |
+| ------------- | :------: | -------------------------------------------------------------------------------------- |
+| `mutationFn`  |    ✓     | The async mutation function to execute.                                                |
+| `onMutate`    |          | Runs before the request and can apply optimistic local state via the supplied helpers. |
+| `onSuccess`   |          | Runs after a successful mutation.                                                      |
+| `onError`     |          | Runs after a failed mutation.                                                          |
+| `onSettled`   |          | Runs after either outcome.                                                             |
+| `initialData` |          | Initial value for `data`.                                                              |
 
 **Behavior notes**
 
@@ -446,7 +443,8 @@ import { useApiMutation } from '../hooks/useApiMutation'
 
 function SaveProfile() {
   const mutation = useApiMutation({
-    mutationFn: (nextName: string) => apiFetch('/profile', { method: 'PATCH', body: { name: nextName } }),
+    mutationFn: (nextName: string) =>
+      apiFetch('/profile', { method: 'PATCH', body: { name: nextName } }),
     onMutate: (name, { setData }) => {
       setData((current) => ({ ...(current ?? {}), name }))
     },
@@ -788,9 +786,7 @@ import { useProductUpdates } from '../hooks/useProductUpdates'
 function NotificationBadge() {
   const { unreadCount, markAllRead } = useProductUpdates()
   return (
-    <button onClick={markAllRead}>
-      Updates {unreadCount > 0 && <span>({unreadCount})</span>}
-    </button>
+    <button onClick={markAllRead}>Updates {unreadCount > 0 && <span>({unreadCount})</span>}</button>
   )
 }
 ```
@@ -866,16 +862,16 @@ Platform-aware keyboard shortcut primitive that abstracts OS modifier difference
 
 **Parameters & Options**
 
-| Option | Required | Default | Description |
-| --- | :---: | :---: | --- |
-| `keys` | ✓ | | Key combination(s) e.g. `['Mod', 'K']`, `['Alt', 'S']`, `'Ctrl+Shift+P'`, or `[['Mod', 'K'], ['Alt', 'K']]`. |
-| `onShortcut` / `callback` | ✓ | | Handler function invoked when a matching shortcut is pressed. |
-| `enabled` | | `true` | Engage (`true`) / disengage (`false`) the event listener. |
-| `preventDefault` | | `true` | Invokes `event.preventDefault()` when shortcut matches. |
-| `stopPropagation` | | `false` | Invokes `event.stopPropagation()` when shortcut matches. |
-| `ignoreInputElements` | | `true` | Excludes key events originating inside editable input controls for accessibility compliance. |
-| `target` | | `window` | Custom DOM element or ref to attach the listener to. |
-| `userAgent` | | `navigator.userAgent` | User agent override for platform detection testing or SSR. |
+| Option                    | Required |        Default        | Description                                                                                                  |
+| ------------------------- | :------: | :-------------------: | ------------------------------------------------------------------------------------------------------------ |
+| `keys`                    |    ✓     |                       | Key combination(s) e.g. `['Mod', 'K']`, `['Alt', 'S']`, `'Ctrl+Shift+P'`, or `[['Mod', 'K'], ['Alt', 'K']]`. |
+| `onShortcut` / `callback` |    ✓     |                       | Handler function invoked when a matching shortcut is pressed.                                                |
+| `enabled`                 |          |        `true`         | Engage (`true`) / disengage (`false`) the event listener.                                                    |
+| `preventDefault`          |          |        `true`         | Invokes `event.preventDefault()` when shortcut matches.                                                      |
+| `stopPropagation`         |          |        `false`        | Invokes `event.stopPropagation()` when shortcut matches.                                                     |
+| `ignoreInputElements`     |          |        `true`         | Excludes key events originating inside editable input controls for accessibility compliance.                 |
+| `target`                  |          |       `window`        | Custom DOM element or ref to attach the listener to.                                                         |
+| `userAgent`               |          | `navigator.userAgent` | User agent override for platform detection testing or SSR.                                                   |
 
 **Behavior notes**
 
@@ -929,9 +925,9 @@ can correct it. SSR-safe (pure functions, no globals).
 import { formatUsdc, sanitizeUSDCInput } from '@/lib/format'
 
 // ✅ Correct — always use formatUsdc for display
-formatUsdc(1000)          // "1,000 USDC"
-formatUsdc(1234.5)        // "1,234.5 USDC"
-formatUsdc(Number(str))   // when amount comes from a string state value
+formatUsdc(1000) // "1,000 USDC"
+formatUsdc(1234.5) // "1,234.5 USDC"
+formatUsdc(Number(str)) // when amount comes from a string state value
 
 // ❌ Avoid — do not use ad-hoc patterns
 // `${amount.toLocaleString('en-US')} USDC`

@@ -38,7 +38,9 @@ describe('getDefaultLocale resolution', () => {
     setEnv('VITE_DEFAULT_LOCALE', 'fr')
 
     expect(await getDefaultLocale()).toBe('en')
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid VITE_DEFAULT_LOCALE "fr"'))
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid VITE_DEFAULT_LOCALE "fr"')
+    )
 
     errorSpy.mockRestore()
   })

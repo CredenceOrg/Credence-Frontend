@@ -9,11 +9,13 @@ By following these conventions, we ensure a predictable developer experience, co
 ## 1. Interface Naming & Exports
 
 ### Naming Contract
+
 - Every shared component prop interface **must** be named `[ComponentName]Props` (e.g., `ButtonProps`, `BadgeProps`, `RepoAvatarProps`).
 - The prop interface **must** be exported from the component module.
 - When a component wraps a native HTML element, extend the appropriate `HTMLAttributes<T>` or element-specific attribute interface (e.g. `ButtonHTMLAttributes<HTMLButtonElement>`).
 
 ### Example:
+
 ```tsx
 import { HTMLAttributes } from 'react'
 
@@ -50,11 +52,7 @@ export interface RepoAvatarProps extends HTMLAttributes<HTMLSpanElement> {
 
 ```tsx
 // Do:
-export default function Button({
-  isLoading = false,
-  fullWidth = false,
-  children,
-}: ButtonProps) {
+export default function Button({ isLoading = false, fullWidth = false, children }: ButtonProps) {
   /* ... */
 }
 
@@ -79,6 +77,7 @@ Order props consistently in both interface definitions and component parameter d
 7. **Rest HTML Attributes**: `...props`
 
 ### Compliant Example:
+
 ```tsx
 export interface ConfirmDialogProps {
   // 1. Primary content

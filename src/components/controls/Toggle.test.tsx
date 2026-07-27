@@ -77,6 +77,9 @@ describe('Toggle', () => {
       </FormField>
     )
 
-    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toHaveAttribute('id', 'toasts-enabled')
+    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toHaveAttribute(
+      'id',
+      'toasts-enabled'
+    )
   })
 })

@@ -66,8 +66,7 @@ export default function AmountInput({
   }, [value])
 
   const isOverBalance = numericValue > 0 && numericValue > balance
-  const isBelowMin =
-    min !== undefined && numericValue > 0 && numericValue < min
+  const isBelowMin = min !== undefined && numericValue > 0 && numericValue < min
 
   // Explicit `error` prop always wins; over-balance takes precedence over below-minimum.
   const activeError =
@@ -140,11 +139,7 @@ export default function AmountInput({
             placeholder={isLoading ? 'Loading...' : inputProps.placeholder}
           />
           <span className="amountInput__adornment" aria-hidden="true">
-            {isLoading ? (
-              <span className="amountInput__spinner" />
-            ) : (
-              currencyLabel
-            )}
+            {isLoading ? <span className="amountInput__spinner" /> : currencyLabel}
           </span>
         </div>
 

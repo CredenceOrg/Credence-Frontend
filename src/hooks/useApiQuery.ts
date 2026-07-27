@@ -64,10 +64,9 @@ export interface UseApiQueryResult<T> {
  */
 export function useApiQuery<T>(
   path: string,
-  options: UseApiQueryOptions = {},
+  options: UseApiQueryOptions = {}
 ): UseApiQueryResult<T> {
-  const { enabled = true, staleTimeMs = WIDGET_CACHE_DEFAULTS.STALE_TIME_MS } =
-    options
+  const { enabled = true, staleTimeMs = WIDGET_CACHE_DEFAULTS.STALE_TIME_MS } = options
 
   const [data, setData] = useState<T | undefined>(() => {
     const cached = getCacheEntry<T>(path)
@@ -150,7 +149,7 @@ export function useApiQuery<T>(
         }
       }
     },
-    [staleTimeMs],
+    [staleTimeMs]
   )
 
   // Initial fetch

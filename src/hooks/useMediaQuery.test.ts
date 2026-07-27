@@ -18,7 +18,8 @@ function makeMql(matches: boolean) {
     }),
     dispatchEvent: vi.fn(),
     /** Test helper: fire a change event */
-    _fire: (nextMatches: boolean) => changeHandler?.({ matches: nextMatches } as MediaQueryListEvent),
+    _fire: (nextMatches: boolean) =>
+      changeHandler?.({ matches: nextMatches } as MediaQueryListEvent),
     _handler: () => changeHandler,
   }
   return mql
@@ -95,10 +96,14 @@ describe('useMediaQuery', () => {
     const { result } = renderHook(() => useMediaQuery(QUERY))
     expect(result.current).toBe(false)
 
-    act(() => { mql._fire(true) })
+    act(() => {
+      mql._fire(true)
+    })
     expect(result.current).toBe(true)
 
-    act(() => { mql._fire(false) })
+    act(() => {
+      mql._fire(false)
+    })
     expect(result.current).toBe(false)
   })
 
@@ -152,7 +157,9 @@ describe('useMediaQuery', () => {
 
     expect(result.current).toBe(false)
 
-    act(() => { rerender({ q: '(min-width: 1024px)' }) })
+    act(() => {
+      rerender({ q: '(min-width: 1024px)' })
+    })
     expect(result.current).toBe(true)
   })
 
@@ -161,10 +168,11 @@ describe('useMediaQuery', () => {
     // new mql receives one, preventing duplicate or stale subscriptions.
     const mql1 = makeMql(false)
     const mql2 = makeMql(true)
-    const matchMediaMock = vi.fn()
+    const matchMediaMock = vi
+      .fn()
       .mockReturnValueOnce(mql1) // lazy-init call on first mount
       .mockReturnValueOnce(mql1) // useEffect call on first mount
-      .mockReturnValue(mql2)     // useEffect call after query changes
+      .mockReturnValue(mql2) // useEffect call after query changes
 
     window.matchMedia = matchMediaMock
 
@@ -175,7 +183,9 @@ describe('useMediaQuery', () => {
     // A handler must be attached to the first mql after the initial render.
     expect(mql1._handler()).not.toBeNull()
 
-    act(() => { rerender({ q: '(min-width: 1024px)' }) })
+    act(() => {
+      rerender({ q: '(min-width: 1024px)' })
+    })
 
     // Old handler torn down; new handler wired up.
     expect(mql1._handler()).toBeNull()
@@ -233,7 +243,9 @@ describe('useIsMobile', () => {
     const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(true)
 
-    act(() => { mql._fire(false) }) // viewport grew to ≥768 px
+    act(() => {
+      mql._fire(false)
+    }) // viewport grew to ≥768 px
     expect(result.current).toBe(false)
   })
 
@@ -245,7 +257,9 @@ describe('useIsMobile', () => {
     const { result } = renderHook(() => useIsMobile())
     expect(result.current).toBe(false)
 
-    act(() => { mql._fire(true) }) // viewport shrunk to < 768 px
+    act(() => {
+      mql._fire(true)
+    }) // viewport shrunk to < 768 px
     expect(result.current).toBe(true)
   })
 })

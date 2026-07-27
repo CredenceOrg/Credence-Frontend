@@ -177,7 +177,18 @@ describe('Badge', () => {
     })
 
     it('no variant produces an empty aria-label', () => {
-      const variants = ['bronze', 'silver', 'gold', 'platinum', 'active', 'locked', 'slashed', 'grace-period', 'unknown', '']
+      const variants = [
+        'bronze',
+        'silver',
+        'gold',
+        'platinum',
+        'active',
+        'locked',
+        'slashed',
+        'grace-period',
+        'unknown',
+        '',
+      ]
       for (const v of variants) {
         const { unmount } = render(<Badge variant={v} />)
         const badge = document.querySelector('.badge')

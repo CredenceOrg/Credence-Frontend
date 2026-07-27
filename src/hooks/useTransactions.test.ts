@@ -60,7 +60,7 @@ describe('useTransactions', () => {
     // Transaction should appear immediately
     expect(result.current.data).toHaveLength(1)
     expect(result.current.data[0].id).toBe('tx-123')
-    
+
     act(() => {
       result.current.removePendingTransaction(tx.hash)
     })

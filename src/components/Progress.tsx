@@ -87,10 +87,7 @@ export default function Progress({
       aria-valuemax={isIndeterminate ? undefined : max}
       className={rootClass}
     >
-      <div
-        className="progress__track"
-        aria-hidden="true"
-      >
+      <div className="progress__track" aria-hidden="true">
         <div
           className="progress__fill"
           style={

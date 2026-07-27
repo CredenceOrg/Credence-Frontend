@@ -48,7 +48,15 @@ vi.mock('../hooks/useNetworkMismatch', () => ({
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
-  Link: ({ children, to, style }: { children: React.ReactNode; to: string; style?: React.CSSProperties }) => (
+  Link: ({
+    children,
+    to,
+    style,
+  }: {
+    children: React.ReactNode
+    to: string
+    style?: React.CSSProperties
+  }) => (
     <a href={to} style={style}>
       {children}
     </a>
@@ -189,9 +197,9 @@ describe('Bond Page', () => {
     }
     render(<Bond />)
 
-    const mismatchBanner = screen.getAllByRole('alert').find((el) =>
-      el.textContent?.includes('Network mismatch')
-    )
+    const mismatchBanner = screen
+      .getAllByRole('alert')
+      .find((el) => el.textContent?.includes('Network mismatch'))
     expect(mismatchBanner).toHaveTextContent(
       /Credence is set to Public \(Mainnet\), but Freighter is on Test \(Testnet\)/i
     )
@@ -200,7 +208,9 @@ describe('Bond Page', () => {
       'aria-describedby',
       'bond-network-mismatch'
     )
-    expect(screen.getByRole('button', { name: /switch app to test \(testnet\)/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /switch app to test \(testnet\)/i })
+    ).toBeInTheDocument()
   })
 
   it('switches the app network to the connected wallet network from the mismatch banner', () => {
@@ -244,7 +254,9 @@ describe('Bond Page', () => {
       render(<Bond />)
 
       fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
-      const statusAnnouncer = screen.getAllByRole('status').find((el) => el.classList.contains('sr-only'))!
+      const statusAnnouncer = screen
+        .getAllByRole('status')
+        .find((el) => el.classList.contains('sr-only'))!
       expect(statusAnnouncer).toHaveTextContent('Submitting transaction…')
 
       await vi.runAllTimersAsync()
@@ -256,7 +268,9 @@ describe('Bond Page', () => {
       fireEvent.click(screen.getByRole('button', { name: /^Create bond$/i }))
       await vi.runAllTimersAsync()
 
-      const statusAnnouncer = screen.getAllByRole('status').find((el) => el.classList.contains('sr-only'))!
+      const statusAnnouncer = screen
+        .getAllByRole('status')
+        .find((el) => el.classList.contains('sr-only'))!
       expect(statusAnnouncer).toHaveTextContent('')
     })
 

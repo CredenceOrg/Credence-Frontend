@@ -73,8 +73,7 @@ export class ApiRateLimiter {
 
   constructor(options: Partial<ApiRateLimiterOptions> = {}) {
     this.options = {
-      maxRequests:
-        options.maxRequests ?? DEFAULT_API_RATE_LIMIT.maxRequests,
+      maxRequests: options.maxRequests ?? DEFAULT_API_RATE_LIMIT.maxRequests,
       windowMs: options.windowMs ?? DEFAULT_API_RATE_LIMIT.windowMs,
       enabled: options.enabled ?? DEFAULT_API_RATE_LIMIT.enabled,
       now: options.now ?? (() => Date.now()),
@@ -119,10 +118,7 @@ export class ApiRateLimiter {
         `ApiRateLimiter.configure: maxRequests must be a positive finite number, received ${next.maxRequests}`
       )
     }
-    if (
-      next.windowMs !== undefined &&
-      (!Number.isFinite(next.windowMs) || next.windowMs <= 0)
-    ) {
+    if (next.windowMs !== undefined && (!Number.isFinite(next.windowMs) || next.windowMs <= 0)) {
       throw new RangeError(
         `ApiRateLimiter.configure: windowMs must be a positive finite number, received ${next.windowMs}`
       )

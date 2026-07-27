@@ -123,7 +123,9 @@ export default function Banner({
               <a
                 href={action.href}
                 className="banner__link"
-                {...(isExternalUrl(action.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                {...(isExternalUrl(action.href)
+                  ? { target: '_blank', rel: 'noopener noreferrer' }
+                  : {})}
               >
                 {action.label}
                 <svg

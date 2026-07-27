@@ -15,7 +15,7 @@ describe('PrefetchNavLink', () => {
     renderInRouter(
       <PrefetchNavLink to="/dashboard" preload={preload}>
         Dashboard
-      </PrefetchNavLink>,
+      </PrefetchNavLink>
     )
 
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard')
@@ -28,7 +28,7 @@ describe('PrefetchNavLink', () => {
     renderInRouter(
       <PrefetchNavLink to="/dashboard" preload={preload}>
         Dashboard
-      </PrefetchNavLink>,
+      </PrefetchNavLink>
     )
 
     await user.hover(screen.getByRole('link', { name: 'Dashboard' }))
@@ -43,7 +43,7 @@ describe('PrefetchNavLink', () => {
     renderInRouter(
       <PrefetchNavLink to="/dashboard" preload={preload}>
         Dashboard
-      </PrefetchNavLink>,
+      </PrefetchNavLink>
     )
 
     await user.tab()
@@ -57,7 +57,7 @@ describe('PrefetchNavLink', () => {
     renderInRouter(
       <PrefetchNavLink to="/dashboard" preload={preload} className="custom-link">
         Dashboard
-      </PrefetchNavLink>,
+      </PrefetchNavLink>
     )
 
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveClass('custom-link')
@@ -71,7 +71,7 @@ describe('PrefetchNavLink', () => {
     renderInRouter(
       <PrefetchNavLink to="/dashboard" preload={preload} onMouseEnter={onMouseEnter}>
         Dashboard
-      </PrefetchNavLink>,
+      </PrefetchNavLink>
     )
 
     await user.hover(screen.getByRole('link', { name: 'Dashboard' }))
@@ -87,7 +87,7 @@ describe('PrefetchNavLink', () => {
     renderInRouter(
       <PrefetchNavLink to="/dashboard" preload={preload} onFocus={onFocus}>
         Dashboard
-      </PrefetchNavLink>,
+      </PrefetchNavLink>
     )
 
     await user.tab()

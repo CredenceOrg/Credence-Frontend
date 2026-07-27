@@ -268,7 +268,9 @@ export default function FilePicker({
   const autoId = useId()
   const inputId = externalId ? `${externalId}-input` : `file-picker-${autoId}-input`
   const announceId = externalId ? `${externalId}-announce` : `file-picker-${autoId}-announce`
-  const dragAnnounceId = externalId ? `${externalId}-drag-announce` : `file-picker-${autoId}-drag-announce`
+  const dragAnnounceId = externalId
+    ? `${externalId}-drag-announce`
+    : `file-picker-${autoId}-drag-announce`
   const wrapperId = externalId || `file-picker-${autoId}`
 
   const dropzoneRef = useRef<HTMLDivElement>(null)
@@ -279,7 +281,9 @@ export default function FilePicker({
   const [announcement, setAnnouncement] = useState('')
   const [dragAnnouncement, setDragAnnouncement] = useState('')
 
-  const defaultTitle = multiple ? 'Drag and drop files here, or click to browse' : 'Drag and drop a file here, or click to browse'
+  const defaultTitle = multiple
+    ? 'Drag and drop files here, or click to browse'
+    : 'Drag and drop a file here, or click to browse'
   const effectiveTitle = title || defaultTitle
 
   const defaultDropHint = multiple
@@ -311,7 +315,7 @@ export default function FilePicker({
         return true
       })
     },
-    [accept, maxSizeBytes],
+    [accept, maxSizeBytes]
   )
 
   const handleFiles = useCallback(
@@ -322,7 +326,7 @@ export default function FilePicker({
       if (validFiles.length === 0) {
         if (rejectedCount > 0) {
           setAnnouncement(
-            `${rejectedCount} file${rejectedCount !== 1 ? 's' : ''} rejected. Check file type${rejectedCount !== 1 ? 's' : ''} and size.`,
+            `${rejectedCount} file${rejectedCount !== 1 ? 's' : ''} rejected. Check file type${rejectedCount !== 1 ? 's' : ''} and size.`
           )
         }
         return
@@ -342,11 +346,11 @@ export default function FilePicker({
       const addedCount = multiple ? nextFiles.length - files.length : nextFiles.length
       if (addedCount > 0) {
         setAnnouncement(
-          `${addedCount} file${addedCount !== 1 ? 's' : ''} added. ${nextFiles.length} total file${nextFiles.length !== 1 ? 's' : ''} selected.`,
+          `${addedCount} file${addedCount !== 1 ? 's' : ''} added. ${nextFiles.length} total file${nextFiles.length !== 1 ? 's' : ''} selected.`
         )
       }
     },
-    [files, multiple, onChange, validateAndFilterFiles],
+    [files, multiple, onChange, validateAndFilterFiles]
   )
 
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -392,7 +396,7 @@ export default function FilePicker({
         e.dataTransfer.clearData()
       }
     },
-    [disabled, handleFiles],
+    [disabled, handleFiles]
   )
 
   const handleClick = useCallback(() => {
@@ -412,7 +416,7 @@ export default function FilePicker({
         handleClick()
       }
     },
-    [disabled, handleClick],
+    [disabled, handleClick]
   )
 
   const handleFileChange = useCallback(
@@ -422,7 +426,7 @@ export default function FilePicker({
       }
       e.target.value = ''
     },
-    [handleFiles],
+    [handleFiles]
   )
 
   const handleRemove = useCallback(
@@ -430,9 +434,11 @@ export default function FilePicker({
       const removedFile = files[index]
       const nextFiles = files.filter((_, i) => i !== index)
       onChange(nextFiles)
-      setAnnouncement(`Removed ${removedFile?.name || 'file'}. ${nextFiles.length} file${nextFiles.length !== 1 ? 's' : ''} remaining.`)
+      setAnnouncement(
+        `Removed ${removedFile?.name || 'file'}. ${nextFiles.length} file${nextFiles.length !== 1 ? 's' : ''} remaining.`
+      )
     },
-    [files, onChange],
+    [files, onChange]
   )
 
   const composedHint = [
@@ -480,7 +486,13 @@ export default function FilePicker({
         {announcement}
       </div>
 
-      <div id={dragAnnounceId} className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      <div
+        id={dragAnnounceId}
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {dragAnnouncement}
       </div>
     </div>

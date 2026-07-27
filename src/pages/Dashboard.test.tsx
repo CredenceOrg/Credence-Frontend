@@ -2,12 +2,20 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ONBOARDING_COMPLETION_STORAGE_KEY, ONBOARDING_STEP_STORAGE_KEY } from '../config/onboarding'
+import {
+  ONBOARDING_COMPLETION_STORAGE_KEY,
+  ONBOARDING_STEP_STORAGE_KEY,
+} from '../config/onboarding'
 import Dashboard from './Dashboard'
 
 // Mocks needed because ActionCard now uses useToast, useCopyToClipboard, and useTranslation
 vi.mock('../components/ToastProvider', () => ({
-  useToast: () => ({ addToast: vi.fn(), removeToast: vi.fn(), removeAllToasts: vi.fn(), announce: vi.fn() }),
+  useToast: () => ({
+    addToast: vi.fn(),
+    removeToast: vi.fn(),
+    removeAllToasts: vi.fn(),
+    announce: vi.fn(),
+  }),
 }))
 
 vi.mock('../hooks/useCopyToClipboard', () => ({
@@ -44,7 +52,7 @@ vi.mock('../hooks/useQuery', () => ({
       error: null,
       refetch: mockRefetch,
     }
-  }
+  },
 }))
 
 vi.mock('../hooks/useMediaQuery', () => ({

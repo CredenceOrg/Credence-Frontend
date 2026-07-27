@@ -20,12 +20,7 @@ export interface PageHeaderProps {
  * - Card / section titles inside the route: `h2`
  * - Sub-sections nested within cards/sections: `h3`
  */
-export default function PageHeader({
-  title,
-  description,
-  badge,
-  action,
-}: PageHeaderProps) {
+export default function PageHeader({ title, description, badge, action }: PageHeaderProps) {
   return (
     <header className="pageHeader">
       <div className="pageHeader__main">

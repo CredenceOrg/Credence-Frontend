@@ -43,7 +43,10 @@ describe('useKeyboardShortcut', () => {
     it('parseShortcutSpec splits and normalizes shortcut representations', () => {
       expect(parseShortcutSpec('Mod+K')).toEqual([['Mod', 'K']])
       expect(parseShortcutSpec(['Ctrl', 'Shift', 'P'])).toEqual([['Ctrl', 'Shift', 'P']])
-      expect(parseShortcutSpec(['Mod+K', 'Alt+S'])).toEqual([['Mod', 'K'], ['Alt', 'S']])
+      expect(parseShortcutSpec(['Mod+K', 'Alt+S'])).toEqual([
+        ['Mod', 'K'],
+        ['Alt', 'S'],
+      ])
       expect(parseShortcutSpec('+')).toEqual([['+']])
     })
 
@@ -68,13 +71,9 @@ describe('useKeyboardShortcut', () => {
   describe('hook execution', () => {
     it('triggers handler on matching window keydown event', () => {
       const onShortcut = vi.fn()
-      renderHook(() =>
-        useKeyboardShortcut(['Mod', 'k'], onShortcut, { userAgent: WIN_UA })
-      )
+      renderHook(() => useKeyboardShortcut(['Mod', 'k'], onShortcut, { userAgent: WIN_UA }))
 
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
       expect(onShortcut).toHaveBeenCalledTimes(1)
     })
 
@@ -88,24 +87,18 @@ describe('useKeyboardShortcut', () => {
         })
       )
 
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 's', altKey: true, bubbles: true })
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', altKey: true, bubbles: true }))
       expect(onShortcut).toHaveBeenCalledTimes(1)
     })
 
     it('ignores shortcut when focused inside editable elements by default', () => {
       const onShortcut = vi.fn()
-      renderHook(() =>
-        useKeyboardShortcut(['Mod', 'k'], onShortcut, { userAgent: WIN_UA })
-      )
+      renderHook(() => useKeyboardShortcut(['Mod', 'k'], onShortcut, { userAgent: WIN_UA }))
 
       const input = document.createElement('input')
       document.body.appendChild(input)
 
-      input.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
-      )
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
       expect(onShortcut).not.toHaveBeenCalled()
     })
 
@@ -121,9 +114,7 @@ describe('useKeyboardShortcut', () => {
       const input = document.createElement('input')
       document.body.appendChild(input)
 
-      input.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
-      )
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
       expect(onShortcut).toHaveBeenCalledTimes(1)
     })
 
@@ -138,23 +129,17 @@ describe('useKeyboardShortcut', () => {
         { initialProps: { enabled: false } }
       )
 
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
       expect(onShortcut).not.toHaveBeenCalled()
 
       rerender({ enabled: true })
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
       expect(onShortcut).toHaveBeenCalledTimes(1)
     })
 
     it('prevents default event behavior when preventDefault is true', () => {
       const onShortcut = vi.fn()
-      renderHook(() =>
-        useKeyboardShortcut(['Mod', 'k'], onShortcut, { userAgent: WIN_UA })
-      )
+      renderHook(() => useKeyboardShortcut(['Mod', 'k'], onShortcut, { userAgent: WIN_UA }))
 
       const event = new KeyboardEvent('keydown', {
         key: 'k',
@@ -181,9 +166,7 @@ describe('useKeyboardShortcut', () => {
         })
       )
 
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
       expect(onShortcut).not.toHaveBeenCalled()
 
       targetDiv.dispatchEvent(
@@ -200,9 +183,7 @@ describe('useKeyboardShortcut', () => {
 
       unmount()
 
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
       expect(onShortcut).not.toHaveBeenCalled()
     })
   })

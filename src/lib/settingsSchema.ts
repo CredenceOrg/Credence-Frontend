@@ -68,7 +68,10 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   }
 
   if (input.network !== undefined) {
-    if (typeof input.network === 'string' && (VALID_NETWORKS as readonly string[]).includes(input.network)) {
+    if (
+      typeof input.network === 'string' &&
+      (VALID_NETWORKS as readonly string[]).includes(input.network)
+    ) {
       result.network = input.network
     } else {
       errors.push(`network must be one of: ${VALID_NETWORKS.join(', ')}`)
@@ -76,7 +79,10 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   }
 
   if (input.addressDisplay !== undefined) {
-    if (typeof input.addressDisplay === 'string' && (VALID_ADDRESS_DISPLAYS as readonly string[]).includes(input.addressDisplay)) {
+    if (
+      typeof input.addressDisplay === 'string' &&
+      (VALID_ADDRESS_DISPLAYS as readonly string[]).includes(input.addressDisplay)
+    ) {
       result.addressDisplay = input.addressDisplay
     } else {
       errors.push(`addressDisplay must be one of: ${VALID_ADDRESS_DISPLAYS.join(', ')}`)
@@ -88,7 +94,10 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   }
 
   if (input.autoDismiss !== undefined) {
-    if (typeof input.autoDismiss === 'string' && (VALID_AUTO_DISMISS as readonly string[]).includes(input.autoDismiss)) {
+    if (
+      typeof input.autoDismiss === 'string' &&
+      (VALID_AUTO_DISMISS as readonly string[]).includes(input.autoDismiss)
+    ) {
       result.autoDismiss = input.autoDismiss
     } else {
       errors.push(`autoDismiss must be one of: ${VALID_AUTO_DISMISS.join(', ')}`)
@@ -101,7 +110,10 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   }
 
   if (input.quietHoursStart !== undefined) {
-    if (typeof input.quietHoursStart === 'string' && QUIET_HOURS_TIME_PATTERN.test(input.quietHoursStart)) {
+    if (
+      typeof input.quietHoursStart === 'string' &&
+      QUIET_HOURS_TIME_PATTERN.test(input.quietHoursStart)
+    ) {
       result.quietHoursStart = input.quietHoursStart
     } else {
       errors.push('quietHoursStart must match HH:mm (24-hour)')
@@ -109,7 +121,10 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   }
 
   if (input.quietHoursEnd !== undefined) {
-    if (typeof input.quietHoursEnd === 'string' && QUIET_HOURS_TIME_PATTERN.test(input.quietHoursEnd)) {
+    if (
+      typeof input.quietHoursEnd === 'string' &&
+      QUIET_HOURS_TIME_PATTERN.test(input.quietHoursEnd)
+    ) {
       result.quietHoursEnd = input.quietHoursEnd
     } else {
       errors.push('quietHoursEnd must match HH:mm (24-hour)')

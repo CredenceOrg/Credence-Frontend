@@ -7,6 +7,6 @@ export function getExplorerTxUrl(network: string, hash: string): string {
   } else if (netLower.includes('future')) {
     explorerNetwork = 'futurenet'
   }
-  
+
   return `https://stellar.expert/explorer/${explorerNetwork}/tx/${hash}`
 }

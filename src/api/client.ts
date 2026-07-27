@@ -1,8 +1,4 @@
-import {
-  ApiRateLimiter,
-  DEFAULT_API_RATE_LIMIT,
-  readApiRateLimitOverrides,
-} from './rateLimit'
+import { ApiRateLimiter, DEFAULT_API_RATE_LIMIT, readApiRateLimitOverrides } from './rateLimit'
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | unknown[] | null

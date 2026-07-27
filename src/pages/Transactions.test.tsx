@@ -195,7 +195,10 @@ describe('Transactions page', () => {
       // Bulk bar should be hidden initially.
       expect(getBulkBar().hasAttribute('hidden')).toBe(true)
       // Filter select remains usable exactly like before the feature.
-      await user.selectOptions(screen.getByRole('combobox', { name: /filter by status/i }), 'failed')
+      await user.selectOptions(
+        screen.getByRole('combobox', { name: /filter by status/i }),
+        'failed'
+      )
       // Only the failed row remains visible.
       expect(screen.queryByText('bond_create')).not.toBeInTheDocument()
       expect(screen.getByText('withdraw')).toBeInTheDocument()
@@ -290,7 +293,10 @@ describe('Transactions page', () => {
 
       // Filter to "failed" so two rows are visible; select-all selects
       // both.
-      await user.selectOptions(screen.getByRole('combobox', { name: /filter by status/i }), 'failed')
+      await user.selectOptions(
+        screen.getByRole('combobox', { name: /filter by status/i }),
+        'failed'
+      )
       await user.click(getSelectAll())
       expect(rowCheckboxFor('tx-2').checked).toBe(true)
       expect(rowCheckboxFor('tx-other').checked).toBe(true)
@@ -308,7 +314,10 @@ describe('Transactions page', () => {
       // Select all (3 rows)
       await user.click(getSelectAll())
       // Now narrow the filter; selection is pruned to the subset.
-      await user.selectOptions(screen.getByRole('combobox', { name: /filter by status/i }), 'pending')
+      await user.selectOptions(
+        screen.getByRole('combobox', { name: /filter by status/i }),
+        'pending'
+      )
       // Only TX3 is visible/selected.
       expect(within(getBulkBar()).getByText('1 selected')).toBeInTheDocument()
       // The select-all should be checked (the filtered subset is fully selected).
@@ -336,7 +345,11 @@ describe('Transactions page', () => {
       mockLoaded()
       render(<Transactions />)
       await user.click(rowCheckboxFor('tx-1'))
-      await user.click(getBulkBar().querySelector(`[data-testid="${TEST_IDS.TX_BULK_CLEAR_BUTTON}"]`) as HTMLButtonElement)
+      await user.click(
+        getBulkBar().querySelector(
+          `[data-testid="${TEST_IDS.TX_BULK_CLEAR_BUTTON}"]`
+        ) as HTMLButtonElement
+      )
       expect(getBulkBar().hasAttribute('hidden')).toBe(true)
     })
 
@@ -383,10 +396,7 @@ describe('Transactions page', () => {
       render(<Transactions />)
       await user.click(getSelectAll())
       await user.click(screen.getByTestId(TEST_IDS.TX_BULK_EXPORT_BUTTON))
-      expect(addToastMock).toHaveBeenCalledWith(
-        'success',
-        expect.stringContaining('3')
-      )
+      expect(addToastMock).toHaveBeenCalledWith('success', expect.stringContaining('3'))
     })
   })
 
@@ -477,7 +487,10 @@ describe('Transactions page', () => {
       const user = userEvent.setup()
       mockLoaded([TX1, TX2, TX3])
       render(<Transactions />)
-      await user.selectOptions(screen.getByRole('combobox', { name: /filter by status/i }), 'pending')
+      await user.selectOptions(
+        screen.getByRole('combobox', { name: /filter by status/i }),
+        'pending'
+      )
       await user.click(rowCheckboxFor('tx-3'))
       expect(getBulkBar().hasAttribute('hidden')).toBe(false)
       expect(within(getBulkBar()).getByText('1 selected')).toBeInTheDocument()

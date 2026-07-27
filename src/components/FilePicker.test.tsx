@@ -12,7 +12,9 @@ function makeFile(name: string, size: number, type: string): File {
 
 function FilePickerWithState(props: Partial<React.ComponentProps<typeof FilePicker>>) {
   const [files, setFiles] = useState<File[]>([])
-  return <FilePicker id="test-picker" label="Test picker" files={files} onChange={setFiles} {...props} />
+  return (
+    <FilePicker id="test-picker" label="Test picker" files={files} onChange={setFiles} {...props} />
+  )
 }
 
 function makeDragEvent(files: File[]): Partial<React.DragEvent> {
@@ -38,16 +40,12 @@ describe('FilePicker', () => {
 
     it('renders the default title when no title prop is given for single file', () => {
       render(<FilePickerWithState multiple={false} />)
-      expect(
-        screen.getByText('Drag and drop a file here, or click to browse'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('Drag and drop a file here, or click to browse')).toBeInTheDocument()
     })
 
     it('renders the default title when no title prop is given for multiple files', () => {
       render(<FilePickerWithState multiple={true} />)
-      expect(
-        screen.getByText('Drag and drop files here, or click to browse'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('Drag and drop files here, or click to browse')).toBeInTheDocument()
     })
 
     it('renders a custom title when provided', () => {
@@ -155,14 +153,7 @@ describe('FilePicker', () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
       const files = [makeFile('report.pdf', 1024, 'application/pdf')]
-      render(
-        <FilePicker
-          id="rp"
-          label="R"
-          files={files}
-          onChange={onChange}
-        />,
-      )
+      render(<FilePicker id="rp" label="R" files={files} onChange={onChange} />)
       const removeBtn = screen.getByTestId('file-picker-remove-button-0')
       expect(removeBtn).toHaveAttribute('type', 'button')
       await act(async () => {
@@ -177,13 +168,7 @@ describe('FilePicker', () => {
       const onChange = vi.fn()
       const files: File[] = []
       render(
-        <FilePicker
-          id="sp"
-          label="Single"
-          multiple={false}
-          files={files}
-          onChange={onChange}
-        />,
+        <FilePicker id="sp" label="Single" multiple={false} files={files} onChange={onChange} />
       )
       const fileA = makeFile('a.pdf', 500, 'application/pdf')
       const fileB = makeFile('b.pdf', 600, 'application/pdf')
@@ -202,13 +187,7 @@ describe('FilePicker', () => {
       const onChange = vi.fn()
       const existing = [makeFile('prev.pdf', 100, 'application/pdf')]
       render(
-        <FilePicker
-          id="mp"
-          label="Multi"
-          multiple={true}
-          files={existing}
-          onChange={onChange}
-        />,
+        <FilePicker id="mp" label="Multi" multiple={true} files={existing} onChange={onChange} />
       )
       const newFile = makeFile('next.pdf', 200, 'application/pdf')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
@@ -227,13 +206,7 @@ describe('FilePicker', () => {
       const onChange = vi.fn()
       const existing = [makeFile('dup.pdf', 100, 'application/pdf')]
       render(
-        <FilePicker
-          id="dp"
-          label="Dup"
-          multiple={true}
-          files={existing}
-          onChange={onChange}
-        />,
+        <FilePicker id="dp" label="Dup" multiple={true} files={existing} onChange={onChange} />
       )
       const dupFile = makeFile('dup.pdf', 999, 'application/pdf')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
@@ -254,7 +227,7 @@ describe('FilePicker', () => {
           accept=".pdf"
           files={[]}
           onChange={onChange}
-        />,
+        />
       )
       const pdf = makeFile('ok.pdf', 100, 'application/pdf')
       const txt = makeFile('bad.txt', 100, 'text/plain')
@@ -279,7 +252,7 @@ describe('FilePicker', () => {
           accept="image/*"
           files={[]}
           onChange={onChange}
-        />,
+        />
       )
       const png = makeFile('ok.png', 100, 'image/png')
       const pdf = makeFile('bad.pdf', 100, 'application/pdf')
@@ -296,15 +269,7 @@ describe('FilePicker', () => {
 
     it('filters files by maxSizeBytes', () => {
       const onChange = vi.fn()
-      render(
-        <FilePicker
-          id="sz"
-          label="Size"
-          maxSizeBytes={500}
-          files={[]}
-          onChange={onChange}
-        />,
-      )
+      render(<FilePicker id="sz" label="Size" maxSizeBytes={500} files={[]} onChange={onChange} />)
       const small = makeFile('small.pdf', 100, 'application/pdf')
       const big = makeFile('big.pdf', 9999, 'application/pdf')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
@@ -320,15 +285,7 @@ describe('FilePicker', () => {
 
     it('does not call onChange when all files are filtered out', () => {
       const onChange = vi.fn()
-      render(
-        <FilePicker
-          id="nf"
-          label="No"
-          accept=".pdf"
-          files={[]}
-          onChange={onChange}
-        />,
-      )
+      render(<FilePicker id="nf" label="No" accept=".pdf" files={[]} onChange={onChange} />)
       const txt = makeFile('bad.txt', 100, 'text/plain')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
       const dataTransfer = new DataTransfer()
@@ -367,15 +324,7 @@ describe('FilePicker', () => {
 
     it('calls onChange with files on drop', () => {
       const onChange = vi.fn()
-      render(
-        <FilePicker
-          id="dr"
-          label="Drop"
-          multiple={true}
-          files={[]}
-          onChange={onChange}
-        />,
-      )
+      render(<FilePicker id="dr" label="Drop" multiple={true} files={[]} onChange={onChange} />)
       const dropzone = screen.getByTestId('file-picker-dropzone')
       const file = makeFile('dropped.pdf', 500, 'application/pdf')
       act(() => {
@@ -389,15 +338,7 @@ describe('FilePicker', () => {
 
     it('does not call onChange on drop when disabled', () => {
       const onChange = vi.fn()
-      render(
-        <FilePicker
-          id="dd"
-          label="DD"
-          disabled={true}
-          files={[]}
-          onChange={onChange}
-        />,
-      )
+      render(<FilePicker id="dd" label="DD" disabled={true} files={[]} onChange={onChange} />)
       const dropzone = screen.getByTestId('file-picker-dropzone')
       const file = makeFile('blocked.pdf', 500, 'application/pdf')
       act(() => {
@@ -416,7 +357,7 @@ describe('FilePicker', () => {
           multiple={true}
           files={[]}
           onChange={onChange}
-        />,
+        />
       )
       const dropzone = screen.getByTestId('file-picker-dropzone')
       const png = makeFile('ok.png', 100, 'image/png')
@@ -436,9 +377,7 @@ describe('FilePicker', () => {
         makeFile('report.pdf', 2.5 * 1024 * 1024, 'application/pdf'),
         makeFile('tiny.txt', 512, 'text/plain'),
       ]
-      render(
-        <FilePicker id="list" label="List" files={files} onChange={vi.fn()} />,
-      )
+      render(<FilePicker id="list" label="List" files={files} onChange={vi.fn()} />)
       expect(screen.getByText('report.pdf')).toBeInTheDocument()
       expect(screen.getByText('2.5 MB')).toBeInTheDocument()
       expect(screen.getByText('tiny.txt')).toBeInTheDocument()
@@ -446,10 +385,7 @@ describe('FilePicker', () => {
     })
 
     it('renders KB and GB boundaries correctly', () => {
-      const files = [
-        makeFile('a', 2048, 'x'),
-        makeFile('b', 1.5 * 1024 * 1024 * 1024, 'x'),
-      ]
+      const files = [makeFile('a', 2048, 'x'), makeFile('b', 1.5 * 1024 * 1024 * 1024, 'x')]
       render(<FilePicker id="fmt" label="Fmt" files={files} onChange={vi.fn()} />)
       expect(screen.getByText('2.0 KB')).toBeInTheDocument()
       expect(screen.getByText('1.5 GB')).toBeInTheDocument()
@@ -473,9 +409,7 @@ describe('FilePicker', () => {
     it('remove buttons respect disabled state', () => {
       const onChange = vi.fn()
       const files = [makeFile('stuck.pdf', 100, 'application/pdf')]
-      render(
-        <FilePicker id="rd" label="Rd" disabled={true} files={files} onChange={onChange} />,
-      )
+      render(<FilePicker id="rd" label="Rd" disabled={true} files={files} onChange={onChange} />)
       const btn = screen.getByTestId('file-picker-remove-button-0')
       expect(btn).toBeDisabled()
       fireEvent.click(btn)
@@ -583,15 +517,7 @@ describe('FilePicker', () => {
 
   describe('file rejection announcements', () => {
     it('announces rejected files when all files fail accept filter on drop', () => {
-      render(
-        <FilePicker
-          id="rej"
-          label="Reject"
-          accept=".pdf"
-          files={[]}
-          onChange={vi.fn()}
-        />,
-      )
+      render(<FilePicker id="rej" label="Reject" accept=".pdf" files={[]} onChange={vi.fn()} />)
       const dropzone = screen.getByTestId('file-picker-dropzone')
       const txt = makeFile('bad.txt', 100, 'text/plain')
       act(() => {
@@ -604,13 +530,7 @@ describe('FilePicker', () => {
 
     it('announces rejected files when all files exceed maxSizeBytes', () => {
       render(
-        <FilePicker
-          id="rej2"
-          label="Reject2"
-          maxSizeBytes={100}
-          files={[]}
-          onChange={vi.fn()}
-        />,
+        <FilePicker id="rej2" label="Reject2" maxSizeBytes={100} files={[]} onChange={vi.fn()} />
       )
       const dropzone = screen.getByTestId('file-picker-dropzone')
       const big = makeFile('big.pdf', 9999, 'application/pdf')
@@ -623,15 +543,7 @@ describe('FilePicker', () => {
     })
 
     it('announces plural rejection when multiple files fail', () => {
-      render(
-        <FilePicker
-          id="rej3"
-          label="Reject3"
-          accept=".pdf"
-          files={[]}
-          onChange={vi.fn()}
-        />,
-      )
+      render(<FilePicker id="rej3" label="Reject3" accept=".pdf" files={[]} onChange={vi.fn()} />)
       const dropzone = screen.getByTestId('file-picker-dropzone')
       const txt1 = makeFile('bad1.txt', 100, 'text/plain')
       const txt2 = makeFile('bad2.txt', 100, 'text/plain')

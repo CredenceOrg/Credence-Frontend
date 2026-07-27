@@ -22,7 +22,15 @@ vi.mock('@/hooks/useDebouncedValue', () => ({
 // --- QRScannerModal mocking ---
 
 vi.mock('./QRScannerModal', () => ({
-  default: ({ open, onScan, onClose }: { open: boolean; onScan: (value: string) => void; onClose: () => void }) =>
+  default: ({
+    open,
+    onScan,
+    onClose,
+  }: {
+    open: boolean
+    onScan: (value: string) => void
+    onClose: () => void
+  }) =>
     open ? (
       <div data-testid="qr-scanner-modal">
         <button data-testid="mock-scan" onClick={() => onScan(VALID_KEY)}>
@@ -95,12 +103,7 @@ describe('isValidStellarAddress', () => {
   it('rejects a key one char longer than VALID_KEY (57 chars)', () => {
     const onV = vi.fn()
     render(
-      <AddressInput
-        id="addr"
-        value={VALID_KEY + 'A'}
-        onChange={vi.fn()}
-        onValidationChange={onV}
-      />
+      <AddressInput id="addr" value={VALID_KEY + 'A'} onChange={vi.fn()} onValidationChange={onV} />
     )
     expect(onV).toHaveBeenCalledWith(false)
   })
@@ -203,7 +206,9 @@ describe('conditional rendering', () => {
     expect(screen.getByText('Recognized:')).toBeInTheDocument()
     // truncateAddress: first 12 + ... + last 8 chars
     const code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
-    expect(code?.textContent).toBe(`${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`)
+    expect(code?.textContent).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
   })
 
   it('shows character count while there is input', () => {
@@ -274,22 +279,22 @@ describe('paste button', () => {
 
   it('strips stellar: prefix and warns on suspicious characters', async () => {
     const user = userEvent.setup()
-    
+
     function TestComponent() {
       const [val, setVal] = useState('')
       return <AddressInput id="addr" value={val} onChange={setVal} />
     }
-    
+
     render(<TestComponent />)
     const input = screen.getByRole('textbox')
-    
+
     await user.click(input)
     // Paste with stellar: prefix and a suspicious non-ASCII character
     await user.paste('stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
-    
+
     // The value should be updated without "stellar:"
     expect(input).toHaveValue('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
-    
+
     // And it should show a warning
     const alert = screen.getByRole('alert')
     expect(alert).toBeInTheDocument()
@@ -319,13 +324,17 @@ describe('echo display respects addressDisplay setting', () => {
   it('shows truncated address when addressDisplay is "short"', async () => {
     const text = await renderAndTriggerEcho('short')
     // truncateAddress: first 12 + "..." + last 8
-    expect(text).toBe(`${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`)
+    expect(text).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
   })
 
   it('shows friendly address when addressDisplay is "friendly"', async () => {
     const text = await renderAndTriggerEcho('friendly')
     // formatAddressForDisplay friendly: first 6 + "…" + last 4
-    expect(text).toBe(`${VALID_KEY.substring(0, 6)}\u2026${VALID_KEY.substring(VALID_KEY.length - 4)}`)
+    expect(text).toBe(
+      `${VALID_KEY.substring(0, 6)}\u2026${VALID_KEY.substring(VALID_KEY.length - 4)}`
+    )
   })
 
   it('re-renders echo when addressDisplay setting changes', async () => {

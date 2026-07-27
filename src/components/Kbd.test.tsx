@@ -110,9 +110,7 @@ describe('Kbd', () => {
     it('only one size class is present at a time', () => {
       render(<Kbd size="lg">K</Kbd>)
       const el = document.querySelector('.credence-kbd')!
-      const sizeClasses = Array.from(el.classList).filter((c) =>
-        c.startsWith('credence-kbd--'),
-      )
+      const sizeClasses = Array.from(el.classList).filter((c) => c.startsWith('credence-kbd--'))
       expect(sizeClasses).toHaveLength(1)
       expect(sizeClasses[0]).toBe('credence-kbd--lg')
     })
@@ -126,7 +124,7 @@ describe('Kbd', () => {
         <span>
           <Kbd>Ctrl</Kbd>
           <Kbd>K</Kbd>
-        </span>,
+        </span>
       )
       const keys = document.querySelectorAll('.credence-kbd')
       expect(keys).toHaveLength(2)

@@ -204,10 +204,7 @@ export default function Bond() {
         {txStatus}
       </div>
 
-      <PageHeader
-        title={t('bond.title')}
-        description={t('bond.description')}
-      />
+      <PageHeader title={t('bond.title')} description={t('bond.description')} />
 
       <Banner severity="info">{t('bond.infoBanner')}</Banner>
 

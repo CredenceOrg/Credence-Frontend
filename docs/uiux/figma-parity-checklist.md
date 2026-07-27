@@ -227,13 +227,13 @@ For each key shared component touched by the PR, verify the Figma component inst
 
 For every changed screen, resize the browser and confirm layout matches Figma at each breakpoint.
 
-| Breakpoint | Width | Expected behavior |
-| :--- | :--- | :--- |
-| Narrow mobile | 360px | Compact layout, reduced padding, no horizontal scroll |
-| Mobile | < 640px | Single column, hamburger nav, stacked cards |
-| Tablet | 640px–768px | Two-column grids, wider spacing |
-| Desktop | ≥ 1024px | Full multi-column layout, horizontal nav |
-| Widescreen | ≥ 1280px | Max-width containers centered, overlay modals |
+| Breakpoint    | Width       | Expected behavior                                     |
+| :------------ | :---------- | :---------------------------------------------------- |
+| Narrow mobile | 360px       | Compact layout, reduced padding, no horizontal scroll |
+| Mobile        | < 640px     | Single column, hamburger nav, stacked cards           |
+| Tablet        | 640px–768px | Two-column grids, wider spacing                       |
+| Desktop       | ≥ 1024px    | Full multi-column layout, horizontal nav              |
+| Widescreen    | ≥ 1280px    | Max-width containers centered, overlay modals         |
 
 - [ ] 360px — no content clipping or horizontal overflow.
 - [ ] 640px — nav switches to hamburger drawer, cards stack.

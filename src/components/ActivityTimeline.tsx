@@ -116,7 +116,7 @@ export default function ActivityTimeline({
       setExpandedId(null)
       triggerRefs.current.get(openId)?.focus()
     },
-    [expandedId],
+    [expandedId]
   )
 
   return (
@@ -189,7 +189,10 @@ export default function ActivityTimeline({
                         borderRadius: 'var(--credence-radius-md)',
                       }}
                     >
-                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                      <p
+                        className="activity-row__actor"
+                        style={{ marginBottom: 'var(--credence-space-1)' }}
+                      >
                         <strong>Actor:</strong> {item.actor}
                       </p>
                       <p className="activity-row__meta">

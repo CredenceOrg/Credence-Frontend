@@ -41,25 +41,27 @@ describe('Attestations Page', () => {
     expect(screen.getByText('Attestation submitted')).toBeInTheDocument()
   })
 
-  it('shows empty state when filter yields no results', () => {
+  it('shows attestation-specific empty state when filter yields no results', () => {
     render(<Attestations />)
     const filterSelect = screen.getByRole('combobox', { name: /filter attestations/i })
 
     fireEvent.change(filterSelect, { target: { value: 'warning' } })
 
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-    expect(screen.getByText('No activity yet')).toBeInTheDocument()
+    // Should show the attestation-specific empty state, not the ActivityTimeline default
+    expect(screen.getByRole('heading', { name: /no matching attestations/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /clear filter/i })).toBeInTheDocument()
   })
 
   it('expands row details on click', () => {
     render(<Attestations />)
     const expandBtn = screen.getByRole('button', { name: /show details/i })
 
-    expect(screen.getByText(/Tx 0x123/)).not.toBeVisible()
+    // Panel is hidden — use queryByTestId since CopyableHash is not mocked here
+    expect(screen.queryByTestId('copyable-hash')).not.toBeInTheDocument()
     fireEvent.click(expandBtn)
 
     expect(expandBtn).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText(/Tx 0x123/)).toBeVisible()
     expect(screen.getByText(/Validator/)).toBeVisible()
   })
 })

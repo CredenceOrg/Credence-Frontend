@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, type ReactElement } from 'react'
 import './ActivityTimeline.css'
-import { ACTIVITY_ITEMS, ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
+import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
@@ -30,6 +30,10 @@ export function isTxHash(meta: string): boolean {
 export interface ActivityTimelineProps {
   compact?: boolean
   items?: ActivityItem[]
+  /** Override the default empty-state title (defaults to "No activity yet"). */
+  emptyTitle?: string
+  /** Override the default empty-state description. */
+  emptyDescription?: string
 }
 
 /**
@@ -45,6 +49,8 @@ export interface ActivityTimelineProps {
 export default function ActivityTimeline({
   compact = false,
   items = SAMPLE_ACTIVITY,
+  emptyTitle = 'No activity yet',
+  emptyDescription = 'Attestations and events will appear here once activity begins.',
 }: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -83,8 +89,8 @@ export default function ActivityTimeline({
       {count === 0 ? (
         <EmptyState
           illustration="activity"
-          title="No activity yet"
-          description="Attestations and events will appear here once activity begins."
+          title={emptyTitle}
+          description={emptyDescription}
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">

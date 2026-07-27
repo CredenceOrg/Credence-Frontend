@@ -85,12 +85,12 @@ describe('ActivityTimeline', () => {
   describe('empty items', () => {
     it('renders the EmptyState heading when items is an empty array', () => {
       render(<ActivityTimeline items={[]} />)
-      expect(screen.getByRole('heading', { name: /no recent activity/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
     })
 
     it('renders the EmptyState description', () => {
       render(<ActivityTimeline items={[]} />)
-      expect(screen.getByText(/new trust score events will appear here/i)).toBeInTheDocument()
+      expect(screen.getByText(/attestations and events will appear here/i)).toBeInTheDocument()
     })
 
     it('does not render the timeline list', () => {

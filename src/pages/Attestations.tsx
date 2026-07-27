@@ -4,6 +4,7 @@ import AttestationForm from '../components/AttestationForm'
 import ActivityTimeline from '../components/ActivityTimeline'
 import { ACTIVITY_ITEMS } from '../data/activity'
 import Select from '../components/controls/Select'
+import { EmptyState } from '../components/states'
 import { ATTESTATION_EVENTS, type AttestationPayload, type ActivityItem } from '../events'
 
 export default function Attestations() {
@@ -56,6 +57,8 @@ export default function Attestations() {
     { value: 'info', label: t('attestations.filter.info') },
   ]
 
+  const filterLabel = filterOptions.find((o) => o.value === filterTone)?.label ?? filterTone
+
   return (
     <div
       style={{
@@ -105,7 +108,24 @@ export default function Attestations() {
               />
             </div>
           </div>
-          <ActivityTimeline items={filteredItems} />
+          {filteredItems.length === 0 && filterTone !== 'all' ? (
+            <EmptyState
+              illustration="attestation"
+              title={t('attestations.noFilterResults')}
+              description={t('attestations.noFilterResultsDescription', { filter: filterLabel })}
+              action={{
+                label: t('attestations.clearFilter'),
+                onClick: () => setFilterTone('all'),
+                variant: 'secondary',
+              }}
+            />
+          ) : (
+            <ActivityTimeline
+              items={filteredItems}
+              emptyTitle={t('attestations.emptyTitle')}
+              emptyDescription={t('attestations.emptyDescription')}
+            />
+          )}
         </section>
       </div>
     </div>

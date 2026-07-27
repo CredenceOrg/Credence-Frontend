@@ -110,7 +110,9 @@ describe('Toast', () => {
 
   it('has the correct aria-label accessible name', () => {
     renderToast('info')
-    expect(screen.getByRole('button', { name: 'Dismiss info notification' })).toHaveAccessibleName('Dismiss info notification')
+    expect(screen.getByRole('button', { name: 'Dismiss info notification' })).toHaveAccessibleName(
+      'Dismiss info notification'
+    )
   })
 
   it('countdown matches configured duration', () => {

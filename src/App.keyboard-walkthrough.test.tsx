@@ -88,14 +88,14 @@ function renderAt(path: string) {
           </Routes>
         </ToastProvider>
       </SettingsProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
 }
 
 async function tabToElement(
   user: ReturnType<typeof userEvent.setup>,
   target: HTMLElement,
-  maxSteps = 80,
+  maxSteps = 80
 ): Promise<void> {
   document.body.focus()
   for (let i = 0; i < maxSteps; i++) {
@@ -103,7 +103,7 @@ async function tabToElement(
     if (document.activeElement === target) return
   }
   throw new Error(
-    `Could not reach "${target.textContent?.trim() || 'target'}" via Tab within ${maxSteps} steps`,
+    `Could not reach "${target.textContent?.trim() || 'target'}" via Tab within ${maxSteps} steps`
   )
 }
 

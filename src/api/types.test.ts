@@ -28,9 +28,7 @@ function _assertTransactionCompatible(tx: Transaction): components['schemas']['T
   return tx
 }
 // ApiResponse<Op> should resolve the 200 JSON body for each operation.
-function _assertApiResponseTrustScore(
-  r: ApiResponse<operations['getTrustScore']>
-): TrustScore {
+function _assertApiResponseTrustScore(r: ApiResponse<operations['getTrustScore']>): TrustScore {
   return r
 }
 function _assertApiResponseTransactionList(

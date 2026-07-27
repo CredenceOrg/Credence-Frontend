@@ -11,7 +11,7 @@ vi.mock('../lib/stellar', () => ({
     if (!addr) return ''
     if (addr.length <= 20) return addr
     return `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`
-  }
+  },
 }))
 
 // A valid 56-character Stellar public key
@@ -132,7 +132,9 @@ describe('AttestationForm', () => {
       await user.click(submitButton)
 
       const confirmInput = screen.getByLabelText(/type confirm to submit/i)
-      const submitAttestationButton = screen.getAllByRole('button', { name: /submit attestation/i })[1]
+      const submitAttestationButton = screen.getAllByRole('button', {
+        name: /submit attestation/i,
+      })[1]
 
       // Initially disabled
       expect(submitAttestationButton).toBeDisabled()
@@ -161,7 +163,9 @@ describe('AttestationForm', () => {
       await user.click(submitButton)
 
       const confirmInput = screen.getByLabelText(/type confirm to submit/i)
-      const submitAttestationButton = screen.getAllByRole('button', { name: /submit attestation/i })[1]
+      const submitAttestationButton = screen.getAllByRole('button', {
+        name: /submit attestation/i,
+      })[1]
 
       await user.type(confirmInput, 'CONFIRM')
       await user.click(submitAttestationButton)

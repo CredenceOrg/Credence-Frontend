@@ -105,11 +105,14 @@ describe('StatusBadge', () => {
   })
 
   describe('aria-label', () => {
-    it.each(ALL_VARIANTS)('variant "%s" defaults aria-label to its display label "%s"', (variant, expectedLabel) => {
-      render(<StatusBadge variant={variant} />)
-      const badge = document.querySelector('.status-badge')
-      expect(badge).toHaveAttribute('aria-label', expectedLabel)
-    })
+    it.each(ALL_VARIANTS)(
+      'variant "%s" defaults aria-label to its display label "%s"',
+      (variant, expectedLabel) => {
+        render(<StatusBadge variant={variant} />)
+        const badge = document.querySelector('.status-badge')
+        expect(badge).toHaveAttribute('aria-label', expectedLabel)
+      }
+    )
 
     it('custom ariaLabel overrides the default', () => {
       render(<StatusBadge variant="pending" ariaLabel="Bond status: Pending review" />)
@@ -150,9 +153,7 @@ describe('StatusBadge', () => {
       render(<StatusBadge variant={variant} />)
       const badge = document.querySelector('.status-badge')
       const visibleText = badge?.querySelector('.sr-only')
-        ? badge.textContent
-            ?.replace(badge.querySelector('.sr-only')!.textContent ?? '', '')
-            .trim()
+        ? badge.textContent?.replace(badge.querySelector('.sr-only')!.textContent ?? '', '').trim()
         : badge?.textContent?.trim()
       expect(visibleText?.length).toBeGreaterThan(0)
     })

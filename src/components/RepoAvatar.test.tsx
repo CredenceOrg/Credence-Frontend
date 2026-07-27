@@ -53,7 +53,9 @@ describe('RepoAvatar', () => {
   })
 
   it('falls back to initials when image load fails', () => {
-    render(<RepoAvatar src="https://example.com/invalid.png" name="CredenceOrg/Credence-Frontend" />)
+    render(
+      <RepoAvatar src="https://example.com/invalid.png" name="CredenceOrg/Credence-Frontend" />
+    )
 
     const img = screen.getByAltText('CredenceOrg/Credence-Frontend')
     expect(img).toBeInTheDocument()

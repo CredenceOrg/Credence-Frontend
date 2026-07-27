@@ -19,10 +19,7 @@ export interface LanguageChangedFields {
   namespace?: string
 }
 
-export const handleLanguageChanged = (
-  lng: string,
-  fields: LanguageChangedFields = {}
-): void => {
+export const handleLanguageChanged = (lng: string, fields: LanguageChangedFields = {}): void => {
   const from = previousLng ?? 'none'
   logInfo('language_changed', {
     from,

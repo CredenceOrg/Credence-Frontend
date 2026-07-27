@@ -8,22 +8,22 @@ This document explains how Credence manages internationalization (i18n) and how 
 
 To add a new language translation to the application:
 
-1. **Create the locale file:** 
+1. **Create the locale file:**
    In `src/locales/`, create a new JSON file named after the ISO 639-1 language code (e.g., `es.json` for Spanish, `fr.json` for French).
-   
+
 2. **Copy the base structure:**
    Use the `en.json` file as the template. Ensure all keys match exactly.
-   
+
 3. **Register the locale:**
    Add the new locale to the supported locales list in `src/locales/index.ts`.
-   
+
    ```typescript
-   import es from './es.json';
-   
+   import es from './es.json'
+
    export const resources = {
      en: { translation: en },
-     es: { translation: es }
-   };
+     es: { translation: es },
+   }
    ```
 
 ## Managing Existing Locales
@@ -41,7 +41,7 @@ import { useTranslation } from 'react-i18next';
 
 export function WelcomeBanner() {
   const { t } = useTranslation();
-  
+
   return (
     <div className="banner">
       <h1>{t('welcome.title')}</h1>

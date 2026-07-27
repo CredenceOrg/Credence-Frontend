@@ -47,7 +47,7 @@ function renderRoutes(initialEntries: string[]) {
           </WalletProvider>
         </ToastProvider>
       </SettingsProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
 }
 

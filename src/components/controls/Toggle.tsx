@@ -34,7 +34,13 @@ export default function Toggle({
         disabled={isDisabled}
         onClick={() => onChange(!checked)}
       >
-        {isLoading ? <span className="control-toggle-spinner" aria-hidden="true" /> : checked ? 'On' : 'Off'}
+        {isLoading ? (
+          <span className="control-toggle-spinner" aria-hidden="true" />
+        ) : checked ? (
+          'On'
+        ) : (
+          'Off'
+        )}
       </button>
     </div>
   )

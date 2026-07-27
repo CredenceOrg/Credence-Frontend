@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import Select from './Select';
+import type { Meta, StoryObj } from '@storybook/react'
+import Select from './Select'
 
 const meta: Meta<typeof Select> = {
   title: 'Components/Controls/Select',
@@ -17,27 +17,27 @@ const meta: Meta<typeof Select> = {
       { value: 'platinum', label: 'Platinum' },
     ],
   },
-};
+}
 
-export default meta;
-type Story = StoryObj<typeof Select>;
+export default meta
+type Story = StoryObj<typeof Select>
 
-export const Default: Story = {};
+export const Default: Story = {}
 
 export const Error: Story = {
   args: {
     error: 'Selection required',
   },
-};
+}
 
 export const Disabled: Story = {
   args: {
     disabled: true,
   },
-};
+}
 
 export const Loading: Story = {
   args: {
     isLoading: true,
   },
-};
+}

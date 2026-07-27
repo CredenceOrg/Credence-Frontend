@@ -14,9 +14,7 @@ describe('useOnceMounted', () => {
     const cb = vi.fn()
 
     const { unmount } = renderHook(() => useOnceMounted(cb), {
-      wrapper: ({ children }: { children: React.ReactNode }) => (
-        <StrictMode>{children}</StrictMode>
-      ),
+      wrapper: ({ children }: { children: React.ReactNode }) => <StrictMode>{children}</StrictMode>,
     })
 
     expect(cb).toHaveBeenCalledTimes(1)
@@ -59,9 +57,7 @@ describe('useOnceMounted', () => {
     const cb = vi.fn(() => cleanup)
 
     const { unmount } = renderHook(() => useOnceMounted(cb), {
-      wrapper: ({ children }: { children: React.ReactNode }) => (
-        <StrictMode>{children}</StrictMode>
-      ),
+      wrapper: ({ children }: { children: React.ReactNode }) => <StrictMode>{children}</StrictMode>,
     })
 
     // Callback fired exactly once despite StrictMode double-invoke.

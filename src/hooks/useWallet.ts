@@ -102,7 +102,11 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       setAddress(result.address)
       const freighterNetwork = await syncNetwork()
 
-      if (freighterNetwork && parseNetwork(_settingsNetwork) && freighterNetwork !== parseNetwork(_settingsNetwork)) {
+      if (
+        freighterNetwork &&
+        parseNetwork(_settingsNetwork) &&
+        freighterNetwork !== parseNetwork(_settingsNetwork)
+      ) {
         setAddress('')
         setError({
           code: 'network_mismatch',

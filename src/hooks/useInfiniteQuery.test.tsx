@@ -301,9 +301,7 @@ describe('useInfiniteQuery', () => {
       resolveNextPage({ items: [{ id: 'b' }], nextCursor: null })
     })
 
-    await waitFor(() =>
-      expect(screen.getByTestId('isFetchingNextPage').textContent).toBe('false')
-    )
+    await waitFor(() => expect(screen.getByTestId('isFetchingNextPage').textContent).toBe('false'))
     expect(screen.getByTestId('items').textContent).toBe('a,b')
   })
 })

@@ -46,21 +46,24 @@ const DEFAULT_LABELS: Record<string, string> = {
   unknown: 'Unknown',
 }
 
-export default function Badge({ variant, label, className = '', srPrefix }: BadgeProps) {
-  const isKnown = variant.toLowerCase() in DEFAULT_LABELS
-  const normalizedVariant = isKnown ? variant.toLowerCase() : 'unknown'
+export default function Badge({ variant, label, className = '', srPrefix, ariaLabel }: BadgeProps) {
+  const normalizedVariant = (
+    variant.toLowerCase() in DEFAULT_LABELS ? variant.toLowerCase() : 'unknown'
+  ) as string
 
   const displayLabel =
-    label ||
-    (normalizedVariant === 'unknown' && variant.toLowerCase() !== 'unknown'
-      ? variant
-      : DEFAULT_LABELS[normalizedVariant])
+    label ??
+    (normalizedVariant === 'unknown' ? DEFAULT_LABELS.unknown : DEFAULT_LABELS[normalizedVariant])
+  const accessibleLabel = ariaLabel ?? displayLabel
+
+  const title =
+    normalizedVariant === 'unknown' && variant.toLowerCase() !== 'unknown'
+      ? undefined
+      : displayLabel
 
   return (
     <TooltipOnOverflow content={displayLabel}>
-      <span
-        className={`badge badge--${normalizedVariant} ${className}`.trim()}
-      >
+      <span className={`badge badge--${normalizedVariant} ${className}`.trim()}>
         {srPrefix && <span className="sr-only">{srPrefix} </span>}
         {displayLabel}
       </span>

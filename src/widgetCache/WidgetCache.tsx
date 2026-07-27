@@ -48,10 +48,7 @@ class WidgetCacheStore {
   private abortControllers = new Map<string, AbortController>()
 
   get<T>(key: string): WidgetEntry<T> {
-    return (
-      (this.entries.get(key) as WidgetEntry<T> | undefined) ??
-      (EMPTY_ENTRY as WidgetEntry<T>)
-    )
+    return (this.entries.get(key) as WidgetEntry<T> | undefined) ?? (EMPTY_ENTRY as WidgetEntry<T>)
   }
 
   subscribe(key: string, listener: () => void): () => void {
@@ -259,21 +256,16 @@ export function useWidgetCache<T>(
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
 
-  const subscribe = useCallback(
-    (listener: () => void) => store.subscribe(key, listener),
-    [key]
-  )
+  const subscribe = useCallback((listener: () => void) => store.subscribe(key, listener), [key])
   const getSnapshot = useCallback(() => store.get<T>(key), [key])
   const entry = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   const refresh = useCallback(() => {
     const fn = fetcherRef.current
-    store
-      .refresh(key, fn)
-      .catch(() => {
-        // Errors are surfaced via `entry.error`; swallow here so a
-        // misbehaving fetcher doesn't become an uncaught promise rejection.
-      })
+    store.refresh(key, fn).catch(() => {
+      // Errors are surfaced via `entry.error`; swallow here so a
+      // misbehaving fetcher doesn't become an uncaught promise rejection.
+    })
   }, [key, ctx])
 
   useEffect(() => {

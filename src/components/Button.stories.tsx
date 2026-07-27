@@ -165,8 +165,8 @@ export const KeyboardFocusReview: Story = {
       }}
     >
       <p style={{ marginBottom: '1rem', color: 'var(--credence-text-secondary)' }}>
-        <strong>Instructions:</strong> Press Tab to cycle through each button. Verify that the
-        focus ring is clearly visible on every variant in both light and dark modes.
+        <strong>Instructions:</strong> Press Tab to cycle through each button. Verify that the focus
+        ring is clearly visible on every variant in both light and dark modes.
       </p>
 
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -232,8 +232,8 @@ export const InteractiveStates: Story = {
       }}
     >
       <p style={{ marginBottom: '1rem', color: 'var(--credence-text-secondary)' }}>
-        <strong>Instructions:</strong> Hover over each button to verify the hover state, then
-        click and hold to verify the active (pressed) state.
+        <strong>Instructions:</strong> Hover over each button to verify the hover state, then click
+        and hold to verify the active (pressed) state.
       </p>
 
       <div>

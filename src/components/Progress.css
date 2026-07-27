@@ -33,7 +33,8 @@
   width: var(--progress-fill, 0%);
   background-color: var(--credence-color-primary, #3b82d4);
   border-radius: var(--credence-radius-full, 9999px);
-  transition: width var(--credence-motion-duration-base, 200ms) var(--credence-motion-easing-standard, ease);
+  transition: width var(--credence-motion-duration-base, 200ms)
+    var(--credence-motion-easing-standard, ease);
 }
 
 /* Indeterminate fill — sliding animation */

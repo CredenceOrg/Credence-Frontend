@@ -86,7 +86,7 @@ export default function ActionLauncher({
   const [query, setQuery] = useState('')
   const [recentActionIds, setRecentActionIds] = useLocalStorage<string[]>(
     ACTION_LAUNCHER_RECENT_ACTIONS_KEY,
-    [],
+    []
   )
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -105,19 +105,24 @@ export default function ActionLauncher({
   }, [query, recentActionIds])
 
   const recentActions = useMemo(
-    () => recentActionIds
-      .map((id) => ACTION_LAUNCHER_ITEMS.find((item) => item.id === id))
-      .filter((item): item is ActionLauncherItem => Boolean(item))
-      .filter((item, index, self) => self.findIndex((candidate) => candidate.id === item.id) === index)
-      .slice(0, MAX_RECENT_ACTIONS),
-    [recentActionIds],
+    () =>
+      recentActionIds
+        .map((id) => ACTION_LAUNCHER_ITEMS.find((item) => item.id === id))
+        .filter((item): item is ActionLauncherItem => Boolean(item))
+        .filter(
+          (item, index, self) => self.findIndex((candidate) => candidate.id === item.id) === index
+        )
+        .slice(0, MAX_RECENT_ACTIONS),
+    [recentActionIds]
   )
 
   const updateRecent = useCallback(
     (id: string) => {
-      setRecentActionIds(clampRecentActions([id, ...recentActionIds.filter((existing: string) => existing !== id)]))
+      setRecentActionIds(
+        clampRecentActions([id, ...recentActionIds.filter((existing: string) => existing !== id)])
+      )
     },
-    [recentActionIds, setRecentActionIds],
+    [recentActionIds, setRecentActionIds]
   )
 
   const handleSelect = useCallback(
@@ -133,7 +138,7 @@ export default function ActionLauncher({
         navigate(item.to)
       }
     },
-    [navigate, onClose, onOpenKeyboardShortcuts, updateRecent],
+    [navigate, onClose, onOpenKeyboardShortcuts, updateRecent]
   )
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -252,6 +257,6 @@ export default function ActionLauncher({
         </div>
       </div>
     </div>,
-    document.body,
+    document.body
   )
 }

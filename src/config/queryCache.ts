@@ -30,10 +30,7 @@ export const QUERY_CACHE_DEFAULTS = {
  * Falls back to `defaultValue` if `envValue` is undefined, empty, whitespace,
  * non-numeric, zero, or negative.
  */
-export function parseTtlEnv(
-  envValue: string | undefined,
-  defaultValue: number,
-): number {
+export function parseTtlEnv(envValue: string | undefined, defaultValue: number): number {
   if (envValue === undefined) {
     return defaultValue
   }
@@ -51,23 +48,23 @@ export function parseTtlEnv(
 export const QUERY_CACHE_TTLS = {
   DEFAULT_TTL_MS: parseTtlEnv(
     import.meta.env?.VITE_QUERY_CACHE_DEFAULT_TTL_MS,
-    QUERY_CACHE_DEFAULTS.DEFAULT_TTL_MS,
+    QUERY_CACHE_DEFAULTS.DEFAULT_TTL_MS
   ),
   STALE_TIME_MS: parseTtlEnv(
     import.meta.env?.VITE_QUERY_CACHE_STALE_TIME_MS,
-    QUERY_CACHE_DEFAULTS.STALE_TIME_MS,
+    QUERY_CACHE_DEFAULTS.STALE_TIME_MS
   ),
   GC_TIME_MS: parseTtlEnv(
     import.meta.env?.VITE_QUERY_CACHE_GC_TIME_MS,
-    QUERY_CACHE_DEFAULTS.GC_TIME_MS,
+    QUERY_CACHE_DEFAULTS.GC_TIME_MS
   ),
   ISSUER_TTL_MS: parseTtlEnv(
     import.meta.env?.VITE_QUERY_CACHE_ISSUER_TTL_MS,
-    QUERY_CACHE_DEFAULTS.ISSUER_TTL_MS,
+    QUERY_CACHE_DEFAULTS.ISSUER_TTL_MS
   ),
   VERIFIER_TTL_MS: parseTtlEnv(
     import.meta.env?.VITE_QUERY_CACHE_VERIFIER_TTL_MS,
-    QUERY_CACHE_DEFAULTS.VERIFIER_TTL_MS,
+    QUERY_CACHE_DEFAULTS.VERIFIER_TTL_MS
   ),
 } as const
 

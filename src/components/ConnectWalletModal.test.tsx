@@ -29,9 +29,7 @@ vi.mock('../context/WalletContext', () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-function renderModal(
-  overrides: Partial<Parameters<typeof ConnectWalletModal>[0]> = {}
-) {
+function renderModal(overrides: Partial<Parameters<typeof ConnectWalletModal>[0]> = {}) {
   const onClose = vi.fn()
   const props = { open: true, onClose, ...overrides }
   const result = render(<ConnectWalletModal {...props} />)
@@ -257,9 +255,7 @@ describe('ConnectWalletModal — body scroll lock', () => {
 describe('ConnectWalletModal — focus management', () => {
   it('initially focuses the Cancel button when opened', () => {
     renderModal()
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: /^cancel$/i })
-    )
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^cancel$/i }))
   })
 
   it('returns focus to returnFocusRef element on close', () => {
@@ -280,12 +276,9 @@ describe('ConnectWalletModal — focus management', () => {
       <ConnectWalletModal open={true} onClose={onClose} returnFocusRef={returnFocusRef} />
     )
 
-    rerender(
-      <ConnectWalletModal open={false} onClose={onClose} returnFocusRef={returnFocusRef} />
-    )
+    rerender(<ConnectWalletModal open={false} onClose={onClose} returnFocusRef={returnFocusRef} />)
 
     expect(document.activeElement).toBe(triggerEl)
     document.body.removeChild(triggerEl)
   })
 })
-

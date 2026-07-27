@@ -61,14 +61,12 @@ export default function Progress({
   const isIndeterminate = value === undefined
   const showStripes = striped || animated
   const colorClass = `progress--color-${color}`
-
   const clampedValue = isIndeterminate ? undefined : Math.min(Math.max(value, min), max)
   const percentage = isIndeterminate
     ? undefined
     : max === min
       ? 0
       : ((clampedValue! - min) / (max - min)) * 100
-
   const rootClass = [
     'progress',
     `progress--${size}`,
@@ -80,7 +78,6 @@ export default function Progress({
   ]
     .filter(Boolean)
     .join(' ')
-
   return (
     <div
       role="progressbar"

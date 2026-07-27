@@ -11,7 +11,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |
 | ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | BottomNav              | `src/components/navigation/BottomNav.css`                                           | None.                                                                                                                     |
-| Progress               | `src/components/Progress.css`                                                       | `color` prop for colour variants (`primary`, `success`, `warning`, `danger`).                                                     |
+| Progress               | `src/components/Progress.css`                                                       | `color` prop for colour variants (`primary`, `success`, `warning`, `danger`).                                             |
 | Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
 | Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
 | Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
@@ -102,7 +102,7 @@ The component uses the shared `LONG_LIST_RENDER_THRESHOLD` from [`src/config/lis
 Source: [`src/components/Button.tsx`](../src/components/Button.tsx). Focused docs: [button system](./button-system.md).
 
 | Prop                | Type                                              | Default                                  |
-| ------------------- | ------------------------------------------------- | ---------------------------------------- |
+| ------------------- | ------------------------------------------------- | ----------------------------------------- |
 | `variant`           | `'primary' \| 'secondary' \| 'ghost' \| 'danger'` | `'primary'`                              |
 | `isLoading`         | `boolean`                                         | `false`                                  |
 | `fullWidth`         | `boolean`                                         | `false`                                  |
@@ -137,13 +137,12 @@ at `MAX_PINNED_WIDGETS`.
 **Accessibility**: `aria-pressed` reflects pin state; `aria-label` announces
 the pin/unpin action.
 
-
 ## Badge
 
 Source: [`src/components/Badge.tsx`](../src/components/Badge.tsx).
 
 | Prop        | Type                     | Default             |
-| ----------- | ------------------------ | ------------------- |
+| ----------- | ------------------------ | -------------------- |
 | `variant`   | `BadgeVariant \| string` | Required            |
 | `label`     | `string`                 | Known variant label |
 | `className` | `string`                 | `''`                |
@@ -162,7 +161,7 @@ Tokens: tier/status color tokens, `--credence-font-size-xs`, `--credence-font-we
 Source: [`src/components/Banner.tsx`](../src/components/Banner.tsx). Focused docs: [notifications](./notifications.md).
 
 | Prop             | Type                                                     | Default                  |
-| ---------------- | -------------------------------------------------------- | ------------------------ |
+| ---------------- | ---------------------------------------------------------| -------------------------- |
 | `severity`       | `BannerSeverity`                                         | Required                 |
 | `children`       | `ReactNode`                                              | Required                 |
 | `title`          | `string`                                                 | `undefined`              |
@@ -171,7 +170,7 @@ Source: [`src/components/Banner.tsx`](../src/components/Banner.tsx). Focused doc
 | `action`         | `{ label: string; href?: string; onClick?: () => void }` | `undefined`              |
 | `returnFocusRef` | `React.RefObject<HTMLElement>`                           | `document.body` fallback |
 
-Accessibility: severity maps to `role="alert"` for warning/critical and `role="status"` for info/success. The root has an aria label such as “Warning banner”. Dismiss buttons have `aria-label="Dismiss banner"`, support Escape while focused, and return focus to `returnFocusRef` or `document.body` after dismissal. Icons are aria-hidden.
+Accessibility: severity maps to `role="alert"` for warning/critical and `role="status"` for info/success. The root has an aria label such as "Warning banner". Dismiss buttons have `aria-label="Dismiss banner"`, support Escape while focused, and return focus to `returnFocusRef` or `document.body` after dismissal. Icons are aria-hidden.
 
 Tokens: motion duration/easing tokens in CSS; severity color styling is component-owned CSS values and should be reviewed during token migrations.
 
@@ -204,15 +203,15 @@ Sources: [`src/components/Toast.tsx`](../src/components/Toast.tsx), [`src/compon
 
 ### Toast props
 
-| Prop        | Type                                                       | Default  |
-| ----------- | ---------------------------------------------------------- | -------- |
+| Prop        | Type                                                        | Default  |
+| ----------- | ------------------------------------------------------------| -------- |
 | `toast`     | `{ id: string; severity: ToastSeverity; message: string }` | Required |
 | `onDismiss` | `(id: string) => void`                                     | Required |
 
 ### ToastProvider API
 
 | API                          | Type                                                 | Default       |
-| ---------------------------- | ---------------------------------------------------- | ------------- |
+| ----------------------------- | ------------------------------------------------------| --------------- |
 | `children` prop              | `ReactNode`                                          | Required      |
 | `useToast().addToast`        | `(severity: ToastSeverity, message: string) => void` | Context value |
 | `useToast().removeToast`     | `(id: string) => void`                               | Context value |
@@ -234,7 +233,7 @@ function SaveButton() {
 Source: [`src/components/ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx). Focused docs: [focus patterns](./focus-patterns.md).
 
 | Prop                | Type                              | Default                          |
-| ------------------- | --------------------------------- | -------------------------------- |
+| -------------------- | ---------------------------------- | ---------------------------------- |
 | `open`              | `boolean`                         | Required                         |
 | `title`             | `string`                          | Required                         |
 | `subtitle`          | `string`                          | `undefined`                      |
@@ -277,7 +276,7 @@ Tokens: danger color tokens, font family/size/weight, line-height, motion, radiu
 Source: [`src/components/AddressInput.tsx`](../src/components/AddressInput.tsx).
 
 | Prop                 | Type                         | Default             |
-| -------------------- | ---------------------------- | ------------------- |
+| --------------------- | ------------------------------| ---------------------- |
 | `id`                 | `string`                     | Required            |
 | `label`              | `string`                     | `'Stellar Address'` |
 | `value`              | `string`                     | Required            |
@@ -306,7 +305,7 @@ Storybook: `Components/Forms/AddressInput` — **Default** · **Filled** · **In
 Source: [`src/components/AmountInput.tsx`](../src/components/AmountInput.tsx). Focused docs: [USDC amount input](./uiux/usdc-amount-input.md).
 
 | Prop               | Type                                                                                | Default            |
-| ------------------ | ----------------------------------------------------------------------------------- | ------------------ |
+| ------------------- | -------------------------------------------------------------------------------------| --------------------- |
 | `value`            | `string`                                                                            | Required           |
 | `onChange`         | `(value: string) => void`                                                           | Required           |
 | `balance`          | `number`                                                                            | Required           |
@@ -330,7 +329,7 @@ Storybook: `Components/Forms/AmountInput` — **Default** · **Filled** · **Ove
 Source: [`src/components/TrustGauge.tsx`](../src/components/TrustGauge.tsx). Focused docs: [TrustGauge quick reference](./TRUST_GAUGE_QUICK_REFERENCE.md), [accessibility report](./TRUST_GAUGE_ACCESSIBILITY_REPORT.md).
 
 | Prop        | Type                                           | Default         |
-| ----------- | ---------------------------------------------- | --------------- |
+| ------------ | ------------------------------------------------| ------------------ |
 | `score`     | `number`                                       | Required        |
 | `tier`      | `'bronze' \| 'silver' \| 'gold' \| 'platinum'` | Required        |
 | `className` | `string`                                       | `''`            |
@@ -349,7 +348,7 @@ Tokens: tier color tokens, `--credence-color-primary`, slate, focus, font, line-
 Source: [`src/components/TierLadder.tsx`](../src/components/TierLadder.tsx). Focused docs: [tier thresholds](./tier-thresholds.md).
 
 | Prop          | Type      | Default |
-| ------------- | --------- | ------- |
+| -------------- | -----------| --------- |
 | `className`   | `string`  | `''`    |
 | `defaultOpen` | `boolean` | `false` |
 
@@ -366,7 +365,7 @@ Tokens: border, tier color tokens, slate, focus, font, line-height, motion, radi
 Source: [`src/components/ActivityTimeline.tsx`](../src/components/ActivityTimeline.tsx). Focused docs: [activity surface concept](./ACTIVITY_SURFACE_CONCEPT.md).
 
 | Prop      | Type             | Default                |
-| --------- | ---------------- | ---------------------- |
+| ---------- | ------------------| ------------------------- |
 | `compact` | `boolean`        | `false`                |
 | `items`   | `ActivityItem[]` | Built-in sample events |
 
@@ -385,7 +384,7 @@ Tokens: border, info/success/warning color tokens, primary, font, line-height, r
 Source: [`src/components/forms/FormField.tsx`](../src/components/forms/FormField.tsx).
 
 | Prop       | Type                 | Default     |
-| ---------- | -------------------- | ----------- |
+| ----------- | ----------------------| ------------- |
 | `id`       | `string`             | Required    |
 | `label`    | `string`             | Required    |
 | `hint`     | `string`             | `undefined` |
@@ -409,7 +408,7 @@ Storybook: `Components/Forms/FormField` — **Default** · **WithHint** · **Wit
 Source: [`src/components/controls/Select.tsx`](../src/components/controls/Select.tsx).
 
 | Prop        | Type                                 | Default     |
-| ----------- | ------------------------------------ | ----------- |
+| ------------ | ---------------------------------------| ------------- |
 | `id`        | `string`                             | `undefined` |
 | `value`     | `string`                             | Required    |
 | `onChange`  | `(v: string) => void`                | Required    |
@@ -437,7 +436,7 @@ Storybook: `Components/Controls/Select` — **Default** · **Error** · **Disabl
 Source: [`src/components/controls/Toggle.tsx`](../src/components/controls/Toggle.tsx).
 
 | Prop        | Type                      | Default     |
-| ----------- | ------------------------- | ----------- |
+| ------------ | ---------------------------| ------------- |
 | `id`        | `string`                  | `undefined` |
 | `checked`   | `boolean`                 | Required    |
 | `onChange`  | `(next: boolean) => void` | Required    |
@@ -458,7 +457,7 @@ Storybook: `Components/Controls/Toggle` — **Off** · **On** · **Error** · **
 Source: [`src/components/states/EmptyState.tsx`](../src/components/states/EmptyState.tsx). Focused docs: [UI states guide](./UI_STATES_GUIDE.md), [zero states copy](./zero-states-copy.md).
 
 | Prop           | Type                                                                         | Default     |
-| -------------- | ---------------------------------------------------------------------------- | ----------- |
+| --------------- | -------------------------------------------------------------------------------| ------------- |
 | `icon`         | `ReactNode`                                                                  | `undefined` |
 | `title`        | `string`                                                                     | Required    |
 | `description`  | `string`                                                                     | Required    |
@@ -482,7 +481,7 @@ Tokens: inline styles consume illustration color tokens, radius, spacing, font, 
 Source: [`src/components/states/ErrorState.tsx`](../src/components/states/ErrorState.tsx). Focused docs: [UI states guide](./UI_STATES_GUIDE.md).
 
 | Prop      | Type                                                  | Default               |
-| --------- | ----------------------------------------------------- | --------------------- |
+| ---------- | --------------------------------------------------------| ------------------------ |
 | `type`    | `'network' \| 'backend' \| 'validation' \| 'generic'` | `'generic'`           |
 | `title`   | `string`                                              | Type-specific title   |
 | `message` | `string`                                              | Type-specific message |
@@ -502,7 +501,7 @@ Tokens: inline styles consume danger surface/text/action, white, radius, spacing
 Source: [`src/components/states/LoadingSkeleton.tsx`](../src/components/states/LoadingSkeleton.tsx). Focused docs: [UI states guide](./UI_STATES_GUIDE.md).
 
 | Prop      | Type                                                   | Default     |
-| --------- | ------------------------------------------------------ | ----------- |
+| ---------- | ---------------------------------------------------------| ------------- |
 | `variant` | `'text' \| 'card' \| 'form' \| 'table' \| 'dashboard'` | `'text'`    |
 | `rows`    | `number`                                               | `3`         |
 | `width`   | `string`                                               | `'100%'`    |
@@ -521,7 +520,7 @@ Tokens: inline styles consume `--credence-skeleton-gradient`, `--credence-motion
 Source: [`src/components/SessionTimeoutModal.tsx`](../src/components/SessionTimeoutModal.tsx).
 
 | Prop              | Type                   | Default  |
-| ----------------- | ---------------------- | -------- |
+| ------------------ | -------------------------| ---------- |
 | `open`            | `boolean`              | Required |
 | `onStayLoggedIn`  | `() => void`           | Required |
 | `onLogout`        | `() => void`           | Required |
@@ -569,7 +568,7 @@ Tokens: `--credence-surface-card` (background), `--credence-border-default` (top
 Source: [`src/components/Progress.tsx`](../src/components/Progress.tsx).
 
 | Prop         | Type                         | Default     |
-| ------------ | ---------------------------- | ----------- |
+| ------------- | -------------------------------| ------------- |
 | `value`      | `number`                     | `undefined` |
 | `min`        | `number`                     | `0`         |
 | `max`        | `number`                     | `100`       |
@@ -625,4 +624,3 @@ Tokens: `--credence-avatar-size-sm`, `--credence-avatar-size-md`, `--credence-av
 {/* Small size with image URL */}
 <RepoAvatar size="sm" src="https://example.com/avatar.png" name="CredenceOrg/Credence-Frontend" />
 ```
-

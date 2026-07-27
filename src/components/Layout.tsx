@@ -5,14 +5,19 @@ import { useTranslation } from 'react-i18next'
 import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
+import ThemeToggle from './ThemeToggle'
+import NetworkIndicator from './NetworkIndicator'
+import Banner from './Banner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
 import LINKS from '../config/links'
+import { PRELOADS_BY_PATH } from '../config/routes'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+import { DOM_EVENTS } from '../events'
 import './Layout.css'
 
 function FooterLink({ label, href }: { label: string; href: string }) {
@@ -32,6 +37,7 @@ export default function Layout() {
   const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
+  const [launcherOpen, setLauncherOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
   // Refs so focus returns to the triggering button after each dialog closes
@@ -48,7 +54,9 @@ export default function Layout() {
   ]
 
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
+  const closeLauncher = useCallback(() => setLauncherOpen(false), [])
 
   const dismissInstallPrompt = useCallback(() => {
     markInstallPromptHandled()

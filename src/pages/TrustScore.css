@@ -1,3 +1,25 @@
+.trustScore__headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--credence-space-4);
+  margin-bottom: var(--credence-space-2);
+}
+
+.trustScore__title {
+  margin: 0;
+  font-size: var(--credence-font-size-3xl);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+  letter-spacing: var(--credence-letter-spacing-tight);
+  color: var(--credence-text-primary);
+}
+
+.trustScore__description {
+  color: var(--credence-text-secondary);
+  margin-bottom: var(--credence-space-4);
+}
+
 .trustScore__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -15,6 +37,9 @@
 
 .trustScore__cardTitle {
   font-size: var(--credence-font-size-xl);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
   margin-bottom: var(--credence-space-4);
 }
 

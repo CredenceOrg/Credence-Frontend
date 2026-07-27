@@ -7,12 +7,20 @@
   --credence-font-size-base: 1rem;
   --credence-font-size-lg: 1.125rem;
   --credence-font-size-xl: 1.25rem;
+  /* Extended scale for headings and numeric display */
+  --credence-font-size-2xl: 1.5rem;
+  --credence-font-size-3xl: 1.875rem;
   --credence-font-weight-regular: 400;
+  --credence-font-weight-medium: 500;
   --credence-font-weight-semibold: 600;
   --credence-font-weight-bold: 700;
   --credence-line-height-tight: 1.25;
   --credence-line-height-base: 1.5;
   --credence-line-height-relaxed: 1.6;
+  --credence-letter-spacing-tight: -0.02em;
+  /* Semantic alias: the Trust Score numeric display ("684") */
+  --credence-score-display-font-size: var(--credence-font-size-3xl);
+  --credence-score-display-font-weight: var(--credence-font-weight-bold);
 
   /* Spacing */
   --credence-space-1: 0.25rem;
@@ -214,6 +222,37 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Heading reset / scale ─────────────────────────────────────────────────
+ * Browser UA defaults for h1–h3 vary across browsers and viewport sizes.
+ * Resetting them here with --credence-font-size-* tokens guarantees a
+ * consistent typographic hierarchy everywhere in the app without requiring
+ * every component to re-declare font-size on its heading element.
+ */
+h1 {
+  font-size: var(--credence-font-size-3xl);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+  letter-spacing: var(--credence-letter-spacing-tight);
+  color: var(--credence-text-primary);
+  margin: 0;
+}
+
+h2 {
+  font-size: var(--credence-font-size-2xl);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
+  margin: 0;
+}
+
+h3 {
+  font-size: var(--credence-font-size-xl);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
+  margin: 0;
 }
 
 a {

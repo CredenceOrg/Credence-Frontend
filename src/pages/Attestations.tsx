@@ -63,7 +63,7 @@ export default function Attestations() {
       }}
     >
       <header>
-        <h1 style={{ marginTop: 0, color: 'var(--credence-text-primary)' }}>{t('attestations.title')}</h1>
+        <h1>{t('attestations.title')}</h1>
         <p style={{ color: 'var(--credence-text-secondary)', margin: 0 }}>
           {t('attestations.description')}
         </p>

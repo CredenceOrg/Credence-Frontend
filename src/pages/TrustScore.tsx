@@ -7,6 +7,7 @@ import ActivityTimeline, { type ActivityItem, SAMPLE_ACTIVITY } from '../compone
 import Disclaimer from '../components/Disclaimer'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
+import PageHeader from '../components/PageHeader'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
@@ -197,15 +198,15 @@ export default function TrustScore() {
 
   return (
     <div>
-      <div className="trustScore__headerRow">
-        <h1 className="trustScore__title">{t('trustScore.title')}</h1>
-        {data && lookupAddress === address.trim() && (
-          <Badge variant={data.tier} label={tierLabel} className="tier-badge" />
-        )}
-      </div>
-      <p id="trust-desc" className="trustScore__description">
-        {t('trustScore.description')}
-      </p>
+      <PageHeader
+        title={t('trustScore.title')}
+        description={t('trustScore.description')}
+        badge={
+          data && lookupAddress === address.trim() ? (
+            <Badge variant={data.tier} label={tierLabel} className="tier-badge" />
+          ) : undefined
+        }
+      />
       <TierLadder />
       <Banner severity="info">
         {t('trustScore.infoBanner')}

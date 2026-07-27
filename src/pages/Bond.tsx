@@ -8,6 +8,7 @@ import { useToast } from '../components/ToastProvider'
 import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
+import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/states/EmptyState'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
@@ -209,12 +210,10 @@ export default function Bond() {
         {txStatus}
       </div>
 
-      <div className="bond__headerSection">
-        <h1 className="bond__title">{t('bond.title')}</h1>
-        <p id="bond-desc" className="bond__description">
-          {t('bond.description')}
-        </p>
-      </div>
+      <PageHeader
+        title={t('bond.title')}
+        description={t('bond.description')}
+      />
 
       <Banner severity="info">
         {t('bond.infoBanner')}

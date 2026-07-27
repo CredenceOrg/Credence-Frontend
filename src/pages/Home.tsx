@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useSeo } from '../hooks/useSeo'
+import PageHeader from '../components/PageHeader'
 import './Home.css'
 
 export default function Home() {
@@ -11,12 +12,10 @@ export default function Home() {
 
   return (
     <div className="home">
-      <div>
-        <h1 className="home__title">Credence — Economic Trust</h1>
-        <p className="home__description">
-          On-chain economic identity on Stellar. Stake USDC as a programmable reputation bond.
-        </p>
-      </div>
+      <PageHeader
+        title="Credence — Economic Trust"
+        description="On-chain economic identity on Stellar. Stake USDC as a programmable reputation bond."
+      />
       <div className="home__ctaRow">
         <Link to="/bond" role="button" className="home__cta home__cta--primary">
           Create bond

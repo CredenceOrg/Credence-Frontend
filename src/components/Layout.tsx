@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { PrefetchNavLink } from './PrefetchNavLink'
+import { PRELOADS_BY_PATH } from '../config/routes'
 import { useTranslation } from 'react-i18next'
+import ThemeToggle from './ThemeToggle'
+import NetworkIndicator from './NetworkIndicator'
+import WalletConnect from './WalletConnect'
 import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
@@ -9,10 +13,12 @@ import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
+import Banner from './Banner'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+import { DOM_EVENTS } from '../events'
 import './Layout.css'
 
 function FooterLink({ label, href }: { label: string; href: string }) {
@@ -31,6 +37,7 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 export default function Layout() {
   const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
@@ -47,7 +54,9 @@ export default function Layout() {
     { to: '/settings', label: t('nav.settings') },
   ]
 
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
+  const closeLauncher = useCallback(() => setLauncherOpen(false), [])
   const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
 
   const dismissInstallPrompt = useCallback(() => {
@@ -79,10 +88,10 @@ export default function Layout() {
     }
   }, [installPromptDismissed])
 
-  // Global action launcher or shortcuts dialog shortcut (Ctrl+K / Cmd+K)
-  useKeyboardShortcut(['Mod', 'K'], () => setShortcutsOpen(true))
+  // Global action launcher (Ctrl+K / Cmd+K)
+  useKeyboardShortcut(['Mod', 'K'], () => setLauncherOpen(true))
 
-  // Global keyboard shortcuts help dialog shortcut (Shift+?)
+  // Global keyboard shortcuts help dialog (Shift+?)
   useKeyboardShortcut(['Shift', '?'], () => setShortcutsOpen(true))
 
   return (
@@ -119,6 +128,7 @@ export default function Layout() {
           ))}
         </nav>
 
+        <WalletConnect />
         <ThemeToggle />
         <NetworkIndicator />
 

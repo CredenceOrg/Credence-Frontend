@@ -1,0 +1,149 @@
+import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { PrefetchNavLink } from '../PrefetchNavLink'
+import { PRELOADS_BY_PATH } from '../../config/routes'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useScrollPreserver } from '../../hooks/useScrollPreserver'
+import './MobileNav.css'
+import { useTranslation } from 'react-i18next'
+import { SECONDARY_NAV_LINKS } from '../../config/navLinks'
+
+export default function MobileNav() {
+  const { t } = useTranslation()
+  const [isOpen, setIsOpen] = useState(() => {
+    try {
+      return sessionStorage.getItem('mobileNavOpen') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const drawerRef = useRef<HTMLElement>(null)
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const location = useLocation()
+
+  useScrollPreserver({ isActive: isOpen })
+
+  // Close on route change (SPA navigation) — but state survives full page reloads via sessionStorage
+  const prevPath = useRef(location.pathname)
+  if (prevPath.current !== location.pathname) {
+    prevPath.current = location.pathname
+    if (isOpen) setIsOpen(false)
+  }
+
+  // Persist collapse state across full page reloads
+  useEffect(() => {
+    try {
+      if (isOpen) {
+        sessionStorage.setItem('mobileNavOpen', 'true')
+      } else {
+        sessionStorage.removeItem('mobileNavOpen')
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setIsOpen(false)
+      }
+    }
+
+    window.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+    return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+  }, [isOpen])
+
+  useFocusTrap({
+    containerRef: drawerRef,
+    isActive: isOpen,
+    initialFocusRef: closeButtonRef,
+    returnFocusRef: hamburgerRef,
+    onEscape: () => setIsOpen(false),
+  })
+
+  const close = () => setIsOpen(false)
+
+  return (
+    <>
+      <button
+        ref={hamburgerRef}
+        type="button"
+        className="mobileNav-hamburger"
+        aria-label="Open navigation menu"
+        aria-expanded={isOpen}
+        aria-controls="mobile-nav-drawer"
+        onClick={() => setIsOpen(true)}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M3 6h18M3 12h18M3 18h18"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="sr-only">Open navigation menu</span>
+      </button>
+
+      {isOpen && <div className="mobileNav-backdrop" onClick={close} aria-hidden="true" />}
+
+      <nav
+        ref={drawerRef}
+        id="mobile-nav-drawer"
+        className={`mobileNav-drawer${isOpen ? ' mobileNav-drawer--open' : ''}`}
+        aria-label="Mobile navigation"
+        aria-hidden={!isOpen}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="mobileNav-drawerHeader">
+          <button
+            ref={closeButtonRef}
+            type="button"
+            className="mobileNav-close"
+            aria-label="Close navigation menu"
+            onClick={close}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M4 4l12 12M16 4L4 16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="sr-only">Close navigation menu</span>
+          </button>
+        </div>
+
+        <ul className="mobileNav-links" role="list">
+          {SECONDARY_NAV_LINKS.map(({ to, labelKey }) => (
+            <li key={to}>
+              <PrefetchNavLink
+                to={to}
+                end={to === '/'}
+                preload={PRELOADS_BY_PATH[to]}
+                className={({ isActive }) =>
+                  `mobileNav-link${isActive ? ' mobileNav-link--active' : ''}`
+                }
+                aria-current={
+                  location.pathname === to || (to === '/' && location.pathname === '/')
+                    ? 'page'
+                    : undefined
+                }
+                onClick={close}
+              >
+                {t(labelKey)}
+              </PrefetchNavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </>
+  )
+}

@@ -166,7 +166,69 @@ function closeOverlay() {
 
 ## 6. Component-Specific Patterns
 
-### 6.1 Modal / Confirmation Dialog (future)
+### 6.1 Modal / Confirmation Dialog
+
+`ConfirmDialog` is a **reusable design-system primitive** for any destructive or irreversible action. It is not limited to bond withdrawals.
+
+#### Props that control body content
+
+| Prop            | Type                            | Default           | Effect                                                       |
+| --------------- | ------------------------------- | ----------------- | ------------------------------------------------------------ |
+| `breakdown`     | `ConfirmDialogPenaltyBreakdown` | —                 | Renders the financial `<dl>` (bond withdrawal use case)      |
+| `description`   | `React.ReactNode`               | —                 | Renders a generic content block when `breakdown` is omitted  |
+| `confirmPhrase` | `string`                        | `'CONFIRM'`       | Word the user must type exactly to unlock the confirm button |
+| `confirmHint`   | `string`                        | wallet/funds hint | Small-print below the type-to-confirm input                  |
+| `confirmLabel`  | `string`                        | `'Withdraw bond'` | Label on the confirm button                                  |
+
+`breakdown` takes priority — if both `breakdown` and `description` are supplied, the breakdown is shown.
+
+#### Generic usage example
+
+```tsx
+<ConfirmDialog
+  open={isOpen}
+  title="Clear Draft"
+  description="All unsaved changes will be permanently deleted."
+  confirmPhrase="DELETE"
+  confirmHint="This action cannot be undone."
+  confirmLabel="Clear draft"
+  onConfirm={handleClear}
+  onCancel={() => setIsOpen(false)}
+  returnFocusRef={triggerRef}
+/>
+```
+
+#### Bond withdrawal (existing call site — unchanged)
+
+```tsx
+<ConfirmDialog
+  open
+  title="Confirm bond withdrawal"
+  subtitle={`Withdrawing bond #${id}.`}
+  breakdown={withdrawBreakdown}
+  onConfirm={confirmWithdraw}
+  onCancel={cancelWithdraw}
+  returnFocusRef={withdrawTriggerRef}
+/>
+```
+
+Confirmation dialogs that gate destructive actions behind a typed phrase implement the following focus and announcement behavior:
+
+| State                                         | Focus target               | aria-live announcement                         |
+| --------------------------------------------- | -------------------------- | ---------------------------------------------- |
+| Dialog opens                                  | **Cancel** button (per §4) | Dialog title + subtitle                        |
+| User types exact phrase → button enabled      | **Confirm** button         | "Withdrawal enabled. Type CONFIRM to confirm." |
+| User deletes/changes phrase → button disabled | **Cancel** button          | "Withdrawal disabled. Type CONFIRM to enable." |
+| Dialog closes (any path)                      | Trigger element (per §5)   | —                                              |
+
+**Implementation notes:**
+
+- The dialog uses an `aria-live="assertive"` region (reused from the title/subtitle announcement) to communicate gating state changes.
+- Focus movement is performed via `requestAnimationFrame` after the state update to ensure the target element is interactive.
+- The initial focus-on-Cancel pattern is preserved on open; focus only shifts to Confirm when the user explicitly enables the action.
+- Phrase comparison is **case-sensitive** (a separate concern if case-folding is ever needed).
+
+### 6.2 Modal / Confirmation Dialog (future)
 
 Credence does not yet have a modal component. When one is built:
 

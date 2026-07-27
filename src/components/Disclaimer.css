@@ -51,7 +51,7 @@
 }
 
 /* Disabled/placeholder link inside disclaimer */
-.disclaimer [aria-disabled="true"],
+.disclaimer [aria-disabled='true'],
 .disclaimer-terms-disabled {
   color: var(--credence-text-secondary);
   opacity: 0.7;

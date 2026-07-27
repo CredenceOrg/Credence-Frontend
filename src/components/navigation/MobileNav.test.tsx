@@ -1,0 +1,173 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import MobileNav from './MobileNav'
+
+function renderNav(initialPath = '/') {
+  return render(
+    <MemoryRouter initialEntries={[initialPath]}>
+      <MobileNav />
+    </MemoryRouter>
+  )
+}
+
+function getDrawer() {
+  // Query directly because aria-hidden elements are excluded from the role tree
+  return document.getElementById('mobile-nav-drawer') as HTMLElement
+}
+
+describe('MobileNav', () => {
+  beforeEach(() => {
+    document.body.style.overflow = ''
+  })
+
+  // --- render ---
+
+  it('renders a hamburger button', () => {
+    renderNav()
+    expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInTheDocument()
+  })
+
+  it('drawer is hidden on initial render', () => {
+    renderNav()
+    expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  // --- open ---
+
+  it('opens the drawer when hamburger is clicked', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(getDrawer()).toHaveAttribute('aria-hidden', 'false')
+  })
+
+  it('drawer gains the open CSS class when opened', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(getDrawer()).toHaveClass('mobileNav-drawer--open')
+  })
+
+  it('moves focus to the close button when the drawer opens', async () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /close navigation menu/i })).toHaveFocus()
+    })
+  })
+
+  // --- close ---
+
+  it('closes the drawer when close button is clicked', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    fireEvent.click(screen.getByRole('button', { name: /close navigation menu/i }))
+    expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('closes the drawer when the backdrop is clicked', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    const backdrop = document.querySelector('.mobileNav-backdrop') as HTMLElement
+    expect(backdrop).not.toBeNull()
+    fireEvent.click(backdrop)
+    expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  // --- Escape key (handled by useFocusTrap on the drawer container) ---
+
+  it('closes the drawer on Escape key', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    fireEvent.keyDown(getDrawer(), { key: 'Escape' })
+    expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('closes the drawer when Escape is pressed at the window level', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  // --- aria state ---
+
+  it('hamburger aria-expanded is false when closed', () => {
+    renderNav()
+    expect(screen.getByRole('button', { name: /open navigation menu/i })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    )
+  })
+
+  it('hamburger aria-expanded is true when open', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('button', { name: /open navigation menu/i })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    )
+  })
+
+  it('hamburger aria-controls points to the drawer id', () => {
+    renderNav()
+    expect(screen.getByRole('button', { name: /open navigation menu/i })).toHaveAttribute(
+      'aria-controls',
+      'mobile-nav-drawer'
+    )
+  })
+
+  // --- active route (drawer must be open for links to be in the a11y tree) ---
+  // The drawer now shows only secondary routes: Home (/) and Settings (/settings).
+  // Primary routes (Dashboard, Bond, Trust Score, Attestations, Transactions) are
+  // handled by the BottomNav component.
+
+  it('marks the current route with aria-current="page"', () => {
+    renderNav('/settings')
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('does not mark inactive routes with aria-current', () => {
+    renderNav('/settings')
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('link', { name: /home/i })).not.toHaveAttribute('aria-current')
+  })
+
+  // --- links ---
+
+  it('shows secondary nav links (Home and Settings) when drawer is open', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument()
+  })
+
+  it('does not show primary route links in the drawer', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.queryByRole('link', { name: /^dashboard$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /^bond$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /^trust score$/i })).not.toBeInTheDocument()
+  })
+
+  // --- backdrop lifecycle ---
+
+  it('does not render backdrop when drawer is closed', () => {
+    renderNav()
+    expect(document.querySelector('.mobileNav-backdrop')).toBeNull()
+  })
+
+  it('renders backdrop when drawer is open', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(document.querySelector('.mobileNav-backdrop')).not.toBeNull()
+  })
+
+  it('removes backdrop after drawer is closed', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    fireEvent.click(screen.getByRole('button', { name: /close navigation menu/i }))
+    expect(document.querySelector('.mobileNav-backdrop')).toBeNull()
+  })
+})

@@ -4,6 +4,10 @@ import './NotFound.css'
 
 export default function NotFound() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { goBack } = useSmartBack({ fallback: '/dashboard' })
+  const suggestion = suggestRoute(location.pathname, ['/', '/bond', '/trust', '/settings'])
+  useDocumentTitle('Page Not Found')
 
   return (
     <div className="not-found-page">

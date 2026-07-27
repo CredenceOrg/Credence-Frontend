@@ -1,7 +1,7 @@
 # Mobile Navigation Pattern — Official Implementation Guide
 
 **Issue:** #77  
-**Pattern:** Hybrid Responsive Navigation (Hamburger Mobile + Horizontal Desktop)  
+**Pattern:** Hybrid Responsive Navigation (Bottom Actions for Primary Routes + Hamburger Drawer for Secondary Routes)  
 **Status:** Implementation Ready  
 **WCAG Compliance:** 2.1 AA
 
@@ -25,8 +25,9 @@
 
 A responsive navigation system that adapts to screen size:
 
-- **Mobile (< 640px):** Hamburger menu with slide-in drawer
-- **Desktop (≥ 640px):** Horizontal navigation in header
+- **Mobile (< 640px):** Fixed bottom action bar for the 5 primary routes, plus a hamburger drawer for secondary/overflow routes
+- **Tablet (640–768px):** Bottom action bar for the primary routes; the drawer is not required at this breakpoint
+- **Desktop (≥ 768px):** Horizontal navigation in the header
 
 ### Why this pattern?
 
@@ -52,26 +53,36 @@ A responsive navigation system that adapts to screen size:
 ┌─────────────────────────┐
 │ ☰  Credence      [Theme]│ ← Tap ☰ to open drawer
 └─────────────────────────┘
+│   [Page Content]        │
+└─────────────────────────┘
+┌─────────────────────────┐
+│ Dashboard  Bond  Trust │ ← Bottom actions
+│ Attest.  Txns          │
+└─────────────────────────┘
 
 Drawer (overlay):
 ┌─────────────────┐
 │ ✕ Menu          │ ← Close button
 │                 │
-│ 🏠 Home         │ ← Active page highlighted
-│ 🔒 Bond         │
-│ ⭐ Trust Score  │
-│                 │
+│ 🏠 Home         │ ← Secondary route
+│ ⚙️ Settings     │
 └─────────────────┘
 ```
 
 **Behavior:**
 
-- Hamburger button (☰) in top-left corner
+- Bottom bar exposes the 5 primary routes as thumb-friendly actions
+- Hamburger button (☰) in the top-left corner opens the drawer for secondary routes
 - Drawer slides in from left (280px width)
 - Backdrop overlay (semi-transparent)
 - Closes on: backdrop click, close button, Escape key, navigation
 
-### Desktop Navigation (≥ 640px)
+### Tablet Navigation (640–768px)
+
+- The bottom action bar remains visible for primary routes
+- The drawer is not required at this breakpoint because the primary IA is still reachable through the fixed bar
+
+### Desktop Navigation (≥ 768px)
 
 ```
 ┌─────────────────────────────────────────────┐

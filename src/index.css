@@ -1,27 +1,56 @@
 :root {
   /* Typography */
   --credence-font-family-base: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --credence-font-family-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
   --credence-font-size-xs: 0.75rem;
   --credence-font-size-sm: 0.875rem;
   --credence-font-size-base: 1rem;
   --credence-font-size-lg: 1.125rem;
   --credence-font-size-xl: 1.25rem;
+  /* Extended scale for headings and numeric display */
+  --credence-font-size-2xl: 1.5rem;
+  --credence-font-size-3xl: 1.875rem;
   --credence-font-weight-regular: 400;
+  --credence-font-weight-medium: 500;
   --credence-font-weight-semibold: 600;
   --credence-font-weight-bold: 700;
   --credence-line-height-tight: 1.25;
   --credence-line-height-base: 1.5;
   --credence-line-height-relaxed: 1.6;
+  --credence-letter-spacing-tight: -0.02em;
+  /* Semantic alias: the Trust Score numeric display ("684") */
+  --credence-score-display-font-size: var(--credence-font-size-3xl);
+  --credence-score-display-font-weight: var(--credence-font-weight-bold);
 
-  /* Spacing */
-  --credence-space-1: 0.25rem;
-  --credence-space-2: 0.5rem;
-  --credence-space-3: 0.75rem;
-  --credence-space-4: 1rem;
-  --credence-space-5: 1.25rem;
-  --credence-space-6: 1.5rem;
-  --credence-space-8: 2rem;
-  --credence-space-12: 3rem;
+  /* Spacing — fluid scale.
+   *
+   * Each space-* token is defined with `clamp(min, fluid, max)` so that
+   * layouts respond smoothly to the viewport width. The `min` value is the
+   * target rendered size at our Narrow Mobile breakpoint (BREAKPOINTS.XS,
+   * 360px) and the `max` is the rendered size at the Widescreen Desktop
+   * breakpoint (BREAKPOINTS.XL, 1280px). Linear interpolation between
+   * 360px–1280px gives every intermediate viewport a consistent,
+   * predictable amount of breathing room without per-component media
+   * queries. Viewports narrower than 360px or wider than 1280px hold at
+   * the min / max respectively so layout integrity is preserved at the
+   * edges of our responsive contract (see docs/RESPONSIVE.md).
+   *
+   * Example: `--credence-space-4` = `clamp(0.75rem, 0.65rem + 0.435vw, 1rem)`
+   *   • 360px viewport → 0.75rem (12px)
+   *   • 768px viewport → ~0.87rem (~14px)
+   *   • 1280px viewport → 1rem (16px)
+   */
+  --credence-space-1: clamp(0.2rem, 0.18rem + 0.087vw, 0.25rem);
+  --credence-space-2: clamp(0.4rem, 0.36rem + 0.174vw, 0.5rem);
+  --credence-space-3: clamp(0.6rem, 0.54rem + 0.26vw, 0.75rem);
+  --credence-space-4: clamp(0.75rem, 0.65rem + 0.435vw, 1rem);
+  --credence-space-5: clamp(0.95rem, 0.83rem + 0.52vw, 1.25rem);
+  --credence-space-6: clamp(1.15rem, 1.01rem + 0.61vw, 1.5rem);
+  --credence-space-8: clamp(1.5rem, 1.3rem + 0.87vw, 2rem);
+  --credence-space-12: clamp(2.25rem, 1.96rem + 1.3vw, 3rem);
+  --credence-space-16: clamp(3rem, 2.61rem + 1.74vw, 4rem);
 
   /* Radius */
   --credence-radius-sm: 0.25rem;
@@ -41,9 +70,24 @@
   --credence-motion-easing-linear: linear;
   --credence-motion-skeleton: shimmer 1.5s infinite;
 
+  /* Backdrop / overlay transparency
+   * Default values use semi-transparent colours.  When prefers-reduced-transparency
+   * is active the @media block below replaces these with fully-opaque equivalents
+   * so content behind an overlay cannot bleed through.
+   */
+  --credence-backdrop-light: rgba(15, 23, 42, 0.55);
+  --credence-backdrop-dark: rgba(0, 0, 0, 0.65);
+  --credence-backdrop-mobile: rgba(0, 0, 0, 0.5);
+
   /* Layout */
   --credence-container-max: 72rem;
-  --credence-container-padding: clamp(1rem, 2vw, 2rem);
+  /* Fluid container padding for the outer page edges. Hits 1rem at the
+   * Narrow Mobile breakpoint (360px), grows linearly to 2rem once the
+   * viewport exceeds ~1600px. Reframed from the prior `clamp(1rem, 2vw,
+   * 2rem)` formula to share the same endpoint convention used by
+   * `--credence-space-*` tokens; the resulting 1rem–2rem range is
+   * preserved. */
+  --credence-container-padding: clamp(1rem, 0.71rem + 1.29vw, 2rem);
 
   /* Neutrals */
   --credence-color-white: #ffffff;
@@ -58,9 +102,9 @@
   --credence-color-slate-900: #0f172a;
 
   /* Brand + semantic colors */
-  --credence-color-primary: #0284c7;
-  --credence-color-primary-strong: #0369a1;
-  --credence-color-primary-soft: #0ea5e9;
+  --credence-color-primary: #075985;
+  --credence-color-primary-strong: #0c4a6e;
+  --credence-color-primary-soft: #0284c7;
   --credence-color-info-surface: #eff6ff;
   --credence-color-info-border: #3b82f6;
   --credence-color-info-text: #1e40af;
@@ -97,8 +141,9 @@
   --credence-color-attestation-surface: #d1fae5;
 
   /* Effects */
+  --credence-color-focus-ring: var(--credence-color-primary);
   --credence-shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --credence-focus-ring: 2px solid var(--credence-color-primary);
+  --credence-focus-ring: 2px solid var(--credence-color-focus-ring);
   --credence-skeleton-gradient: linear-gradient(
     90deg,
     var(--credence-color-slate-100) 25%,
@@ -112,6 +157,10 @@
   --credence-text-primary: var(--credence-color-slate-900);
   --credence-text-secondary: var(--credence-color-slate-500);
   --credence-border-default: var(--credence-color-slate-200);
+  --credence-brand-primary: var(--credence-color-primary);
+  --credence-color-text: var(--credence-text-primary);
+  --credence-color-text-muted: var(--credence-color-slate-500);
+  --credence-color-success: var(--credence-color-success-border);
 
   /* Backwards-compatible aliases */
   --font-family: var(--credence-font-family-base);
@@ -120,6 +169,7 @@
   --text-primary: var(--credence-text-primary);
   --text-secondary: var(--credence-text-secondary);
   --border-default: var(--credence-border-default);
+  --color-focus-ring: var(--credence-color-focus-ring);
   --color-primary: var(--credence-color-primary);
   --color-primary-hover: var(--credence-color-primary-strong);
   --primary-hover: var(--credence-color-primary-strong);
@@ -151,14 +201,16 @@
 }
 
 [data-theme='dark'] {
-  --credence-color-primary: #38bdf8;
-  --credence-color-primary-strong: #7dd3fc;
+  --credence-color-primary: #7dd3fc;
+  --credence-color-primary-strong: #bae6fd;
   --credence-color-info-surface: rgba(59, 130, 246, 0.15);
+  --credence-color-info-border: #3b82f6;
   --credence-color-info-text: #93c5fd;
   --credence-color-success-surface: rgba(34, 197, 94, 0.15);
   --credence-color-success-border: #22c55e;
   --credence-color-success-text: #86efac;
   --credence-color-warning-surface: rgba(245, 158, 11, 0.15);
+  --credence-color-warning-border: #f59e0b;
   --credence-color-warning-text: #fcd34d;
   --credence-color-danger-surface: rgba(239, 68, 68, 0.15);
   --credence-color-danger-border: #ef4444;
@@ -197,6 +249,37 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Heading reset / scale ─────────────────────────────────────────────────
+ * Browser UA defaults for h1–h3 vary across browsers and viewport sizes.
+ * Resetting them here with --credence-font-size-* tokens guarantees a
+ * consistent typographic hierarchy everywhere in the app without requiring
+ * every component to re-declare font-size on its heading element.
+ */
+h1 {
+  font-size: var(--credence-font-size-3xl);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+  letter-spacing: var(--credence-letter-spacing-tight);
+  color: var(--credence-text-primary);
+  margin: 0;
+}
+
+h2 {
+  font-size: var(--credence-font-size-2xl);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
+  margin: 0;
+}
+
+h3 {
+  font-size: var(--credence-font-size-xl);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
+  margin: 0;
 }
 
 a {
@@ -273,6 +356,20 @@ a:hover {
   }
 }
 
+/**
+ * Reduced-transparency: replace all semi-transparent overlays/backdrops with
+ * opaque equivalents.  Components should consume --credence-backdrop-light /
+ * --credence-backdrop-dark / --credence-backdrop-mobile instead of hard-coding
+ * rgba() values so this media query can override them in one place.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --credence-backdrop-light: #0f172a;
+    --credence-backdrop-dark: #000000;
+    --credence-backdrop-mobile: #000000;
+  }
+}
+
 .container {
   width: 100%;
   max-width: var(--credence-container-max);
@@ -310,7 +407,7 @@ a:hover {
 
 /* Disabled / placeholder link treatment: visually muted and non-interactive */
 .footer-link.footer-link--disabled,
-.footer-link[aria-disabled="true"] {
+.footer-link[aria-disabled='true'] {
   color: var(--credence-text-secondary);
   opacity: 0.65;
   cursor: not-allowed;
@@ -318,11 +415,12 @@ a:hover {
 }
 
 .footer-link.footer-link--disabled:hover,
-.footer-link[aria-disabled="true"]:hover {
+.footer-link[aria-disabled='true']:hover {
   color: var(--credence-text-secondary);
 }
 
-@media (max-width: 767px) {
+/* Tablet and smaller (768px): stack footer content vertically */
+@media (max-width: 768px) {
   .footer-content {
     flex-direction: column;
   }

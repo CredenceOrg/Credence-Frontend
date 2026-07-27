@@ -1,28 +1,32 @@
 .settings-page {
   display: grid;
-  gap: 1.25rem;
+  gap: var(--credence-space-5);
 }
 
+/* The global h1 reset in index.css already provides 3xl / bold / tight —
+ * no override needed here. Only reset the margin so it doesn't push into
+ * the grid gap. */
 .settings-page h1 {
-  font-size: var(--credence-font-size-xl);
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--credence-space-1);
 }
 
 .settings-section {
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  padding: 1rem;
+  background: var(--credence-surface-card);
+  border: 1px solid var(--credence-border-default);
+  padding: var(--credence-space-4);
   border-radius: var(--credence-radius-md);
 }
 
+/* Section h2 uses the xl step (matches card-title level across the app) */
 .settings-section h2 {
-  font-size: var(--credence-font-size-lg);
-  margin-bottom: 0.25rem;
+  font-size: var(--credence-font-size-xl);
+  font-weight: var(--credence-font-weight-semibold);
+  margin-bottom: var(--credence-space-1);
 }
 
 .settings-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--credence-space-3);
 }
 
 .form-hint {
@@ -45,6 +49,58 @@
   border: 1px solid var(--border-default) !important;
   background: var(--bg-card) !important;
   color: var(--text-primary) !important;
+}
+
+.control-time {
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--credence-radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-base);
+  line-height: var(--credence-line-height-base);
+  transition:
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.control-time:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+  border-color: var(--credence-color-primary);
+}
+
+.control-time:hover:not(:disabled) {
+  border-color: var(--credence-color-primary);
+}
+
+.control-time:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quiet-hours-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.quiet-hours-fields .control-time {
+  width: 100%;
+}
+
+.settings-backup-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.settings-backup-row button {
+  flex: 1;
+  min-width: 140px;
 }
 
 /* Responsive layout: single column on small screens, two columns on wide */

@@ -56,6 +56,14 @@
   text-underline-offset: 3px;
 }
 
+/* Keep the active indication visible when the active link is also hovered
+   or focused — .appNav-link:hover otherwise wins on specificity and hides it. */
+.appNav-link--active:hover,
+.appNav-link--active:focus-visible {
+  background: var(--credence-color-slate-100);
+  color: var(--credence-color-primary);
+}
+
 .appNav-link:focus-visible {
   outline: 2px solid var(--credence-color-primary);
   outline-offset: 2px;

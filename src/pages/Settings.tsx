@@ -14,6 +14,8 @@ import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
 import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
 import { apiFetch } from '../api/client'
 import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
+import { DOM_EVENTS } from '../config/domEvents'
+import type { AutoDismissOption } from '../context/SettingsContext'
 import './Settings.css'
 
 function computeDiff(
@@ -350,7 +352,7 @@ export default function Settings() {
     setNetwork(importPreview.network as 'public' | 'test')
     setAddressDisplay(importPreview.addressDisplay as 'full' | 'short' | 'friendly')
     setToastsEnabled(importPreview.toastsEnabled)
-    setAutoDismiss(importPreview.autoDismiss)
+    setAutoDismiss(importPreview.autoDismiss as AutoDismissOption)
     setQuietHoursEnabled(importPreview.quietHoursEnabled ?? false)
     setQuietHoursStart(importPreview.quietHoursStart ?? '22:00')
     setQuietHoursEnd(importPreview.quietHoursEnd ?? '07:00')

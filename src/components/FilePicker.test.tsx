@@ -113,19 +113,17 @@ describe('FilePicker', () => {
     })
 
     it('opens the file dialog when Enter is pressed', async () => {
-      const user = userEvent.setup()
       render(<FilePickerWithState />)
       const dropzone = screen.getByTestId('file-picker-dropzone')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
       const clickSpy = vi.spyOn(input, 'click')
       await act(async () => {
-        await user.type(dropzone, '{Enter}')
+        fireEvent.keyDown(dropzone, { key: 'Enter' })
       })
       expect(clickSpy).toHaveBeenCalled()
     })
 
     it('opens the file dialog when Space is pressed', async () => {
-      const user = userEvent.setup()
       render(<FilePickerWithState />)
       const dropzone = screen.getByTestId('file-picker-dropzone')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
@@ -138,7 +136,6 @@ describe('FilePicker', () => {
     })
 
     it('does not open the file dialog on Enter when disabled', async () => {
-      const user = userEvent.setup()
       render(<FilePickerWithState disabled={true} />)
       const dropzone = screen.getByTestId('file-picker-dropzone')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement

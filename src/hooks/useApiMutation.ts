@@ -32,7 +32,7 @@ export interface UseApiMutationOptions<TData, TVariables, TContext = unknown> {
   initialData?: TData
 }
 
-export interface UseApiMutationResult<TData, TVariables, TContext = unknown> {
+export interface UseApiMutationResult<TData, TVariables> {
   data: TData | undefined
   error: Error | null
   isPending: boolean
@@ -46,7 +46,7 @@ export interface UseApiMutationResult<TData, TVariables, TContext = unknown> {
 
 export function useApiMutation<TData, TVariables, TContext = unknown>(
   options: UseApiMutationOptions<TData, TVariables, TContext>
-): UseApiMutationResult<TData, TVariables, TContext> {
+): UseApiMutationResult<TData, TVariables> {
   const { mutationFn, onMutate, onSuccess, onError, onSettled, initialData } = options
 
   const [data, setDataState] = useState<TData | undefined>(initialData)

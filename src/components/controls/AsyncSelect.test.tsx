@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import userEvent from '@testing-library/user-event'
 import AsyncSelect from './AsyncSelect'
 
 describe('AsyncSelect', () => {

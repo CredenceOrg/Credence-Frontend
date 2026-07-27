@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, memo, type ReactElement } from 'react'
+import { useState, useCallback, useRef, type ReactElement } from 'react'
 import './ActivityTimeline.css'
 import { ACTIVITY_ITEMS, ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
 import EmptyState from './states/EmptyState'
@@ -77,12 +77,6 @@ export interface ActivityTimelineProps {
   items?: ActivityItem[]
 }
 
-interface ActivityRowProps {
-  item: ActivityItem
-  isExpanded: boolean
-  onToggle: (id: string) => void
-}
-
 export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
 
 /**
@@ -143,7 +137,6 @@ export default function ActivityTimeline({
         <ul className="activity-timeline" aria-label="Recent timeline events">
           {items.map((item) => {
             const isExpanded = expandedId === item.id
-            const buttonId = `btn-${item.id}`
             const panelId = `details-${item.id}`
             const buttonId = `trigger-${item.id}`
             return (

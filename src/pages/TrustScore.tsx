@@ -13,8 +13,8 @@ import Button from '../components/Button'
 import PageHeader from '../components/PageHeader'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
-import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
-import { CopyIcon, CheckIcon } from '../components/icons'
+import TrustGauge, { TIER_CONFIG, pointsToNextTier } from '../components/TrustGauge'
+import { TIER_ORDER, MAX_SCORE } from '../lib/tiers'
 import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
@@ -205,28 +205,13 @@ export default function TrustScore() {
   const mismatchBannerId = 'trust-score-network-mismatch'
 
   return (
-    <div>
-      <PageHeader
-        title={t('trustScore.title')}
-        description={t('trustScore.description')}
-        badge={
-          data && lookupAddress === address.trim() ? (
-            <Badge variant={data.tier} label={tierLabel} className="tier-badge" />
-          ) : undefined
-        }
-      />
-      <TierLadder />
-      <Banner severity="info">{t('trustScore.infoBanner')}</Banner>
-
-      {!isConnected && (
-        <Banner
-          severity="warning"
-          title={t('trustScore.connectRequired')}
-          action={{ label: t('common.connectWallet'), onClick: () => void connect() }}
-        >
-          {t('trustScore.connectRequiredDescription')}
-        </Banner>
-      )}
+    <div className="trustScore__page">
+      <div className="trustScore__headerRow">
+        <h1 className="trustScore__title">{t('trustScore.title')}</h1>
+      </div>
+      <p id="trust-desc" className="trustScore__description">
+        {t('trustScore.description')}
+      </p>
 
       {networkMismatch.mismatch && (
         <Banner
@@ -271,10 +256,41 @@ export default function TrustScore() {
           )}
 
           {!isLoading && !error && data && lookupAddress === address.trim() && (
-            <div>
-              <TrustGauge score={data.score} tier={data.tier} />
-              <div className="trustScore__tierBadge">
-                <Badge variant={data.tier} label={tierLabel} />
+            <div className="trustScore__hero" role="region" aria-label="Trust score result">
+              <div className="trustScore__heroScore">
+                <span className="trustScore__heroScoreValue">{data.score}</span>
+                <span className="trustScore__heroScoreTotal">/ {MAX_SCORE}</span>
+              </div>
+
+              <div className="trustScore__heroMeta">
+                <Badge variant={data.tier} label={tierLabel} className="trustScore__heroBadge" />
+                <p className="trustScore__heroNext">
+                  {data.tier === 'platinum' && data.score >= MAX_SCORE
+                    ? 'Platinum tier \u2014 maximum score achieved'
+                    : `${pointsToNextTier(data.score, data.tier)} points to ${
+                        TIER_CONFIG[TIER_ORDER[TIER_ORDER.indexOf(data.tier) + 1]].label
+                      }`}
+                </p>
+              </div>
+
+              <div className="trustScore__heroGauge">
+                <TrustGauge score={data.score} tier={data.tier} />
+              </div>
+
+              <div className="trustScore__heroFooter">
+                <span className="trustScore__heroFooterItem">
+                  {formatAddress(data.address, addressDisplay, walletAddress)}
+                </span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">&#183;</span>
+                <span className="trustScore__heroFooterItem">
+                  {data.attestations} attestation{data.attestations !== 1 ? 's' : ''}
+                </span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">&#183;</span>
+                <span className="trustScore__heroFooterItem">
+                  Updated {new Date(data.updatedAt).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                  })}
+                </span>
               </div>
             </div>
           )}
@@ -462,7 +478,25 @@ export default function TrustScore() {
         </div>
       </div>
 
-      <Disclaimer context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments." />
+      {!isConnected && (
+        <Banner
+          severity="warning"
+          title={t('trustScore.connectRequired')}
+          action={{ label: t('common.connectWallet'), onClick: () => void connect() }}
+        >
+          {t('trustScore.connectRequiredDescription')}
+        </Banner>
+      )}
+
+      <Banner severity="info">
+        {t('trustScore.infoBanner')}
+      </Banner>
+
+      <TierLadder defaultOpen={!hasAttemptedLookup} />
+
+      <Disclaimer
+        context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments."
+      />
     </div>
   )
 }

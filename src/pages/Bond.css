@@ -40,6 +40,11 @@
   align-items: start;
 }
 
+.bond__cardDescription {
+  margin: 0;
+  color: var(--credence-text-secondary);
+}
+
 /* Bond list container */
 .bond__listContainer {
   list-style: none;
@@ -149,4 +154,3 @@
   color: var(--credence-color-danger-action);
   font-weight: var(--credence-font-weight-semibold);
 }
-

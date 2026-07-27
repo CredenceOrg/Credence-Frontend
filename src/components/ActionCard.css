@@ -8,7 +8,9 @@
   color: var(--credence-text-primary);
   /* Default padding */
   padding: var(--credence-space-6);
-  transition: transform var(--credence-motion-duration-fast, 0.2s) ease, box-shadow var(--credence-motion-duration-fast, 0.2s) ease;
+  transition:
+    transform var(--credence-motion-duration-fast, 0.2s) ease,
+    box-shadow var(--credence-motion-duration-fast, 0.2s) ease;
   position: relative;
   overflow: hidden;
 }
@@ -44,21 +46,29 @@
 }
 
 .actionCard--elevated {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .actionCard--elevated:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 /* Dark mode flips tokens */
-[data-theme="dark"] .actionCard--elevated {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+[data-theme='dark'] .actionCard--elevated {
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.5),
+    0 2px 4px -1px rgba(0, 0, 0, 0.3);
 }
 
-[data-theme="dark"] .actionCard--elevated:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+[data-theme='dark'] .actionCard--elevated:hover {
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.5),
+    0 4px 6px -2px rgba(0, 0, 0, 0.3);
 }
 
 .actionCard__header {
@@ -91,7 +101,8 @@
   color: var(--credence-text-secondary);
   cursor: pointer;
   flex-shrink: 0;
-  transition: color var(--credence-motion-duration-fast, 0.2s) ease,
+  transition:
+    color var(--credence-motion-duration-fast, 0.2s) ease,
     background-color var(--credence-motion-duration-fast, 0.2s) ease,
     border-color var(--credence-motion-duration-fast, 0.2s) ease;
 }
@@ -124,16 +135,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color var(--credence-motion-duration-fast, 0.2s) ease, color var(--credence-motion-duration-fast, 0.2s) ease;
+  transition:
+    background-color var(--credence-motion-duration-fast, 0.2s) ease,
+    color var(--credence-motion-duration-fast, 0.2s) ease;
 }
 
 .actionCard__close:hover {
-  background-color: var(--credence-surface-hover, rgba(0,0,0,0.05));
+  background-color: var(--credence-surface-hover, rgba(0, 0, 0, 0.05));
   color: var(--credence-text-primary, #0f172a);
 }
 
-[data-theme="dark"] .actionCard__close:hover {
-  background-color: var(--credence-surface-hover, rgba(255,255,255,0.1));
+[data-theme='dark'] .actionCard__close:hover {
+  background-color: var(--credence-surface-hover, rgba(255, 255, 255, 0.1));
   color: var(--credence-text-primary, #f8fafc);
 }
 

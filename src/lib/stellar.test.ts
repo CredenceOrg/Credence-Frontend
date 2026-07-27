@@ -1,53 +1,104 @@
 import { describe, it, expect } from 'vitest'
 import { isValidStellarAddress, truncateAddress } from './stellar'
 
-// A valid 56-character Stellar public key
-const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA' // 56 chars
+// A valid 56-character Stellar public key (Ed25519 account ID, correct checksum)
+const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7' // 56 chars, correct CRC-16 checksum
+
+// Same key bytes but with the last Base32 character mutated — checksum is wrong
+const BAD_CHECKSUM_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
+
+// A Stellar secret key (version byte 0x90 / 'S' prefix) — wrong network type
+const SECRET_KEY = 'SCZANGBA5RLMQ4DQTNU37XHNG3TZKXNZYHFNFZSL3IQKZJNMQKZXNQR'
 
 describe('isValidStellarAddress', () => {
-  it('returns true for valid Stellar public keys', () => {
+  // --- Happy path ---
+  it('returns_true_for_valid_public_key', () => {
     expect(isValidStellarAddress(VALID_KEY)).toBe(true)
-    // Another valid key
+  })
+
+  it('returns_true_for_second_known_valid_key', () => {
     expect(isValidStellarAddress('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H')).toBe(true)
   })
 
-  it('returns false for empty strings', () => {
+  // --- Empty inputs ---
+  it('returns_false_for_empty_string', () => {
     expect(isValidStellarAddress('')).toBe(false)
+  })
+
+  it('returns_false_for_whitespace_only_string', () => {
     expect(isValidStellarAddress('   ')).toBe(false)
   })
 
-  it('returns false for undefined/null', () => {
+  it('returns_false_for_undefined', () => {
     expect(isValidStellarAddress(undefined)).toBe(false)
+  })
+
+  it('returns_false_for_null', () => {
     expect(isValidStellarAddress(null)).toBe(false)
   })
 
-  it('returns false for malformed keys', () => {
-    // Wrong prefix
-    expect(isValidStellarAddress('SAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(false)
-    // Too short
+  // --- Invalid checksum ---
+  it('returns_false_when_last_character_is_mutated_causing_bad_checksum', () => {
+    // BAD_CHECKSUM_KEY has the same key bytes as VALID_KEY but the final Base32
+    // character is different, so the decoded checksum bytes no longer match.
+    expect(isValidStellarAddress(BAD_CHECKSUM_KEY)).toBe(false)
+  })
+
+  it('returns_false_for_all_G_address_with_invalid_checksum', () => {
+    // 56 G's passes the structural regex but has a wrong checksum
+    expect(isValidStellarAddress('G'.repeat(56))).toBe(false)
+  })
+
+  it('returns_false_for_structurally_valid_looking_key_with_wrong_checksum', () => {
+    // Replace the last 4 chars (checksum region) with 'AAAA' — almost certainly wrong
+    const corrupted = VALID_KEY.slice(0, 52) + 'AAAA'
+    expect(isValidStellarAddress(corrupted)).toBe(false)
+  })
+
+  // --- Wrong network / key type ---
+  it('returns_false_for_stellar_secret_key_S_prefix', () => {
+    // Secret keys start with 'S' (version byte 0x90) — wrong type for an account address
+    expect(isValidStellarAddress(SECRET_KEY)).toBe(false)
+  })
+
+  it('returns_false_for_T_prefix_which_is_not_a_valid_account_address', () => {
+    const tKey = 'T' + VALID_KEY.slice(1)
+    expect(isValidStellarAddress(tKey)).toBe(false)
+  })
+
+  it('returns_false_for_M_prefix_muxed_account_address', () => {
+    // Muxed accounts start with 'M' — not a plain Ed25519 public key
+    const mKey = 'M' + VALID_KEY.slice(1)
+    expect(isValidStellarAddress(mKey)).toBe(false)
+  })
+
+  // --- Structural failures ---
+  it('returns_false_for_key_that_is_too_short', () => {
     expect(isValidStellarAddress('GABC')).toBe(false)
-    // Too long
-    expect(isValidStellarAddress(VALID_KEY + 'EXTRA')).toBe(false)
-    // Invalid characters
-    expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNa')).toBe(false) // lowercase
-    expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN!')).toBe(false) // special char
+    expect(isValidStellarAddress(VALID_KEY.slice(0, 55))).toBe(false)
   })
 
-  it('returns false for wrong prefix', () => {
-    expect(isValidStellarAddress('TAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(false)
-    expect(isValidStellarAddress('MAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(false)
+  it('returns_false_for_key_that_is_too_long', () => {
+    expect(isValidStellarAddress(VALID_KEY + 'A')).toBe(false)
   })
 
-  it('returns false for short keys', () => {
-    expect(isValidStellarAddress('G')).toBe(false)
-    expect(isValidStellarAddress('GA')).toBe(false)
-    expect(isValidStellarAddress('GAAZI4TCR3TY')).toBe(false)
+  it('returns_false_for_lowercase_characters', () => {
+    expect(isValidStellarAddress(VALID_KEY.toLowerCase())).toBe(false)
   })
 
-  it('returns false for random text', () => {
+  it('returns_false_for_key_containing_special_characters', () => {
+    expect(isValidStellarAddress(VALID_KEY.slice(0, 55) + '!')).toBe(false)
+  })
+
+  it('returns_false_for_digits_0_1_8_9_which_are_not_in_base32_alphabet', () => {
+    // Base32 uses only A-Z and 2-7; digits 0,1,8,9 are invalid
+    const with0 = 'G' + '0'.repeat(55)
+    expect(isValidStellarAddress(with0)).toBe(false)
+  })
+
+  it('returns_false_for_random_text', () => {
     expect(isValidStellarAddress('hello world')).toBe(false)
-    expect(isValidStellarAddress('1234567890')).toBe(false)
-    expect(isValidStellarAddress('G123')).toBe(false)
+    expect(isValidStellarAddress('not-a-key')).toBe(false)
   })
 })
 

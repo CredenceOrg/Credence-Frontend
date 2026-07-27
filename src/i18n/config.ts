@@ -4,11 +4,6 @@ import LanguageDetector from 'i18next-browser-languagedetector'
 import { DEFAULT_LOCALE_CONFIG } from '../config/i18n'
 import en from './locales/en.json'
 import { handleLanguageChanged, setPreviousLng } from './localeBreadcrumb'
-import { getDefaultLocale } from '@/config/i18n'
-
-const defaultLocale = getDefaultLocale()
-
-const defaultLocale = 'en'
 
 i18n
   .use(LanguageDetector)

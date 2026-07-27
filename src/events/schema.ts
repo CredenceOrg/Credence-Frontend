@@ -53,6 +53,89 @@ export interface AttestationPayload {
 }
 
 /**
+ * Activity Feed Event Constants & Types
+ *
+ * Tone is the *visual severity* token the timeline renders (color of the
+ * rail node, badge variant, etc.). Status is the user-facing filterable
+ * state on the Attestations page; mappers in the next block convert
+ * one to the other.
+ */
+export const ACTIVITY_EVENTS = {
+  TONES: {
+    SUCCESS: 'success',
+    WARNING: 'warning',
+    INFO: 'info',
+  },
+} as const
+
+export type ActivityTone = (typeof ACTIVITY_EVENTS.TONES)[keyof typeof ACTIVITY_EVENTS.TONES]
+
+/**
+ * Attestation Status Vocabulary
+ *
+ * A status is the user-facing *filterable* state of an attestation
+ * (accepted / needs-update / in-review). Internally it maps to the
+ * `ActivityTone` vocabulary used for visual severity so we don't grow
+ * a parallel render token. `statusToTone` and `toneToStatus` are the
+ * only authorized converters.
+ *
+ * See docs/ATTESTATIONS_VIEW_DESIGN.md, §2 — "Status vocabulary".
+ */
+export const ATTESTATION_STATUSES = {
+  ACCEPTED: 'accepted',
+  NEEDS_UPDATE: 'needs-update',
+  IN_REVIEW: 'in-review',
+} as const
+
+export type AttestationStatus =
+  (typeof ATTESTATION_STATUSES)[keyof typeof ATTESTATION_STATUSES]
+
+/** Status that means "no filter applied" — kept as a separate string
+ *  so it cannot collide with a real attestation status value. */
+export const ATTESTATION_STATUS_ALL = 'all' as const
+
+/** Canonical status → ActivityTone mapping. */
+export function statusToTone(status: AttestationStatus): ActivityTone {
+  const mapping: Record<AttestationStatus, ActivityTone> = {
+    [ATTESTATION_STATUSES.ACCEPTED]: ACTIVITY_EVENTS.TONES.SUCCESS,
+    [ATTESTATION_STATUSES.NEEDS_UPDATE]: ACTIVITY_EVENTS.TONES.WARNING,
+    [ATTESTATION_STATUSES.IN_REVIEW]: ACTIVITY_EVENTS.TONES.INFO,
+  }
+  return mapping[status]
+}
+
+/** Inverse of `statusToTone`. Tone that does not correspond to a known
+ *  status returns `null` so callers can guard explicitly. */
+export function toneToStatus(tone: ActivityTone): AttestationStatus | null {
+  const mapping: Record<ActivityTone, AttestationStatus | null> = {
+    [ACTIVITY_EVENTS.TONES.SUCCESS]: ATTESTATION_STATUSES.ACCEPTED,
+    [ACTIVITY_EVENTS.TONES.WARNING]: ATTESTATION_STATUSES.NEEDS_UPDATE,
+    [ACTIVITY_EVENTS.TONES.INFO]: ATTESTATION_STATUSES.IN_REVIEW,
+  }
+  return mapping[tone]
+}
+
+export interface ActivityEventPayload {
+  id: string
+  timestamp: string
+  title: string
+  description: string
+  /** The validator / process that produced this attestation event.
+   *  In the Attestations detail drawer this is surfaced as "Validator". */
+  actor: string
+  statusLabel: string
+  tone: ActivityTone
+  meta: string
+  /** Optional explicit attestation status. When present it is the
+   *  user-facing filterable value (accepted / needs-update / in-review).
+   *  Falls back to `toneToStatus(tone)` for legacy items. */
+  status?: AttestationStatus
+}
+
+/** Alias for backward-compatibility with component prop definitions */
+export type ActivityItem = ActivityEventPayload
+
+/**
  * Transaction Domain Event Constants & Types
  */
 export const TRANSACTION_EVENTS = {
@@ -107,33 +190,6 @@ export interface BondEventPayload {
   createdAt: string
   maturesAt?: string
 }
-
-/**
- * Activity Feed Event Constants & Types
- */
-export const ACTIVITY_EVENTS = {
-  TONES: {
-    SUCCESS: 'success',
-    WARNING: 'warning',
-    INFO: 'info',
-  },
-} as const
-
-export type ActivityTone = (typeof ACTIVITY_EVENTS.TONES)[keyof typeof ACTIVITY_EVENTS.TONES]
-
-export interface ActivityEventPayload {
-  id: string
-  timestamp: string
-  title: string
-  description: string
-  actor: string
-  statusLabel: string
-  tone: ActivityTone
-  meta: string
-}
-
-/** Alias for backward-compatibility with component prop definitions */
-export type ActivityItem = ActivityEventPayload
 
 /**
  * Toast / Notification Event Constants & Types

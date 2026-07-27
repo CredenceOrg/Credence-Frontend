@@ -15,6 +15,7 @@ import PageHeader from '../components/PageHeader'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
+import { CopyIcon, CheckIcon } from '../components/icons'
 import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
@@ -369,18 +370,43 @@ export default function TrustScore() {
                   })}
                 </ul>
               </div>
-            )}
-            {isConnected && walletAddress && (
-              <Button
-                type="button"
-                onClick={useConnectedAddress}
-                variant="secondary"
-                fullWidth
-                className="trustScore__buttonRow"
-              >
-                {t('trustScore.useMyAddress')}
-              </Button>
-            )}
+              <ul className="trustScore__recentList" aria-labelledby="recent-lookups-heading">
+                {safeHistory.map((item) => {
+                  const displayLabel = formatAddress(item.address, addressDisplay, walletAddress)
+                  return (
+                    <li key={item.address} className="trustScore__recentListItem">
+                      <button
+                        type="button"
+                        className="trustScore__recentItemBtn"
+                        onClick={() => handleSelectRecent(item.address)}
+                        aria-label={`Look up address ${displayLabel}`}
+                      >
+                        {displayLabel}
+                      </button>
+                      <button
+                        type="button"
+                        className="trustScore__recentCopyBtn"
+                        onClick={async () => {
+                          const success = await copy(item.address)
+                          if (success) {
+                            addToast('success', 'Address copied to clipboard')
+                          }
+                        }}
+                        aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}
+                      >
+                        {copied ? (
+                          <CheckIcon width={14} height={14} viewBox="0 0 24 24" />
+                        ) : (
+                          <CopyIcon width={14} height={14} viewBox="0 0 24 24" />
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+          {isConnected && walletAddress && (
             <Button
               type="button"
               onClick={handleLookup}

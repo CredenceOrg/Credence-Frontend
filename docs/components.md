@@ -788,6 +788,8 @@ Icon-only header control that flips the app between light and dark mode. The com
 
 Inline SVG icons follow the same pattern as [`Banner.tsx`](../src/components/Banner.tsx) and [`Toast.tsx`](../src/components/Toast.tsx): `width="18"` / `height="18"`, `viewBox="0 0 20 20"`, `currentColor`, and `aria-hidden="true"` on the graphic.
 
+Credence now standardizes reusable UI icons in `src/components/icons`, so trust and bond screens can share consistent SVG sizing, stroke/color rules, and accessibility patterns.
+
 | Resolved theme | Icon shown | Meaning |
 | -------------- | ---------- | ------- |
 | `light`        | Moon       | Dark mode is available; click to switch |

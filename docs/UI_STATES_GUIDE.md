@@ -50,6 +50,8 @@ Empty states appear when there's no data to display. They should be encouraging 
 
 This section defines the first-run help pattern for the Bond page. The goal is to guide new users through their first bond creation without interrupting expert users.
 
+For the full coach-mark concept, including exact placements, copy, dismissal behavior, responsive rules, and QA criteria, see [Onboarding Coach Marks: First Bond Creation](./uiux/onboarding-coachmarks-first-bond.md).
+
 ### Pattern
 
 - Show a dismissible coach mark on first Bond page visit when the user has no existing bond.

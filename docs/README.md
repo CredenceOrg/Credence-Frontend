@@ -154,6 +154,11 @@ This directory contains comprehensive design specifications and implementation g
     - What's cached (localStorage keys, in-memory widget cache), what's queued (pending transactions, auto-save retry), and what happens on cache miss
     - Offline-aware hooks (`useQuery`, `useWidgetCache`), offline banner, install prompt behaviour
 
+7. **[First Bond Coach Marks](./uiux/onboarding-coachmarks-first-bond.md)**
+   - First-run onboarding concept for creating a bond
+   - Coach mark placement, copy, sequencing, and dismissal behavior
+   - Accessibility, responsive behavior, and visual QA checklist
+
 ### Quick Start
 
 To implement UI states in your components:

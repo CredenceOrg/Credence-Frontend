@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './Bond.css'
 import Banner from '../components/Banner'
+import ConnectGate from '../components/ConnectGate'
 import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
 import Badge, { type BadgeVariant } from '../components/Badge'
@@ -204,10 +205,7 @@ export default function Bond() {
         {txStatus}
       </div>
 
-      <PageHeader
-        title={t('bond.title')}
-        description={t('bond.description')}
-      />
+      <PageHeader title={t('bond.title')} description={t('bond.description')} />
 
       <Banner severity="info">{t('bond.infoBanner')}</Banner>
 
@@ -252,68 +250,84 @@ export default function Bond() {
       )}
 
       <div className="bond__cardGrid">
-        <ActionCard title={t('bond.createNewBond')}>
-          <p className="bond__cardDescription">{t('bond.createBondDescription')}</p>
+        <ConnectGate
+          title={t('bond.createNewBond')}
+          description={t('bond.connectToCreateBond')}
+          hideWhenDisconnected={false}
+        >
+          <ActionCard title={t('bond.createNewBond')}>
+            <p className="bond__cardDescription">{t('bond.createBondDescription')}</p>
 
-          <FormField
-            id="bond-amount-quick"
-            label={t('bond.amount')}
-            hint={t('bond.minimumAmount', { amount: MIN_BOND_AMOUNT })}
-            error={bondAmountError}
-          >
-            <AmountInput
-              value={bondAmount}
-              onChange={(next) => {
-                setBondAmount(next)
-                if (bondAmountError) setBondAmountError('')
-              }}
-              balance={0}
-              min={MIN_BOND_AMOUNT}
-              presets={[100, 500, 1000]}
-              currencyLabel="USDC"
-              disabled={networkMismatch.mismatch}
+            <FormField
+              id="bond-amount-quick"
+              label={t('bond.amount')}
+              hint={t('bond.minimumAmount', { amount: MIN_BOND_AMOUNT })}
+              error={bondAmountError}
+            >
+              <AmountInput
+                value={bondAmount}
+                onChange={(next) => {
+                  setBondAmount(next)
+                  if (bondAmountError) setBondAmountError('')
+                }}
+                balance={0}
+                min={MIN_BOND_AMOUNT}
+                presets={[100, 500, 1000]}
+                currencyLabel="USDC"
+                disabled={!isConnected || networkMismatch.mismatch}
+                aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+              />
+            </FormField>
+
+            <Button
+              type="button"
+              onClick={handleCreateBond}
+              fullWidth
+              disabled={
+                !isConnected ||
+                networkMismatch.mismatch ||
+                (isConnected ? isPendingCreate : isConnecting)
+              }
+              isLoading={isConnected ? isPendingCreate : isConnecting}
               aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
-            />
-          </FormField>
+              aria-haspopup={!isConnected ? 'dialog' : undefined}
+            >
+              {isConnected ? t('bond.createBond') : t('bond.connectToContinue')}
+            </Button>
+          </ActionCard>
+        </ConnectGate>
 
-          <Button
-            type="button"
-            onClick={handleCreateBond}
-            fullWidth
-            disabled={networkMismatch.mismatch || (isConnected ? isPendingCreate : isConnecting)}
-            isLoading={isConnected ? isPendingCreate : isConnecting}
-            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
-            aria-haspopup={!isConnected ? 'dialog' : undefined}
-          >
-            {isConnected ? t('bond.createBond') : t('bond.connectToContinue')}
-          </Button>
-        </ActionCard>
-
-        <ActionCard title={t('bond.activeBonds')}>
-          {bonds.length === 0 ? (
-            <EmptyState
-              illustration="bond"
-              title={t('bond.noActiveBonds')}
-              description={t('bond.noActiveBondsDescription')}
-              action={{
-                label: t('bond.createFirstBond'),
-                onClick: handleCreateBond,
-              }}
-            />
-          ) : (
-            <ul className="bond__listContainer">
-              {bonds.map((bond) => (
-                <BondRow
-                  key={bond.id}
-                  bond={bond}
-                  isConnected={isConnected}
-                  onWithdraw={requestWithdraw}
-                  onConnect={() => setConnectModalOpen(true)}
-                />
-              ))}
-            </ul>
-          )}
-        </ActionCard>
+        <ConnectGate
+          title={t('bond.manageBonds')}
+          description={t('bond.connectToManageBonds')}
+          hideWhenDisconnected={true}
+        >
+          <ActionCard title={t('bond.activeBonds')}>
+            {bonds.length === 0 ? (
+              <EmptyState
+                illustration="bond"
+                title={t('bond.noActiveBonds')}
+                description={t('bond.noActiveBondsDescription')}
+                action={{
+                  label: t('bond.createFirstBond'),
+                  onClick: handleCreateBond,
+                }}
+              />
+            ) : (
+              <ul className="bond__listContainer">
+                {bonds.map((bond) => (
+                  <BondRow
+                    key={bond.id}
+                    bond={bond}
+                    isConnected={isConnected}
+                    onWithdraw={requestWithdraw}
+                    onConnect={() => setConnectModalOpen(true)}
+                  />
+                ))}
+              </ul>
+            )}
+          </ActionCard>
+        </ConnectGate>
       </div>
 
       {withdrawTarget && withdrawBreakdown && (

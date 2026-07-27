@@ -1,30 +1,94 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
-import ThemeToggle from './ThemeToggle'
+import { PrefetchNavLink } from './PrefetchNavLink'
+import { useTranslation } from 'react-i18next'
 import MobileNav from './navigation/MobileNav'
+import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
+import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import ActionLauncher from './ActionLauncher'
+import WhatsNewDialog from './WhatsNewDialog'
+import BackToTop from './BackToTop'
 import LINKS from '../config/links'
+import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
+import { isExternalUrl } from '../lib/isExternalUrl'
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
 import './Layout.css'
 
-const NAV_LINKS = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/bond', label: 'Bond' },
-  { to: '/trust', label: 'Trust Score' },
-  { to: '/settings', label: 'Settings' },
-]
-
 function FooterLink({ label, href }: { label: string; href: string }) {
+  const isExternal = isExternalUrl(href)
   return (
-    <a href={href} className="footer-link" target="_blank" rel="noopener noreferrer">
+    <a
+      href={href}
+      className="footer-link"
+      {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+    >
       {label}
     </a>
   )
 }
 
 export default function Layout() {
+  const { t } = useTranslation()
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false)
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false)
+  const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
+  // Refs so focus returns to the triggering button after each dialog closes
+  const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
+  const whatsNewButtonRef = useRef<HTMLButtonElement>(null)
+
+  const NAV_LINKS = [
+    { to: '/dashboard', label: t('nav.dashboard') },
+    { to: '/bond', label: t('nav.bond') },
+    { to: '/trust', label: t('nav.trustScore') },
+    { to: '/attestations', label: t('nav.attestations') },
+    { to: '/transactions', label: t('nav.transactions') },
+    { to: '/settings', label: t('nav.settings') },
+  ]
+
+  const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
+  const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
+
+  const dismissInstallPrompt = useCallback(() => {
+    markInstallPromptHandled()
+    setInstallPromptDismissed(true)
+    setShowInstallPrompt(false)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || installPromptDismissed) return
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      if (installPromptDismissed) return
+      event.preventDefault()
+      markInstallPromptHandled()
+      setInstallPromptDismissed(true)
+      setShowInstallPrompt(true)
+    }
+
+    window.addEventListener(
+      DOM_EVENTS.BEFORE_INSTALL_PROMPT,
+      handleBeforeInstallPrompt as EventListener
+    )
+    return () => {
+      window.removeEventListener(
+        DOM_EVENTS.BEFORE_INSTALL_PROMPT,
+        handleBeforeInstallPrompt as EventListener
+      )
+    }
+  }, [installPromptDismissed])
+
+  // Global action launcher or shortcuts dialog shortcut (Ctrl+K / Cmd+K)
+  useKeyboardShortcut(['Mod', 'K'], () => setShortcutsOpen(true))
+
+  // Global keyboard shortcuts help dialog shortcut (Shift+?)
+  useKeyboardShortcut(['Shift', '?'], () => setShortcutsOpen(true))
+
   return (
     <div className="appShell">
       <a className="skip-link" href="#main-content">
-        Skip to main content
+        {t('layout.skipToMainContent')}
       </a>
 
       {/* Screen reader SPA route transition updates manager */}
@@ -35,27 +99,56 @@ export default function Layout() {
         <MobileNav />
 
         <NavLink to="/" className="appBrand">
-          Credence
+          {t('layout.brand')}
         </NavLink>
 
         {/* Desktop: inline nav (hidden <640px via CSS) */}
         <nav aria-label="Main navigation" className="appNav">
           {NAV_LINKS.map(({ to, label }) => (
-            <NavLink
+            <PrefetchNavLink
               key={to}
               to={to}
               end
+              preload={PRELOADS_BY_PATH[to]}
               className={({ isActive }) =>
                 isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
               }
             >
               {label}
-            </NavLink>
+            </PrefetchNavLink>
           ))}
         </nav>
 
         <ThemeToggle />
+        <NetworkIndicator />
+
+        {/* Keyboard shortcuts help button */}
+        <button
+          ref={shortcutsButtonRef}
+          type="button"
+          className="appHeader-shortcuts-btn"
+          aria-label={t('layout.keyboardShortcuts')}
+          onClick={openShortcuts}
+        >
+          <span aria-hidden="true">?</span>
+          <span className="sr-only">{t('layout.keyboardShortcuts')}</span>
+        </button>
       </header>
+
+      {showInstallPrompt && (
+        <div className="appInstallPrompt">
+          <Banner
+            severity="info"
+            title="Install Credence"
+            dismissible
+            onDismiss={dismissInstallPrompt}
+          >
+            <p className="appInstallPrompt-copy">
+              Install this app for a faster, more reliable experience on your device.
+            </p>
+          </Banner>
+        </div>
+      )}
 
       <main id="main-content" className="appMain">
         <Outlet />
@@ -64,16 +157,37 @@ export default function Layout() {
       <footer className="app-footer">
         <div className="container footer-content">
           <div>
-            <p className="appFooterTitle">Credence</p>
-            <p>© 2026 Credence Protocol. Built on Stellar.</p>
+            <p className="appFooterTitle">{t('layout.brand')}</p>
+            <p>{t('layout.footer.copyright')}</p>
           </div>
           <div className="footer-links">
-            <FooterLink label="Documentation" href={LINKS.docs} />
-            <FooterLink label="Terms of Service" href={LINKS.terms} />
-            <FooterLink label="Privacy Policy" href={LINKS.privacy} />
+            <FooterLink label={t('layout.footer.documentation')} href={LINKS.docs} />
+            <FooterLink label={t('layout.footer.termsOfService')} href={LINKS.terms} />
+            <FooterLink label={t('layout.footer.privacyPolicy')} href={LINKS.privacy} />
           </div>
         </div>
       </footer>
+
+      <KeyboardShortcutsDialog
+        open={shortcutsOpen}
+        onClose={closeShortcuts}
+        returnFocusRef={shortcutsButtonRef}
+      />
+
+      <ActionLauncher
+        open={launcherOpen}
+        onClose={closeLauncher}
+        onOpenKeyboardShortcuts={openShortcuts}
+      />
+
+      <WhatsNewDialog
+        open={whatsNewOpen}
+        onClose={closeWhatsNew}
+        returnFocusRef={whatsNewButtonRef}
+      />
+
+      <BackToTop />
+      <BottomNav />
     </div>
   )
 }

@@ -6,6 +6,8 @@ This guide defines the empty states, error states, and loading patterns for the 
 
 ---
 
+See also: **[Copy Tone Guide](./COPY_TONE.md)** for dos and don'ts when phrasing success, error, empty, and loading copy.
+
 ## Empty States
 
 Empty states appear when there's no data to display. They should be encouraging and guide users toward their next action.
@@ -496,11 +498,11 @@ Each bond row in the Active Bonds list surfaces penalty exposure inline — befo
 
 ### States per row
 
-| Bond status | Disclosure control | Panel content |
-|---|---|---|
-| `locked` | "Show penalty" button (`aria-expanded`) | Bond amount, 20% penalty amount, resulting balance |
+| Bond status    | Disclosure control                      | Panel content                                      |
+| -------------- | --------------------------------------- | -------------------------------------------------- |
+| `locked`       | "Show penalty" button (`aria-expanded`) | Bond amount, 20% penalty amount, resulting balance |
 | `grace-period` | "Show penalty" button (`aria-expanded`) | Bond amount, 10% penalty amount, resulting balance |
-| `active` | None (no expander) | Static "No early-withdrawal penalty" message |
+| `active`       | None (no expander)                      | Static "No early-withdrawal penalty" message       |
 
 ### Behaviour
 

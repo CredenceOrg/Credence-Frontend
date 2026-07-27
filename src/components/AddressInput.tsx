@@ -1,28 +1,33 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
+import QRScannerModal from './QRScannerModal'
 import './AddressInput.css'
-import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
+import {
+  isValidStellarAddress,
+  sanitizeAddressInput,
+  AddressSanitizationError,
+  formatAddressForDisplay,
+} from '@/lib/stellar'
+import useCopyToClipboard from '@/hooks/useCopyToClipboard'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { TEST_IDS } from '@/config/testIds'
+import { useSettings } from '@/context/SettingsContext'
 
 export interface AddressInputProps {
-  /** Input id forwarded to FormField for label and description wiring. */
   id: string
-  /** Visible field label. Defaults to `Stellar Address`. */
   label?: string
-  /** Controlled Stellar public key value. */
   value: string
-  /** Called with the raw address text whenever the user edits or pastes. */
   onChange: (value: string) => void
-  /** Receives the current 56-character Stellar public key validation state. */
   onValidationChange?: (isValid: boolean) => void
-  /** Disables both the text input and paste button. */
   disabled?: boolean
-  /** Additional class names appended to the wrapper. */
+  isLoading?: boolean
   className?: string
+  /** Parent-provided validation error message. */
+  error?: string
+  /** Optional connected wallet address to detect "self" lookups (case-insensitive). */
+  selfAddress?: string
 }
 
-/**
- * Internal component to handle prop injection from FormField
- */
 interface AddressInputInnerProps {
   id?: string
   'aria-describedby'?: string
@@ -33,7 +38,9 @@ interface AddressInputInnerProps {
   onBlur: () => void
   onFocus: () => void
   disabled: boolean
+  isLoading?: boolean
   handlePaste: () => void
+  handleOpenScanner: () => void
   focused: boolean
   showError: boolean
   showSuccess: boolean
@@ -49,14 +56,18 @@ function AddressInputInner({
   onBlur,
   onFocus,
   disabled,
+  isLoading,
   handlePaste,
+  handleOpenScanner,
   focused,
   showError,
   showSuccess,
 }: AddressInputInnerProps) {
+  const isDisabled = disabled || isLoading
+
   return (
     <div
-      className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''}`}
+      className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''} ${isLoading ? 'address-input-container--loading' : ''}`}
     >
       <input
         ref={inputRef}
@@ -64,43 +75,125 @@ function AddressInputInner({
         id={id}
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
-        value={value}
+        value={isLoading ? '' : value}
         onChange={onChange}
         onBlur={onBlur}
         onFocus={onFocus}
-        disabled={disabled}
-        placeholder="Enter Stellar address (G...)"
+        disabled={isDisabled}
+        placeholder={isLoading ? 'Loading...' : 'Enter Stellar address (G...)'}
         className="address-input-field"
         spellCheck="false"
         autoComplete="off"
         autoCapitalize="off"
       />
 
-      <button
-        type="button"
-        onClick={handlePaste}
-        disabled={disabled}
-        className="address-input-paste-button"
-        aria-label="Paste address from clipboard"
-        title="Paste address from clipboard"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-        >
-          <path
-            d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
+      {isLoading ? (
+        <div className="address-input-spinner" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="30 60"
+            />
+          </svg>
+        </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={handleOpenScanner}
+            disabled={isDisabled}
+            className="address-input-scan-button"
+            data-testid={TEST_IDS.SCAN_BUTTON}
+            aria-label="Scan QR code"
+            title="Scan QR code"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <rect
+                x="1"
+                y="1"
+                width="5"
+                height="5"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <rect
+                x="10"
+                y="1"
+                width="5"
+                height="5"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <rect
+                x="1"
+                y="10"
+                width="5"
+                height="5"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <rect
+                x="10"
+                y="10"
+                width="5"
+                height="5"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <path
+                d="M8 4v2M8 10v2"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="sr-only">Scan QR code</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePaste}
+            disabled={isDisabled}
+            className="address-input-paste-button"
+            aria-label="Paste address from clipboard"
+            title="Paste address from clipboard"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="sr-only">Paste address from clipboard</span>
+          </button>
+        </>
+      )}
     </div>
   )
 }
@@ -112,15 +205,22 @@ export default function AddressInput({
   onChange,
   onValidationChange,
   disabled = false,
+  isLoading = false,
   className = '',
+  error: externalError,
+  selfAddress,
 }: AddressInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [sanitizationError, setSanitizationError] = useState<AddressSanitizationError | null>(null)
+  const { copy, copied } = useCopyToClipboard()
+  const { addressDisplay } = useSettings()
 
-  const isValid = isValidStellarAddress(value)
+  const debouncedValue = useDebouncedValue(value, 200)
+  const isValid = isValidStellarAddress(debouncedValue)
   const isEmpty = !value
   const showError = attempted && !isValid && !isEmpty
   const showSuccess = attempted && isValid
@@ -131,8 +231,16 @@ export default function AddressInput({
   }, [isValid, onValidationChange])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    onChange(newValue)
+    const rawValue = e.target.value
+    const result = sanitizeAddressInput(rawValue)
+
+    onChange(result.ok ? result.value : result.fallbackValue)
+
+    if (!result.ok) {
+      setSanitizationError(result.error)
+    } else {
+      setSanitizationError(null)
+    }
 
     // Mark as attempted if user starts typing
     if (!attempted) {
@@ -152,8 +260,15 @@ export default function AddressInput({
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText()
-      const trimmedText = text.trim()
-      onChange(trimmedText)
+      const result = sanitizeAddressInput(text)
+
+      onChange(result.ok ? result.value : result.fallbackValue)
+
+      if (!result.ok) {
+        setSanitizationError(result.error)
+      } else {
+        setSanitizationError(null)
+      }
       setAttempted(true)
 
       // Focus the input after paste
@@ -169,20 +284,49 @@ export default function AddressInput({
     }
   }
 
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard API tidak tersedia — fallback diam
-    }
-  }, [value])
+  const handleOpenScanner = useCallback(() => {
+    setScannerOpen(true)
+  }, [])
 
-  const error = showError
-    ? 'Invalid address. Stellar public keys are 56 characters starting with G.'
-    : undefined
+  const handleScan = useCallback(
+    (scannedValue: string) => {
+      onChange(scannedValue)
+      setAttempted(true)
+      setScannerOpen(false)
+    },
+    [onChange]
+  )
+
+  const handleCloseScanner = useCallback(() => {
+    setScannerOpen(false)
+  }, [])
+
+  const handleCopy = useCallback(async () => {
+    if (!value) return
+    try {
+      await copy(value)
+    } catch {
+      // swallow
+    }
+  }, [copy, value])
+
+  const isChecksumError = showError && /^G[A-Z0-9]{55}$/.test(debouncedValue)
+  const error =
+    externalError ||
+    (sanitizationError ? sanitizationError.message : undefined) ||
+    (showError
+      ? isChecksumError
+        ? 'Invalid address checksum. Please verify the address.'
+        : 'Invalid address. Stellar public keys are 56 characters starting with G.'
+      : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
+
+  // Detect whether the entered (validated) value matches the connected wallet's address.
+  const isSelf =
+    !!selfAddress &&
+    !!debouncedValue &&
+    isValid &&
+    selfAddress.trim().toLowerCase() === debouncedValue.trim().toLowerCase()
 
   return (
     <div className={`address-input-wrapper ${className}`}>
@@ -194,18 +338,24 @@ export default function AddressInput({
           onBlur={handleBlur}
           onFocus={handleFocus}
           disabled={disabled}
+          isLoading={isLoading}
           handlePaste={handlePaste}
+          handleOpenScanner={handleOpenScanner}
           focused={focused}
           showError={showError}
           showSuccess={showSuccess}
         />
       </FormField>
 
+      <QRScannerModal open={scannerOpen} onScan={handleScan} onClose={handleCloseScanner} />
+
       {/* Address echo display when valid */}
       {showSuccess && value && (
         <div className="address-input-echo">
           <span className="address-input-echo-label">Recognized:</span>
-          <code className="address-input-echo-value">{truncateAddress(value)}</code>
+          <code className="address-input-echo-value">
+            {formatAddressForDisplay(value, addressDisplay)}
+          </code>
           <button
             type="button"
             onClick={handleCopy}
@@ -257,7 +407,13 @@ export default function AddressInput({
               </svg>
             )}
             {copied && <span className="address-input-copy-feedback">Copied</span>}
+            <span className="sr-only">Copy address to clipboard</span>
           </button>
+          {isSelf && (
+            <span className="address-input-echo-self" aria-hidden="false">
+              This is your connected wallet
+            </span>
+          )}
         </div>
       )}
 

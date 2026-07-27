@@ -14,6 +14,14 @@ vi.mock('../hooks/useWallet', () => ({
   }),
 }))
 
+vi.mock('../components/ToastProvider', () => ({
+  useToast: () => ({ addToast: vi.fn() }),
+}))
+
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+}))
+
 function WalletConsumer() {
   const wallet = useWalletContext()
 

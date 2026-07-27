@@ -1,6 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import LoadingSkeleton from './LoadingSkeleton'
+import { useReducedMotion } from '../../hooks/useReducedMotion'
+
+// Default the reduced-motion hook to "no preference" so the existing
+// shimmer-token contract tests continue to assert the `var(...)` reference.
+vi.mock('../../hooks/useReducedMotion', () => ({
+  useReducedMotion: vi.fn(() => false),
+}))
 
 // Helper: all direct children of the root element
 const rootChildren = (container: HTMLElement) =>
@@ -264,6 +271,53 @@ describe('LoadingSkeleton', () => {
       // shimmer 1.5s is the token's VALUE in index.css — it must not appear
       // directly in the component's inline style; only the var() reference should
       expect(container.innerHTML).not.toContain('shimmer 1.5s')
+    })
+  })
+
+  // ─── prefers-reduced-motion JS gating ────────────────────────────────
+  //
+  // LoadingSkeleton honors the user's motion preference at the JS layer so
+  // components that drive animation through inline styles don't have to wait
+  // for the global CSS !important override. The hook complements the CSS-only
+  // approach documented in docs/motion-guidelines.md.
+  describe('prefers-reduced-motion JS gating', () => {
+    afterEach(() => {
+      // Reset the mocked hook between tests so the default (`false`) is
+      // restored and the contract assertions in earlier describe blocks
+      // continue to see the `var(--credence-motion-skeleton)` token.
+      vi.mocked(useReducedMotion).mockReset()
+    })
+
+    it('omits the shimmer animation entirely when reduce is on (text variant)', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(true)
+      const { container } = render(<LoadingSkeleton variant="text" rows={2} />)
+      // The var(--credence-motion-skeleton) reference must NOT appear inline
+      expect(container.innerHTML).not.toContain('var(--credence-motion-skeleton)')
+      // No inline `animation:` declaration should be present on any shimmer block
+      Array.from(container.querySelectorAll('div')).forEach((el) => {
+        expect(el.style.animation).toBe('')
+      })
+    })
+
+    it('omits the shimmer animation when reduce is on (card variant)', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(true)
+      const { container } = render(<LoadingSkeleton variant="card" />)
+      expect(container.innerHTML).not.toContain('var(--credence-motion-skeleton)')
+    })
+
+    it('omits the shimmer animation when reduce is on (default fallback variant)', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(true)
+      const { container } = render(
+        // @ts-expect-error — intentionally bypassing the variant union to exercise the fallback branch
+        <LoadingSkeleton variant="__unknown__" />
+      )
+      expect(container.innerHTML).not.toContain('var(--credence-motion-skeleton)')
+    })
+
+    it('keeps the shimmer animation token when reduce is off (default)', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(false)
+      const { container } = render(<LoadingSkeleton variant="text" rows={1} />)
+      expect(container.innerHTML).toContain('var(--credence-motion-skeleton)')
     })
   })
 })

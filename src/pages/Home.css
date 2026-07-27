@@ -3,19 +3,6 @@
   gap: var(--credence-space-6);
 }
 
-.home__title {
-  margin: 0;
-  margin-bottom: var(--credence-space-2);
-  color: var(--credence-text-primary);
-  line-height: var(--credence-line-height-tight);
-}
-
-.home__description {
-  color: var(--credence-text-secondary);
-  margin-bottom: var(--credence-space-8);
-  max-width: 46rem;
-}
-
 .home__ctaRow {
   display: flex;
   gap: var(--credence-space-4);

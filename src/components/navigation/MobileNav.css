@@ -30,7 +30,7 @@
 .mobileNav-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--credence-backdrop-mobile);
   z-index: 999;
   animation: mobileNav-fadeIn var(--credence-motion-duration-base)
     var(--credence-motion-easing-standard);
@@ -118,7 +118,19 @@
   color: var(--credence-color-white);
 }
 
+/* Keep the active indication visible when the active link is also hovered
+   or focused — .mobileNav-link:hover otherwise wins on specificity and hides it. */
+.mobileNav-link--active:hover {
+  background: var(--credence-color-primary);
+  color: var(--credence-color-white);
+}
+
 .mobileNav-link:focus-visible {
+  outline: 2px solid var(--credence-color-primary);
+  outline-offset: 2px;
+}
+
+.mobileNav-link--active:focus-visible {
   outline: 2px solid var(--credence-color-primary);
   outline-offset: 2px;
 }

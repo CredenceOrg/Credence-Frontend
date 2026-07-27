@@ -200,14 +200,20 @@
 }
 
 .trust-gauge__score-value {
-  font-size: var(--credence-font-size-xl);
-  font-weight: var(--credence-font-weight-bold);
-  color: var(--text-primary);
+  /* Semantic token — change --credence-score-display-* in index.css to
+   * retheme the prominent numeric score across the entire app at once. */
+  font-size: var(--credence-score-display-font-size);
+  font-weight: var(--credence-score-display-font-weight);
+  letter-spacing: var(--credence-letter-spacing-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--credence-text-primary);
+  line-height: var(--credence-line-height-tight);
 }
 
 .trust-gauge__score-label {
-  font-size: var(--credence-font-size-base);
-  color: var(--text-secondary);
+  font-size: var(--credence-font-size-lg);
+  font-weight: var(--credence-font-weight-regular);
+  color: var(--credence-text-secondary);
 }
 
 .trust-gauge__tier-display {
@@ -330,11 +336,13 @@
   }
 
   .trust-gauge__title {
-    font-size: var(--credence-font-size-base);
+    font-size: var(--credence-font-size-lg);
   }
 
+  /* On mobile the score numeral steps down one level (2xl instead of 3xl)
+   * so it remains readable without pushing the layout. */
   .trust-gauge__score-value {
-    font-size: var(--credence-font-size-lg);
+    font-size: var(--credence-font-size-2xl);
   }
 
   .trust-gauge__stats {

@@ -1,28 +1,79 @@
+import { useState } from 'react'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import AddressInput from './AddressInput'
-import { truncateAddress } from '@/lib/stellar'
 
-// A valid 56-character Stellar public key
-const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7' // 56 chars
+// A valid 56-character Stellar public key (passes CRC-16 XMODEM checksum)
+const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H' // 56 chars
+// A 56-char G-prefixed uppercase alphanumeric key that fails the CRC-16 checksum
+const INVALID_CHECKSUM_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
 
-// --- truncateAddress ---
-describe('truncateAddress', () => {
-  it('returns short addresses unchanged', () => {
-    expect(truncateAddress('GABC')).toBe('GABC')
-    expect(truncateAddress('G'.repeat(20))).toBe('G'.repeat(20))
-  })
+// --- useDebouncedValue mocking ---
 
-  it('truncates long addresses correctly', () => {
-    const truncated = truncateAddress(VALID_KEY)
-    expect(truncated).toBe(
-      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
-    )
+function mockDebouncedValue<T>(value: T, _delayMs?: number): T {
+  return value
+}
+
+vi.mock('@/hooks/useDebouncedValue', () => ({
+  useDebouncedValue: mockDebouncedValue,
+}))
+
+// --- QRScannerModal mocking ---
+
+vi.mock('./QRScannerModal', () => ({
+  default: ({
+    open,
+    onScan,
+    onClose,
+  }: {
+    open: boolean
+    onScan: (value: string) => void
+    onClose: () => void
+  }) =>
+    open ? (
+      <div data-testid="qr-scanner-modal">
+        <button data-testid="mock-scan" onClick={() => onScan(VALID_KEY)}>
+          Mock Scan
+        </button>
+        <button data-testid="mock-close" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    ) : null,
+}))
+
+// --- useSettings mocking ---
+// Default mock: returns 'short' (matches previous hard-coded behaviour).
+// Individual tests can override addressDisplay via mockReturnValue.
+
+import type { AddressDisplayOption } from '@/context/SettingsContext'
+
+let mockAddressDisplay: AddressDisplayOption = 'short'
+
+vi.mock('@/context/SettingsContext', () => ({
+  useSettings: () => ({ addressDisplay: mockAddressDisplay }),
+}))
+
+beforeEach(() => {
+  mockAddressDisplay = 'short'
+})
+
+// --- Clipboard mocking helper ---
+
+let clipboardReadTextMock: ReturnType<typeof vi.fn>
+
+beforeEach(() => {
+  clipboardReadTextMock = vi.fn()
+  Object.defineProperty(navigator, 'clipboard', {
+    writable: true,
+    configurable: true,
+    value: { readText: clipboardReadTextMock },
   })
 })
 
-// --- isValidStellarAddress (observed via onValidationChange) ---
+// --- Validation tests ---
+
 describe('isValidStellarAddress', () => {
   it('passes a valid 56-character key', () => {
     const onV = vi.fn()
@@ -126,6 +177,16 @@ describe('conditional rendering', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Invalid address')
   })
 
+  it('shows checksum error after blur with format-valid but bad-checksum address', async () => {
+    const user = userEvent.setup()
+    render(<AddressInput id="addr" value={INVALID_CHECKSUM_KEY} onChange={vi.fn()} />)
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+    const alert = screen.getByRole('alert')
+    expect(alert).toBeInTheDocument()
+    expect(alert).toHaveTextContent('checksum')
+  })
+
   it('does not show error when value is empty after blur', async () => {
     const user = userEvent.setup()
     render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
@@ -145,7 +206,9 @@ describe('conditional rendering', () => {
     expect(screen.getByText('Recognized:')).toBeInTheDocument()
     // truncateAddress: first 12 + ... + last 8 chars
     const code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
-    expect(code?.textContent).toBe(truncateAddress(VALID_KEY))
+    expect(code?.textContent).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
   })
 
   it('shows character count while there is input', () => {
@@ -188,20 +251,8 @@ describe('accessibility', () => {
 
 // --- Paste button ---
 describe('paste button', () => {
-  let readTextMock: ReturnType<typeof vi.fn>
-
-  beforeEach(() => {
-    readTextMock = vi.fn()
-    // Use Object.defineProperty so the component's handlePaste sees our mock
-    Object.defineProperty(navigator, 'clipboard', {
-      writable: true,
-      configurable: true,
-      value: { readText: readTextMock },
-    })
-  })
-
   it('reads clipboard, trims whitespace, and calls onChange', async () => {
-    readTextMock.mockResolvedValue(`  ${VALID_KEY}  `)
+    clipboardReadTextMock.mockResolvedValue(`  ${VALID_KEY}  `)
     const onChange = vi.fn()
     render(<AddressInput id="addr" value="" onChange={onChange} />)
 
@@ -210,12 +261,12 @@ describe('paste button', () => {
       fireEvent.click(screen.getByRole('button', { name: /paste address from clipboard/i }))
     })
 
-    expect(readTextMock).toHaveBeenCalled()
+    expect(clipboardReadTextMock).toHaveBeenCalled()
     expect(onChange).toHaveBeenCalledWith(VALID_KEY)
   })
 
   it('focuses input as fallback when clipboard access throws', async () => {
-    readTextMock.mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
+    clipboardReadTextMock.mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
     render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
 
     const input = screen.getByRole('textbox')
@@ -224,5 +275,87 @@ describe('paste button', () => {
     })
 
     expect(document.activeElement).toBe(input)
+  })
+
+  it('strips stellar: prefix and warns on suspicious characters', async () => {
+    const user = userEvent.setup()
+
+    function TestComponent() {
+      const [val, setVal] = useState('')
+      return <AddressInput id="addr" value={val} onChange={setVal} />
+    }
+
+    render(<TestComponent />)
+    const input = screen.getByRole('textbox')
+
+    await user.click(input)
+    // Paste with stellar: prefix and a suspicious non-ASCII character
+    await user.paste('stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+
+    // The value should be updated without "stellar:"
+    expect(input).toHaveValue('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+
+    // And it should show a warning
+    const alert = screen.getByRole('alert')
+    expect(alert).toBeInTheDocument()
+    expect(alert).toHaveTextContent(/suspicious characters/i)
+  })
+})
+
+// --- Echo display format (addressDisplay setting) ---
+describe('echo display respects addressDisplay setting', () => {
+  async function renderAndTriggerEcho(addressDisplay: AddressDisplayOption) {
+    mockAddressDisplay = addressDisplay
+    const user = userEvent.setup()
+    render(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+    // Trigger attempted=true via blur so the echo appears
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+    expect(screen.getByText('Recognized:')).toBeInTheDocument()
+    const code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
+    return code?.textContent ?? ''
+  }
+
+  it('shows full address when addressDisplay is "full"', async () => {
+    const text = await renderAndTriggerEcho('full')
+    expect(text).toBe(VALID_KEY)
+  })
+
+  it('shows truncated address when addressDisplay is "short"', async () => {
+    const text = await renderAndTriggerEcho('short')
+    // truncateAddress: first 12 + "..." + last 8
+    expect(text).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
+  })
+
+  it('shows friendly address when addressDisplay is "friendly"', async () => {
+    const text = await renderAndTriggerEcho('friendly')
+    // formatAddressForDisplay friendly: first 6 + "…" + last 4
+    expect(text).toBe(
+      `${VALID_KEY.substring(0, 6)}\u2026${VALID_KEY.substring(VALID_KEY.length - 4)}`
+    )
+  })
+
+  it('re-renders echo when addressDisplay setting changes', async () => {
+    const user = userEvent.setup()
+    mockAddressDisplay = 'full'
+
+    const { rerender } = render(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+
+    // Full mode: shows entire key
+    let code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
+    expect(code?.textContent).toBe(VALID_KEY)
+
+    // Switch setting to 'short' and re-render
+    mockAddressDisplay = 'short'
+    rerender(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+
+    code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
+    expect(code?.textContent).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
   })
 })

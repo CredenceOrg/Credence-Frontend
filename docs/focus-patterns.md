@@ -172,13 +172,13 @@ function closeOverlay() {
 
 #### Props that control body content
 
-| Prop | Type | Default | Effect |
-|---|---|---|---|
-| `breakdown` | `ConfirmDialogPenaltyBreakdown` | — | Renders the financial `<dl>` (bond withdrawal use case) |
-| `description` | `React.ReactNode` | — | Renders a generic content block when `breakdown` is omitted |
-| `confirmPhrase` | `string` | `'CONFIRM'` | Word the user must type exactly to unlock the confirm button |
-| `confirmHint` | `string` | wallet/funds hint | Small-print below the type-to-confirm input |
-| `confirmLabel` | `string` | `'Withdraw bond'` | Label on the confirm button |
+| Prop            | Type                            | Default           | Effect                                                       |
+| --------------- | ------------------------------- | ----------------- | ------------------------------------------------------------ |
+| `breakdown`     | `ConfirmDialogPenaltyBreakdown` | —                 | Renders the financial `<dl>` (bond withdrawal use case)      |
+| `description`   | `React.ReactNode`               | —                 | Renders a generic content block when `breakdown` is omitted  |
+| `confirmPhrase` | `string`                        | `'CONFIRM'`       | Word the user must type exactly to unlock the confirm button |
+| `confirmHint`   | `string`                        | wallet/funds hint | Small-print below the type-to-confirm input                  |
+| `confirmLabel`  | `string`                        | `'Withdraw bond'` | Label on the confirm button                                  |
 
 `breakdown` takes priority — if both `breakdown` and `description` are supplied, the breakdown is shown.
 

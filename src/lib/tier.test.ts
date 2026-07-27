@@ -6,7 +6,7 @@ describe('tierForScore', () => {
     expect(tierForScore(TIER_THRESHOLDS.bronze.min)).toBe('bronze')
     expect(tierForScore(TIER_THRESHOLDS.bronze.max)).toBe('bronze')
     expect(tierForScore(125)).toBe('bronze')
-    
+
     // Floating point near boundary
     expect(tierForScore(249.9)).toBe('bronze')
   })
@@ -15,7 +15,7 @@ describe('tierForScore', () => {
     expect(tierForScore(TIER_THRESHOLDS.silver.min)).toBe('silver')
     expect(tierForScore(TIER_THRESHOLDS.silver.max)).toBe('silver')
     expect(tierForScore(350)).toBe('silver')
-    
+
     // Floating point near boundaries
     expect(tierForScore(250.1)).toBe('silver')
     expect(tierForScore(499.9)).toBe('silver')
@@ -25,7 +25,7 @@ describe('tierForScore', () => {
     expect(tierForScore(TIER_THRESHOLDS.gold.min)).toBe('gold')
     expect(tierForScore(TIER_THRESHOLDS.gold.max)).toBe('gold')
     expect(tierForScore(625)).toBe('gold')
-    
+
     // Floating point near boundaries
     expect(tierForScore(500.1)).toBe('gold')
     expect(tierForScore(749.9)).toBe('gold')
@@ -34,7 +34,7 @@ describe('tierForScore', () => {
   it('correctly assigns the Platinum tier', () => {
     expect(tierForScore(TIER_THRESHOLDS.platinum.min)).toBe('platinum')
     expect(tierForScore(1000)).toBe('platinum')
-    
+
     // Floating point near boundary
     expect(tierForScore(750.1)).toBe('platinum')
   })

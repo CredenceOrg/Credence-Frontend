@@ -14,7 +14,11 @@ vi.mock('../api/client', async (importOriginal) => {
   }
 })
 
-const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
+vi.mock('@/lib/stellar', () => ({
+  isValidStellarAddress: vi.fn((addr) => !!addr && addr.startsWith('G') && addr.length === 56),
+}))
+
+const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
 const INVALID_ADDRESS = 'not-a-stellar-address'
 
 const mockTrustScore: TrustScore = {

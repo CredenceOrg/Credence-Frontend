@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import Button from './Button'
 import './ConfirmDialog.css'
 
 const DEFAULT_CONFIRM_PHRASE = 'CONFIRM'
-const DEFAULT_CONFIRM_HINT = 'This action cannot be undone. Funds will be sent to your connected wallet.'
+const DEFAULT_CONFIRM_HINT =
+  'This action cannot be undone. Funds will be sent to your connected wallet.'
 
 export interface ConfirmDialogPenaltyBreakdown {
   bondAmount: string
@@ -19,15 +22,25 @@ export interface ConfirmDialogProps {
   title: string
   subtitle?: string
   /**
-   * Financial breakdown to display. When omitted, the `description` slot is
-   * rendered instead — use this for non-withdrawal destructive actions.
+   * Financial breakdown to display. When omitted, the `description` slot or
+   * `children` is rendered instead.
    */
   breakdown?: ConfirmDialogPenaltyBreakdown
   /**
    * Arbitrary content shown in the body when `breakdown` is not provided.
-   * Ignored when `breakdown` is present.
    */
   description?: React.ReactNode
+  /**
+   * React children slot for custom content in the dialog body.
+   */
+  children?: React.ReactNode
+  onConfirm: () => void
+  onCancel: () => void
+  returnFocusRef?: RefObject<HTMLElement | null>
+  confirmLabel?: string
+  confirmInputLabel?: React.ReactNode
+  confirmInputHint?: React.ReactNode
+  variant?: 'danger' | 'info'
   /**
    * Word the user must type exactly to unlock the confirm button.
    * Defaults to `'CONFIRM'`.
@@ -38,10 +51,12 @@ export interface ConfirmDialogProps {
    * Defaults to the wallet/funds hint used for bond withdrawals.
    */
   confirmHint?: string
-  onConfirm: () => void
-  onCancel: () => void
-  returnFocusRef?: RefObject<HTMLElement | null>
-  confirmLabel?: string
+  /**
+   * When `true`, the dialog is mid-submission: the confirm button enters its
+   * loading state, the cancel button is disabled, and backdrop-click is ignored.
+   * Reset to `false` once the async operation settles (success or error).
+   */
+  isSubmitting?: boolean
 }
 
 export default function ConfirmDialog({
@@ -50,13 +65,19 @@ export default function ConfirmDialog({
   subtitle,
   breakdown,
   description,
-  confirmPhrase = DEFAULT_CONFIRM_PHRASE,
-  confirmHint = DEFAULT_CONFIRM_HINT,
+  children,
   onConfirm,
   onCancel,
   returnFocusRef,
   confirmLabel = 'Withdraw bond',
+  confirmInputLabel,
+  confirmInputHint,
+  variant = 'danger',
+  confirmPhrase = DEFAULT_CONFIRM_PHRASE,
+  confirmHint = DEFAULT_CONFIRM_HINT,
+  isSubmitting = false,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation()
   const titleId = useId()
   const descId = useId()
   const announcementId = useId()
@@ -70,6 +91,8 @@ export default function ConfirmDialog({
   const handleCancel = useCallback(() => {
     onCancel()
   }, [onCancel])
+
+  useScrollPreserver({ isActive: open })
 
   useFocusTrap({
     containerRef: dialogRef,
@@ -89,13 +112,6 @@ export default function ConfirmDialog({
 
     const message = subtitle ? `${title}. ${subtitle}` : title
     setAnnouncement(message)
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
   }, [open, title, subtitle])
 
   const isConfirmEnabled = confirmText === confirmPhrase
@@ -103,17 +119,17 @@ export default function ConfirmDialog({
   useEffect(() => {
     if (isConfirmEnabled !== prevConfirmEnabled) {
       if (isConfirmEnabled) {
-        setAnnouncement(`Action enabled. Type ${confirmPhrase} to confirm.`)
+        setAnnouncement(t('confirmDialog.announcements.actionEnabled', { phrase: confirmPhrase }))
         requestAnimationFrame(() => {
           confirmRef.current?.focus()
         })
       } else {
-        setAnnouncement(`Action disabled. Type ${confirmPhrase} to enable.`)
+        setAnnouncement(t('confirmDialog.announcements.actionDisabled', { phrase: confirmPhrase }))
         requestAnimationFrame(() => cancelRef.current?.focus())
       }
       setPrevConfirmEnabled(isConfirmEnabled)
     }
-  }, [isConfirmEnabled, prevConfirmEnabled, confirmPhrase])
+  }, [isConfirmEnabled, prevConfirmEnabled, confirmPhrase, t])
 
   const handleConfirm = () => {
     if (!isConfirmEnabled) return
@@ -121,6 +137,7 @@ export default function ConfirmDialog({
   }
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (isSubmitting) return
     if (event.target === event.currentTarget) {
       handleCancel()
     }
@@ -136,7 +153,7 @@ export default function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        className="confirm-dialog"
+        className={`confirm-dialog confirm-dialog--${variant}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div id={announcementId} className="sr-only" aria-live="assertive" aria-atomic="true">
@@ -154,15 +171,17 @@ export default function ConfirmDialog({
           {breakdown ? (
             <dl className="confirm-dialog__breakdown">
               <div className="confirm-dialog__breakdown-row">
-                <dt>Bond amount</dt>
+                <dt>{t('confirmDialog.breakdown.bondAmount')}</dt>
                 <dd>{breakdown.bondAmount}</dd>
               </div>
               <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--penalty">
-                <dt>Slash penalty ({breakdown.penaltyPercent}%)</dt>
+                <dt>
+                  {t('confirmDialog.breakdown.slashPenalty', { percent: breakdown.penaltyPercent })}
+                </dt>
                 <dd>−{breakdown.penaltyAmount}</dd>
               </div>
               <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--total">
-                <dt>You receive</dt>
+                <dt>{t('confirmDialog.breakdown.youReceive')}</dt>
                 <dd>{breakdown.resultingBalance}</dd>
               </div>
             </dl>
@@ -170,10 +189,21 @@ export default function ConfirmDialog({
             <div className="confirm-dialog__description">{description}</div>
           ) : null}
 
+          {children}
+
           <div className="confirm-dialog__confirm-field">
             <label htmlFor={`${titleId}-confirm-input`}>
-              Type <strong>{confirmPhrase}</strong> to enable{' '}
-              {confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal'}
+              {confirmInputLabel || (
+                <Trans
+                  i18nKey="confirmDialog.typeToConfirm"
+                  values={{
+                    phrase: confirmPhrase,
+                    action:
+                      confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal',
+                  }}
+                  components={{ strong: <strong /> }}
+                />
+              )}
             </label>
             <input
               id={`${titleId}-confirm-input`}
@@ -185,21 +215,28 @@ export default function ConfirmDialog({
               aria-required="true"
               placeholder={confirmPhrase}
             />
-            <p className="confirm-dialog__confirm-hint">{confirmHint}</p>
+            <p className="confirm-dialog__confirm-hint">{confirmInputHint || confirmHint}</p>
           </div>
         </div>
 
         <footer className="confirm-dialog__footer">
-          <Button ref={cancelRef} type="button" variant="secondary" onClick={handleCancel}>
+          <Button
+            ref={cancelRef}
+            type="button"
+            variant="secondary"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button
             ref={confirmRef}
             type="button"
-            variant="danger"
-            disabled={!isConfirmEnabled}
+            variant={variant === 'danger' ? 'danger' : 'primary'}
+            disabled={!isConfirmEnabled || isSubmitting}
+            isLoading={isSubmitting}
             onClick={handleConfirm}
-            aria-disabled={!isConfirmEnabled}
+            aria-disabled={!isConfirmEnabled || isSubmitting}
           >
             {confirmLabel}
           </Button>

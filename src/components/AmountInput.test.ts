@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeUSDC, formatUSDC, sanitizeUSDCInput } from './AmountInput'
+import { normalizeUSDC, formatUSDC, sanitizeUSDCInput } from '../lib/format'
 
 // --- sanitizeUSDCInput ---
 describe('sanitizeUSDCInput', () => {
@@ -97,3 +97,13 @@ describe('normalizeUSDC', () => {
     expect(normalizeUSDC('999999.99')).toBe('999999.99')
   })
 })
+
+// Export for manual testing in browser console
+if (typeof window !== 'undefined') {
+  ;(window as Window & { testAmountInput?: unknown }).testAmountInput = {
+    sanitizeUSDCInput,
+    formatUSDC,
+    normalizeUSDC,
+  }
+  console.log('Test functions available as window.testAmountInput')
+}

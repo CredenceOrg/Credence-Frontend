@@ -18,7 +18,13 @@ This directory contains comprehensive design specifications and implementation g
    - Render helpers, router wrapper, and mock patterns for matchMedia / localStorage / clipboard
    - File naming conventions and coverage thresholds
 
-3. **Per-route document titles (`useDocumentTitle`)**
+3. **[QA Release-Gate Checklist](./QA_CHECKLIST.md)** ⭐ NEW
+   - Contributor-focused checklist of every gate a PR must pass before ship
+   - Automated gates (format, lint, build, test), functionality smoke tests, and manual checks
+   - Sections: code quality, accessibility, responsive layout, theme parity, API types, formatting utilities, security, widget cache
+   - PR evidence block to paste into every pull request description
+
+4. **Per-route document titles (`useDocumentTitle`)**
    - `src/hooks/useDocumentTitle.ts` keeps `document.title` in sync with the active route
    - Each page sets a distinct, branded title (e.g. `Bond · Credence`); the 404 page uses `Page Not Found · Credence`
    - Why it matters: screen readers announce the title on navigation, and tabs, history, and bookmarks become distinguishable per page
@@ -33,7 +39,7 @@ This directory contains comprehensive design specifications and implementation g
    }
    ```
 
-4. **[Shared Components Catalog](./COMPONENTS.md)**
+5. **[Shared Components Catalog](./COMPONENTS.md)**
    - Consolidated props, Storybook story paths and variants, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for all public shared UI components
    - Documents severity/variant vocabularies and cross-links focused component docs
 
@@ -104,6 +110,7 @@ This directory contains comprehensive design specifications and implementation g
     - Accessibility requirements (WCAG 2.1 AA)
     - Testing guide and troubleshooting
     - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
+
 
 14. [Keyboard Interactions Contract](./keyboard-interactions.md) ⭐ NEW
     - Developer-facing matrix of every interactive component and its expected keyboard behavior

@@ -159,6 +159,7 @@ landed, so the per-page wiring ships in follow-up PRs. The cache primitives
 
 See the [docs/](docs/) directory for detailed project documentation, including:
 
+- [QA Release-Gate Checklist](docs/QA_CHECKLIST.md) — Contributor checklist covering automated gates, smoke tests, accessibility, responsive layout, theme parity, and more. Copy the PR evidence block into every PR description.
 - [Accessibility Checklist](docs/ACCESSIBILITY.md) - Required axe, screen reader, keyboard, and contrast checks before merging UI changes.
 - [Design QA Checklist](docs/DESIGN_QA.md) - Design-side review checks before shipping.
 - [Copy Tone Guide](docs/COPY_TONE.md) — How we phrase success, error, empty, and loading UI copy with dos and don'ts.

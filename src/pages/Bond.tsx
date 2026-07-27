@@ -183,12 +183,16 @@ export default function Bond() {
     if (penaltyUsdc > 0) {
       addToast(
         'warning',
-        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
+        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
+        { txHash: 'b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3', network: walletNetwork ?? 'public' }
       )
     } else {
-      addToast('success', 'Bond withdrawn successfully.')
+      addToast('success', 'Bond withdrawn successfully.', {
+        txHash: 'c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
+        network: walletNetwork ?? 'public',
+      })
     }
-  }, [withdrawTarget, withdrawBreakdown, addToast, isPendingWithdraw])
+  }, [withdrawTarget, withdrawBreakdown, addToast, isPendingWithdraw, walletNetwork])
 
   const slashExposureBond = useMemo(() => bonds.find((b) => getPenaltyRate(b.status) > 0), [bonds])
 

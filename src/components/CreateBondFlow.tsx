@@ -55,7 +55,7 @@ interface CreateBondFlowProps {
 export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowProps = {}) {
   const prefersReducedMotion = useReducedMotion()
   const { addToast } = useToast()
-  const { isConnected, connect, reauth, isReauthRequired: checkIsReauthRequired } = useWallet()
+  const { isConnected, connect, reauth, isReauthRequired: checkIsReauthRequired, network: walletNetwork } = useWallet()
   const { balance, status: balanceStatus, error: balanceError, refetch: refetchBalance } =
     useUsdcBalance()
   const [step, setStep] = useState(1)
@@ -129,7 +129,12 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   }
 
   const handleConfirm = () => {
-    addToast('success', 'Bond created successfully.')
+    const unlockDate = duration ? calcUnlockDate(duration) : ''
+    const message = `Bond created. ${formatUsdc(Number(amount))} locked until ${unlockDate}.`
+    addToast('success', message, {
+      txHash: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+      network: walletNetwork ?? 'public',
+    })
     if (onComplete) {
       onComplete()
     } else {

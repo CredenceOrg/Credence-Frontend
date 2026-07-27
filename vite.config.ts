@@ -9,7 +9,16 @@ const apiProxyTarget = process.env.VITE_API_BASE_URL || 'http://localhost:3000'
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      // Opt-in only (set by playwright.config.ts's webServer.env): swaps the real
+      // Freighter extension SDK for a connectable stub so Playwright specs can
+      // drive wallet-gated flows without a browser extension installed. Unset for
+      // `npm run dev` and production builds, which always use the real package.
+      ...(process.env.E2E_MOCK_WALLET === 'true'
+        ? { '@stellar/freighter-api': path.resolve(__dirname, './tests/mocks/freighter-api.mock.ts') }
+        : {}),
+    },
   },
   server: {
     port: 5173,

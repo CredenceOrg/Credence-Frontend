@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ActivityTimeline, { ActivityItem, toneToBadgeVariant, isTxHash } from './ActivityTimeline'
+import ActivityTimeline, { ActivityItem, isTxHash, toneToBadgeVariant } from './ActivityTimeline'
 
 const makeItem = (overrides: Partial<ActivityItem> = {}): ActivityItem => ({
   id: 'test-1',
@@ -218,9 +218,9 @@ describe('ActivityTimeline', () => {
       await user.click(button)
 
       expect(button).toHaveAttribute('aria-expanded', 'false')
-      // Panel should have hidden attribute when collapsed
+      // Panel is unmounted when collapsed
       const panel = document.getElementById('details-test-item')
-      expect(panel).toHaveAttribute('hidden')
+      expect(panel).toBeNull()
     })
 
     it('toggles panel visibility via Enter key', async () => {
@@ -273,7 +273,7 @@ describe('ActivityTimeline', () => {
       await user.click(button)
 
       expect(screen.getByTestId('copyable-hash')).toBeInTheDocument()
-      expect(screen.getByTestId('copyable-hash').textContent).toBe('0x93a1...22f4')
+      expect(screen.getByTestId('copyable-hash').textContent).toBe('Tx 0x93a1...22f4')
     })
 
     it('renders non-tx meta as plain text', async () => {

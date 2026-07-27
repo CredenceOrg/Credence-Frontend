@@ -1,23 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { PrefetchNavLink } from './PrefetchNavLink'
-import { PRELOADS_BY_PATH } from '../config/routes'
 import { useTranslation } from 'react-i18next'
-import ThemeToggle from './ThemeToggle'
-import NetworkIndicator from './NetworkIndicator'
 import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
-import SpeedDial from './SpeedDial'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
-import { useProductUpdates } from '../hooks/useProductUpdates'
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
 import './Layout.css'
-
 
 function FooterLink({ label, href }: { label: string; href: string }) {
   const isExternal = isExternalUrl(href)
@@ -35,14 +31,12 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 export default function Layout() {
   const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
   const whatsNewButtonRef = useRef<HTMLButtonElement>(null)
-
 
   const NAV_LINKS = [
     { to: '/dashboard', label: t('nav.dashboard') },
@@ -53,10 +47,7 @@ export default function Layout() {
     { to: '/settings', label: t('nav.settings') },
   ]
 
-  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
-  const openLauncher = useCallback(() => setLauncherOpen(true), [])
-  const closeLauncher = useCallback(() => setLauncherOpen(false), [])
   const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
 
   const dismissInstallPrompt = useCallback(() => {
@@ -76,43 +67,18 @@ export default function Layout() {
       setShowInstallPrompt(true)
     }
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener)
+    window.addEventListener(DOM_EVENTS.BEFORE_INSTALL_PROMPT, handleBeforeInstallPrompt as EventListener)
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener)
+      window.removeEventListener(DOM_EVENTS.BEFORE_INSTALL_PROMPT, handleBeforeInstallPrompt as EventListener)
     }
   }, [installPromptDismissed])
 
-  // Global Shift+? listener — opens the shortcuts dialog from anywhere except
-  // text-entry contexts (input, textarea, contenteditable).
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement
-      const tag = target?.tagName
-      if (
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT' ||
-        target?.isContentEditable ||
-        target?.contentEditable === 'true' ||
-        (target?.getAttribute && target.getAttribute('contenteditable') === 'true') ||
-        (target?.closest && target.closest('[contenteditable="true"]') !== null)
-      ) {
-        return
-      }
+  // Global action launcher or shortcuts dialog shortcut (Ctrl+K / Cmd+K)
+  useKeyboardShortcut(['Mod', 'K'], () => setShortcutsOpen(true))
 
-      if ((event.key === 'k' || event.key === 'K') && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault()
-        setLauncherOpen(true)
-        return
-      }
+  // Global keyboard shortcuts help dialog shortcut (Shift+?)
+  useKeyboardShortcut(['Shift', '?'], () => setShortcutsOpen(true))
 
-      if (event.key !== '?') return
-      setShortcutsOpen(true)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
 
   return (
     <div className="appShell">
@@ -201,6 +167,12 @@ export default function Layout() {
         open={shortcutsOpen}
         onClose={closeShortcuts}
         returnFocusRef={shortcutsButtonRef}
+      />
+
+      <ActionLauncher
+        open={launcherOpen}
+        onClose={closeLauncher}
+        onOpenKeyboardShortcuts={openShortcuts}
       />
 
       <WhatsNewDialog

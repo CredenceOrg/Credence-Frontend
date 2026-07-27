@@ -1,11 +1,43 @@
-import { useState, useRef, useCallback, type ReactElement } from 'react'
+import { useState, useCallback, useRef, memo, type ReactElement } from 'react'
 import './ActivityTimeline.css'
+import { ACTIVITY_ITEMS, ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
 
-import type { ActivityItem, ActivityTone } from '../data/activity'
-export type { ActivityItem, ActivityTone }
+export type ActivityTone = 'success' | 'warning' | 'info'
+
+/**
+ * Maps ActivityTimeline tone values to Badge variants.
+ * Tones represent attestation status severity levels.
+ */
+export function toneToBadgeVariant(tone: ActivityTone): BadgeVariant {
+  const mapping: Record<ActivityTone, BadgeVariant> = {
+    success: 'active',
+    warning: 'grace-period',
+    info: 'locked',
+  }
+  return mapping[tone]
+}
+
+/**
+ * Detects if meta string represents a transaction hash.
+ * Returns true if meta starts with "Tx 0x" pattern.
+ */
+export function isTxHash(meta: string): boolean {
+  return /^Tx\s+0x/i.test(meta)
+}
+
+export interface ActivityItem {
+  id: string
+  timestamp: string
+  title: string
+  description: string
+  actor: string
+  statusLabel: string
+  tone: ActivityTone
+  meta: string
+}
 
 export function toneToBadgeVariant(tone: string): string {
   switch (tone) {
@@ -24,44 +56,34 @@ export function isTxHash(meta: string): boolean {
   return meta.toLowerCase().startsWith('tx')
 }
 
+export function toneToBadgeVariant(tone: ActivityTone): 'active' | 'grace-period' | 'locked' {
+  switch (tone) {
+    case 'success':
+      return 'active'
+    case 'warning':
+      return 'grace-period'
+    case 'info':
+    default:
+      return 'locked'
+  }
+}
+
+export function isTxHash(meta: string): boolean {
+  return /^tx\s+0x[\w.-]+$/i.test(meta.trim())
+}
+
 export interface ActivityTimelineProps {
   compact?: boolean
   items?: ActivityItem[]
 }
 
-export const SAMPLE_ACTIVITY: ActivityItem[] = [
-  {
-    id: 'evt-001',
-    timestamp: 'Apr 28, 14:22 UTC',
-    title: 'Attestation submitted',
-    description: 'Identity evidence package uploaded and signed for review.',
-    actor: 'Validator Node 12',
-    statusLabel: 'Accepted',
-    tone: 'success',
-    meta: 'Tx 0x93a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1',
-  },
-  {
-    id: 'evt-002',
-    timestamp: 'Apr 27, 09:48 UTC',
-    title: 'Proof mismatch detected',
-    description: 'Signature payload differed from expected checksum for one field.',
-    actor: 'Automated Verifier',
-    statusLabel: 'Needs update',
-    tone: 'warning',
-    meta: 'Rule AV-17',
-  },
-  {
-    id: 'evt-003',
-    timestamp: 'Apr 26, 20:11 UTC',
-    title: 'Credential refreshed',
-    description: 'Expiration window extended after successful periodic check.',
-    actor: 'System process',
-    statusLabel: 'In review',
-    tone: 'info',
-    meta: 'Window +90d',
-  },
-]
+interface ActivityRowProps {
+  item: ActivityItem
+  isExpanded: boolean
+  onToggle: (id: string) => void
+}
 
+export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
 
 /**
  * Attestation evidence detail panel component.
@@ -78,6 +100,7 @@ export default function ActivityTimeline({
   items = SAMPLE_ACTIVITY,
 }: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
   const count = items.length
   const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
@@ -85,6 +108,16 @@ export default function ActivityTimeline({
   const toggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
   }, [])
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'Escape' || !expandedId) return
+      const openId = expandedId
+      setExpandedId(null)
+      triggerRefs.current.get(openId)?.focus()
+    },
+    [expandedId],
+  )
 
   return (
     <section
@@ -104,13 +137,15 @@ export default function ActivityTimeline({
         <EmptyState
           illustration="activity"
           title="No activity yet"
-          description="Attestations and events will appear here."
+          description="Attestations and events will appear here once activity begins."
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">
           {items.map((item) => {
             const isExpanded = expandedId === item.id
+            const buttonId = `btn-${item.id}`
             const panelId = `details-${item.id}`
+            const buttonId = `trigger-${item.id}`
             return (
               <li className="activity-row" key={item.id}>
                 <div className="activity-row__rail" aria-hidden="true">
@@ -129,12 +164,7 @@ export default function ActivityTimeline({
 
                   <button
                     id={buttonId}
-                    ref={(el) => {
-                      if (el) triggerRefs.current.set(item.id, el)
-                      else triggerRefs.current.delete(item.id)
-                    }}
                     type="button"
-                    id={buttonId}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
                     onClick={() => toggleExpand(item.id)}
@@ -145,10 +175,6 @@ export default function ActivityTimeline({
                       }
                     }}
                     className="activity-row__disclosure"
-                    ref={(el) => {
-                      if (el) triggerRefs.current.set(item.id, el)
-                      else triggerRefs.current.delete(item.id)
-                    }}
                   >
                     {isExpanded ? 'Hide details' : 'Show details'}
                   </button>

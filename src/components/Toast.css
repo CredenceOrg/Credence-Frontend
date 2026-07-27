@@ -50,6 +50,37 @@
   color: var(--text-danger);
 }
 
+.toast__progress {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+}
+
+.toast__progress svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.toast__progress-track,
+.toast__progress-indicator {
+  fill: none;
+  stroke-width: 2.25;
+}
+
+.toast__progress-track {
+  stroke: rgba(0, 0, 0, 0.14);
+}
+
+.toast__progress-indicator {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-dasharray: 62.8319;
+  stroke-dashoffset: 62.8319;
+  transition: stroke-dashoffset 0.1s linear;
+}
+
 .toast__icon {
   flex-shrink: 0;
   font-size: var(--credence-font-size-base);

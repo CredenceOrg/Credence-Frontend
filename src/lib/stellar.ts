@@ -111,6 +111,48 @@ export function truncateAddress(address: string | undefined | null): string {
   return `${trimmed.substring(0, 12)}...${trimmed.substring(trimmed.length - 8)}`
 }
 
+/**
+ * The set of display modes for a Stellar address.
+ *
+ * - `full`     — the complete 56-character key (e.g. for copy confirmations)
+ * - `short`    — truncated form: first 12 + "..." + last 8 characters (default)
+ * - `friendly` — very short label: first 6 + "…" + last 4 characters
+ */
+export type AddressDisplayMode = 'full' | 'short' | 'friendly'
+
+/**
+ * Formats a Stellar address for display according to the requested mode.
+ *
+ * Falls back to `short` for unknown / undefined modes. Returns an empty
+ * string for empty / null / undefined input so callers don't need to guard.
+ *
+ * @example
+ * const addr = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+ * formatAddressForDisplay(addr, 'full')     // → 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+ * formatAddressForDisplay(addr, 'short')    // → 'GBRPYHIL2CI3...X2H'     (first 12 + last 8)
+ * formatAddressForDisplay(addr, 'friendly') // → 'GBRPYH…X2H' (first 6 + last 4, with '…')
+ */
+export function formatAddressForDisplay(
+  address: string | undefined | null,
+  mode: AddressDisplayMode | string | undefined,
+): string {
+  if (!address) return ''
+  const trimmed = address.trim()
+  if (!trimmed) return ''
+
+  switch (mode) {
+    case 'full':
+      return trimmed
+    case 'friendly': {
+      if (trimmed.length <= 10) return trimmed
+      return `${trimmed.substring(0, 6)}\u2026${trimmed.substring(trimmed.length - 4)}`
+    }
+    case 'short':
+    default:
+      return truncateAddress(trimmed)
+  }
+}
+
 export type AddressSanitizationError = {
   type: 'SUSPICIOUS_CHARACTERS'
   message: string

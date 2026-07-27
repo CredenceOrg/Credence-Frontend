@@ -22,17 +22,13 @@ function addPendingTransaction(tx: Transaction): void {
   setPendingTransactions([tx, ...pending])
 }
 
-function removePendingTransaction(hash: string): void {
-  const pending = getPendingTransactions()
-  setPendingTransactions(pending.filter((tx) => tx.hash !== hash))
-}
-
 export interface UseTransactionsResult {
   data: Transaction[]
   isLoading: boolean
   error: ApiError | null
   refetch: () => void
   addPendingTransaction: (tx: Transaction) => void
+  removePendingTransaction: (hash: string) => void
 }
 
 export function useTransactions(): UseTransactionsResult {
@@ -101,6 +97,11 @@ export function useTransactions(): UseTransactionsResult {
     setPendingData((prev) => [tx, ...prev])
   }, [])
 
+  const removePending = useCallback((hash: string) => {
+    removePendingTransaction(hash)
+    setPendingData((prev) => prev.filter((tx) => tx.hash !== hash))
+  }, [])
+
   useEffect(() => {
     mountedRef.current = true
     // Load pending transactions from storage on mount
@@ -112,5 +113,5 @@ export function useTransactions(): UseTransactionsResult {
     }
   }, [fetchTransactions])
 
-  return { data, isLoading, error, refetch, addPendingTransaction: addPending }
+  return { data, isLoading, error, refetch, addPendingTransaction: addPending, removePendingTransaction: removePending }
 }

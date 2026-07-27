@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TEST_IDS } from '../config/testIds'
 import Transactions from './Transactions'
+import type { Transaction } from '../api/types'
 
 // ── Mocks ───────────────────────────────────────────────────────────
 const mockUseTransactions = vi.fn()
@@ -74,7 +75,8 @@ const TX3 = {
   timestamp: '2026-01-17T09:45:00Z',
 } as const
 
-function mockLoaded(transactions = [TX1, TX2, TX3]) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mockLoaded(transactions: any = [TX1, TX2, TX3]) {
   mockUseTransactions.mockReturnValue({
     data: transactions,
     isLoading: false,
@@ -283,7 +285,7 @@ describe('Transactions page', () => {
       const user = userEvent.setup()
       // Two failed-status rows + one confirmed + one pending make the
       // 'failed' filter scope the select-all to exactly two rows.
-      mockLoaded([TX1, TX2, TX3, { ...TX2, id: 'tx-other', type: 'mint' }])
+      mockLoaded([TX1, TX2, TX3, { ...TX2, id: 'tx-other' } as unknown as Transaction])
       render(<Transactions />)
 
       // Filter to "failed" so two rows are visible; select-all selects

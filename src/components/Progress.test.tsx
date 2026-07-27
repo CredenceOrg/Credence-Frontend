@@ -208,6 +208,82 @@ describe('Progress', () => {
   })
 
   // -------------------------------------------------------------------------
+  // Colour variants
+  // -------------------------------------------------------------------------
+  describe('colour variants', () => {
+    it('applies .progress--color-primary by default', () => {
+      const { container } = render(<Progress value={50} aria-label="Loading" />)
+      expect(container.querySelector('.progress--color-primary')).not.toBeNull()
+    })
+
+    it('applies .progress--color-success for color="success"', () => {
+      const { container } = render(
+        <Progress value={50} color="success" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-success')).not.toBeNull()
+    })
+
+    it('applies .progress--color-warning for color="warning"', () => {
+      const { container } = render(
+        <Progress value={50} color="warning" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-warning')).not.toBeNull()
+    })
+
+    it('applies .progress--color-danger for color="danger"', () => {
+      const { container } = render(
+        <Progress value={50} color="danger" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-danger')).not.toBeNull()
+    })
+
+    it('colour variant class is present in indeterminate mode', () => {
+      const { container } = render(
+        <Progress color="success" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-success')).not.toBeNull()
+    })
+
+    it('colour variant class combines correctly with size class', () => {
+      const { container } = render(
+        <Progress value={50} size="lg" color="danger" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--lg')).not.toBeNull()
+      expect(container.querySelector('.progress--color-danger')).not.toBeNull()
+    })
+
+    it('does not apply .progress--color-primary when a non-default variant is set', () => {
+      const { container } = render(
+        <Progress value={50} color="success" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-primary')).toBeNull()
+    })
+
+    it('does not apply .progress--color-success when a different variant is set', () => {
+      const { container } = render(
+        <Progress value={50} color="warning" aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-success')).toBeNull()
+    })
+
+    it('colour variant does not interfere with striped class', () => {
+      const { container } = render(
+        <Progress value={50} color="danger" striped aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-danger')).not.toBeNull()
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+    })
+
+    it('colour variant does not interfere with animated class', () => {
+      const { container } = render(
+        <Progress value={50} color="warning" animated aria-label="Loading" />
+      )
+      expect(container.querySelector('.progress--color-warning')).not.toBeNull()
+      expect(container.querySelector('.progress--animated')).not.toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
   // className prop
   // -------------------------------------------------------------------------
   describe('className prop', () => {
@@ -228,6 +304,57 @@ describe('Progress', () => {
     it('base .progress class is always present', () => {
       const { container } = render(<Progress value={50} aria-label="Loading" />)
       expect(container.querySelector('.progress')).not.toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Striped variant
+  // -------------------------------------------------------------------------
+  describe('striped variant', () => {
+    it('applies .progress--striped when striped is true (determinate)', () => {
+      const { container } = render(<Progress value={50} striped aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+    })
+
+    it('does NOT apply .progress--striped by default', () => {
+      const { container } = render(<Progress value={50} aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).toBeNull()
+    })
+
+    it('applies .progress--striped in indeterminate mode', () => {
+      const { container } = render(<Progress striped aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Animated variant
+  // -------------------------------------------------------------------------
+  describe('animated variant', () => {
+    it('applies .progress--animated when animated is true', () => {
+      const { container } = render(<Progress value={50} animated aria-label="Loading" />)
+      expect(container.querySelector('.progress--animated')).not.toBeNull()
+    })
+
+    it('implies striped when animated is true', () => {
+      const { container } = render(<Progress value={50} animated aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+    })
+
+    it('does NOT apply .progress--animated by default', () => {
+      const { container } = render(<Progress value={50} aria-label="Loading" />)
+      expect(container.querySelector('.progress--animated')).toBeNull()
+    })
+
+    it('applies .progress--animated in indeterminate mode', () => {
+      const { container } = render(<Progress animated aria-label="Loading" />)
+      expect(container.querySelector('.progress--animated')).not.toBeNull()
+    })
+
+    it('both striped and animated can be set explicitly', () => {
+      const { container } = render(<Progress value={50} striped animated aria-label="Loading" />)
+      expect(container.querySelector('.progress--striped')).not.toBeNull()
+      expect(container.querySelector('.progress--animated')).not.toBeNull()
     })
   })
 

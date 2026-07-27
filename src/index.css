@@ -67,9 +67,9 @@
   --credence-color-slate-900: #0f172a;
 
   /* Brand + semantic colors */
-  --credence-color-primary: #0284c7;
-  --credence-color-primary-strong: #0369a1;
-  --credence-color-primary-soft: #0ea5e9;
+  --credence-color-primary: #075985;
+  --credence-color-primary-strong: #0c4a6e;
+  --credence-color-primary-soft: #0284c7;
   --credence-color-info-surface: #eff6ff;
   --credence-color-info-border: #3b82f6;
   --credence-color-info-text: #1e40af;
@@ -162,8 +162,8 @@
 }
 
 [data-theme='dark'] {
-  --credence-color-primary: #38bdf8;
-  --credence-color-primary-strong: #7dd3fc;
+  --credence-color-primary: #7dd3fc;
+  --credence-color-primary-strong: #bae6fd;
   --credence-color-info-surface: rgba(59, 130, 246, 0.15);
   --credence-color-info-text: #93c5fd;
   --credence-color-success-surface: rgba(34, 197, 94, 0.15);

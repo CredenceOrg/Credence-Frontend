@@ -144,7 +144,7 @@ describe('useMediaQuery', () => {
       return mql2
     })
 
-    window.matchMedia = matchMediaMock
+    window.matchMedia = matchMediaMock as unknown as (query: string) => MediaQueryList
 
     const { result, rerender } = renderHook(({ q }) => useMediaQuery(q), {
       initialProps: { q: QUERY },

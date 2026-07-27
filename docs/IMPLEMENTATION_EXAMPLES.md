@@ -743,6 +743,36 @@ function MyPage() {
 }
 ```
 
+### Lazy Loading Gated Components (Modals/Dialogs)
+
+For interaction-gated UI elements (e.g. `ConfirmDialog` that is only rendered when a user requests withdrawal), load them lazily using `React.lazy` and `Suspense` to defer fetching the component, styles, and heavy dependencies until the interaction occurs:
+
+```tsx
+import { lazy, Suspense } from 'react'
+import type { ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
+
+const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
+
+function MyComponent() {
+  const [showModal, setShowModal] = useState(false)
+
+  return (
+    <>
+      <button onClick={() => setShowModal(true)}>Open Modal</button>
+      {showModal && (
+        <Suspense fallback={null}>
+          <ConfirmDialog
+            open
+            // ...other props
+            onCancel={() => setShowModal(false)}
+          />
+        </Suspense>
+      )}
+    </>
+  )
+}
+```
+
 ### Debounced Loading States
 
 ```tsx

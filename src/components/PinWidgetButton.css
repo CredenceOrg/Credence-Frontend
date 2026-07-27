@@ -1,0 +1,17 @@
+.pin-widget-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs, 4px);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--color-text-secondary, inherit);
+}
+
+.pin-widget-button:hover {
+  background: var(--color-bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+.pin-widget-button:focus-visible {
+  outline: 2px solid var(--color-focus-ring, currentColor);
+  outline-offset: 2px;
+}

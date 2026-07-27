@@ -116,4 +116,43 @@ Presentational reference component:
 - [src/components/ActivityTimeline.tsx](src/components/ActivityTimeline.tsx)
 - [src/components/ActivityTimeline.css](src/components/ActivityTimeline.css)
 
-This component is static by design and intended as a concept surface for future data binding.
+### Props
+
+| Prop    | Type             | Default     | Description                                                                |
+| ------- | ---------------- | ----------- | -------------------------------------------------------------------------- |
+| `items` | `ActivityItem[]` | Sample data | Timeline events to render. Defaults to sample data. Pass `[]` for no data. |
+
+### Usage
+
+```tsx
+import ActivityTimeline, { ActivityItem, SAMPLE_ACTIVITY } from '../components/ActivityTimeline'
+
+// Default behavior (shows sample data when items not provided)
+<ActivityTimeline />
+
+// Data-driven (empty state when no events)
+<ActivityTimeline items={[]} />
+
+// Data-driven with real events
+<ActivityTimeline items={myEvents} />
+
+// Use exported sample data directly
+<ActivityTimeline items={SAMPLE_ACTIVITY} />
+```
+
+### Empty state
+
+When `items` is an empty array the timeline rail is hidden and `EmptyState` (with
+`illustration="activity"`) is rendered in its place, consistent with the pattern used
+across the app.
+
+### Exported types and data
+
+`ActivityItem`, `ActivityTone`, and `SAMPLE_ACTIVITY` are exported so consumers can type
+their own data without duplicating the interface, and reuse the sample data.
+
+### Trust Score Integration
+
+The Trust Score page uses the data-driven `ActivityTimeline` with the `SAMPLE_ACTIVITY` to
+demonstrate how real or mocked activity data can power the recent activity panel, removing
+the duplication of similar functionality.

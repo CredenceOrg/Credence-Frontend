@@ -1,6 +1,14 @@
+import { useEffect, useRef, useCallback, useState } from 'react'
+import type { ToastSeverity, ToastData } from '../events'
+import { explorerUrl } from '../lib/explorerUrl'
+import { truncateAddress } from '../lib/stellar'
 import './Toast.css'
 
-export type ToastSeverity = 'info' | 'success' | 'warning' | 'danger'
+export type { ToastSeverity, ToastData }
+export interface ToastOptions {
+  txHash?: string
+  network?: string
+}
 
 const ICONS: Record<ToastSeverity, React.ReactNode> = {
   info: (
@@ -67,25 +75,179 @@ const ICONS: Record<ToastSeverity, React.ReactNode> = {
   ),
 }
 
-export interface ToastData {
-  id: string
-  severity: ToastSeverity
-  message: string
-}
-
 interface ToastProps {
   toast: ToastData
   onDismiss: (id: string) => void
 }
 
 export default function Toast({ toast, onDismiss }: ToastProps) {
+  const { durationMs = 0 } = toast
+  const [progress, setProgress] = useState(100)
+  const remainingTimeRef = useRef(durationMs)
+  const lastResumeTimeRef = useRef<number | null>(null)
+  const timerRef = useRef<number | null>(null)
+  const progressTimerRef = useRef<number | null>(null)
+
+  const isHoveredRef = useRef(false)
+  const isFocusedRef = useRef(false)
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    if (progressTimerRef.current !== null) {
+      clearInterval(progressTimerRef.current)
+      progressTimerRef.current = null
+    }
+  }, [])
+
+  const updateProgress = useCallback(() => {
+    if (durationMs <= 0 || remainingTimeRef.current <= 0) {
+      setProgress(0)
+      return
+    }
+
+    const percent = (remainingTimeRef.current / durationMs) * 100
+    setProgress(Math.max(0, percent))
+  }, [durationMs])
+
+  const startTimer = useCallback(() => {
+    // Bypassed for danger severity or autoDismiss='off'
+    if (durationMs <= 0 || remainingTimeRef.current <= 0) return
+    clearTimer()
+    lastResumeTimeRef.current = Date.now()
+    timerRef.current = window.setTimeout(() => {
+      onDismiss(toast.id)
+    }, remainingTimeRef.current)
+    progressTimerRef.current = window.setInterval(() => {
+      if (lastResumeTimeRef.current === null) return
+
+      const elapsed = Date.now() - lastResumeTimeRef.current
+      const remaining = Math.max(0, remainingTimeRef.current - elapsed)
+      remainingTimeRef.current = remaining
+      lastResumeTimeRef.current = Date.now()
+      setProgress((remaining / durationMs) * 100)
+
+      if (remaining <= 0) {
+        clearTimer()
+        setProgress(0)
+      }
+    }, 100)
+    updateProgress()
+  }, [durationMs, onDismiss, toast.id, clearTimer, updateProgress])
+
+  const pauseTimer = useCallback(() => {
+    if (durationMs <= 0) return
+    clearTimer()
+    if (lastResumeTimeRef.current !== null) {
+      const elapsed = Date.now() - lastResumeTimeRef.current
+      remainingTimeRef.current = Math.max(0, remainingTimeRef.current - elapsed)
+      lastResumeTimeRef.current = null
+    }
+    updateProgress()
+  }, [durationMs, clearTimer, updateProgress])
+
+  const updateTimerState = useCallback(() => {
+    if (isHoveredRef.current || isFocusedRef.current) {
+      pauseTimer()
+    } else {
+      startTimer()
+    }
+  }, [pauseTimer, startTimer])
+
+  // Start the timer on mount
+  useEffect(() => {
+    startTimer()
+    return () => clearTimer()
+  }, [startTimer, clearTimer])
+
+  const handleMouseEnter = () => {
+    isHoveredRef.current = true
+    updateTimerState()
+  }
+
+  const handleMouseLeave = () => {
+    isHoveredRef.current = false
+    updateTimerState()
+  }
+
+  const handleFocus = () => {
+    isFocusedRef.current = true
+    updateTimerState()
+  }
+
+  const handleBlur = (e: React.FocusEvent) => {
+    // Only resume if focus has genuinely left the toast's bounding box
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      isFocusedRef.current = false
+      updateTimerState()
+    }
+  }
+
   return (
-    <div className={`toast toast--${toast.severity}`} role="status">
+    <div
+      className={`toast toast--${toast.severity}`}
+      role={toast.severity === 'danger' ? 'alert' : 'status'}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+    >
+      {durationMs > 0 && (
+        <div
+          className="toast__progress"
+          role="progressbar"
+          aria-label="Time remaining"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(progress)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" className="toast__progress-track" />
+            <circle
+              cx="12"
+              cy="12"
+              r="10"
+              className="toast__progress-indicator"
+              style={{ strokeDashoffset: `${((100 - progress) / 100) * 62.8319}` }}
+            />
+          </svg>
+        </div>
+      )}
       <div className="toast__icon-container" aria-hidden="true">
         {ICONS[toast.severity]}
       </div>
       <div className="toast__content">
         <span className="toast__message">{toast.message}</span>
+        {toast.txHash && (
+          <div className="toast__action">
+            <span className="toast__tx-hash">{truncateAddress(toast.txHash)}</span>
+            <a
+              href={explorerUrl(toast.network ?? 'public', toast.txHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="toast__link"
+              aria-label="View transaction on Stellar Explorer"
+            >
+              View on Explorer
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+                className="toast__link-arrow"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </a>
+          </div>
+        )}
       </div>
       <button
         type="button"
@@ -106,6 +268,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
+        <span className="sr-only">{`Dismiss ${toast.severity} notification`}</span>
       </button>
     </div>
   )

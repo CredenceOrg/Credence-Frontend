@@ -58,9 +58,7 @@ const DEFAULT_PENALTY_RATE = 0.2
  * @param durationDays - Lock duration in days.
  */
 export function getPenaltyRateForDuration(durationDays: number): number {
-  return (
-    PENALTY_RATE_BY_DURATION[durationDays as BondDurationDays] ?? DEFAULT_PENALTY_RATE
-  )
+  return PENALTY_RATE_BY_DURATION[durationDays as BondDurationDays] ?? DEFAULT_PENALTY_RATE
 }
 
 /**
@@ -112,4 +110,86 @@ export function computeBondSlashBreakdown(
     penaltyUsdc,
     resultingUsdc,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Shared status-based penalty logic (extracted from Bond.tsx)
+// ---------------------------------------------------------------------------
+
+/**
+ * Status of the MockBond representing the locking stage.
+ */
+export type BondStatus = 'active' | 'locked' | 'grace-period'
+
+/**
+ * Interface representing a mock bond in the frontend system.
+ */
+export interface MockBond {
+  /** Unique identifier for the bond */
+  id: number
+  /** Locked principal amount in USDC */
+  amountUsdc: number
+  /** Current status of the bond */
+  status: BondStatus
+  /** Optional lock duration in days */
+  durationDays?: number
+}
+
+/**
+ * Returns the early-withdrawal penalty rate (as a decimal fraction) for a bond's status.
+ *
+ * @param status - The current status of the bond.
+ * @returns The penalty rate (e.g. 0.2 for locked, 0.1 for grace-period, 0 for active).
+ */
+export function getPenaltyRate(status: BondStatus): number {
+  switch (status) {
+    case 'locked':
+      return 0.2
+    case 'grace-period':
+      return 0.1
+    case 'active':
+    default:
+      return 0
+  }
+}
+
+/**
+ * Computes the withdrawal breakdown details (penalty and resulting balance) for a bond.
+ *
+ * @param bond - The MockBond object containing amount and status.
+ * @returns An object containing formatted amounts and raw penalty values.
+ */
+export function computeWithdrawBreakdown(bond: MockBond): {
+  bondAmount: string
+  penaltyAmount: string
+  penaltyPercent: number
+  resultingBalance: string
+  penaltyUsdc: number
+  resultingUsdc: number
+} {
+  const rate = getPenaltyRate(bond.status)
+  const penaltyPercent = Math.round(rate * 100)
+  const penaltyUsdc = bond.amountUsdc * rate
+  const resultingUsdc = bond.amountUsdc - penaltyUsdc
+
+  return {
+    bondAmount: formatUsdc(bond.amountUsdc),
+    penaltyAmount: formatUsdc(penaltyUsdc),
+    penaltyPercent,
+    resultingBalance: formatUsdc(resultingUsdc),
+    penaltyUsdc,
+    resultingUsdc,
+  }
+}
+
+/**
+ * Derives the estimated unlock date from today + `days`.
+ *
+ * @param days - Lock duration in days.
+ * @returns A locale-formatted date string (e.g. "Jul 19, 2026").
+ */
+export function calcUnlockDate(days: number): string {
+  const today = new Date()
+  const unlock = new Date(today.getTime() + days * 24 * 60 * 60 * 1000)
+  return unlock.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }

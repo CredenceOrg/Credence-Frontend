@@ -1,0 +1,21 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-4);
+  padding: var(--credence-space-6);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+}
+
+.title {
+  font-size: var(--credence-font-size-xl);
+  line-height: var(--credence-line-height-tight);
+  margin: 0;
+}
+
+.content {
+  display: grid;
+  gap: var(--credence-space-4);
+}

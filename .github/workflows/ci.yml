@@ -1,0 +1,53 @@
+# Continuous Integration — Credence Frontend
+#
+# Runs on every push to main and on every pull request.
+# The badge in README.md tracks this workflow by name:
+#   .github/workflows/ci.yml
+#
+# Quality gate (matches README "Continuous Integration" section):
+#   1. npm run format:check  — Prettier formatting
+#   2. npm run lint          — ESLint
+#   3. npm run build         — TypeScript compile + Vite production build
+#   4. npm run test          — Vitest unit / component tests
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 1. Formatting ────────────────────────────────────────────────────────
+      - name: Check formatting (Prettier)
+        run: npm run format:check
+
+      # ── 2. Linting ───────────────────────────────────────────────────────────
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      # ── 3. Build ─────────────────────────────────────────────────────────────
+      - name: Build (TypeScript + Vite)
+        run: npm run build
+
+      # ── 4. Tests ─────────────────────────────────────────────────────────────
+      - name: Run tests (Vitest)
+        run: npm run test

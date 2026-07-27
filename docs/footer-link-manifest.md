@@ -40,10 +40,23 @@ Implementation notes
 
 Environment overrides (optional)
 
-- You can override link targets at build/runtime using Vite env vars:
-  - `VITE_DOCS_URL`
-  - `VITE_TERMS_URL`
-  - `VITE_PRIVACY_URL`
+- You can override link targets at build/runtime using Vite environment variables. The resolution precedence is as follows:
+  1. **Primary Environment Variable**: `VITE_{LINK_NAME}_URL` (e.g., `VITE_DOCS_URL`)
+  2. **Legacy Environment Variable**: `VITE_{LINK_NAME}` (e.g., `VITE_DOCS`)
+  3. **Default Path**: A hardcoded default path within the application.
+
+- **Invalid Override Handling**: Empty strings (`""`), whitespace-only strings (`"   "`, `"\t"`), or `undefined` values for environment variables will be ignored, and the resolution will fall back to the next precedence level.
+
+- **Supported Environment Variables**:
+  - Docs:
+    - `VITE_DOCS_URL` (Primary)
+    - `VITE_DOCS` (Legacy)
+  - Terms:
+    - `VITE_TERMS_URL` (Primary)
+    - `VITE_TERMS` (Legacy)
+  - Privacy:
+    - `VITE_PRIVACY_URL` (Primary)
+    - `VITE_PRIVACY` (Legacy)
 
 Example `.env`:
 

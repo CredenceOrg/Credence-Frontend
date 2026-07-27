@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import './AmountInput.css'
+import { normalizeUSDC, formatUSDC, sanitizeUSDCInput } from '@/lib/format'
+export { normalizeUSDC, formatUSDC, sanitizeUSDCInput } from '@/lib/format'
 
 type NativeInputProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -7,50 +9,31 @@ type NativeInputProps = Omit<
 >
 
 export interface AmountInputProps extends NativeInputProps {
+  /** Controlled decimal amount string. */
   value: string
+  /** Called with sanitized input while editing and normalized input on blur. */
   onChange: (value: string) => void
+  /** Available balance used by the Max button, preset disabled states, and over-balance validation. */
   balance: number
+  /** Quick-select amounts rendered below the input. */
   presets?: number[]
+  /** Currency label shown as the input adornment and in button labels. */
   currencyLabel?: string
+  /**
+   * Optional validation message that marks the amount control invalid.
+   * When provided, this takes precedence over the internal over-balance error.
+   */
   error?: string
-}
-
-const numberFormatter = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-function normalizeUSDC(rawValue: string) {
-  const trimmed = rawValue.trim()
-  if (!trimmed) return ''
-
-  const normalized = trimmed.replace(/,/g, '')
-  const numericValue = Number(normalized)
-  if (!Number.isFinite(numericValue)) return ''
-
-  const clamped = Math.max(0, numericValue)
-  return clamped.toFixed(2)
-}
-
-function formatUSDC(rawValue: string) {
-  const trimmed = rawValue.trim()
-  if (!trimmed) return ''
-
-  const normalized = trimmed.replace(/,/g, '')
-  const numericValue = Number(normalized)
-  if (!Number.isFinite(numericValue)) return rawValue
-
-  return numberFormatter.format(numericValue)
-}
-
-function sanitizeUSDCInput(nextValue: string) {
-  const cleaned = nextValue.replace(/[^\d.]/g, '')
-  const [whole = '', fraction = ''] = cleaned.split('.')
-  const trimmedWhole = whole.replace(/^0+(?=\d)/, '')
-  const trimmedFraction = fraction.slice(0, 2)
-
-  if (cleaned.includes('.')) return `${trimmedWhole || '0'}.${trimmedFraction}`
-  return trimmedWhole
+  /**
+   * Called whenever the internal validity state changes.
+   * `isValid` is `false` when the entered amount exceeds balance; `true` otherwise.
+   * Callers can use this to gate form submission without duplicating the comparison.
+   */
+  onValidityChange?: (isValid: boolean) => void
+  /** Loading state - shows skeleton/spinner and disables interaction */
+  isLoading?: boolean
+  /** Minimum allowed amount */
+  min?: number
 }
 
 export default function AmountInput({
@@ -60,13 +43,47 @@ export default function AmountInput({
   presets = [100, 500, 1000],
   currencyLabel = 'USDC',
   error,
+  isLoading = false,
   'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
   onBlur,
   onFocus,
+  onValidityChange,
+  disabled,
+  min,
   ...inputProps
 }: AmountInputProps) {
+  const uid = useId()
+  const errorId = `${uid}-error`
+
   const [isFocused, setIsFocused] = useState(false)
-  const isInvalid = Boolean(error) || ariaInvalid === 'true'
+
+  // Derive over-balance and below-minimum states from the normalized numeric value.
+  const numericValue = useMemo(() => {
+    const normalized = normalizeUSDC(value)
+    if (!normalized) return 0
+    return Number(normalized)
+  }, [value])
+
+  const isOverBalance = numericValue > 0 && numericValue > balance
+  const isBelowMin = min !== undefined && numericValue > 0 && numericValue < min
+
+  // Explicit `error` prop always wins; over-balance takes precedence over below-minimum.
+  const activeError =
+    error ??
+    (isOverBalance
+      ? 'Amount exceeds available balance.'
+      : isBelowMin
+        ? `Amount must be at least ${min} ${currencyLabel}.`
+        : undefined)
+
+  const isInvalid = Boolean(activeError) || ariaInvalid === 'true'
+
+  // Notify caller when internal validity changes.
+  // A non-empty value is invalid when it exceeds balance OR falls below min.
+  useEffect(() => {
+    onValidityChange?.(!isOverBalance && !isBelowMin)
+  }, [isOverBalance, isBelowMin, onValidityChange])
 
   const displayValue = useMemo(() => {
     if (isFocused) return value
@@ -93,24 +110,36 @@ export default function AmountInput({
     onChange(preset.toFixed(2))
   }
 
-  const maxDisabled = balance <= 0
+  const isDisabled = disabled || isLoading
+  const isMaxDisabled = balance <= 0 || isDisabled
+
+  // Merge any caller-supplied aria-describedby with our internal error id.
+  const describedBy =
+    [ariaDescribedBy, activeError ? errorId : undefined].filter(Boolean).join(' ') || undefined
 
   return (
-    <div className="amountInput" data-invalid={isInvalid ? 'true' : 'false'}>
+    <div
+      className={`amountInput ${isLoading ? 'amountInput--loading' : ''}`}
+      data-invalid={isInvalid ? 'true' : 'false'}
+    >
       <div className="amountInput__row">
         <div className="amountInput__control">
           <input
             {...inputProps}
             className={['amountInput__input', inputProps.className].filter(Boolean).join(' ')}
-            value={displayValue}
+            value={isLoading ? '' : displayValue}
             inputMode="decimal"
             autoComplete="off"
+            disabled={isDisabled}
+            aria-invalid={isInvalid ? 'true' : undefined}
+            aria-describedby={describedBy}
             onFocus={handleFocus}
             onBlur={handleBlur}
             onChange={(event) => onChange(sanitizeUSDCInput(event.target.value))}
+            placeholder={isLoading ? 'Loading...' : inputProps.placeholder}
           />
           <span className="amountInput__adornment" aria-hidden="true">
-            {currencyLabel}
+            {isLoading ? <span className="amountInput__spinner" /> : currencyLabel}
           </span>
         </div>
 
@@ -118,7 +147,7 @@ export default function AmountInput({
           type="button"
           className="amountInput__maxButton"
           onClick={handleMax}
-          disabled={maxDisabled}
+          disabled={isMaxDisabled}
           aria-label={`Set max amount (${currencyLabel})`}
         >
           Max
@@ -127,14 +156,15 @@ export default function AmountInput({
 
       <div className="amountInput__presets" aria-label="Quick amount presets">
         {presets.map((preset) => {
-          const disabled = preset > balance
+          const isPresetOverBalance = preset > balance
+          const isPresetDisabled = isDisabled || isPresetOverBalance
           return (
             <button
               key={preset}
               type="button"
               className="amountInput__chip"
               onClick={() => handlePreset(preset)}
-              disabled={disabled}
+              disabled={isPresetDisabled}
               aria-label={`Set amount to ${preset} ${currencyLabel}`}
             >
               {preset}
@@ -142,7 +172,12 @@ export default function AmountInput({
           )
         })}
       </div>
+
+      {activeError && (
+        <span id={errorId} className="amountInput__error" role="alert">
+          ⚠ {activeError}
+        </span>
+      )}
     </div>
   )
 }
-

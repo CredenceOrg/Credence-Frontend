@@ -10,8 +10,39 @@
 
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import CreateBondFlow from './CreateBondFlow'
+import { useReducedMotion } from '../hooks/useReducedMotion'
+
+vi.mock('../hooks/useReducedMotion', () => ({
+  useReducedMotion: vi.fn(() => false),
+}))
+
+afterEach(() => {
+  vi.clearAllMocks()
+})
+
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({
+    isConnected: true,
+    address: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA',
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    isConnecting: false,
+    error: null,
+    network: 'public',
+    reauth: vi.fn(),
+    isReauthRequired: vi.fn(() => false),
+  }),
+}))
+
+vi.mock('../hooks/useUsdcBalance', () => ({
+  useUsdcBalance: () => ({
+    balance: 10000,
+    status: 'success',
+    refetch: vi.fn(),
+  }),
+}))
 
 // ToastProvider depends on SettingsProvider → wrap renders with both
 import ToastProvider from './ToastProvider'
@@ -194,6 +225,51 @@ describe('CreateBondFlow – step navigation', () => {
 })
 
 // ---------------------------------------------------------------------------
+// a11y: focus moves to the step heading on advance/back
+// ---------------------------------------------------------------------------
+
+describe('CreateBondFlow – focus management', () => {
+  it('focuses the step 1 heading on initial render', async () => {
+    renderFlow()
+    // useEffect fires after render; wait for the heading to receive focus
+    const heading = await screen.findByRole('heading', { name: /Step 1: Enter Bond Amount/i })
+    expect(document.activeElement).toBe(heading)
+  })
+
+  it('moves focus to the step 2 heading when advancing from step 1', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(screen.getByPlaceholderText('0'), '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    const heading = await screen.findByRole('heading', { name: /Step 2: Choose Lock Duration/i })
+    expect(document.activeElement).toBe(heading)
+  })
+
+  it('moves focus to the step 3 heading when advancing from step 2', async () => {
+    await reachStep3('1000', 30)
+    const heading = await screen.findByRole('heading', { name: /Step 3: Review Terms/i })
+    expect(document.activeElement).toBe(heading)
+  })
+
+  it('moves focus to the step 4 heading when advancing from step 3', async () => {
+    await reachStep3('1000', 30)
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    const heading = await screen.findByRole('heading', { name: /Step 4: Confirm Bond/i })
+    expect(document.activeElement).toBe(heading)
+  })
+
+  it('moves focus back to the step 1 heading when going back from step 2', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(screen.getByPlaceholderText('0'), '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+    const heading = await screen.findByRole('heading', { name: /Step 1: Enter Bond Amount/i })
+    expect(document.activeElement).toBe(heading)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Step 3 – core requirements
 // ---------------------------------------------------------------------------
 
@@ -205,7 +281,7 @@ describe('CreateBondFlow – step 3 review', () => {
 
   it('shows bond amount row', async () => {
     await reachStep3('1000', 30)
-    expect(screen.getByTestId('review-bond-amount')).toHaveTextContent('1000 USDC')
+    expect(screen.getByTestId('review-bond-amount')).toHaveTextContent('1,000 USDC')
   })
 
   it('shows duration row', async () => {
@@ -376,5 +452,49 @@ describe('CreateBondFlow – step 4 confirm', () => {
     await user.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: /Confirm & Create Bond/i }))
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Transition gating tests: prefers-reduced-motion
+// ---------------------------------------------------------------------------
+
+describe('CreateBondFlow – transition gating under prefers-reduced-motion', () => {
+  it('allows transitions for motion-OK users (default)', async () => {
+    vi.mocked(useReducedMotion).mockReturnValue(false)
+    const user = userEvent.setup()
+    renderFlow()
+
+    // Check step indicator transition style
+    const stepIndicator = screen.getByLabelText(/Step 1 of 4/i)
+    const bars = stepIndicator.querySelectorAll('div')
+    expect(bars[0].style.transition).toBe('background 0.2s ease')
+
+    // Advance to step 2 to check duration buttons
+    const amountInput = screen.getByPlaceholderText('0')
+    await user.type(amountInput, '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+
+    const button = screen.getByRole('button', { name: /30 Days/i })
+    expect(button.style.transition).toBe('all 0.2s ease')
+  })
+
+  it('disables transitions when reduced motion is preferred', async () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+    const user = userEvent.setup()
+    renderFlow()
+
+    // Check step indicator transition style is none
+    const stepIndicator = screen.getByLabelText(/Step 1 of 4/i)
+    const bars = stepIndicator.querySelectorAll('div')
+    expect(bars[0].style.transition).toBe('none')
+
+    // Advance to step 2 to check duration buttons
+    const amountInput = screen.getByPlaceholderText('0')
+    await user.type(amountInput, '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+
+    const button = screen.getByRole('button', { name: /30 Days/i })
+    expect(button.style.transition).toBe('none')
   })
 })

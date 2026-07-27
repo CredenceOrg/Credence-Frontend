@@ -132,7 +132,13 @@ This directory contains comprehensive design specifications and implementation g
     - Interceptors, retry policy, and error taxonomy for the API client
     - `ApiError` structure and usage examples
 
-18. **[Telemetry & Analytics](./telemetry.md)**
+18. **[Bundle Size Baseline](./BUNDLE.md)** ⭐ NEW
+    - Current production bundle size estimates and per-route breakdowns
+    - Top 10 heaviest dependencies ranked by gzipped size
+    - How to profile and compare bundle sizes with Vite, rollup-plugin-visualizer, and size-limit
+    - Contributor guidelines for keeping the bundle lean
+
+19. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 

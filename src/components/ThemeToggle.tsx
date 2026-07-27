@@ -6,6 +6,8 @@ function SunIcon() {
   return (
     <svg
       className="theme-toggle__icon"
+      width="18"
+      height="18"
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
@@ -29,7 +31,14 @@ function SunIcon() {
 
 function MoonIcon() {
   return (
-    <svg className="theme-toggle__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+    <svg
+      className="theme-toggle__icon"
+      width="18"
+      height="18"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      aria-hidden="true"
+    >
       <path d="M12.03 2.26a.75.75 0 0 0-1.06.92 6 6 0 0 1 7.5 7.5.75.75 0 0 0 .92-1.06 7.5 7.5 0 0 0-7.36-7.36zM7.47 3.7A7 7 0 1 0 16.3 12.53a5.5 5.5 0 1 1-8.83-8.83z" />
     </svg>
   )
@@ -92,6 +101,7 @@ export default function ThemeToggle() {
   const nextTheme = resolved === 'dark' ? 'light' : 'dark'
 
   const handleClick = () => setThemeMode(nextTheme)
+  const actionLabel = `Switch to ${nextTheme} theme`
 
   return (
     <button
@@ -100,7 +110,7 @@ export default function ThemeToggle() {
       onClick={handleClick}
       aria-label="Toggle theme"
       aria-pressed={resolved === 'dark'}
-      title="Toggle theme"
+      title={actionLabel}
     >
       {resolved === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>

@@ -778,6 +778,48 @@ Tokens: secondary text and spacing tokens via `Disclaimer.css`.
 <Disclaimer context="Early withdrawal forfeits accrued rewards." />
 ```
 
+## ThemeToggle
+
+Source: [`src/components/ThemeToggle.tsx`](../src/components/ThemeToggle.tsx). Focused docs: [dark mode](./dark-mode.md).
+
+Icon-only header control that flips the app between light and dark mode. The component is a pure consumer of `useSettings()`; it owns no theme state and writes to no storage key (see [dark mode](./dark-mode.md)).
+
+### Icon pair
+
+Inline SVG icons follow the same pattern as [`Banner.tsx`](../src/components/Banner.tsx) and [`Toast.tsx`](../src/components/Toast.tsx): `width="18"` / `height="18"`, `viewBox="0 0 20 20"`, `currentColor`, and `aria-hidden="true"` on the graphic.
+
+| Resolved theme | Icon shown | Meaning |
+| -------------- | ---------- | ------- |
+| `light`        | Moon       | Dark mode is available; click to switch |
+| `dark`         | Sun        | Light mode is available; click to switch |
+
+Sizing is driven by `--credence-theme-toggle-size` (18px) in `ThemeToggle.css`, keeping the 40×40px hit target consistent with other header icon buttons.
+
+### Interaction and motion
+
+| State | Visual |
+| ----- | ------ |
+| Default | `--credence-surface-card` background, `--credence-border-default` border |
+| Hover | Slate-100 (light) / slate-700 (dark) background; border darkens one step |
+| Focus-visible | `--credence-focus-ring` outline with 2px offset |
+| Disabled | 65% opacity, `not-allowed` cursor |
+
+Color transitions use `--credence-motion-duration-base` and `--credence-motion-easing-standard`. Under `prefers-reduced-motion: reduce`, transitions are disabled so the toggle does not animate.
+
+### Accessibility
+
+| Attribute | Value |
+| --------- | ----- |
+| `aria-label` | Static `"Toggle theme"` (stable accessible name) |
+| `aria-pressed` | `true` when resolved theme is `dark`, `false` when `light` |
+| `title` | Dynamic action label, e.g. `"Switch to dark theme"` |
+
+The static `aria-label` avoids re-announcement churn in screen readers; `aria-pressed` communicates the current mode and `title` supplies a hover tooltip with the next action.
+
+```tsx
+<ThemeToggle />
+```
+
 ## Progress
 
 Source: [`src/components/Progress.tsx`](../src/components/Progress.tsx).

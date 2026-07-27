@@ -69,10 +69,12 @@ describe('ThemeToggle', () => {
     expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('shows "Switch to dark theme" label on light theme', () => {
+  it('keeps a stable accessible name and exposes the next action in title on light theme', () => {
     renderToggle()
-    expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Toggle theme')
-    expect(screen.getByRole('button')).toHaveAccessibleName('Toggle theme')
+    const btn = screen.getByRole('button')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+    expect(btn).toHaveAccessibleName('Toggle theme')
+    expect(btn).toHaveAttribute('title', 'Switch to dark theme')
   })
 
   it('clicking switches themeMode and flips aria-pressed', () => {
@@ -82,6 +84,7 @@ describe('ThemeToggle', () => {
     expect(btn).toHaveAttribute('aria-pressed', 'true')
     expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
     expect(btn).toHaveAccessibleName('Toggle theme')
+    expect(btn).toHaveAttribute('title', 'Switch to light theme')
   })
 
   it('clicking twice returns to original state', () => {
@@ -99,6 +102,7 @@ describe('ThemeToggle', () => {
     const btn = screen.getByRole('button')
     expect(btn).toHaveAttribute('aria-pressed', 'true')
     expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+    expect(btn).toHaveAttribute('title', 'Switch to light theme')
   })
 
   it('clicking from system+dark resolves to light', () => {

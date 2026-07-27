@@ -4,8 +4,7 @@ import { ACTIVITY_ITEMS, ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
-
-export type ActivityTone = 'success' | 'warning' | 'info'
+import type { BadgeVariant } from './Badge'
 
 /**
  * Maps ActivityTimeline tone values to Badge variants.
@@ -28,56 +27,10 @@ export function isTxHash(meta: string): boolean {
   return /^Tx\s+0x/i.test(meta)
 }
 
-export interface ActivityItem {
-  id: string
-  timestamp: string
-  title: string
-  description: string
-  actor: string
-  statusLabel: string
-  tone: ActivityTone
-  meta: string
-}
-
-export function toneToBadgeVariant(tone: string): string {
-  switch (tone) {
-    case 'success':
-      return 'active'
-    case 'warning':
-      return 'grace-period'
-    case 'info':
-      return 'locked'
-    default:
-      return 'active'
-  }
-}
-
-export function isTxHash(meta: string): boolean {
-  return meta.toLowerCase().startsWith('tx')
-}
-
-export function toneToBadgeVariant(tone: ActivityTone): 'active' | 'grace-period' | 'locked' {
-  switch (tone) {
-    case 'success':
-      return 'active'
-    case 'warning':
-      return 'grace-period'
-    case 'info':
-    default:
-      return 'locked'
-  }
-}
-
-export function isTxHash(meta: string): boolean {
-  return /^tx\s+0x[\w.-]+$/i.test(meta.trim())
-}
-
 export interface ActivityTimelineProps {
   compact?: boolean
   items?: ActivityItem[]
 }
-
-export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
 
 /**
  * Attestation evidence detail panel component.

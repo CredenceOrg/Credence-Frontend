@@ -8,6 +8,8 @@ import { getDefaultLocale } from '@/config/i18n'
 
 const defaultLocale = getDefaultLocale()
 
+const defaultLocale = 'en'
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)

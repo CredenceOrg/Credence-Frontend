@@ -25,9 +25,9 @@ function decodeBase32(input: string): Uint8Array | null {
   if (!/^[A-Z2-7]*$/.test(cleaned)) {
     return null
   }
-  
+
   const length = cleaned.length
-  const bytes = new Uint8Array(Math.floor(length * 5 / 8))
+  const bytes = new Uint8Array(Math.floor((length * 5) / 8))
   let bits = 0
   let value = 0
   let index = 0
@@ -53,14 +53,14 @@ function decodeBase32(input: string): Uint8Array | null {
 function calculateCRC16(data: Uint8Array): number {
   const polynomial = 0x1021
   let crc = 0x0000
-  
+
   for (let i = 0; i < data.length; i++) {
-    crc ^= (data[i] << 8)
+    crc ^= data[i] << 8
     for (let j = 0; j < 8; j++) {
-      crc = (crc & 0x8000) ? ((crc << 1) ^ polynomial) : (crc << 1)
+      crc = crc & 0x8000 ? (crc << 1) ^ polynomial : crc << 1
     }
   }
-  return crc & 0xFFFF
+  return crc & 0xffff
 }
 
 function verifyChecksum(address: string): boolean {
@@ -134,7 +134,7 @@ export type AddressDisplayMode = 'full' | 'short' | 'friendly'
  */
 export function formatAddressForDisplay(
   address: string | undefined | null,
-  mode: AddressDisplayMode | string | undefined,
+  mode: AddressDisplayMode | string | undefined
 ): string {
   if (!address) return ''
   const trimmed = address.trim()
@@ -168,7 +168,7 @@ export type AddressSanitizationResult =
  */
 export function sanitizeAddressInput(input: string): AddressSanitizationResult {
   let sanitized = input.trim()
-  
+
   if (sanitized.toLowerCase().startsWith('stellar:')) {
     sanitized = sanitized.slice(8)
   }

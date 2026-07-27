@@ -113,5 +113,12 @@ export function useTransactions(): UseTransactionsResult {
     }
   }, [fetchTransactions])
 
-  return { data, isLoading, error, refetch, addPendingTransaction: addPending, removePendingTransaction: removePending }
+  return {
+    data,
+    isLoading,
+    error,
+    refetch,
+    addPendingTransaction: addPending,
+    removePendingTransaction: removePending,
+  }
 }

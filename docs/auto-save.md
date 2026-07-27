@@ -41,13 +41,10 @@ import { apiFetch } from '../api/client'
 
 const autoSave = useDebouncedAutoSave({
   value: draft,
-  save: (next, signal) =>
-    apiFetch<void>('/settings', { method: 'PATCH', body: next, signal }),
+  save: (next, signal) => apiFetch<void>('/settings', { method: 'PATCH', body: next, signal }),
   delayMs: AUTO_SAVE_DEFAULTS.DEBOUNCE_MS,
   isEqual: (a, b) =>
-    a.themeMode === b.themeMode &&
-    a.network === b.network &&
-    /* …all Settings fields… */ false,
+    a.themeMode === b.themeMode && a.network === b.network && /* …all Settings fields… */ false,
   onSaved: (v) => addToast('info', 'Settings saved'),
   onError: (err, v) => addToast('warning', err.message),
 })
@@ -57,26 +54,26 @@ const autoSave = useDebouncedAutoSave({
 
 ### Return shape
 
-| Field         | Type             | Notes                                                                                          |
-|---------------|------------------|------------------------------------------------------------------------------------------------|
-| `status`      | `AutoSaveStatus` | `idle \| pending \| saving \| saved \| error`.                                                  |
-| `lastSavedAt` | `number \| null` | `Date.now()` timestamp of the most recent successful save. Drives "Saved Ns ago" relative time. |
-| `error`       | `Error \| null`  | Preserved across renders until the next successful save.                                          |
-| `isDirty`     | `boolean`        | `true` whenever `value` differs from the value most recently sent.                              |
-| `saveNow()`   | `() => Promise<void>` | Flush debounce immediately.                                                                |
-| `cancel()`    | `() => void`     | Cancel pending debounce AND abort in-flight save. Status drops to `saved` if a prior save exists, else `idle`. |
+| Field         | Type                  | Notes                                                                                                          |
+| ------------- | --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `status`      | `AutoSaveStatus`      | `idle \| pending \| saving \| saved \| error`.                                                                 |
+| `lastSavedAt` | `number \| null`      | `Date.now()` timestamp of the most recent successful save. Drives "Saved Ns ago" relative time.                |
+| `error`       | `Error \| null`       | Preserved across renders until the next successful save.                                                       |
+| `isDirty`     | `boolean`             | `true` whenever `value` differs from the value most recently sent.                                             |
+| `saveNow()`   | `() => Promise<void>` | Flush debounce immediately.                                                                                    |
+| `cancel()`    | `() => void`          | Cancel pending debounce AND abort in-flight save. Status drops to `saved` if a prior save exists, else `idle`. |
 
 ### Options
 
-| Option        | Type                                  | Default              | Notes                                                                                                  |
-|---------------|---------------------------------------|----------------------|--------------------------------------------------------------------------------------------------------|
-| `value`       | `T \| undefined`                      | —                    | Pass `undefined` to park the hook in `idle` and drop any pending / in-flight save.                    |
-| `save`        | `(value: T, signal: AbortSignal) => Promise<unknown>` | —                    | Required. Forward `signal` to `fetch` / `apiFetch` so cancellation propagates.                        |
-| `delayMs`     | `number`                              | `AUTO_SAVE_DEFAULTS.DEBOUNCE_MS` | Debounce window. Tune per-form; ``600ms`` is a good keyboard-friendly default.         |
-| `isEqual`     | `(prev, next) => boolean`            | `Object.is`          | **Required for object/array payloads.** The hook deliberately avoids deep-equality on the hot path. |
-| `enabled`     | `boolean`                             | `true`               | Master switch. `false` makes the hook a no-op (no timer, no fetches).                                 |
-| `onSaved`     | `(value) => void`                     | —                    | Fires once per successful save, after `lastSavedAt` is updated.                                      |
-| `onError`     | `(error, value) => void`              | —                    | Fires once per failed save, after `error` is updated. Aborted saves do NOT call `onError`.           |
+| Option    | Type                                                  | Default                          | Notes                                                                                               |
+| --------- | ----------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `value`   | `T \| undefined`                                      | —                                | Pass `undefined` to park the hook in `idle` and drop any pending / in-flight save.                  |
+| `save`    | `(value: T, signal: AbortSignal) => Promise<unknown>` | —                                | Required. Forward `signal` to `fetch` / `apiFetch` so cancellation propagates.                      |
+| `delayMs` | `number`                                              | `AUTO_SAVE_DEFAULTS.DEBOUNCE_MS` | Debounce window. Tune per-form; `600ms` is a good keyboard-friendly default.                        |
+| `isEqual` | `(prev, next) => boolean`                             | `Object.is`                      | **Required for object/array payloads.** The hook deliberately avoids deep-equality on the hot path. |
+| `enabled` | `boolean`                                             | `true`                           | Master switch. `false` makes the hook a no-op (no timer, no fetches).                               |
+| `onSaved` | `(value) => void`                                     | —                                | Fires once per successful save, after `lastSavedAt` is updated.                                     |
+| `onError` | `(error, value) => void`                              | —                                | Fires once per failed save, after `error` is updated. Aborted saves do NOT call `onError`.          |
 
 ### State machine
 
@@ -109,7 +106,7 @@ A pure presentational pill. Container components supply i18n-aware labels.
 ```tsx
 import { AutoSaveIndicator } from '../components/indicators'
 
-<AutoSaveIndicator
+;<AutoSaveIndicator
   status={autoSave.status}
   lastSavedAt={autoSave.lastSavedAt}
   labels={autoSaveLabels}
@@ -117,14 +114,14 @@ import { AutoSaveIndicator } from '../components/indicators'
 />
 ```
 
-| Prop          | Type              | Required | Notes                                                                                                  |
-|---------------|-------------------|----------|--------------------------------------------------------------------------------------------------------|
-| `status`      | `AutoSaveStatus`  | yes      | Drives visual + content.                                                                              |
-| `lastSavedAt` | `number \| null`  | yes      | Used to compute the relative-time string while `status === 'saved'`.                                  |
-| `labels`      | `AutoSaveIndicatorLabels` | yes | `{ saving, saved, savedRelative, error, retry }` — i18n-aware, supplied by the caller.       |
-| `onRetry`     | `() => void`      | no       | When provided, an inline `<button>` shows next to the error message.                                  |
-| `ttlMs`       | `number`          | no       | Override `AUTO_SAVE_DEFAULTS.PILL_TTL_MS`. Defaults to 6 seconds (6 000 ms).                          |
-| `className`   | `string`          | no       | Appended to the root `className`.                                                                      |
+| Prop          | Type                      | Required | Notes                                                                                  |
+| ------------- | ------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| `status`      | `AutoSaveStatus`          | yes      | Drives visual + content.                                                               |
+| `lastSavedAt` | `number \| null`          | yes      | Used to compute the relative-time string while `status === 'saved'`.                   |
+| `labels`      | `AutoSaveIndicatorLabels` | yes      | `{ saving, saved, savedRelative, error, retry }` — i18n-aware, supplied by the caller. |
+| `onRetry`     | `() => void`              | no       | When provided, an inline `<button>` shows next to the error message.                   |
+| `ttlMs`       | `number`                  | no       | Override `AUTO_SAVE_DEFAULTS.PILL_TTL_MS`. Defaults to 6 seconds (6 000 ms).           |
+| `className`   | `string`                  | no       | Appended to the root `className`.                                                      |
 
 > **Note on `error`**: this indicator intentionally does NOT take an `error` prop. The
 > caller already has access to the underlying `Error` via `useDebouncedAutoSave().error`
@@ -173,10 +170,10 @@ exclusively — no hard-coded colours, spacing, or radii:
 
 ## How it coexists with the existing Save button
 
-| Flow                   | Trigger                                   | Writes to                                       | User-visible feedback               |
-|------------------------|-------------------------------------------|--------------------------------------------------|-------------------------------------|
-| Manual `Save` button   | Click on `<button type="button">Save</button>` | `localStorage` via `SettingsContext.saveSettings(payload)` | `addToast('success', 'Settings saved successfully')` toast. |
-| **Auto-save hook (new)** | Every form-field change after `DEBOUNCE_MS` of stability | Backend `PATCH /settings` via `apiFetch`, forwarded `signal` for cancellation. | `<AutoSaveIndicator>` pill near the action buttons.       |
+| Flow                     | Trigger                                                  | Writes to                                                                      | User-visible feedback                                       |
+| ------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Manual `Save` button     | Click on `<button type="button">Save</button>`           | `localStorage` via `SettingsContext.saveSettings(payload)`                     | `addToast('success', 'Settings saved successfully')` toast. |
+| **Auto-save hook (new)** | Every form-field change after `DEBOUNCE_MS` of stability | Backend `PATCH /settings` via `apiFetch`, forwarded `signal` for cancellation. | `<AutoSaveIndicator>` pill near the action buttons.         |
 
 The two flows have **independent state** and answer different questions:
 

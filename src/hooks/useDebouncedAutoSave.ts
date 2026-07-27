@@ -11,12 +11,7 @@ import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
  *  error    – most recent save() rejected; `error` is set, `lastSavedValue`
  *             is preserved so a retry isn't a step backward in correctness
  */
-export type AutoSaveStatus =
-  | 'idle'
-  | 'pending'
-  | 'saving'
-  | 'saved'
-  | 'error'
+export type AutoSaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
 export interface UseDebouncedAutoSaveOptions<T> {
   /**
@@ -82,7 +77,8 @@ const defaultEquals = (a: any, b: any): boolean => Object.is(a, b)
  * provide `isEqual` — see `UseDebouncedAutoSaveOptions.isEqual`.
  */
 export function useDebouncedAutoSave<T>(
-  options: UseDebouncedAutoSaveOptions<T>) : UseDebouncedAutoSaveResult {
+  options: UseDebouncedAutoSaveOptions<T>
+): UseDebouncedAutoSaveResult {
   const {
     value,
     save,

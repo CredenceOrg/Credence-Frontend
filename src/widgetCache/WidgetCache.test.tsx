@@ -199,10 +199,7 @@ describe('useWidgetCache', () => {
     // `invalidate()` evicts the cache entry and notifies subscribers.
     // Mounted components re-render with status → idle. A subsequent call to
     // `refresh()` (or a new mount) will kick off the next fetch.
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(['v1'])
-      .mockResolvedValueOnce(['v2'])
+    const fetcher = vi.fn().mockResolvedValueOnce(['v1']).mockResolvedValueOnce(['v2'])
 
     function Probe() {
       const widget = useWidgetCache<string[]>('probe:invalidate', fetcher)
@@ -292,10 +289,7 @@ describe('useWidgetCache', () => {
       resolveSecond = res
     })
 
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(['first'])
-      .mockReturnValueOnce(secondFetch)
+    const fetcher = vi.fn().mockResolvedValueOnce(['first']).mockReturnValueOnce(secondFetch)
 
     const capturedStatuses: string[] = []
 
@@ -432,10 +426,7 @@ describe('useWidgetCache', () => {
       resolveSecond = res
     })
 
-    const fetcher = vi
-      .fn()
-      .mockReturnValueOnce(firstFetch)
-      .mockReturnValueOnce(secondFetch)
+    const fetcher = vi.fn().mockReturnValueOnce(firstFetch).mockReturnValueOnce(secondFetch)
 
     function Probe() {
       const widget = useWidgetCache<string[]>('probe:supersede', fetcher)
@@ -485,10 +476,7 @@ describe('useWidgetCache', () => {
   it('multiple_subscribers_all_update_when_a_shared_key_is_refreshed', async () => {
     // All components subscribed to the same key must receive the updated data
     // when one of them (or an external caller) triggers a refresh.
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(['original'])
-      .mockResolvedValueOnce(['refreshed'])
+    const fetcher = vi.fn().mockResolvedValueOnce(['original']).mockResolvedValueOnce(['refreshed'])
 
     function Probe({ id, showRefresh = false }: { id: string; showRefresh?: boolean }) {
       const widget = useWidgetCache<string[]>('probe:multi-refresh', fetcher)
@@ -511,9 +499,7 @@ describe('useWidgetCache', () => {
       </>
     )
 
-    await waitFor(() =>
-      expect(screen.getByTestId('data-a')).toHaveTextContent('original')
-    )
+    await waitFor(() => expect(screen.getByTestId('data-a')).toHaveTextContent('original'))
     expect(screen.getByTestId('data-b')).toHaveTextContent('original')
     expect(fetcher).toHaveBeenCalledTimes(1)
 
@@ -523,9 +509,7 @@ describe('useWidgetCache', () => {
     })
 
     // Both subscribers must receive the updated data from the single shared fetch.
-    await waitFor(() =>
-      expect(screen.getByTestId('data-a')).toHaveTextContent('refreshed')
-    )
+    await waitFor(() => expect(screen.getByTestId('data-a')).toHaveTextContent('refreshed'))
     expect(screen.getByTestId('data-b')).toHaveTextContent('refreshed')
     // Only one new fetch despite two mounted subscribers.
     expect(fetcher).toHaveBeenCalledTimes(2)
@@ -570,9 +554,7 @@ describe('useWidgetCache', () => {
     // ...but non-PII data is preserved.
     expect(screen.getByTestId('score')).toHaveTextContent('92')
 
-    const entry = __TESTING__.store.get<{ owner: { fullName: string; email: string } }>(
-      'probe:pii'
-    )
+    const entry = __TESTING__.store.get<{ owner: { fullName: string; email: string } }>('probe:pii')
     expect(entry.data?.owner.email).toBe('[REDACTED]')
     expect(entry.data?.owner.fullName).toBe('[REDACTED]')
   })
@@ -584,10 +566,7 @@ describe('useWidgetCache', () => {
     const circular: Record<string, unknown> = { id: 1 }
     circular.self = circular
 
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(['ok'])
-      .mockResolvedValueOnce(circular)
+    const fetcher = vi.fn().mockResolvedValueOnce(['ok']).mockResolvedValueOnce(circular)
 
     function Probe() {
       const widget = useWidgetCache<unknown>('probe:pii-error', fetcher)

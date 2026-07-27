@@ -43,11 +43,7 @@ function formatDate(isoDate: string): string {
  * - Escape and backdrop click close the drawer.
  * - Marks all updates as read on open, clearing the notification badge and persisting state.
  */
-export default function WhatsNewDialog({
-  open,
-  onClose,
-  returnFocusRef,
-}: WhatsNewDialogProps) {
+export default function WhatsNewDialog({ open, onClose, returnFocusRef }: WhatsNewDialogProps) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -77,11 +73,7 @@ export default function WhatsNewDialog({
   if (!open) return null
 
   return createPortal(
-    <div
-      className="whats-new-dialog__backdrop"
-      onClick={handleBackdropClick}
-      aria-hidden={false}
-    >
+    <div className="whats-new-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -96,9 +88,7 @@ export default function WhatsNewDialog({
               What&rsquo;s New
             </h2>
             {unreadCount > 0 && (
-              <span className="whats-new-dialog__unread-badge">
-                {unreadCount} unread
-              </span>
+              <span className="whats-new-dialog__unread-badge">{unreadCount} unread</span>
             )}
           </div>
           <Button

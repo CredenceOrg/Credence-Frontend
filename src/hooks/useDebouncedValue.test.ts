@@ -12,10 +12,9 @@ afterEach(() => {
 
 describe('useDebouncedValue', () => {
   it('returns the initial value immediately', () => {
-    const { result } = renderHook(
-      ({ value, delayMs }) => useDebouncedValue(value, delayMs),
-      { initialProps: { value: 'hello', delayMs: 200 } }
-    )
+    const { result } = renderHook(({ value, delayMs }) => useDebouncedValue(value, delayMs), {
+      initialProps: { value: 'hello', delayMs: 200 },
+    })
     expect(result.current).toBe('hello')
   })
 

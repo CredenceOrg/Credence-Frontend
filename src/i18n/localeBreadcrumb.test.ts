@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  getPreviousLng,
-  handleLanguageChanged,
-  setPreviousLng,
-} from './localeBreadcrumb'
+import { getPreviousLng, handleLanguageChanged, setPreviousLng } from './localeBreadcrumb'
 
 afterEach(() => {
   setPreviousLng(null)

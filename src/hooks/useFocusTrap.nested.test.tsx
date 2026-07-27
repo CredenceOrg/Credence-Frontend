@@ -39,11 +39,7 @@ interface NestedTrapProps {
   innerActive?: boolean
 }
 
-function NestedTrapFixture({
-  onOuterEscape,
-  onInnerEscape,
-  innerActive = true,
-}: NestedTrapProps) {
+function NestedTrapFixture({ onOuterEscape, onInnerEscape, innerActive = true }: NestedTrapProps) {
   const outerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
 

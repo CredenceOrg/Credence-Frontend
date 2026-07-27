@@ -118,8 +118,8 @@ Presentational reference component:
 
 ### Props
 
-| Prop    | Type             | Default        | Description                                       |
-| ------- | ---------------- | -------------- | ------------------------------------------------- |
+| Prop    | Type             | Default     | Description                                                                |
+| ------- | ---------------- | ----------- | -------------------------------------------------------------------------- |
 | `items` | `ActivityItem[]` | Sample data | Timeline events to render. Defaults to sample data. Pass `[]` for no data. |
 
 ### Usage

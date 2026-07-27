@@ -1,16 +1,16 @@
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { useSmartBack } from '../hooks/useSmartBack';
-import Button from '../components/Button';
-import { suggestRoute } from '../lib/suggestRoute';
-import './NotFound.css';
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSmartBack } from '../hooks/useSmartBack'
+import Button from '../components/Button'
+import { suggestRoute } from '../lib/suggestRoute'
+import './NotFound.css'
 
 export default function NotFound() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { goBack } = useSmartBack({ fallback: '/dashboard' });
-  const suggestion = suggestRoute(location.pathname, ['/', '/bond', '/trust', '/settings']);
-  useDocumentTitle('Page Not Found');
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { goBack } = useSmartBack({ fallback: '/dashboard' })
+  const suggestion = suggestRoute(location.pathname, ['/', '/bond', '/trust', '/settings'])
+  useDocumentTitle('Page Not Found')
 
   return (
     <main className="not-found-container">
@@ -35,7 +35,8 @@ export default function NotFound() {
       <p className="not-found-code">404</p>
 
       <p className="not-found-description">
-        The page at <code>{location.pathname}</code> does not exist. It may have been moved or removed.
+        The page at <code>{location.pathname}</code> does not exist. It may have been moved or
+        removed.
       </p>
       {suggestion.suggestion && (
         <Button variant="primary" onClick={() => navigate(suggestion.suggestion!)}>
@@ -43,10 +44,18 @@ export default function NotFound() {
         </Button>
       )}
       <div className="not-found-canonical">
-        <Button variant="primary" onClick={() => navigate('/')}>Home</Button>
-        <Button variant="primary" onClick={() => navigate('/bond')}>Bond</Button>
-        <Button variant="primary" onClick={() => navigate('/trust')}>Trust Score</Button>
-        <Button variant="primary" onClick={() => navigate('/settings')}>Settings</Button>
+        <Button variant="primary" onClick={() => navigate('/')}>
+          Home
+        </Button>
+        <Button variant="primary" onClick={() => navigate('/bond')}>
+          Bond
+        </Button>
+        <Button variant="primary" onClick={() => navigate('/trust')}>
+          Trust Score
+        </Button>
+        <Button variant="primary" onClick={() => navigate('/settings')}>
+          Settings
+        </Button>
       </div>
 
       <div className="not-found-actions">

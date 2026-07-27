@@ -15,6 +15,7 @@ Do not hard-code colors, spacing, typography, or radii. Use the official CSS var
 ### Example
 
 **❌ Bad:**
+
 ```css
 .my-card {
   padding: 16px;
@@ -24,6 +25,7 @@ Do not hard-code colors, spacing, typography, or radii. Use the official CSS var
 ```
 
 **✅ Good:**
+
 ```css
 .my-card {
   padding: var(--credence-space-4);

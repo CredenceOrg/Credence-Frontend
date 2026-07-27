@@ -200,7 +200,11 @@ export async function signFreighterTransaction(
     }
 
     if (!result.signedTxXdr) {
-      return { ok: false, code: 'unknown', message: 'Freighter did not return a signed transaction.' }
+      return {
+        ok: false,
+        code: 'unknown',
+        message: 'Freighter did not return a signed transaction.',
+      }
     }
 
     return { ok: true, signedTxXdr: result.signedTxXdr }

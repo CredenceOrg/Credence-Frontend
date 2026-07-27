@@ -10,12 +10,12 @@ Intended for **contributors** writing or reviewing user-facing strings.
 Every string in the app should feel like it comes from the same product. Four principles
 guide every decision:
 
-| Principle     | What it means                                                        |
-| ------------- | -------------------------------------------------------------------- |
-| **Friendly**  | Conversational human language. No jargon, no robot-speak.            |
-| **Clear**     | The user understands what happened and what to do next in one scan.  |
-| **Concise**   | Shorter is almost always better. Respect the user's time.            |
-| **Helpful**   | Every state tells the user what _they_ can do, not just what failed. |
+| Principle    | What it means                                                        |
+| ------------ | -------------------------------------------------------------------- |
+| **Friendly** | Conversational human language. No jargon, no robot-speak.            |
+| **Clear**    | The user understands what happened and what to do next in one scan.  |
+| **Concise**  | Shorter is almost always better. Respect the user's time.            |
+| **Helpful**  | Every state tells the user what _they_ can do, not just what failed. |
 
 ---
 
@@ -63,12 +63,12 @@ addToast('success', 'saved ok')
 
 Errors tell the user something went wrong and **how to recover**. They appear as:
 
-| Mechanism            | Use when…                                                       |
-| -------------------- | --------------------------------------------------------------- |
-| `addToast('danger')` | A discrete action fails (submit, withdraw, connect)             |
-| `<ErrorState>`       | An entire view or section fails to load                         |
-| `<Banner>`           | A persistent warning the user needs to see while they act       |
-| Inline `error` prop  | A form field fails validation                                   |
+| Mechanism            | Use when…                                                 |
+| -------------------- | --------------------------------------------------------- |
+| `addToast('danger')` | A discrete action fails (submit, withdraw, connect)       |
+| `<ErrorState>`       | An entire view or section fails to load                   |
+| `<Banner>`           | A persistent warning the user needs to see while they act |
+| Inline `error` prop  | A form field fails validation                             |
 
 **Pattern for toasts:** `[Action] failed.` + `[Recovery instruction].`
 
@@ -215,9 +215,15 @@ assistive technology.
 
 ```tsx
 // ✅ Do — match the skeleton variant to the content shape
-{isLoading && <LoadingSkeleton variant="card" />}
-{isLoading && <LoadingSkeleton variant="dashboard" rows={3} />}
-{isLoading && <LoadingSkeleton variant="table" rows={5} />}
+{
+  isLoading && <LoadingSkeleton variant="card" />
+}
+{
+  isLoading && <LoadingSkeleton variant="dashboard" rows={3} />
+}
+{
+  isLoading && <LoadingSkeleton variant="table" rows={5} />
+}
 ```
 
 ```tsx
@@ -275,29 +281,29 @@ assistive technology.
 
 ### Punctuation
 
-| Context              | Period? | Example                        |
-| -------------------- | ------- | ------------------------------ |
-| Toast message        | Yes     | `'Bond created successfully.'` |
-| Empty state title    | No      | `'No active bonds'`            |
-| Empty state desc     | Yes     | `'You do not have any…'`       |
-| Error state title    | No      | `'Connection issue'`           |
-| Error state message  | Yes     | `'Unable to connect…'`         |
-| Button label         | No      | `'Create your first bond'`     |
-| Inline error         | Yes     | `'Minimum bond is 10 USDC.'`   |
-| Banner body          | Yes     | Full sentence(s) with period   |
-| Banner title         | No      | `'Early Withdrawal Penalty'`   |
+| Context             | Period? | Example                        |
+| ------------------- | ------- | ------------------------------ |
+| Toast message       | Yes     | `'Bond created successfully.'` |
+| Empty state title   | No      | `'No active bonds'`            |
+| Empty state desc    | Yes     | `'You do not have any…'`       |
+| Error state title   | No      | `'Connection issue'`           |
+| Error state message | Yes     | `'Unable to connect…'`         |
+| Button label        | No      | `'Create your first bond'`     |
+| Inline error        | Yes     | `'Minimum bond is 10 USDC.'`   |
+| Banner body         | Yes     | Full sentence(s) with period   |
+| Banner title        | No      | `'Early Withdrawal Penalty'`   |
 
 ### Word count
 
-| Element              | Max length                      |
-| -------------------- | ------------------------------- |
-| Toast message        | 2 short sentences (≈80 chars)   |
-| Empty state title    | 3–6 words                       |
-| Empty state desc     | 1–2 sentences (≈140 chars)      |
-| Error state title    | 2–5 words                       |
-| Error state message  | 1–2 sentences (≈140 chars)      |
-| Button / CTA label   | 2–4 words                       |
-| Banner body          | 1–3 sentences                   |
+| Element             | Max length                    |
+| ------------------- | ----------------------------- |
+| Toast message       | 2 short sentences (≈80 chars) |
+| Empty state title   | 3–6 words                     |
+| Empty state desc    | 1–2 sentences (≈140 chars)    |
+| Error state title   | 2–5 words                     |
+| Error state message | 1–2 sentences (≈140 chars)    |
+| Button / CTA label  | 2–4 words                     |
+| Banner body         | 1–3 sentences                 |
 
 ### Internationalization (i18n)
 
@@ -326,18 +332,18 @@ strings, follow the existing pattern, and prefer action-oriented past-tense sent
 
 ## Dos and Don'ts Summary
 
-| Do                                                       | Don't                                              |
-| -------------------------------------------------------- | -------------------------------------------------- |
-| Use sentence case for all UI copy                        | Use Title Case or ALL CAPS                         |
-| End toast messages with a period                         | Leave toasts unpunctuated                          |
-| Provide a recovery step in error messages                | Just say "Error" or "Failed"                       |
-| Match empty state titles to 3–6 words                    | Write verbose paragraphs as empty state titles     |
-| Use action-verb CTA labels (`"Create your first bond"`)  | Use `"Click here"`, `"OK"`, or `"Submit"`          |
-| Use `'danger'` severity for error toasts                 | Use `'warning'` or `'info'` for action failures    |
-| Reference i18n keys in components                        | Hard-code English strings (except toast messages)   |
-| Put user-facing copy in `src/i18n/locales/en.json`       | Scatter strings across `.tsx` files                |
-| Use the `<EmptyState>` / `<ErrorState>` / `<Banner>` components | Build ad-hoc state UIs per page              |
-| Honor `prefers-reduced-motion` for loading animations    | Ship unguarded skeleton shimmer animations         |
+| Do                                                              | Don't                                             |
+| --------------------------------------------------------------- | ------------------------------------------------- |
+| Use sentence case for all UI copy                               | Use Title Case or ALL CAPS                        |
+| End toast messages with a period                                | Leave toasts unpunctuated                         |
+| Provide a recovery step in error messages                       | Just say "Error" or "Failed"                      |
+| Match empty state titles to 3–6 words                           | Write verbose paragraphs as empty state titles    |
+| Use action-verb CTA labels (`"Create your first bond"`)         | Use `"Click here"`, `"OK"`, or `"Submit"`         |
+| Use `'danger'` severity for error toasts                        | Use `'warning'` or `'info'` for action failures   |
+| Reference i18n keys in components                               | Hard-code English strings (except toast messages) |
+| Put user-facing copy in `src/i18n/locales/en.json`              | Scatter strings across `.tsx` files               |
+| Use the `<EmptyState>` / `<ErrorState>` / `<Banner>` components | Build ad-hoc state UIs per page                   |
+| Honor `prefers-reduced-motion` for loading animations           | Ship unguarded skeleton shimmer animations        |
 
 ---
 

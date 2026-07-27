@@ -260,7 +260,7 @@ describe('ToastProvider quiet hours', () => {
     expect(container.querySelector('.toast--danger')).toBeInTheDocument()
     expect(container.querySelector('.sr-only[aria-live="polite"]')?.textContent).toBe('')
     expect(container.querySelector('.sr-only[aria-live="assertive"]')).toHaveTextContent(
-      'Danger Message',
+      'Danger Message'
     )
   })
 

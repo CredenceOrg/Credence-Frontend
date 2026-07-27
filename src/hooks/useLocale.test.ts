@@ -81,7 +81,7 @@ describe('useLocale', () => {
     await expect(
       act(async () => {
         await i18n.changeLanguage('fr')
-      }),
+      })
     ).resolves.toBeUndefined()
   })
 })

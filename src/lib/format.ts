@@ -257,9 +257,14 @@ export function formatDate(
   }
 
   try {
-    return new Intl.DateTimeFormat(safeLocale, optionsMap[formatStyle] || optionsMap.medium).format(d)
+    return new Intl.DateTimeFormat(safeLocale, optionsMap[formatStyle] || optionsMap.medium).format(
+      d
+    )
   } catch {
-    return new Intl.DateTimeFormat(DEFAULT_LOCALE, optionsMap[formatStyle] || optionsMap.medium).format(d)
+    return new Intl.DateTimeFormat(
+      DEFAULT_LOCALE,
+      optionsMap[formatStyle] || optionsMap.medium
+    ).format(d)
   }
 }
 

@@ -60,7 +60,7 @@ describe('Banner', () => {
       render(
         <Banner severity="info" dismissible={false}>
           Message
-        </Banner>,
+        </Banner>
       )
       expect(screen.queryByRole('button', { name: 'Dismiss banner' })).not.toBeInTheDocument()
     })
@@ -69,7 +69,7 @@ describe('Banner', () => {
       render(
         <Banner severity="info" dismissible>
           Message
-        </Banner>,
+        </Banner>
       )
       expect(screen.getByRole('button', { name: 'Dismiss banner' })).toBeInTheDocument()
     })
@@ -79,7 +79,7 @@ describe('Banner', () => {
       render(
         <Banner severity="info" dismissible onDismiss={onDismiss}>
           Message
-        </Banner>,
+        </Banner>
       )
       fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
       expect(onDismiss).toHaveBeenCalledOnce()
@@ -99,7 +99,7 @@ describe('Banner', () => {
           <Banner severity="warning" dismissible returnFocusRef={ref}>
             Message
           </Banner>
-        </>,
+        </>
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
@@ -111,7 +111,7 @@ describe('Banner', () => {
       render(
         <Banner severity="info" dismissible>
           Message
-        </Banner>,
+        </Banner>
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
@@ -126,7 +126,7 @@ describe('Banner', () => {
       render(
         <Banner severity="info" dismissible returnFocusRef={ref}>
           Message
-        </Banner>,
+        </Banner>
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
@@ -143,7 +143,7 @@ describe('Banner', () => {
       render(
         <Banner severity="critical" dismissible onDismiss={onDismiss}>
           Message
-        </Banner>,
+        </Banner>
       )
 
       fireEvent.keyDown(screen.getByRole('button', { name: 'Dismiss banner' }), { key: 'Escape' })
@@ -156,7 +156,7 @@ describe('Banner', () => {
       render(
         <Banner severity="critical" dismissible onDismiss={onDismiss}>
           Message
-        </Banner>,
+        </Banner>
       )
 
       fireEvent.keyDown(screen.getByRole('button', { name: 'Dismiss banner' }), { key: 'Enter' })
@@ -170,7 +170,7 @@ describe('Banner', () => {
       render(
         <Banner severity="critical" dismissible onDismiss={onDismiss}>
           Message
-        </Banner>,
+        </Banner>
       )
 
       // The onKeyDown handler is only on the dismiss button, not the banner root
@@ -187,7 +187,7 @@ describe('Banner', () => {
       render(
         <Banner severity="info" action={{ label: 'Learn more', href: 'https://example.com' }}>
           Message
-        </Banner>,
+        </Banner>
       )
       const link = screen.getByRole('link', { name: /learn more/i })
       expect(link).toBeInTheDocument()
@@ -199,7 +199,7 @@ describe('Banner', () => {
       render(
         <Banner severity="info" action={{ label: 'Take action', onClick }}>
           Message
-        </Banner>,
+        </Banner>
       )
       const btn = screen.getByRole('button', { name: /take action/i })
       expect(btn).toBeInTheDocument()
@@ -211,7 +211,7 @@ describe('Banner', () => {
       render(
         <Banner severity="info" action={{ label: 'Static label' }}>
           Message
-        </Banner>,
+        </Banner>
       )
       expect(screen.getByRole('button', { name: /static label/i })).toBeInTheDocument()
     })
@@ -231,7 +231,7 @@ describe('Banner', () => {
       render(
         <Banner severity="info" title="Heads up">
           Message
-        </Banner>,
+        </Banner>
       )
       expect(screen.getByText('Heads up')).toBeInTheDocument()
     })

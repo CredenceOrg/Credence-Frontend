@@ -23,8 +23,8 @@ This document describes how feature flags are added, monitored, and retired in t
 
 A feature flag (also called a toggle, switch, or gate) is a mechanism that lets a team turn code paths on or off without a full deployment. Flags serve several purposes:
 
-| Purpose                | Example                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------- |
+| Purpose                 | Example                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------- |
 | **Incremental rollout** | Roll a new dashboard widget to 10 % of users, then ramp to 100 %.                     |
 | **Dev-only visibility** | Expose a ToastTest page behind `import.meta.env.DEV` so it never ships to production. |
 | **Safe revert**         | Disable a refactored data-fetching path instantly if it regresses.                    |
@@ -48,9 +48,9 @@ The Credence frontend uses the following flag mechanisms (listed from simplest t
 const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
 
 // Inside <Routes>:
-{import.meta.env.DEV && ToastTest && (
-  <Route path="dev/toasts" element={<ToastTest />} />
-)}
+{
+  import.meta.env.DEV && ToastTest && <Route path="dev/toasts" element={<ToastTest />} />
+}
 ```
 
 **Lifecycle:** Vite replaces `import.meta.env.DEV` at build time. These are not toggles — they are compile-time constants. No monitoring or gradual rollout is possible. Use them only for debug pages, developer overlays, or feature previews that should never ship.
@@ -103,9 +103,7 @@ export const CHANGELOG_STORAGE_KEY = 'credence:last-seen-update-id'
 ```tsx
 // src/config/featureFlags.ts — central registry
 export type FeatureFlag =
-  | 'enable-mobile-nav'
-  | 'enable-redesigned-bond-form'
-  | 'enable-activity-surface'
+  'enable-mobile-nav' | 'enable-redesigned-bond-form' | 'enable-activity-surface'
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlag, boolean> = {
   'enable-mobile-nav': false,
@@ -178,11 +176,11 @@ Once a flag is live:
 
 **When to keep a flag versus remove it:**
 
-| Situation                                      | Action           |
-| ---------------------------------------------- | ---------------- |
-| Metric target met, stable for 1 week           | Remove the flag  |
-| Metric target not met, experiment inconclusive | Remove the flag  |
-| Feature needs more work, another release cycle | Keep, re-evaluate next cycle |
+| Situation                                      | Action                               |
+| ---------------------------------------------- | ------------------------------------ |
+| Metric target met, stable for 1 week           | Remove the flag                      |
+| Metric target not met, experiment inconclusive | Remove the flag                      |
+| Feature needs more work, another release cycle | Keep, re-evaluate next cycle         |
 | Flag has been live for 3+ months               | Treat as tech debt; schedule removal |
 
 ### 4. Retirement

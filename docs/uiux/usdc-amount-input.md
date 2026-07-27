@@ -6,16 +6,16 @@
 
 ## Props
 
-| Prop               | Type                         | Default            | Description                                                                                                    |
-| ------------------ | ---------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `value`            | `string`                     | —                  | Controlled decimal amount string (e.g. `"100.00"`)                                                             |
-| `onChange`         | `(value: string) => void`    | —                  | Called with sanitized value on each keystroke; normalized value on blur                                        |
-| `balance`          | `number`                     | —                  | Available balance; drives Max/preset disabling and over-balance validation                                     |
-| `presets`          | `number[]`                   | `[100, 500, 1000]` | Quick-select amounts rendered as chips below the input                                                         |
-| `currencyLabel`    | `string`                     | `"USDC"`           | Label shown as input adornment and in aria-labels                                                              |
-| `error`            | `string`                     | —                  | Explicit error message; takes precedence over all internal errors                                              |
-| `onValidityChange` | `(isValid: boolean) => void` | —                  | Called whenever internal validity changes; lets callers gate submission without re-implementing the comparison |
-| `isLoading`        | `boolean`                    | `false`            | Shows skeleton/spinner and disables all interaction                                                            |
+| Prop               | Type                         | Default            | Description                                                                                                                   |
+| ------------------ | ---------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `value`            | `string`                     | —                  | Controlled decimal amount string (e.g. `"100.00"`)                                                                            |
+| `onChange`         | `(value: string) => void`    | —                  | Called with sanitized value on each keystroke; normalized value on blur                                                       |
+| `balance`          | `number`                     | —                  | Available balance; drives Max/preset disabling and over-balance validation                                                    |
+| `presets`          | `number[]`                   | `[100, 500, 1000]` | Quick-select amounts rendered as chips below the input                                                                        |
+| `currencyLabel`    | `string`                     | `"USDC"`           | Label shown as input adornment and in aria-labels                                                                             |
+| `error`            | `string`                     | —                  | Explicit error message; takes precedence over all internal errors                                                             |
+| `onValidityChange` | `(isValid: boolean) => void` | —                  | Called whenever internal validity changes; lets callers gate submission without re-implementing the comparison                |
+| `isLoading`        | `boolean`                    | `false`            | Shows skeleton/spinner and disables all interaction                                                                           |
 | `min`              | `number`                     | —                  | Minimum allowed amount; triggers an inline error and `onValidityChange(false)` when the entered value is below this threshold |
 
 ---
@@ -91,11 +91,11 @@ When entering a Stellar address, `AddressInput` shows a **Recognized:** echo onc
 
 The text shown in this echo respects **Settings → Display → Address format** (`addressDisplay`).
 
-| Setting value | Format                                      | Example                                            |
-| ------------- | ------------------------------------------- | -------------------------------------------------- |
-| `short`       | First 12 chars + `...` + last 8 (default)  | `GBRPYHIL2CI3...X2H`                               |
-| `full`        | Complete 56-character key                   | `GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H` |
-| `friendly`    | First 6 chars + `…` (U+2026) + last 4      | `GBRPYH…X2H`                                       |
+| Setting value | Format                                    | Example                                                    |
+| ------------- | ----------------------------------------- | ---------------------------------------------------------- |
+| `short`       | First 12 chars + `...` + last 8 (default) | `GBRPYHIL2CI3...X2H`                                       |
+| `full`        | Complete 56-character key                 | `GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H` |
+| `friendly`    | First 6 chars + `…` (U+2026) + last 4     | `GBRPYH…X2H`                                               |
 
 The helper function `formatAddressForDisplay(address, mode)` in `src/lib/stellar.ts` is the single source of truth for this logic. Import it directly if you need to format an address in any other component.
 

@@ -16,7 +16,7 @@ export interface UseAsyncOptions {
  */
 export default function useAsync<T>(
   asyncFn: () => Promise<T>,
-  options: UseAsyncOptions = {},
+  options: UseAsyncOptions = {}
 ): UseAsyncState<T> & { run: () => Promise<void> } {
   const { immediate = true } = options
 

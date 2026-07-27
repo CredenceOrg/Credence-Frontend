@@ -42,11 +42,7 @@ function AmountField() {
   return (
     <label>
       Amount
-      <input
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        inputMode="decimal"
-      />
+      <input value={value} onChange={(event) => setValue(event.target.value)} inputMode="decimal" />
     </label>
   )
 }

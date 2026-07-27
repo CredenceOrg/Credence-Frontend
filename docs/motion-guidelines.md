@@ -44,6 +44,17 @@ The application includes a global reduced-motion fallback:
 - `scroll-behavior` falls back to `auto`
 - decorative, looping motion like shimmer is stopped
 
+## Accessibility rationale
+
+Honoring `prefers-reduced-motion` is an accessibility requirement, not a nicety. Vestibular disorders, migraine, and motion sensitivity mean that transform-based or looping motion can trigger nausea, dizziness, or disorientation.
+
+Two WCAG success criteria apply directly:
+
+- **2.3.3 Animation from Interactions (Level AAA)** motion triggered by interaction (hover, focus, state changes, entrance and exit transitions) must be able to be disabled unless it is essential. The global reset satisfies this by neutralizing every transition and animation when reduce is requested.
+- **2.2.2 Pause, Stop, Hide (Level A)** auto-starting motion that loops (the shimmer skeleton is `infinite`) must be stoppable. Reduced motion caps `animation-iteration-count` to `1`, so looping decoration stops on its own.
+
+The reset in `src/index.css` is global and uses `!important`, so CSS-driven motion is covered automatically. The only motion the browser cannot neutralize is animation driven by inline JS styles, which is why those components consume `useReducedMotion` (see below).
+
 ## Implementation examples
 
 ### Toast notifications
@@ -151,3 +162,14 @@ const baseStyle = {
 ```
 
 Components covered by the JS-level hook today: `TrustGauge`, `LoadingSkeleton`, `CreateBondFlow`. Components still relying solely on the CSS layer: `MobileNav`, `ThemeToggle`, and the link/footer transitions in `src/index.css` (acceptable because they only swap colors, not transform in space).
+
+## Checklist for new motion
+
+Before merging a component that adds or changes motion:
+
+- [ ] Timing and easing come from `--credence-motion-*` tokens, not hardcoded `ms` or `cubic-bezier` values.
+- [ ] Motion is expressed in CSS (`transition` / `animation`) where possible, so the global reduced-motion reset applies for free.
+- [ ] Any animation driven by inline JS styles reads `useReducedMotion` and drops the `transition` / `animation` when it returns `true`.
+- [ ] Looping or auto-starting motion (spinners, shimmer) does not rely on `infinite` running under reduced motion.
+- [ ] Entrance / exit motion stays within `--credence-motion-duration-slow` (400ms) and does not shift primary content layout.
+- [ ] Verified with the OS "reduce motion" setting on, or via DevTools rendering emulation of `prefers-reduced-motion: reduce`.

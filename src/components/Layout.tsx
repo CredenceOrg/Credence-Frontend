@@ -67,9 +67,15 @@ export default function Layout() {
       setShowInstallPrompt(true)
     }
 
-    window.addEventListener(DOM_EVENTS.BEFORE_INSTALL_PROMPT, handleBeforeInstallPrompt as EventListener)
+    window.addEventListener(
+      DOM_EVENTS.BEFORE_INSTALL_PROMPT,
+      handleBeforeInstallPrompt as EventListener
+    )
     return () => {
-      window.removeEventListener(DOM_EVENTS.BEFORE_INSTALL_PROMPT, handleBeforeInstallPrompt as EventListener)
+      window.removeEventListener(
+        DOM_EVENTS.BEFORE_INSTALL_PROMPT,
+        handleBeforeInstallPrompt as EventListener
+      )
     }
   }, [installPromptDismissed])
 
@@ -78,7 +84,6 @@ export default function Layout() {
 
   // Global keyboard shortcuts help dialog shortcut (Shift+?)
   useKeyboardShortcut(['Shift', '?'], () => setShortcutsOpen(true))
-
 
   return (
     <div className="appShell">

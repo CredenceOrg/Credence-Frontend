@@ -23,7 +23,9 @@
   border-radius: var(--credence-radius-sm, 0.25rem);
   color: var(--credence-color-text-muted, #666);
   cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .copyable-hash__copy-btn:hover,
@@ -49,9 +51,15 @@
 }
 
 @keyframes credence-copy-pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .sr-only {

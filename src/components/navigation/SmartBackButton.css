@@ -4,7 +4,8 @@
   gap: var(--credence-space-2);
   font-family: var(--credence-font-family-base);
   font-weight: var(--credence-font-weight-semibold);
-  transition: background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  transition: background-color var(--credence-motion-duration-fast)
+    var(--credence-motion-easing-standard);
 }
 
 .credence-smart-back-button__icon {

@@ -43,7 +43,8 @@ export const ATTESTATION_EVENTS = {
   },
 } as const
 
-export type AttestationType = (typeof ATTESTATION_EVENTS.TYPES)[keyof typeof ATTESTATION_EVENTS.TYPES] | string
+export type AttestationType =
+  (typeof ATTESTATION_EVENTS.TYPES)[keyof typeof ATTESTATION_EVENTS.TYPES] | string
 
 export interface AttestationPayload {
   subject: string
@@ -67,8 +68,10 @@ export const TRANSACTION_EVENTS = {
   },
 } as const
 
-export type TransactionType = (typeof TRANSACTION_EVENTS.TYPES)[keyof typeof TRANSACTION_EVENTS.TYPES]
-export type TransactionStatus = (typeof TRANSACTION_EVENTS.STATUSES)[keyof typeof TRANSACTION_EVENTS.STATUSES]
+export type TransactionType =
+  (typeof TRANSACTION_EVENTS.TYPES)[keyof typeof TRANSACTION_EVENTS.TYPES]
+export type TransactionStatus =
+  (typeof TRANSACTION_EVENTS.STATUSES)[keyof typeof TRANSACTION_EVENTS.STATUSES]
 
 export interface TransactionEventPayload {
   id: string

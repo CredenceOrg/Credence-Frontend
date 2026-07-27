@@ -3,14 +3,18 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
 import Banner from '../components/Banner'
-import ActivityTimeline, { type ActivityItem, SAMPLE_ACTIVITY } from '../components/ActivityTimeline'
+import ActivityTimeline, {
+  type ActivityItem,
+  SAMPLE_ACTIVITY,
+} from '../components/ActivityTimeline'
 import Disclaimer from '../components/Disclaimer'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
 import PageHeader from '../components/PageHeader'
 import AddressInput from '../components/AddressInput'
 import TierLadder from '../components/TierLadder'
-import TrustGauge, { TIER_CONFIG } from '../components/TrustGauge'
+import TrustGauge, { TIER_CONFIG, pointsToNextTier } from '../components/TrustGauge'
+import { TIER_ORDER, MAX_SCORE } from '../lib/tiers'
 import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
@@ -62,6 +66,7 @@ export default function TrustScore() {
     description:
       'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
   })
+  const { t } = useTranslation()
   const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork, addressDisplay } = useSettings()
@@ -81,10 +86,7 @@ export default function TrustScore() {
   const [lookupAddress, setLookupAddress] = useState('')
   const pendingLookupRef = useRef(false)
 
-  const [history, setHistory] = useLocalStorage<RecentLookupItem[]>(
-    'credence:recent-lookups',
-    []
-  )
+  const [history, setHistory] = useLocalStorage<RecentLookupItem[]>('credence:recent-lookups', [])
 
   const safeHistory = useMemo(() => {
     if (!Array.isArray(history)) return []
@@ -112,7 +114,10 @@ export default function TrustScore() {
       if (isValidStellarAddress(lookupAddress)) {
         const current = Array.isArray(history) ? history : []
         const filtered = current.filter(
-          (item) => item && typeof item === 'object' && item.address.toLowerCase() !== lookupAddress.toLowerCase()
+          (item) =>
+            item &&
+            typeof item === 'object' &&
+            item.address.toLowerCase() !== lookupAddress.toLowerCase()
         )
         const newItem: RecentLookupItem = {
           address: lookupAddress,
@@ -151,7 +156,7 @@ export default function TrustScore() {
       return
     }
 
-    if (!isAddressValid) {
+    if (!isAddressValid || isLoading) {
       return
     }
 
@@ -173,7 +178,10 @@ export default function TrustScore() {
     // Move to top of history immediately
     const current = Array.isArray(history) ? history : []
     const filtered = current.filter(
-      (item) => item && typeof item === 'object' && item.address.toLowerCase() !== recentAddress.toLowerCase()
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        item.address.toLowerCase() !== recentAddress.toLowerCase()
     )
     const newItem: RecentLookupItem = {
       address: recentAddress,
@@ -197,30 +205,13 @@ export default function TrustScore() {
   const mismatchBannerId = 'trust-score-network-mismatch'
 
   return (
-    <div>
-      <PageHeader
-        title={t('trustScore.title')}
-        description={t('trustScore.description')}
-        badge={
-          data && lookupAddress === address.trim() ? (
-            <Badge variant={data.tier} label={tierLabel} className="tier-badge" />
-          ) : undefined
-        }
-      />
-      <TierLadder />
-      <Banner severity="info">
-        {t('trustScore.infoBanner')}
-      </Banner>
-
-      {!isConnected && (
-        <Banner
-          severity="warning"
-          title={t('trustScore.connectRequired')}
-          action={{ label: t('common.connectWallet'), onClick: () => void connect() }}
-        >
-          {t('trustScore.connectRequiredDescription')}
-        </Banner>
-      )}
+    <div className="trustScore__page">
+      <div className="trustScore__headerRow">
+        <h1 className="trustScore__title">{t('trustScore.title')}</h1>
+      </div>
+      <p id="trust-desc" className="trustScore__description">
+        {t('trustScore.description')}
+      </p>
 
       {networkMismatch.mismatch && (
         <Banner
@@ -234,7 +225,7 @@ export default function TrustScore() {
           <span id={mismatchBannerId}>
             {t('trustScore.networkMismatchDescription', {
               expected: networkMismatch.expected,
-              actual: networkMismatch.actual
+              actual: networkMismatch.actual,
             })}
           </span>
         </Banner>
@@ -265,10 +256,41 @@ export default function TrustScore() {
           )}
 
           {!isLoading && !error && data && lookupAddress === address.trim() && (
-            <div>
-              <TrustGauge score={data.score} tier={data.tier} />
-              <div className="trustScore__tierBadge">
-                <Badge variant={data.tier} label={tierLabel} />
+            <div className="trustScore__hero" role="region" aria-label="Trust score result">
+              <div className="trustScore__heroScore">
+                <span className="trustScore__heroScoreValue">{data.score}</span>
+                <span className="trustScore__heroScoreTotal">/ {MAX_SCORE}</span>
+              </div>
+
+              <div className="trustScore__heroMeta">
+                <Badge variant={data.tier} label={tierLabel} className="trustScore__heroBadge" />
+                <p className="trustScore__heroNext">
+                  {data.tier === 'platinum' && data.score >= MAX_SCORE
+                    ? 'Platinum tier \u2014 maximum score achieved'
+                    : `${pointsToNextTier(data.score, data.tier)} points to ${
+                        TIER_CONFIG[TIER_ORDER[TIER_ORDER.indexOf(data.tier) + 1]].label
+                      }`}
+                </p>
+              </div>
+
+              <div className="trustScore__heroGauge">
+                <TrustGauge score={data.score} tier={data.tier} />
+              </div>
+
+              <div className="trustScore__heroFooter">
+                <span className="trustScore__heroFooterItem">
+                  {formatAddress(data.address, addressDisplay, walletAddress)}
+                </span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">&#183;</span>
+                <span className="trustScore__heroFooterItem">
+                  {data.attestations} attestation{data.attestations !== 1 ? 's' : ''}
+                </span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">&#183;</span>
+                <span className="trustScore__heroFooterItem">
+                  Updated {new Date(data.updatedAt).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                  })}
+                </span>
               </div>
             </div>
           )}
@@ -276,30 +298,93 @@ export default function TrustScore() {
       )}
 
       <div className="trustScore__grid">
-        <div className="trustScore__card">
-          <h2 className="trustScore__cardTitle">{t('trustScore.lookupIdentity')}</h2>
-          <AddressInput
-            id="wallet-address"
-            label={t('trustScore.stellarAddress')}
-            value={address}
-            onChange={handleAddressChange}
-            onValidationChange={setIsAddressValid}
-            selfAddress={walletAddress}
-          />
-          {safeHistory.length > 0 && (
-            <div className="trustScore__recentLookups" data-testid="recent-lookups">
-              <div className="trustScore__recentLookupsHeader">
-                <span id="recent-lookups-heading" className="trustScore__recentLookupsTitle">
-                  Recent Lookups
-                </span>
-                <button
-                  type="button"
-                  className="trustScore__clearButton"
-                  onClick={handleClearHistory}
-                  aria-label="Clear lookup history"
-                >
-                  Clear history
-                </button>
+        <ConnectGate
+          title={t('trustScore.lookupIdentity')}
+          description={t('trustScore.connectToLookup')}
+          hideWhenDisconnected={false}
+        >
+          <div className="trustScore__card">
+            <h2 className="trustScore__cardTitle">{t('trustScore.lookupIdentity')}</h2>
+            <AddressInput
+              id="wallet-address"
+              label={t('trustScore.stellarAddress')}
+              value={address}
+              onChange={handleAddressChange}
+              onValidationChange={setIsAddressValid}
+              selfAddress={walletAddress}
+              disabled={!isConnected}
+            />
+            {safeHistory.length > 0 && (
+              <div className="trustScore__recentLookups" data-testid="recent-lookups">
+                <div className="trustScore__recentLookupsHeader">
+                  <span id="recent-lookups-heading" className="trustScore__recentLookupsTitle">
+                    Recent Lookups
+                  </span>
+                  <button
+                    type="button"
+                    className="trustScore__clearButton"
+                    onClick={handleClearHistory}
+                    aria-label="Clear lookup history"
+                    disabled={!isConnected}
+                  >
+                    Clear history
+                  </button>
+                </div>
+                <ul className="trustScore__recentList" aria-labelledby="recent-lookups-heading">
+                  {safeHistory.map((item) => {
+                    const displayLabel = formatAddress(item.address, addressDisplay, walletAddress)
+                    return (
+                      <li key={item.address} className="trustScore__recentListItem">
+                        <button
+                          type="button"
+                          className="trustScore__recentItemBtn"
+                          onClick={() => handleSelectRecent(item.address)}
+                          aria-label={`Look up address ${displayLabel}`}
+                          disabled={!isConnected}
+                        >
+                          {displayLabel}
+                        </button>
+                        <button
+                          type="button"
+                          className="trustScore__recentCopyBtn"
+                          onClick={async () => {
+                            const success = await copy(item.address)
+                            if (success) {
+                              addToast('success', 'Address copied to clipboard')
+                            }
+                          }}
+                          aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}
+                          disabled={!isConnected}
+                        >
+                          {copied ? (
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="14"
+                              height="14"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          ) : (
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="14"
+                              height="14"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                          )}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
               </div>
               <ul className="trustScore__recentList" aria-labelledby="recent-lookups-heading">
                 {safeHistory.map((item) => {
@@ -326,11 +411,25 @@ export default function TrustScore() {
                         aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}
                       >
                         {copied ? (
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         ) : (
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                           </svg>
@@ -345,12 +444,16 @@ export default function TrustScore() {
           {isConnected && walletAddress && (
             <Button
               type="button"
-              onClick={useConnectedAddress}
-              variant="secondary"
+              onClick={handleLookup}
+              variant="primary"
               fullWidth
+              disabled={
+                !isConnected || networkMismatch.mismatch || (isConnected ? !isAddressValid : false)
+              }
+              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
               className="trustScore__buttonRow"
             >
-              {t('trustScore.useMyAddress')}
+              {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
             </Button>
           )}
           <Button
@@ -359,6 +462,7 @@ export default function TrustScore() {
             variant="primary"
             fullWidth
             disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
+            isLoading={isConnected && isLoading}
             aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
             className="trustScore__buttonRow"
           >
@@ -373,6 +477,22 @@ export default function TrustScore() {
           <ActivityTimeline compact items={activity} />
         </div>
       </div>
+
+      {!isConnected && (
+        <Banner
+          severity="warning"
+          title={t('trustScore.connectRequired')}
+          action={{ label: t('common.connectWallet'), onClick: () => void connect() }}
+        >
+          {t('trustScore.connectRequiredDescription')}
+        </Banner>
+      )}
+
+      <Banner severity="info">
+        {t('trustScore.infoBanner')}
+      </Banner>
+
+      <TierLadder defaultOpen={!hasAttemptedLookup} />
 
       <Disclaimer
         context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments."

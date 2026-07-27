@@ -9,12 +9,16 @@ We maintain consistency across all inputs (text, numeric, selects, toggles) to e
 Each form input variant supports the following four states:
 
 ### 1. Default
+
 The normal interactive state for the input.
+
 - **Behavior**: Fully interactive, clear visual focus on interaction.
 - **Implementation**: Standard props (`value`, `onChange`).
 
 ### 2. Error
+
 Used when the input value fails validation or an external error is provided.
+
 - **Behavior**: Visually distinguished (usually with a red border), accompanied by an error message.
 - **Accessibility**:
   - `aria-invalid="true"` set on the input.
@@ -22,12 +26,16 @@ Used when the input value fails validation or an external error is provided.
   - Error message uses `role="alert"` for immediate announcement.
 
 ### 3. Disabled
+
 Used when an input is temporarily or permanently unavailable for interaction.
+
 - **Behavior**: Reduced opacity, `not-allowed` cursor, interaction is suppressed.
 - **Implementation**: Native `disabled` attribute on the underlying input/button.
 
 ### 4. Loading
+
 Used when the component is waiting for data (e.g., fetching a balance or resolving an address).
+
 - **Behavior**: Input is disabled, shows a visual loading indicator (spinner or skeleton).
 - **Implementation**: `isLoading` prop. Prevents user interaction while preserving the layout.
 
@@ -36,31 +44,41 @@ Used when the component is waiting for data (e.g., fetching a balance or resolvi
 ## Component Catalog
 
 ### AddressInput
+
 Canonical input for Stellar public keys.
+
 - **Source**: `src/components/AddressInput.tsx`
 - **Story**: `Components/Forms/AddressInput`
 - **States**: Default, Error, Disabled, Loading. Surfacess "Recognized:" echo when valid.
 
 ### AmountInput
+
 Controlled input for USDC amounts.
+
 - **Source**: `src/components/AmountInput.tsx`
 - **Story**: `Components/Forms/AmountInput`
 - **States**: Default, Error (including over-balance), Disabled, Loading. Includes Max and preset buttons.
 
 ### Select
+
 Standardized dropdown control.
+
 - **Source**: `src/components/controls/Select.tsx`
 - **Story**: `Components/Controls/Select`
 - **States**: Default, Error, Disabled, Loading.
 
 ### Toggle
+
 Switch control for boolean settings.
+
 - **Source**: `src/components/controls/Toggle.tsx`
 - **Story**: `Components/Controls/Toggle`
 - **States**: Default (On/Off), Error, Disabled, Loading.
 
 ### FormField
+
 A structural wrapper for inputs to provide labels, hints, and error messages.
+
 - **Source**: `src/components/forms/FormField.tsx`
 - **Story**: `Components/Forms/FormField`
 - **Accessibility**: Ensures proper ARIA wiring between labels, hints, errors, and the child input. Use `srOnlyLabel` when the visible UI relies on a placeholder but a hidden `<label>` linked via `htmlFor`/`id` is still required for assistive technology.

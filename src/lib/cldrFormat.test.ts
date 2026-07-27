@@ -70,7 +70,10 @@ describe('CLDR Locale Formatting Regression Test Suite', () => {
 
     it('respects_custom_decimal_precision_override_in_currency', () => {
       expect(
-        formatCurrency(1234.5678, 'USD', 'en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+        formatCurrency(1234.5678, 'USD', 'en-US', {
+          minimumFractionDigits: 3,
+          maximumFractionDigits: 3,
+        })
       ).toBe('$1,234.568')
     })
   })

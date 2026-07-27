@@ -44,7 +44,8 @@ export const ATTESTATION_EVENTS = {
 } as const
 
 export type AttestationType =
-  (typeof ATTESTATION_EVENTS.TYPES)[keyof typeof ATTESTATION_EVENTS.TYPES] | string
+  | (typeof ATTESTATION_EVENTS.TYPES)[keyof typeof ATTESTATION_EVENTS.TYPES]
+  | string
 
 export interface AttestationPayload {
   subject: string

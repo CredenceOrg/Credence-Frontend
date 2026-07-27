@@ -31,7 +31,7 @@ describe('ProgressCircle', () => {
       const { container } = render(<ProgressCircle value={50} variant={variant} />)
 
       expect(container.firstElementChild).toHaveClass(`progress-circle--${variant}`)
-    },
+    }
   )
 
   it('preserves the zero-value boundary as determinate progress', () => {

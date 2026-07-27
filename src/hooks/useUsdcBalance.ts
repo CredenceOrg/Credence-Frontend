@@ -67,7 +67,8 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
   const fetchIdRef = useRef(0)
   const mountedRef = useRef(true)
 
-  const isReauthRequired = isConnected && typeof checkIsReauthRequired === 'function' && checkIsReauthRequired()
+  const isReauthRequired =
+    isConnected && typeof checkIsReauthRequired === 'function' && checkIsReauthRequired()
 
   const fetchBalance = useCallback(async () => {
     if (!isConnected || !address || !network) {
@@ -94,11 +95,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
     setError(null)
 
     try {
-      const result = await fetchUsdcBalance(
-        address,
-        network as CredenceNetwork,
-        controller.signal
-      )
+      const result = await fetchUsdcBalance(address, network as CredenceNetwork, controller.signal)
 
       if (!mountedRef.current || fetchId !== fetchIdRef.current) return
 

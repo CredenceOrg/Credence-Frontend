@@ -16,15 +16,15 @@ experiences when a cache miss occurs.
 
 ### localStorage
 
-| Key | Module | What's stored | Persists across |
-|---|---|---|---|
-| `credence:settings` | `src/context/SettingsContext.tsx` | Theme, network preference, display options, toast config | Tabs, windows, browser restarts |
-| `credence:pendingTransactions` | `src/hooks/useTransactions.ts` | User-initiated transactions not yet confirmed on chain | Page reloads |
-| `credence:onboarding:step` | `src/pages/Dashboard.tsx` | Current onboarding tour step | Page reloads |
-| `credence:onboarding:onboardedAt` | `src/pages/Dashboard.tsx` | Completion timestamp | Page reloads |
-| `credence:changelog:last-seen-id` | `src/hooks/useProductUpdates.ts` | Last-seen changelog entry ID | Page reloads |
-| `credence:pinnedWidgets` | `src/hooks/usePinnedWidgets.ts` | Pinned dashboard widgets configuration | Page reloads |
-| `credence:recent-lookups` | `src/pages/TrustScore.tsx` | Recent trust-score address lookups | Page reloads |
+| Key                               | Module                            | What's stored                                            | Persists across                 |
+| --------------------------------- | --------------------------------- | -------------------------------------------------------- | ------------------------------- |
+| `credence:settings`               | `src/context/SettingsContext.tsx` | Theme, network preference, display options, toast config | Tabs, windows, browser restarts |
+| `credence:pendingTransactions`    | `src/hooks/useTransactions.ts`    | User-initiated transactions not yet confirmed on chain   | Page reloads                    |
+| `credence:onboarding:step`        | `src/pages/Dashboard.tsx`         | Current onboarding tour step                             | Page reloads                    |
+| `credence:onboarding:onboardedAt` | `src/pages/Dashboard.tsx`         | Completion timestamp                                     | Page reloads                    |
+| `credence:changelog:last-seen-id` | `src/hooks/useProductUpdates.ts`  | Last-seen changelog entry ID                             | Page reloads                    |
+| `credence:pinnedWidgets`          | `src/hooks/usePinnedWidgets.ts`   | Pinned dashboard widgets configuration                   | Page reloads                    |
+| `credence:recent-lookups`         | `src/pages/TrustScore.tsx`        | Recent trust-score address lookups                       | Page reloads                    |
 
 All reads go through `src/hooks/useLocalStorage.ts`, which is SSR-safe and
 gracefully handles corrupt JSON:
@@ -85,8 +85,7 @@ button:
 ```tsx
 const autoSave = useDebouncedAutoSave({
   value: draft,
-  save: (next, signal) =>
-    apiFetch<void>('/settings', { method: 'PATCH', body: next, signal }),
+  save: (next, signal) => apiFetch<void>('/settings', { method: 'PATCH', body: next, signal }),
 })
 
 return <AutoSaveIndicator status={autoSave.status} onRetry={autoSave.saveNow} />
@@ -105,7 +104,7 @@ when the auto-save cannot reach the server.
 
 ### Queries (`useQuery`)
 
-`src/hooks/useQuery.ts` silently skips *both* the initial fetch and every
+`src/hooks/useQuery.ts` silently skips _both_ the initial fetch and every
 `refetch()` when `navigator.onLine` is `false`. No error is thrown — the hook
 simply returns `{ data: undefined, isLoading: false }`.
 
@@ -192,11 +191,11 @@ useEffect(() => {
 
 ## Summary table
 
-| Scenario | Behaviour |
-|---|---|
-| **Page load while offline** | `useQuery` returns idle — no fetch attempted. Settings, pinned widgets, pending transactions, recent lookups served from `localStorage`. Dashboard shows offline banner. |
-| **Widget refresh while offline** | `useWidgetCache` skips the fetch. Previous data is preserved. |
-| **Auto-save while offline** | `apiFetch` throws `ApiError(0)`. Hook surfaces `error` state with Retry button. Local draft is preserved via manual Save. |
-| **Transaction submission while offline** | Not supported — the user must be online to submit to the backend. Pending transactions queue shows previously submitted items only. |
-| **Cache miss (no localStorage entry, no widget data)** | Component renders its empty/loading state. Default settings are used if `localStorage` key is missing or corrupt. |
-| **Reconnect** | The app does not automatically replay queued operations. User must retry manually (Refresh button, Retry on auto-save, etc.). |
+| Scenario                                               | Behaviour                                                                                                                                                                |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Page load while offline**                            | `useQuery` returns idle — no fetch attempted. Settings, pinned widgets, pending transactions, recent lookups served from `localStorage`. Dashboard shows offline banner. |
+| **Widget refresh while offline**                       | `useWidgetCache` skips the fetch. Previous data is preserved.                                                                                                            |
+| **Auto-save while offline**                            | `apiFetch` throws `ApiError(0)`. Hook surfaces `error` state with Retry button. Local draft is preserved via manual Save.                                                |
+| **Transaction submission while offline**               | Not supported — the user must be online to submit to the backend. Pending transactions queue shows previously submitted items only.                                      |
+| **Cache miss (no localStorage entry, no widget data)** | Component renders its empty/loading state. Default settings are used if `localStorage` key is missing or corrupt.                                                        |
+| **Reconnect**                                          | The app does not automatically replay queued operations. User must retry manually (Refresh button, Retry on auto-save, etc.).                                            |

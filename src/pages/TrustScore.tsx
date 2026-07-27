@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
 import Banner from '../components/Banner'
-import ConnectGate from '../components/ConnectGate'
 import ActivityTimeline, {
   type ActivityItem,
   SAMPLE_ACTIVITY,
@@ -67,6 +66,7 @@ export default function TrustScore() {
     description:
       'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
   })
+  const { t } = useTranslation()
   const isMobile = useIsMobile()
   const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
   const { setNetwork, addressDisplay } = useSettings()
@@ -156,7 +156,7 @@ export default function TrustScore() {
       return
     }
 
-    if (!isAddressValid) {
+    if (!isAddressValid || isLoading) {
       return
     }
 
@@ -395,9 +395,28 @@ export default function TrustScore() {
                         aria-label={copied ? 'Copied' : `Copy address ${displayLabel}`}
                       >
                         {copied ? (
-                          <CheckIcon width={14} height={14} viewBox="0 0 24 24" />
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
                         ) : (
-                          <CopyIcon width={14} height={14} viewBox="0 0 24 24" />
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
                         )}
                       </button>
                     </li>
@@ -420,8 +439,20 @@ export default function TrustScore() {
             >
               {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
             </Button>
-          </div>
-        </ConnectGate>
+          )}
+          <Button
+            type="button"
+            onClick={handleLookup}
+            variant="primary"
+            fullWidth
+            disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
+            isLoading={isConnected && isLoading}
+            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+            className="trustScore__buttonRow"
+          >
+            {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
+          </Button>
+        </div>
 
         <div className="trustScore__card">
           <h2 className="trustScore__cardTitle">

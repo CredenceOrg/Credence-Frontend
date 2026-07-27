@@ -1,4 +1,12 @@
-import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { LONG_LIST_RENDER_THRESHOLD } from '../config/listing'
 
 export interface WindowedListProps<T> {
@@ -42,7 +50,10 @@ export default function WindowedList<T>({
     }
 
     const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan)
-    const endIndex = Math.min(items.length, Math.ceil((scrollTop + viewportHeight) / itemHeight) + overscan)
+    const endIndex = Math.min(
+      items.length,
+      Math.ceil((scrollTop + viewportHeight) / itemHeight) + overscan
+    )
 
     return { start: startIndex, end: endIndex }
   }, [isLongList, itemHeight, items.length, overscan, scrollTop, viewportHeight])
@@ -101,7 +112,9 @@ export default function WindowedList<T>({
     return (
       <div className={className} role={role} aria-label={ariaLabel}>
         {items.map((item, index) => (
-          <div key={getItemKey ? getItemKey(item, index) : index}>{renderItemContent(item, index)}</div>
+          <div key={getItemKey ? getItemKey(item, index) : index}>
+            {renderItemContent(item, index)}
+          </div>
         ))}
       </div>
     )

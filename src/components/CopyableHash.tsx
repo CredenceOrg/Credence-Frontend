@@ -49,10 +49,11 @@ export default function CopyableHash({
   }
 
   // Build Explorer Link
-  const explorerBaseUrl = network === 'test' 
-    ? 'https://stellar.expert/explorer/testnet' 
-    : 'https://stellar.expert/explorer/public'
-  
+  const explorerBaseUrl =
+    network === 'test'
+      ? 'https://stellar.expert/explorer/testnet'
+      : 'https://stellar.expert/explorer/public'
+
   const explorerPath = kind === 'address' ? `/account/${hash}` : `/tx/${hash}`
   const explorerHref = `${explorerBaseUrl}${explorerPath}`
 
@@ -73,7 +74,7 @@ export default function CopyableHash({
       <TooltipOnOverflow content={hash}>
         <span className="copyable-hash__text">{displayHash}</span>
       </TooltipOnOverflow>
-      
+
       <button
         type="button"
         className={`copyable-hash__copy-btn ${copied ? 'copyable-hash__copy-btn--copied' : ''}`}
@@ -82,9 +83,48 @@ export default function CopyableHash({
         title="Copy hash"
       >
         {copied ? (
-          <CheckIcon width={14} height={14} />
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M2 7L5 10L12 3"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         ) : (
-          <CopyIcon width={14} height={14} viewBox="0 0 14 14" />
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <rect
+              x="2.5"
+              y="3.5"
+              width="9"
+              height="10"
+              rx="1.5"
+              stroke="currentColor"
+              strokeWidth="1.2"
+            />
+            <path
+              d="M10 2.5V1.5C10 0.947715 9.55228 0.5 9 0.5H3C2.44772 0.5 2 0.947715 2 1.5V9.5C2 10.0523 2.44772 10.5 3 10.5H4"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         )}
       </button>
 
@@ -97,7 +137,21 @@ export default function CopyableHash({
           aria-label={`View ${kind} on Stellar Explorer`}
           title={`View ${kind} on Stellar Explorer`}
         >
-          <ExternalLinkIcon width={14} height={14} />
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
         </a>
       )}
 

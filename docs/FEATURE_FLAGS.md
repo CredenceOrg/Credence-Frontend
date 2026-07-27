@@ -16,6 +16,7 @@ Vite provides a built-in `import.meta.env.DEV` boolean that is `true` during dev
 ### How It Works
 
 Vite replaces `import.meta.env.DEV` with a boolean at build time:
+
 - Development builds: `import.meta.env.DEV` → `true`
 - Production builds: `import.meta.env.DEV` → `false` (tree-shaken)
 
@@ -26,9 +27,9 @@ Vite replaces `import.meta.env.DEV` with a boolean at build time:
 const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
 
 // Conditionally render a route
-{import.meta.env.DEV && ToastTest && (
-  <Route path="dev/toasts" element={<ToastTest />} />
-)}
+{
+  import.meta.env.DEV && ToastTest && <Route path="dev/toasts" element={<ToastTest />} />
+}
 ```
 
 ### Real Example: BreakpointOverlay
@@ -49,11 +50,7 @@ export default function BreakpointOverlay() {
   // Vite replaces import.meta.env.DEV with a boolean at build time.
   if (!import.meta.env.DEV) return null
 
-  return (
-    <div className="breakpoint-overlay-container">
-      {/* ... */}
-    </div>
-  )
+  return <div className="breakpoint-overlay-container">{/* ... */}</div>
 }
 ```
 
@@ -71,6 +68,7 @@ For features that need to be toggled per-component instance, use boolean props w
 ### Naming Convention
 
 Follow the conventions in `docs/COMPONENT_API.md`:
+
 - Use positive phrasing: `isEarlyAccess`, not `isNotProduction`
 - Use `is` prefix for state flags
 - Default to `false` so omitting the prop keeps the flag disabled
@@ -154,11 +152,11 @@ These are read at build time and exposed to the browser. Use them for URL overri
 
 ### Step 1: Choose the Right Mechanism
 
-| Mechanism | Use Case | Scope |
-|-----------|----------|-------|
-| `import.meta.env.DEV` | Dev-only tools | Build-wide |
-| Boolean prop | Per-component toggle | Component instance |
-| Environment variable | URL/configuration | Build-wide |
+| Mechanism             | Use Case             | Scope              |
+| --------------------- | -------------------- | ------------------ |
+| `import.meta.env.DEV` | Dev-only tools       | Build-wide         |
+| Boolean prop          | Per-component toggle | Component instance |
+| Environment variable  | URL/configuration    | Build-wide         |
 
 ### Step 2: Implement
 
@@ -244,6 +242,7 @@ it('hides dev-only content in production', () => {
 ### Testing Boolean Props
 
 Boolean props default to `false`, so tests should verify:
+
 1. Feature renders when prop is `true`
 2. Feature does not render when prop is `false`
 3. Feature does not render when prop is omitted

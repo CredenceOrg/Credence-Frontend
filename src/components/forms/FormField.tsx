@@ -11,7 +11,14 @@ interface FormFieldProps {
   children: React.ReactElement
 }
 
-export function FormField({ id, label, hint, error, srOnlyLabel = false, children }: FormFieldProps) {
+export function FormField({
+  id,
+  label,
+  hint,
+  error,
+  srOnlyLabel = false,
+  children,
+}: FormFieldProps) {
   const hintId = hint ? `${id}-hint` : undefined
   const errorId = error ? `${id}-error` : undefined
   const existingDescribedBy = children.props['aria-describedby'] as string | undefined

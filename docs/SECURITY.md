@@ -10,17 +10,17 @@ Credence Frontend applies a **Content-Security-Policy (CSP)** header as a defenc
 Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' ws://localhost:*; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 ```
 
-| Directive | Value | Rationale |
-|---|---|---|
-| `default-src` | `'self'` | Baseline — all resources restricted to the same origin unless overridden. |
-| `script-src` | `'self'` | Scripts from own origin only. Vite bundles all JS into hashed files; no inline scripts are used in production. |
-| `style-src` | `'self' 'unsafe-inline'` | Required by Vite's CSS-module injection and React's inline styles. `'unsafe-inline'` is the minimum concession needed for SPA rendering. |
-| `img-src` | `'self' data:` | Same-origin images plus data URIs (used for inline icons / placeholders). |
-| `font-src` | `'self'` | Font assets served from the same origin. |
-| `connect-src` | `'self' ws://localhost:*` | API calls to the same origin, plus WebSocket connections for Vite HMR in development. |
-| `base-uri` | `'self'` | Prevents attackers from injecting `<base>` tags to hijack relative URLs. |
-| `form-action` | `'self'` | Restricts form submissions to the same origin. |
-| `frame-ancestors` | `'none'` | Precludes clickjacking by forbidding the app from being embedded in `<frame>`, `<iframe>`, or `<object>`. |
+| Directive         | Value                     | Rationale                                                                                                                                |
+| ----------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `default-src`     | `'self'`                  | Baseline — all resources restricted to the same origin unless overridden.                                                                |
+| `script-src`      | `'self'`                  | Scripts from own origin only. Vite bundles all JS into hashed files; no inline scripts are used in production.                           |
+| `style-src`       | `'self' 'unsafe-inline'`  | Required by Vite's CSS-module injection and React's inline styles. `'unsafe-inline'` is the minimum concession needed for SPA rendering. |
+| `img-src`         | `'self' data:`            | Same-origin images plus data URIs (used for inline icons / placeholders).                                                                |
+| `font-src`        | `'self'`                  | Font assets served from the same origin.                                                                                                 |
+| `connect-src`     | `'self' ws://localhost:*` | API calls to the same origin, plus WebSocket connections for Vite HMR in development.                                                    |
+| `base-uri`        | `'self'`                  | Prevents attackers from injecting `<base>` tags to hijack relative URLs.                                                                 |
+| `form-action`     | `'self'`                  | Restricts form submissions to the same origin.                                                                                           |
+| `frame-ancestors` | `'none'`                  | Precludes clickjacking by forbidding the app from being embedded in `<frame>`, `<iframe>`, or `<object>`.                                |
 
 ---
 

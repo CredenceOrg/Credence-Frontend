@@ -63,11 +63,7 @@ export default function Badge({ variant, label, className = '', srPrefix, ariaLa
 
   return (
     <TooltipOnOverflow content={displayLabel}>
-      <span
-        className={`badge badge--${normalizedVariant} ${className}`.trim()}
-        title={title}
-        aria-label={accessibleLabel}
-      >
+      <span className={`badge badge--${normalizedVariant} ${className}`.trim()}>
         {srPrefix && <span className="sr-only">{srPrefix} </span>}
         {displayLabel}
       </span>

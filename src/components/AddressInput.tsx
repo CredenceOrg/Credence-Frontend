@@ -2,7 +2,12 @@ import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
 import QRScannerModal from './QRScannerModal'
 import './AddressInput.css'
-import { isValidStellarAddress, sanitizeAddressInput, AddressSanitizationError, formatAddressForDisplay } from '@/lib/stellar'
+import {
+  isValidStellarAddress,
+  sanitizeAddressInput,
+  AddressSanitizationError,
+  formatAddressForDisplay,
+} from '@/lib/stellar'
 import useCopyToClipboard from '@/hooks/useCopyToClipboard'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { TEST_IDS } from '@/config/testIds'
@@ -116,11 +121,48 @@ function AddressInputInner({
               xmlns="http://www.w3.org/2000/svg"
               aria-hidden="true"
             >
-              <rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="10" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="1" y="10" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="10" y="10" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
-              <path d="M8 4v2M8 10v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <rect
+                x="1"
+                y="1"
+                width="5"
+                height="5"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <rect
+                x="10"
+                y="1"
+                width="5"
+                height="5"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <rect
+                x="1"
+                y="10"
+                width="5"
+                height="5"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <rect
+                x="10"
+                y="10"
+                width="5"
+                height="5"
+                rx="1"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <path
+                d="M8 4v2M8 10v2"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
             </svg>
             <span className="sr-only">Scan QR code</span>
           </button>
@@ -191,9 +233,9 @@ export default function AddressInput({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value
     const result = sanitizeAddressInput(rawValue)
-    
+
     onChange(result.ok ? result.value : result.fallbackValue)
-    
+
     if (!result.ok) {
       setSanitizationError(result.error)
     } else {
@@ -219,9 +261,9 @@ export default function AddressInput({
     try {
       const text = await navigator.clipboard.readText()
       const result = sanitizeAddressInput(text)
-      
+
       onChange(result.ok ? result.value : result.fallbackValue)
-      
+
       if (!result.ok) {
         setSanitizationError(result.error)
       } else {
@@ -252,7 +294,7 @@ export default function AddressInput({
       setAttempted(true)
       setScannerOpen(false)
     },
-    [onChange],
+    [onChange]
   )
 
   const handleCloseScanner = useCallback(() => {
@@ -269,9 +311,14 @@ export default function AddressInput({
   }, [copy, value])
 
   const isChecksumError = showError && /^G[A-Z0-9]{55}$/.test(debouncedValue)
-  const error = externalError || 
-    (sanitizationError ? sanitizationError.message : undefined) || 
-    (showError ? (isChecksumError ? 'Invalid address checksum. Please verify the address.' : 'Invalid address. Stellar public keys are 56 characters starting with G.') : undefined)
+  const error =
+    externalError ||
+    (sanitizationError ? sanitizationError.message : undefined) ||
+    (showError
+      ? isChecksumError
+        ? 'Invalid address checksum. Please verify the address.'
+        : 'Invalid address. Stellar public keys are 56 characters starting with G.'
+      : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
 
   // Detect whether the entered (validated) value matches the connected wallet's address.
@@ -306,7 +353,9 @@ export default function AddressInput({
       {showSuccess && value && (
         <div className="address-input-echo">
           <span className="address-input-echo-label">Recognized:</span>
-          <code className="address-input-echo-value">{formatAddressForDisplay(value, addressDisplay)}</code>
+          <code className="address-input-echo-value">
+            {formatAddressForDisplay(value, addressDisplay)}
+          </code>
           <button
             type="button"
             onClick={handleCopy}

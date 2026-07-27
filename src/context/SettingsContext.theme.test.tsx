@@ -323,7 +323,16 @@ describe('SettingsContext — theme application and media-query sync', () => {
     it('initializes from localStorage on mount and applies the stored theme', () => {
       const mql = createMatchMediaMock(false)
       installMatchMedia(mql)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ themeMode: 'dark', network: 'public', addressDisplay: 'short', toastsEnabled: true, autoDismiss: '5s' }))
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          themeMode: 'dark',
+          network: 'public',
+          addressDisplay: 'short',
+          toastsEnabled: true,
+          autoDismiss: '5s',
+        })
+      )
 
       renderWithProvider()
 

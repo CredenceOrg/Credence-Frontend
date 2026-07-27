@@ -43,7 +43,9 @@ describe('isValidStellarAddress', () => {
 
   it('returns false for a format-valid key that fails the CRC-16 checksum', () => {
     // GAAZI4... is 56 chars, starts with G, uppercase alphanumeric, but fails checksum
-    expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(false)
+    expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(
+      false
+    )
   })
 
   it('returns false for wrong prefix', () => {
@@ -138,7 +140,9 @@ describe('truncateAddress', () => {
   it('truncates a whitespace-padded long address after trimming', () => {
     const padded = '  ' + VALID_KEY + '  '
     const result = truncateAddress(padded)
-    expect(result).toBe(`${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`)
+    expect(result).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
   })
 
   it('produces the correct separator string (three dots, not an ellipsis character)', () => {

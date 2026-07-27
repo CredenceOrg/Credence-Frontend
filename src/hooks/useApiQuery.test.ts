@@ -1,11 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../api/client'
-import {
-  useApiQuery,
-  invalidateApiQuery,
-  clearApiQueryCache,
-} from './useApiQuery'
+import { useApiQuery, invalidateApiQuery, clearApiQueryCache } from './useApiQuery'
 
 const apiFetchMock = vi.fn<typeof import('../api/client').apiFetch>()
 
@@ -48,9 +44,7 @@ describe('useApiQuery', () => {
   it('fetches on mount and transitions loading → success', async () => {
     apiFetchMock.mockResolvedValueOnce(mockData)
 
-    const { result } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     expect(result.current.isLoading).toBe(true)
     expect(result.current.data).toBeUndefined()
@@ -78,9 +72,7 @@ describe('useApiQuery', () => {
   it('transitions loading → error when the API rejects', async () => {
     apiFetchMock.mockRejectedValueOnce(new ApiError(503, 'Service unavailable'))
 
-    const { result } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -96,9 +88,7 @@ describe('useApiQuery', () => {
   it('serves from cache within stale time', async () => {
     apiFetchMock.mockResolvedValue(mockData)
 
-    const { result, unmount } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result, unmount } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -107,9 +97,7 @@ describe('useApiQuery', () => {
     expect(apiFetchMock).toHaveBeenCalledTimes(1)
     unmount()
 
-    const { result: result2 } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result: result2 } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     expect(result2.current.data).toEqual(mockData)
     expect(apiFetchMock).toHaveBeenCalledTimes(1)
@@ -147,9 +135,7 @@ describe('useApiQuery', () => {
     const freshData = { score: 900, tier: 'platinum' }
     apiFetchMock.mockResolvedValueOnce(mockData).mockResolvedValueOnce(freshData)
 
-    const { result } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -170,9 +156,7 @@ describe('useApiQuery', () => {
     const pending = deferred<MockData>()
     apiFetchMock.mockReturnValueOnce(pending.promise)
 
-    const { result, unmount } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result, unmount } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     expect(result.current.isLoading).toBe(true)
 
@@ -189,9 +173,7 @@ describe('useApiQuery', () => {
     const second = deferred<MockData>()
     apiFetchMock.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
 
-    const { result } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(apiFetchMock).toHaveBeenCalledTimes(1)
@@ -220,9 +202,7 @@ describe('useApiQuery', () => {
   it('wraps unexpected errors in ApiError', async () => {
     apiFetchMock.mockRejectedValueOnce('unexpected string error')
 
-    const { result } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -261,9 +241,7 @@ describe('useApiQuery', () => {
   it('invalidateApiQuery clears a specific cached entry', async () => {
     apiFetchMock.mockResolvedValue(mockData)
 
-    const { result, unmount } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result, unmount } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -272,9 +250,7 @@ describe('useApiQuery', () => {
     unmount()
     invalidateApiQuery('/trust-score/GABC')
 
-    const { result: result2 } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result: result2 } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result2.current.isLoading).toBe(false)
@@ -286,9 +262,7 @@ describe('useApiQuery', () => {
   it('clearApiQueryCache removes all entries', async () => {
     apiFetchMock.mockResolvedValue(mockData)
 
-    const { result, unmount } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result, unmount } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -297,9 +271,7 @@ describe('useApiQuery', () => {
     unmount()
     clearApiQueryCache()
 
-    const { result: result2 } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result: result2 } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result2.current.isLoading).toBe(false)
@@ -311,9 +283,7 @@ describe('useApiQuery', () => {
   it('does not fetch when offline', async () => {
     vi.stubGlobal('navigator', { onLine: false })
 
-    const { result } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
@@ -326,9 +296,7 @@ describe('useApiQuery', () => {
   it('passes AbortSignal to apiFetch', async () => {
     apiFetchMock.mockResolvedValueOnce(mockData)
 
-    const { result } = renderHook(() =>
-      useApiQuery<MockData>('/trust-score/GABC')
-    )
+    const { result } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)

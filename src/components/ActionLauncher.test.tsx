@@ -17,7 +17,7 @@ function renderLauncher(overrides: Partial<Parameters<typeof ActionLauncher>[0]>
   const result = render(
     <MemoryRouter>
       <ActionLauncher {...props} />
-    </MemoryRouter>,
+    </MemoryRouter>
   )
   return { ...result, onClose, onOpenKeyboardShortcuts }
 }

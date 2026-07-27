@@ -31,13 +31,8 @@ export function useToast() {
 }
 
 export default function ToastProvider({ children }: { children: ReactNode }) {
-  const {
-    toastsEnabled,
-    autoDismiss,
-    quietHoursEnabled,
-    quietHoursStart,
-    quietHoursEnd,
-  } = useSettings()
+  const { toastsEnabled, autoDismiss, quietHoursEnabled, quietHoursStart, quietHoursEnd } =
+    useSettings()
 
   /**
    * We use a ref to track the current settings to avoid recreating `addToast`
@@ -98,13 +93,8 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
 
   const addToast = useCallback(
     (severity: ToastSeverity, message: string) => {
-      const {
-        toastsEnabled,
-        autoDismiss,
-        quietHoursEnabled,
-        quietHoursStart,
-        quietHoursEnd,
-      } = settingsRef.current
+      const { toastsEnabled, autoDismiss, quietHoursEnabled, quietHoursStart, quietHoursEnd } =
+        settingsRef.current
 
       // respect global toast enable setting
       if (!toastsEnabled) return

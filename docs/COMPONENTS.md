@@ -8,40 +8,38 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 
 ## Styling ownership snapshot
 
-| Component              | Styling owner                                                                       | Inline-style migration note                                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| BottomNav              | `src/components/navigation/BottomNav.css`                                           | None.                                                                                                                     |
-| Progress               | `src/components/Progress.css`                                                       | None.                                                                                                                     |
-| Button                 | `src/components/Button.css`                                                         | None.                                                                                                                     |
-| LoadingSpinner         | `src/components/LoadingSpinner.css`                                                | None.                                                                                                                     |
-| Badge                  | `src/components/Badge.css`                                                          | None.                                                                                                                     |
-| StatusBadge            | `src/components/StatusBadge.css`                                                    | None.                                                                                                                     |
-| AnalyticsWidget        | `src/components/AnalyticsWidget.css`                                                | None.                                                                                                                     |
-| Banner                 | `src/components/Banner.css`                                                         | None.                                                                                                                     |
-| Toast / ToastProvider  | `src/components/Toast.css`                                                          | None.                                                                                                                     |
-| ConfirmDialog          | `src/components/ConfirmDialog.css`                                                  | None.                                                                                                                     |
-| AddressInput           | `src/components/AddressInput.css` + `FormField.css`                                 | None.                                                                                                                     |
-| AmountInput            | `src/components/AmountInput.css`                                                    | None.                                                                                                                     |
-| TrustGauge             | `src/components/TrustGauge.css`                                                     | Uses inline CSS custom properties for dynamic progress, marker, thumb, and legend-dot colors; keep scoped until migrated. |
-| TierLadder             | `src/components/TierLadder.css` + `Badge.css`                                       | None.                                                                                                                     |
-| ActivityTimeline       | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                       |
-| TooltipOnOverflow      | `src/components/TooltipOnOverflow.css`                                              | None.                                                                                                                     |
-| FormField              | `src/components/forms/FormField.css`                                                | None.                                                                                                                     |
-| FilePicker             | `src/components/FilePicker.css` + `FormField.css`                                   | None.                                                                                                                     |
-| controls/Select        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
-| controls/Toggle        | `src/components/controls/controls.css`                                              | None.                                                                                                                     |
-| states/EmptyState      | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
-| states/ErrorState      | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                         |
-| states/LoadingSkeleton | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                         |
-| SessionTimeoutModal    | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                              |
-| ActionCard             | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                    |
-| Disclaimer             | `src/components/Disclaimer.css`                                                     | None.                                                                                                                     |
-| ThemeToggle            | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                     |
-| Kbd                     | `src/components/Kbd.css`                                                            | None.                                                                                                                     |
-| KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                       | None.                                                                                                                     |
-| AttestationForm        | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                |
-| CreateBondFlow         | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                     |
-| ErrorBoundary          | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                    |
+| Component               | Styling owner                                                                       | Inline-style migration note                                                                                                         |
+| ----------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| BottomNav               | `src/components/navigation/BottomNav.css`                                           | None.                                                                                                                               |
+| Progress                | `src/components/Progress.css`                                                       | `color` prop for colour variants (`primary`, `success`, `warning`, `danger`).                                                       |
+| Button                  | `src/components/Button.css`                                                         | None.                                                                                                                               |
+| Badge                   | `src/components/Badge.css`                                                          | None.                                                                                                                               |
+| Banner                  | `src/components/Banner.css`                                                         | None.                                                                                                                               |
+| Toast / ToastProvider   | `src/components/Toast.css`                                                          | None.                                                                                                                               |
+| ConfirmDialog           | `src/components/ConfirmDialog.css`                                                  | None.                                                                                                                               |
+| AddressInput            | `src/components/AddressInput.css` + `FormField.css`                                 | None.                                                                                                                               |
+| AmountInput             | `src/components/AmountInput.css`                                                    | None.                                                                                                                               |
+| TrustGauge              | `src/components/TrustGauge.css`                                                     | Uses inline CSS custom properties for dynamic progress, marker, thumb, and legend-dot colors; keep scoped until migrated.           |
+| TierLadder              | `src/components/TierLadder.css` + `Badge.css`                                       | None.                                                                                                                               |
+| ActivityTimeline        | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                                 |
+| WindowedList            | `src/components/WindowedList.tsx`                                                   | Lightweight helper for large lists; uses the shared threshold in `src/config/listing.ts` and preserves the existing list semantics. |
+| FormField               | `src/components/forms/FormField.css`                                                | None.                                                                                                                               |
+| controls/Select         | `src/components/controls/controls.css`                                              | None.                                                                                                                               |
+| controls/Toggle         | `src/components/controls/controls.css`                                              | None.                                                                                                                               |
+| states/EmptyState       | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                                   |
+| states/ErrorState       | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                                   |
+| states/LoadingSkeleton  | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                                   |
+| SessionTimeoutModal     | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                                        |
+| ActionCard              | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                               |
+| VirtualizedList         | `src/components/VirtualizedList.tsx`                                                | No dedicated CSS file; uses consumer-provided layout and spacing.                                                                   |
+| Disclaimer              | `src/components/Disclaimer.css`                                                     | None.                                                                                                                               |
+| ThemeToggle             | `src/components/ThemeToggle.css`                                                    | None.                                                                                                                               |
+| Kbd                     | `src/components/Kbd.css`                                                            | None.                                                                                                                               |
+| KeyboardShortcutsDialog | `src/components/KeyboardShortcutsDialog.css`                                        | None.                                                                                                                               |
+| AttestationForm         | Delegates to `AddressInput`, `Select`, `FormField`, `Button`                        | No dedicated CSS file; inherits from composing components.                                                                          |
+| CreateBondFlow          | `src/components/CreateBondFlow.css`                                                 | None.                                                                                                                               |
+| ErrorBoundary           | Delegates to `states/ErrorState`                                                    | No dedicated CSS file.                                                                                                              |
+| RepoAvatar              | `src/components/RepoAvatar.css`                                                     | None.                                                                                                                               |
 
 ## Shared vocabularies
 
@@ -88,6 +86,25 @@ Source: [`TrustGauge.tsx`](../src/components/TrustGauge.tsx)
 | `gold`     | 500-750  | Gold     | `--credence-color-gold-border`, `--credence-color-gold-surface`, `--credence-color-gold-text`             |
 | `platinum` | 750-1000 | Platinum | `--credence-color-platinum-border`, `--credence-color-platinum-surface`, `--credence-color-platinum-text` |
 
+## WindowedList
+
+Source: [`src/components/WindowedList.tsx`](../src/components/WindowedList.tsx).
+
+| Prop              | Type                                           | Default     |
+| ----------------- | ---------------------------------------------- | ----------- |
+| `items`           | `readonly T[]`                                 | Required    |
+| `itemHeight`      | `number`                                       | Required    |
+| `overscan`        | `number`                                       | `4`         |
+| `renderItem`      | `(item: T, index: number) => ReactNode`        | Required    |
+| `className`       | `string`                                       | `undefined` |
+| `role`            | `string`                                       | `undefined` |
+| `ariaLabel`       | `string`                                       | `undefined` |
+| `emptyMessage`    | `string`                                       | `undefined` |
+| `getItemKey`      | `(item: T, index: number) => string \| number` | `undefined` |
+| `containerHeight` | `number`                                       | `320`       |
+
+The component uses the shared `LONG_LIST_RENDER_THRESHOLD` from [`src/config/listing.ts`](../src/config/listing.ts) to switch into a windowed render path for large data sets. It preserves the existing DOM structure for shorter lists, uses the supplied `containerHeight` for the scroll viewport, and keeps the rendered content accessible for larger lists.
+
 ## Button
 
 Source: [`src/components/Button.tsx`](../src/components/Button.tsx). Focused docs: [button system](./button-system.md).
@@ -114,13 +131,11 @@ Tokens: `--credence-border-default`, `--credence-color-danger-*`, `--credence-co
 
 Source: [`src/components/LoadingSpinner.tsx`](../src/components/LoadingSpinner.tsx). Storybook: `Components/LoadingSpinner`.
 
-| Prop            | Type                        | Default      |
-| --------------- | --------------------------- | ------------ |
-| `label`         | `string`                    | `'Loading…'` |
-| `size`          | `'sm' \| 'md' \| 'lg'`      | `'md'`       |
-| `className`     | `string`                    | `''`         |
-| `iconClassName` | `string`                    | `''`         |
-| Native props    | `HTMLAttributes<HTMLSpanElement>` | Forwarded    |
+**Props**
+
+- `slug: string` — widget identifier
+- `isPinned: boolean`
+- `onToggle: (slug: string) => void`
 
 Accessibility: Renders an SVG loading spinner with `aria-hidden="true"` by default. When the user enables `prefers-reduced-motion: reduce`, the component automatically falls back to rendering static `"Loading…"` text (or custom `label` prop), complying with WCAG 2.1 AA animation requirements.
 
@@ -326,6 +341,23 @@ Tokens: motion duration/easing tokens in CSS; severity color styling is componen
 </Banner>
 ```
 
+## VirtualizedList
+
+Source: [`src/components/VirtualizedList.tsx`](../src/components/VirtualizedList.tsx).
+
+| Prop                  | Type                                           | Default     |
+| --------------------- | ---------------------------------------------- | ----------- |
+| `items`               | `T[]`                                          | Required    |
+| `itemHeight`          | `number`                                       | `64`        |
+| `overscan`            | `number`                                       | `3`         |
+| `virtualizeThreshold` | `number`                                       | `1000`      |
+| `getKey`              | `(item: T, index: number) => string \| number` | Required    |
+| `renderItem`          | `(item: T, index: number) => ReactNode`        | Required    |
+| `height`              | `number`                                       | `320`       |
+| `emptyMessage`        | `ReactNode`                                    | `undefined` |
+
+The component renders only the visible window of a large list when the item count exceeds the configured threshold. It is used in the command launcher to keep search results responsive for very large result sets while preserving scroll behavior and keyboard access.
+
 ## Toast and ToastProvider
 
 Sources: [`src/components/Toast.tsx`](../src/components/Toast.tsx), [`src/components/ToastProvider.tsx`](../src/components/ToastProvider.tsx). Focused docs: [notifications](./notifications.md).
@@ -361,16 +393,23 @@ function SaveButton() {
 
 Source: [`src/components/ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx). Focused docs: [focus patterns](./focus-patterns.md).
 
-| Prop             | Type                                                                                              | Default           |
-| ---------------- | ------------------------------------------------------------------------------------------------- | ----------------- |
-| `open`           | `boolean`                                                                                         | Required          |
-| `title`          | `string`                                                                                          | Required          |
-| `subtitle`       | `string`                                                                                          | `undefined`       |
-| `breakdown`      | `{ bondAmount: string; penaltyAmount: string; penaltyPercent: number; resultingBalance: string }` | Required          |
-| `onConfirm`      | `() => void`                                                                                      | Required          |
-| `onCancel`       | `() => void`                                                                                      | Required          |
-| `returnFocusRef` | `RefObject<HTMLElement \| null>`                                                                  | `undefined`       |
-| `confirmLabel`   | `string`                                                                                          | `'Withdraw bond'` |
+| Prop                | Type                             | Default                           |
+| ------------------- | -------------------------------- | --------------------------------- |
+| `open`              | `boolean`                        | Required                          |
+| `title`             | `string`                         | Required                          |
+| `subtitle`          | `string`                         | `undefined`                       |
+| `breakdown`         | `ConfirmDialogPenaltyBreakdown`  | `undefined`                       |
+| `description`       | `React.ReactNode`                | `undefined`                       |
+| `children`          | `React.ReactNode`                | `undefined`                       |
+| `onConfirm`         | `() => void`                     | Required                          |
+| `onCancel`          | `() => void`                     | Required                          |
+| `returnFocusRef`    | `RefObject<HTMLElement \| null>` | `undefined`                       |
+| `confirmLabel`      | `string`                         | `'Withdraw bond'`                 |
+| `confirmInputLabel` | `React.ReactNode`                | `undefined`                       |
+| `confirmInputHint`  | `React.ReactNode`                | `undefined`                       |
+| `variant`           | `'danger' \| 'info'`             | `'danger'`                        |
+| `confirmPhrase`     | `string`                         | `'CONFIRM'`                       |
+| `confirmHint`       | `string`                         | Wallet/funds irreversibility hint |
 
 Accessibility: renders in a portal with `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby`/`aria-describedby`, focus trap, initial focus on Cancel, Escape and backdrop cancellation, body scroll lock, and optional focus restoration. The destructive action is disabled until the user types `CONFIRM`; assertive sr-only announcements describe state changes.
 
@@ -720,12 +759,12 @@ Tokens: inline styles consume `--credence-skeleton-gradient`, `--credence-motion
 
 Source: [`src/components/SessionTimeoutModal.tsx`](../src/components/SessionTimeoutModal.tsx).
 
-| Prop              | Type                   | Default  |
-| ----------------- | ---------------------- | -------- |
-| `open`            | `boolean`              | Required |
-| `onStayLoggedIn`  | `() => void`           | Required |
-| `onLogout`        | `() => void`           | Required |
-| `timeLeftSeconds` | `number`               | Required |
+| Prop              | Type         | Default  |
+| ----------------- | ------------ | -------- |
+| `open`            | `boolean`    | Required |
+| `onStayLoggedIn`  | `() => void` | Required |
+| `onLogout`        | `() => void` | Required |
+| `timeLeftSeconds` | `number`     | Required |
 
 Accessibility: uses `ConfirmDialog` primitive.
 
@@ -750,7 +789,9 @@ Source: [`src/components/ActionCard.tsx`](../src/components/ActionCard.tsx).
 | `children` | `ReactNode` | Required |
 | `onDismiss`| `() => void`| `undefined`|
 
-Accessibility: renders as a semantic `<article>` with the title in an `<h2>`. No additional ARIA attributes are needed; place inside a `<main>` or named landmark so context is clear. When `onDismiss` is provided, a fallback `<button>` with an `aria-label` is rendered for non-touch users, and native touch events handle the swipe gesture.
+| Prop     | Type | Default |
+| -------- | ---- | ------- |
+| _(none)_ | —    | —       |
 
 Tokens: `--credence-border-default`, `--credence-radius-xl`, `--credence-space-4`, `--credence-space-6`, `--credence-surface-card`, `--credence-text-primary`, `--credence-font-size-xl`, `--credence-line-height-tight`.
 
@@ -824,14 +865,15 @@ The static `aria-label` avoids re-announcement churn in screen readers; `aria-pr
 
 Source: [`src/components/Progress.tsx`](../src/components/Progress.tsx).
 
-| Prop         | Type                         | Default     |
-| ------------ | ---------------------------- | ----------- |
-| `value`      | `number`                     | `undefined` |
-| `min`        | `number`                     | `0`         |
-| `max`        | `number`                     | `100`       |
-| `aria-label` | `string`                     | Required    |
-| `className`  | `string`                     | `''`        |
-| `size`       | `'sm' \| 'md' \| 'lg'`       | `'md'`      |
+| Prop         | Type                                              | Default     |
+| ------------ | ------------------------------------------------- | ----------- |
+| `value`      | `number`                                          | `undefined` |
+| `min`        | `number`                                          | `0`         |
+| `max`        | `number`                                          | `100`       |
+| `aria-label` | `string`                                          | Required    |
+| `className`  | `string`                                          | `''`        |
+| `size`       | `'sm' \| 'md' \| 'lg'`                            | `'md'`      |
+| `color`      | `'primary' \| 'success' \| 'warning' \| 'danger'` | `'primary'` |
 
 When `value` is supplied the bar is **determinate**: `aria-valuenow`, `aria-valuemin`, and `aria-valuemax` are set and the fill width reflects the completion percentage. When `value` is omitted the bar is **indeterminate**: none of the `aria-value*` attributes are set, which signals to assistive technology that the completion amount is unknown. Values outside `[min, max]` are clamped silently.
 
@@ -853,12 +895,13 @@ Source: [`src/components/Kbd.tsx`](../src/components/Kbd.tsx).
 
 Renders a single keyboard key as a styled `<kbd>` element with a raised-button visual. Use this wherever the UI needs to display a keyboard shortcut consistently — in docs, tooltips, onboarding copy, or alongside the `KeyboardShortcutsDialog`.
 
-| Prop        | Type                    | Default       |
-| ----------- | ----------------------- | ------------- |
-| `children`  | `string`                | Required      |
-| `size`      | `'sm' \| 'md' \| 'lg'` | `'md'`        |
-| `className` | `string`                | `''`          |
-| `ariaLabel` | `string`                | `children`    |
+| Prop        | Type                   | Default     | Description                                                            |
+| ----------- | ---------------------- | ----------- | ---------------------------------------------------------------------- |
+| `src`       | `string`               | `undefined` | URL for the avatar image                                               |
+| `name`      | `string`               | `undefined` | Repository or organization name, used for fallback initials generation |
+| `size`      | `'sm' \| 'md' \| 'lg'` | `'md'`      | Preset tokenised size variant                                          |
+| `alt`       | `string`               | `undefined` | Image alt text override                                                |
+| `className` | `string`               | `''`        | Extra CSS class names                                                  |
 
 - `sm` — compact; suited for dense tooltips and inline prose.
 - `md` — default; matches the existing `KeyboardShortcutsDialog` key chip size.
@@ -869,76 +912,13 @@ Accessibility: renders a native `<kbd>` element (semantic keyboard text); sets `
 Tokens: `--credence-border-default`, `--credence-color-slate-600`, `--credence-color-slate-700`, `--credence-font-family-base`, `--credence-font-size-xs`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-radius-sm`, `--credence-space-1`, `--credence-space-2`, `--credence-space-3`, `--credence-surface-page`, `--credence-text-primary`.
 
 ```tsx
-{/* Single key */}
-<Kbd>Esc</Kbd>
+{
+  /* Default medium size with name fallback */
+}
+;<RepoAvatar name="CredenceOrg/Credence-Frontend" />
 
-{/* Composite shortcut — one <Kbd> per key */}
-<span aria-label="Ctrl + K">
-  <Kbd>Ctrl</Kbd>
-  {' + '}
-  <Kbd>K</Kbd>
-</span>
-
-{/* Platform symbol with accessible label */}
-<Kbd ariaLabel="Command">⌘</Kbd>
-
-{/* Small variant inline in a tooltip */}
-<Kbd size="sm">?</Kbd>
-```
-
-Storybook: `Components/Kbd` — **Default** · **Small** · **Medium** · **Large** · **ModifierKey** · **PlatformSymbol** · **AllSizes** · **CompositeShortcut** · **ThreeKeyShortcut** · **InlineProse**.
-
-## KeyboardShortcutsDialog
-
-Source: [`src/components/KeyboardShortcutsDialog.tsx`](../src/components/KeyboardShortcutsDialog.tsx).
-
-Modal dialog that lists all global keyboard shortcuts grouped by category. Rendered via a React portal into `document.body`. Key chips inside the dialog are rendered with `<Kbd>`.
-
-| Prop             | Type                             | Default                |
-| ---------------- | -------------------------------- | ---------------------- |
-| `open`           | `boolean`                        | Required               |
-| `onClose`        | `() => void`                     | Required               |
-| `returnFocusRef` | `RefObject<HTMLElement \| null>` | Previously focused element |
-
-Shortcut data is sourced from `src/data/keyboardShortcuts.ts` (`KEYBOARD_SHORTCUTS`). Add entries there to have them reflected in the dialog automatically.
-
-`formatModifierKey(key, userAgent?)` is exported as a named helper: it translates `Ctrl → ⌘`, `Alt → ⌥`, and `Shift → ⇧` on macOS user-agents, and is a no-op on all other platforms.
-
-Accessibility: `role="dialog"`, `aria-modal="true"`, generated `aria-labelledby`/`aria-describedby`, focus trap (initial focus on close button), Escape and backdrop-click dismissal, body scroll lock, and optional focus restoration via `returnFocusRef`.
-
-Tokens: inherits from `KeyboardShortcutsDialog.css`; no hard-coded colours — all values reference `--credence-*` design tokens.
-
-```tsx
-<KeyboardShortcutsDialog
-  open={shortcutsOpen}
-  onClose={() => setShortcutsOpen(false)}
-  returnFocusRef={triggerRef}
-/>
-```
-
-## Progress
-
-Source: [`src/components/Progress.tsx`](../src/components/Progress.tsx).
-
-| Prop         | Type                         | Default     |
-| ------------ | ---------------------------- | ----------- |
-| `value`      | `number`                     | `undefined` |
-| `min`        | `number`                     | `0`         |
-| `max`        | `number`                     | `100`       |
-| `aria-label` | `string`                     | Required    |
-| `className`  | `string`                     | `''`        |
-| `size`       | `'sm' \| 'md' \| 'lg'`       | `'md'`      |
-
-When `value` is supplied the bar is **determinate**: `aria-valuenow`, `aria-valuemin`, and `aria-valuemax` are set and the fill width reflects the completion percentage. When `value` is omitted the bar is **indeterminate**: none of the `aria-value*` attributes are set, which signals to assistive technology that the completion amount is unknown. Values outside `[min, max]` are clamped silently.
-
-Accessibility: `role="progressbar"` on the root; `aria-label` is required. The inner track and fill divs are `aria-hidden`. Indeterminate animation is suppressed under `prefers-reduced-motion`.
-
-Tokens: `--credence-color-primary` (fill), `--credence-color-slate-200` (track background), `--credence-radius-full`, `--credence-space-1/2/3` (track heights), `--credence-motion-duration-base`, `--credence-motion-duration-slow`, `--credence-motion-easing-standard`.
-
-```tsx
-{/* Determinate */}
-<Progress value={60} max={100} aria-label="Bond creation: step 3 of 5" />
-
-{/* Indeterminate */}
-<Progress aria-label="Loading trust score" />
+{
+  /* Small size with image URL */
+}
+;<RepoAvatar size="sm" src="https://example.com/avatar.png" name="CredenceOrg/Credence-Frontend" />
 ```

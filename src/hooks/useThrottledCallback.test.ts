@@ -86,10 +86,9 @@ describe('useThrottledCallback', () => {
     const callback1 = vi.fn()
     const callback2 = vi.fn()
 
-    const { result, rerender } = renderHook(
-      ({ cb }) => useThrottledCallback(cb, 100),
-      { initialProps: { cb: callback1 } }
-    )
+    const { result, rerender } = renderHook(({ cb }) => useThrottledCallback(cb, 100), {
+      initialProps: { cb: callback1 },
+    })
 
     act(() => {
       result.current('call 1')

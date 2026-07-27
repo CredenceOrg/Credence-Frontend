@@ -10,11 +10,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatUsdc } from '../lib/format'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ConnectWalletModal from '../components/ConnectWalletModal'
-import {
-  computeWithdrawBreakdown,
-  calcUnlockDate,
-  type MockBond,
-} from '../lib/bondPenalty'
+import { computeWithdrawBreakdown, calcUnlockDate, type MockBond } from '../lib/bondPenalty'
 import './BondDetail.css'
 
 const mockBonds: MockBond[] = [
@@ -129,14 +125,17 @@ export default function BondDetail() {
 
       {initialBond.status !== 'active' && breakdown.penaltyUsdc > 0 && (
         <Banner severity="warning" title="Early Withdrawal Penalty Active">
-          This bond is currently locked. Withdrawing early will slash {breakdown.penaltyAmount} ({breakdown.penaltyPercent}% penalty).
+          This bond is currently locked. Withdrawing early will slash {breakdown.penaltyAmount} (
+          {breakdown.penaltyPercent}% penalty).
         </Banner>
       )}
 
       <div className="bond-detail__content">
         {/* Core details card */}
         <section className="bond-detail__card" aria-labelledby="bond-info-title">
-          <h2 id="bond-info-title" className="bond-detail__card-title">Bond Specification</h2>
+          <h2 id="bond-info-title" className="bond-detail__card-title">
+            Bond Specification
+          </h2>
           <dl className="bond-detail__info-list">
             <div className="bond-detail__info-row">
               <dt>Bonded Amount</dt>
@@ -191,8 +190,13 @@ export default function BondDetail() {
         </section>
 
         {/* Slash-risk panel */}
-        <section className="bond-detail__card bond-detail__card--warning" aria-labelledby="slash-panel-title">
-          <h2 id="slash-panel-title" className="bond-detail__card-title">Slash-Risk Panel</h2>
+        <section
+          className="bond-detail__card bond-detail__card--warning"
+          aria-labelledby="slash-panel-title"
+        >
+          <h2 id="slash-panel-title" className="bond-detail__card-title">
+            Slash-Risk Panel
+          </h2>
           <div className="bond-detail__slash-breakdown">
             <div className="bond-detail__slash-row">
               <span>Current Early-Withdrawal Penalty</span>
@@ -209,7 +213,8 @@ export default function BondDetail() {
             </div>
           </div>
           <p className="bond-detail__slash-disclaimer">
-            All penalty calculations are dynamic and subject to protocol slashing rules. Once initiated, withdrawal is irreversible.
+            All penalty calculations are dynamic and subject to protocol slashing rules. Once
+            initiated, withdrawal is irreversible.
           </p>
         </section>
       </div>

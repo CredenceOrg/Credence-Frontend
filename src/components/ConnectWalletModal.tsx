@@ -81,10 +81,7 @@ export default function ConnectWalletModal({
   }
 
   return createPortal(
-    <div
-      className="connect-wallet-modal__backdrop"
-      onClick={handleBackdropClick}
-    >
+    <div className="connect-wallet-modal__backdrop" onClick={handleBackdropClick}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -102,9 +99,8 @@ export default function ConnectWalletModal({
 
         <div className="connect-wallet-modal__body">
           <p id={descId} className="connect-wallet-modal__description">
-            Freighter is a Stellar wallet browser extension. Clicking{' '}
-            <strong>Connect</strong> will open the Freighter extension and ask
-            you to approve access for this session.
+            Freighter is a Stellar wallet browser extension. Clicking <strong>Connect</strong> will
+            open the Freighter extension and ask you to approve access for this session.
           </p>
 
           {errorMessage && (
@@ -124,12 +120,7 @@ export default function ConnectWalletModal({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleConnect}
-            isLoading={isConnecting}
-          >
+          <Button type="button" variant="primary" onClick={handleConnect} isLoading={isConnecting}>
             Connect
           </Button>
         </footer>

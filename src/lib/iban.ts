@@ -17,7 +17,7 @@ export interface IbanValidationResult {
  * @returns A structured validation result with an error code if invalid.
  */
 export function validateIban(iban: string): IbanValidationResult {
-  const sanitized = iban.replace(/[\s\-]+/g, '').toUpperCase()
+  const sanitized = iban.replace(/[\s-]+/g, '').toUpperCase()
 
   // Basic length check (shortest is Norway 15, longest is 34)
   if (sanitized.length < 15 || sanitized.length > 34) {

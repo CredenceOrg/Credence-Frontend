@@ -8,8 +8,11 @@
 
 .trustScore__title {
   margin: 0;
-  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-3xl);
+  font-weight: var(--credence-font-weight-bold);
   line-height: var(--credence-line-height-tight);
+  letter-spacing: var(--credence-letter-spacing-tight);
+  color: var(--credence-text-primary);
 }
 
 .trustScore__description {
@@ -34,6 +37,9 @@
 
 .trustScore__cardTitle {
   font-size: var(--credence-font-size-xl);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
   margin-bottom: var(--credence-space-4);
 }
 

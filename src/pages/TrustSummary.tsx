@@ -39,7 +39,7 @@ export default function TrustSummary() {
   return (
     <div className="trustSummary">
       <header className="trustSummary__header">
-        <h1>Trust Summary</h1>
+        <h1 className="trustSummary__title">Trust Summary</h1>
         <div className="trustSummary__addressRow">
           <TooltipOnOverflow content={address}>
             <code className="trustSummary__address">{address}</code>

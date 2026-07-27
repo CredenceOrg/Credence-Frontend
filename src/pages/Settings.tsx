@@ -404,7 +404,7 @@ export default function Settings() {
 
   return (
     <div className="settings-page">
-      <h1 style={{ marginTop: 0 }}>Settings</h1>
+      <h1>Settings</h1>
 
       <section className="settings-section" aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">Appearance</h2>

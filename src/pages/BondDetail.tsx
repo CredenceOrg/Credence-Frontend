@@ -9,7 +9,7 @@ import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatUsdc } from '../lib/format'
 import ConfirmDialog from '../components/ConfirmDialog'
-import ConnectWalletModal from '../components/ConnectWalletModal'
+import ConnectWalletDialog from '../components/ConnectWalletDialog'
 import { computeWithdrawBreakdown, calcUnlockDate, type MockBond } from '../lib/bondPenalty'
 import './BondDetail.css'
 
@@ -115,7 +115,7 @@ export default function BondDetail() {
 
       {!isConnected && (
         <Banner
-          severity="warning"
+          severity="warn"
           title="Connect wallet required"
           action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
         >
@@ -124,7 +124,7 @@ export default function BondDetail() {
       )}
 
       {initialBond.status !== 'active' && breakdown.penaltyUsdc > 0 && (
-        <Banner severity="warning" title="Early Withdrawal Penalty Active">
+        <Banner severity="warn" title="Early Withdrawal Penalty Active">
           This bond is currently locked. Withdrawing early will slash {breakdown.penaltyAmount} (
           {breakdown.penaltyPercent}% penalty).
         </Banner>
@@ -231,7 +231,7 @@ export default function BondDetail() {
         />
       )}
 
-      <ConnectWalletModal
+      <ConnectWalletDialog
         open={connectModalOpen}
         onClose={() => setConnectModalOpen(false)}
         returnFocusRef={connectTriggerRef}

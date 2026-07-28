@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import { useToast } from '../components/ToastProvider'
 import { FormField } from '../components/forms/FormField'
@@ -78,13 +77,6 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
-    quietHoursEnabled,
-    setQuietHoursEnabled,
-    quietHoursStart,
-    setQuietHoursStart,
-    quietHoursEnd,
-    setQuietHoursEnd,
-    saveSettings,
   } = useSettings()
   const { addToast } = useToast()
 
@@ -433,7 +425,7 @@ export default function Settings() {
 
   return (
     <div className="settings-page">
-      <h1>Settings</h1>
+      <h1 style={{ marginTop: 0 }}>Settings</h1>
 
       {/* ── Appearance ──────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="appearance-heading">
@@ -476,8 +468,8 @@ export default function Settings() {
           hint="Changing to Testnet uses isolated, non-real assets."
         >
           <Select
-            value={draft.network}
-            onChange={(v) => updateDraft('network', v)}
+            value={network}
+            onChange={setNetwork}
             options={[
               { value: 'public', label: 'Public (Mainnet)' },
               { value: 'test', label: 'Test (Testnet)' },
@@ -524,11 +516,7 @@ export default function Settings() {
         </p>
 
         <FormField id="toasts-enabled" label="Enable toasts">
-          <Toggle
-            checked={draft.toastsEnabled}
-            onChange={(v) => updateDraft('toastsEnabled', v)}
-            ariaLabel="Enable toasts"
-          />
+          <Toggle checked={toastsEnabled} onChange={setToastsEnabled} ariaLabel="Enable toasts" />
         </FormField>
 
         <FormField
@@ -537,8 +525,8 @@ export default function Settings() {
           hint="How long before a toast automatically closes. Danger toasts always require manual dismissal."
         >
           <Select
-            value={draft.autoDismiss}
-            onChange={(v) => updateDraft('autoDismiss', v)}
+            value={autoDismiss}
+            onChange={setAutoDismiss}
             options={[
               { value: 'off', label: 'Off (require manual dismiss)' },
               { value: '3s', label: '3 seconds' },
@@ -704,18 +692,6 @@ export default function Settings() {
           Cancel
         </button>
       </div>
-
-      <ConfirmDialog
-        open={importConfirmOpen}
-        title="Import Settings"
-        subtitle={diffs.length > 0 ? 'Review the changes below before applying.' : undefined}
-        description={confirmDescription}
-        confirmPhrase="IMPORT"
-        confirmHint="This will overwrite your current settings with the imported values."
-        confirmLabel="Import settings"
-        onConfirm={handleImportConfirm}
-        onCancel={handleImportCancel}
-      />
     </div>
   )
 }

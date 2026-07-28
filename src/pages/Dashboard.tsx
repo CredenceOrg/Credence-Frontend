@@ -198,7 +198,7 @@ export default function Dashboard() {
       )}
 
       {!online && (
-        <Banner severity="warning">
+        <Banner severity="warn">
           {t('dashboard.offlineBanner', 'You are currently offline. Pull-to-refresh is disabled.')}
         </Banner>
       )}

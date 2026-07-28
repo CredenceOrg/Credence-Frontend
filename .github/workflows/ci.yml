@@ -9,6 +9,7 @@
 #   2. npm run lint          — ESLint
 #   3. npm run build         — TypeScript compile + Vite production build
 #   4. npm run test          — Vitest unit / component tests
+#   5. node scripts/check-console-log.mjs — Production-bundle console.log check
 
 name: CI
 
@@ -51,3 +52,7 @@ jobs:
       # ── 4. Tests ─────────────────────────────────────────────────────────────
       - name: Run tests (Vitest)
         run: npm run test
+
+      # ── 5. Console-log check ─────────────────────────────────────────────────
+      - name: Check for console.log in production bundle
+        run: node scripts/check-console-log.mjs

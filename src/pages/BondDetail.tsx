@@ -30,6 +30,7 @@ export default function BondDetail() {
 
   const bondId = Number(id)
   useDocumentTitle(`Bond #${bondId || 'Detail'}`)
+  const connectBannerId = `bond-detail-connect-required-${bondId || 'detail'}`
 
   const initialBond = useMemo(() => {
     return mockBonds.find((b) => b.id === bondId)
@@ -114,13 +115,15 @@ export default function BondDetail() {
       </div>
 
       {!isConnected && (
-        <Banner
-          severity="warn"
-          title="Connect wallet required"
-          action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
-        >
-          Withdrawal and lock extensions require a connected Stellar wallet.
-        </Banner>
+        <div id={connectBannerId}>
+          <Banner
+            severity="warn"
+            title="Connect wallet required"
+            action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
+          >
+            Withdrawal and lock extensions require a connected Stellar wallet.
+          </Banner>
+        </div>
       )}
 
       {initialBond.status !== 'active' && breakdown.penaltyUsdc > 0 && (
@@ -160,6 +163,10 @@ export default function BondDetail() {
                   variant="secondary"
                   onClick={() => extendLock(30)}
                   disabled={!isConnected}
+                  title={
+                    !isConnected ? 'Connect your wallet to extend the lock duration' : undefined
+                  }
+                  aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   +30 Days
                 </Button>
@@ -168,6 +175,10 @@ export default function BondDetail() {
                   variant="secondary"
                   onClick={() => extendLock(90)}
                   disabled={!isConnected}
+                  title={
+                    !isConnected ? 'Connect your wallet to extend the lock duration' : undefined
+                  }
+                  aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   +90 Days
                 </Button>

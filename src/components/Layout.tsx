@@ -9,16 +9,12 @@ import WalletConnect from './WalletConnect'
 import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
-import ThemeToggle from './ThemeToggle'
-import NetworkIndicator from './NetworkIndicator'
 import Banner from './Banner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
-import Banner from './Banner'
 import LINKS from '../config/links'
-import { PRELOADS_BY_PATH } from '../config/routes'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
@@ -43,7 +39,6 @@ export default function Layout() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
-  const [launcherOpen, setLauncherOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
   // Refs so focus returns to the triggering button after each dialog closes
@@ -61,10 +56,8 @@ export default function Layout() {
 
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
-  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeLauncher = useCallback(() => setLauncherOpen(false), [])
   const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
-  const closeLauncher = useCallback(() => setLauncherOpen(false), [])
 
   const dismissInstallPrompt = useCallback(() => {
     markInstallPromptHandled()
@@ -112,45 +105,45 @@ export default function Layout() {
 
       <header className="appHeader">
         <div className="container appHeader-inner">
-        {/* Mobile: hamburger toggle (hidden ≥640px via CSS) */}
-        <MobileNav />
+          {/* Mobile: hamburger toggle (hidden ≥640px via CSS) */}
+          <MobileNav />
 
-        <NavLink to="/" className="appBrand">
-          {t('layout.brand')}
-        </NavLink>
+          <NavLink to="/" className="appBrand">
+            {t('layout.brand')}
+          </NavLink>
 
-        {/* Desktop: inline nav (hidden <640px via CSS) */}
-        <nav aria-label="Main navigation" className="appNav">
-          {NAV_LINKS.map(({ to, label }) => (
-            <PrefetchNavLink
-              key={to}
-              to={to}
-              end
-              preload={PRELOADS_BY_PATH[to]}
-              className={({ isActive }) =>
-                isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
-              }
-            >
-              {label}
-            </PrefetchNavLink>
-          ))}
-        </nav>
+          {/* Desktop: inline nav (hidden <640px via CSS) */}
+          <nav aria-label="Main navigation" className="appNav">
+            {NAV_LINKS.map(({ to, label }) => (
+              <PrefetchNavLink
+                key={to}
+                to={to}
+                end
+                preload={PRELOADS_BY_PATH[to]}
+                className={({ isActive }) =>
+                  isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
+                }
+              >
+                {label}
+              </PrefetchNavLink>
+            ))}
+          </nav>
 
-        <WalletConnect />
-        <ThemeToggle />
-        <NetworkIndicator />
+          <WalletConnect />
+          <ThemeToggle />
+          <NetworkIndicator />
 
-        {/* Keyboard shortcuts help button */}
-        <button
-          ref={shortcutsButtonRef}
-          type="button"
-          className="appHeader-shortcuts-btn"
-          aria-label={t('layout.keyboardShortcuts')}
-          onClick={openShortcuts}
-        >
-          <span aria-hidden="true">?</span>
-          <span className="sr-only">{t('layout.keyboardShortcuts')}</span>
-        </button>
+          {/* Keyboard shortcuts help button */}
+          <button
+            ref={shortcutsButtonRef}
+            type="button"
+            className="appHeader-shortcuts-btn"
+            aria-label={t('layout.keyboardShortcuts')}
+            onClick={openShortcuts}
+          >
+            <span aria-hidden="true">?</span>
+            <span className="sr-only">{t('layout.keyboardShortcuts')}</span>
+          </button>
         </div>
       </header>
 

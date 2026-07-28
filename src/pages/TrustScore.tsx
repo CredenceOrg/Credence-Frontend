@@ -4,15 +4,14 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
 import Banner from '../components/Banner'
-import ActivityTimeline, {
-  type ActivityItem,
-  SAMPLE_ACTIVITY,
-} from '../components/ActivityTimeline'
+import ActivityTimeline from '../components/ActivityTimeline'
+import type { ActivityItem } from '../data/activity'
+import { SAMPLE_ACTIVITY } from '../data/activity'
 import Disclaimer from '../components/Disclaimer'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
-import PageHeader from '../components/PageHeader'
 import AddressInput from '../components/AddressInput'
+import ConnectGate from '../components/ConnectGate'
 import TierLadder from '../components/TierLadder'
 import TrustGauge, { TIER_CONFIG, pointsToNextTier } from '../components/TrustGauge'
 import { TIER_ORDER, MAX_SCORE } from '../lib/tiers'
@@ -193,11 +192,6 @@ export default function TrustScore() {
 
   const handleClearHistory = () => {
     setHistory([])
-  }
-
-  const useConnectedAddress = () => {
-    if (!walletAddress) return
-    setAddress(walletAddress)
   }
 
   const activity: ActivityItem[] = data ? SAMPLE_ACTIVITY : []
@@ -388,8 +382,7 @@ export default function TrustScore() {
                 </ul>
               </div>
             )}
-          </div>
-          <Button
+            <Button
             type="button"
             onClick={handleLookup}
             variant="primary"
@@ -401,6 +394,7 @@ export default function TrustScore() {
           >
             {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
           </Button>
+        </div>
         </ConnectGate>
 
         <div className="trustScore__card">

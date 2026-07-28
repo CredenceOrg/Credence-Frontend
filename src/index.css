@@ -120,6 +120,9 @@
   --credence-color-danger-action: #dc2626;
   --credence-color-danger-text: #991b1b;
   --credence-color-danger-text-muted: #7f1d1d;
+  --credence-color-incident-surface: #fef2f2;
+  --credence-color-incident-border: #dc2626;
+  --credence-color-incident-text: #991b1b;
 
   /* Tier and illustration accents */
   --credence-color-bronze-surface: #fef3c7;
@@ -185,6 +188,9 @@
   --bg-danger: var(--credence-color-danger-surface);
   --border-danger: var(--credence-color-danger-border);
   --text-danger: var(--credence-color-danger-text);
+  --bg-incident: var(--credence-color-incident-surface);
+  --border-incident: var(--credence-color-incident-border);
+  --text-incident: var(--credence-color-incident-text);
   --space-6: var(--credence-space-6);
   --container-padding: var(--credence-container-padding);
   --container-max: var(--credence-container-max);
@@ -215,6 +221,9 @@
   --credence-color-danger-surface: rgba(239, 68, 68, 0.15);
   --credence-color-danger-border: #ef4444;
   --credence-color-danger-text: #fca5a5;
+  --credence-color-incident-surface: rgba(239, 68, 68, 0.15);
+  --credence-color-incident-border: #dc2626;
+  --credence-color-incident-text: #fca5a5;
   --credence-color-bronze-surface: rgba(245, 158, 11, 0.1);
   --credence-color-bronze-border: #b45309;
   --credence-color-bronze-text: #fcd34d;

@@ -216,7 +216,7 @@ export default function TrustScore() {
 
       {networkMismatch.mismatch && (
         <Banner
-          severity="warning"
+          severity="warn"
           title={t('trustScore.networkMismatch')}
           action={{
             label: t('trustScore.switchNetwork', { network: networkMismatch.actual }),
@@ -413,7 +413,7 @@ export default function TrustScore() {
 
       {!isConnected && (
         <Banner
-          severity="warning"
+          severity="warn"
           title={t('trustScore.connectRequired')}
           action={{ label: t('common.connectWallet'), onClick: () => void connect() }}
         >

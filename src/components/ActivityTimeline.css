@@ -141,8 +141,9 @@
 .activity-row__detail-panel {
   margin-top: var(--credence-space-3);
   padding: var(--credence-space-3);
-  background: var(--credence-surface-hover);
+  background: var(--credence-surface-page);
   border-radius: var(--credence-radius-md);
+  color: var(--credence-text-primary);
 }
 
 .activity-row__detail-panel[hidden] {
@@ -154,6 +155,10 @@
   font-size: var(--credence-font-size-xs);
   line-height: var(--credence-line-height-base);
   color: var(--credence-text-secondary);
+}
+
+.activity-row__actor {
+  margin-bottom: var(--credence-space-1);
 }
 
 .activity-row__meta {

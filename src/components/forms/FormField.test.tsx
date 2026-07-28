@@ -206,4 +206,17 @@ describe('FormField Accessibility', () => {
     expect(screen.getByTestId('child-input')).toHaveAttribute('aria-required', 'true')
     expect(document.querySelector('.form-required')).toHaveTextContent('*')
   })
+
+  it('preserves child aria-invalid when FormField has no error of its own', () => {
+    render(
+      <FormField id="end-time" label="End time">
+        <input data-testid="child-input" aria-invalid="true" aria-describedby="start-time-error" />
+      </FormField>
+    )
+
+    const input = screen.getByTestId('child-input')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(input).toHaveAttribute('aria-describedby', 'start-time-error')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
 })

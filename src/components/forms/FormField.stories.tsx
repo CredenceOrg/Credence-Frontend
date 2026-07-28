@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { FormField } from './FormField'
+import { Input } from './Input'
 
 const meta: Meta<typeof FormField> = {
   title: 'Components/Forms/FormField',
@@ -8,17 +9,7 @@ const meta: Meta<typeof FormField> = {
   args: {
     id: 'form-field-id',
     label: 'Form Label',
-    children: (
-      <input
-        style={{
-          padding: '8px',
-          border: '1px solid #ccc',
-          borderRadius: '4px',
-          width: '100%',
-        }}
-        placeholder="Default input"
-      />
-    ),
+    children: <Input placeholder="Default input" />,
   },
 }
 
@@ -78,16 +69,6 @@ export const SrOnlyLabel: Story = {
   args: {
     srOnlyLabel: true,
     label: 'Search attestations',
-    children: (
-      <input
-        style={{
-          padding: '8px',
-          border: '1px solid #ccc',
-          borderRadius: '4px',
-          width: '100%',
-        }}
-        placeholder="Search attestations…"
-      />
-    ),
+    children: <Input placeholder="Search attestations…" />,
   },
 }

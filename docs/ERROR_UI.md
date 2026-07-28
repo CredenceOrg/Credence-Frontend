@@ -37,7 +37,7 @@ Use inline form errors when user input fails validation (e.g., an invalid Stella
 
 ```tsx
 import { useState } from 'react'
-import { FormField } from '../components/forms/FormField'
+import { FormField, Input } from '../components/forms'
 import { isValidStellarAddress } from '../lib/stellar'
 
 export function RecipientAddressField() {
@@ -56,14 +56,15 @@ export function RecipientAddressField() {
       label="Recipient Address"
       hint="Must be a valid G... public key"
       error={errorMessage}
+      success={touched && isValid ? 'Valid Stellar address' : undefined}
     >
-      <input
-        type="text"
+      <Input
         value={address}
         onChange={(e) => setAddress(e.target.value)}
         onBlur={() => setTouched(true)}
         placeholder="G..."
-        className="form-input"
+        spellCheck={false}
+        autoComplete="off"
       />
     </FormField>
   )

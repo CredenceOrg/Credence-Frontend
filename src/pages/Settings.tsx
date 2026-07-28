@@ -1,6 +1,6 @@
 import { useSettings } from '../context/SettingsContext'
 import { useToast } from '../components/ToastProvider'
-import { FormField } from '../components/forms/FormField'
+import { FormField, Input } from '../components/forms'
 import Toggle from '../components/controls/Toggle'
 import Select from '../components/controls/Select'
 import SegmentedControl from '../components/controls/SegmentedControl'
@@ -567,13 +567,13 @@ export default function Settings() {
           </FormField>
 
           <FormField id="quiet-hours-start" label="Start time (HH:mm)" error={quietHoursError}>
-            <input
-              type="text"
+            <Input
+              compact
               value={draft.quietHoursStart}
               onChange={(e) => updateDraft('quietHoursStart', e.target.value)}
               placeholder="22:00"
               maxLength={5}
-              style={{ width: '6rem', padding: '0.5rem 0.75rem' }}
+              autoComplete="off"
             />
           </FormField>
 
@@ -588,13 +588,13 @@ export default function Settings() {
                 : undefined
             }
           >
-            <input
-              type="text"
+            <Input
+              compact
               value={draft.quietHoursEnd}
               onChange={(e) => updateDraft('quietHoursEnd', e.target.value)}
               placeholder="07:00"
               maxLength={5}
-              style={{ width: '6rem', padding: '0.5rem 0.75rem' }}
+              autoComplete="off"
               aria-invalid={quietHoursError ? 'true' : undefined}
               aria-describedby={quietHoursError ? 'quiet-hours-start-error' : undefined}
             />

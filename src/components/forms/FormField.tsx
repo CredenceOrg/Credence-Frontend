@@ -64,7 +64,7 @@ export function FormField({
         id,
         'aria-describedby':
           [existingDescribedBy, hintId, errorId, successId].filter(Boolean).join(' ') || undefined,
-        'aria-invalid': error ? 'true' : undefined,
+        'aria-invalid': error ? 'true' : children.props['aria-invalid'],
         'aria-required': required ? 'true' : children.props['aria-required'],
       })}
 

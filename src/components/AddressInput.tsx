@@ -11,6 +11,11 @@ interface AddressInputProps {
   onValidationChange?: (isValid: boolean) => void
   disabled?: boolean
   className?: string
+  /**
+   * External validation message (e.g. required-on-submit).
+   * Takes precedence over the built-in format error when provided.
+   */
+  error?: string
 }
 
 /**
@@ -146,6 +151,7 @@ export default function AddressInput({
   onValidationChange,
   disabled = false,
   className = '',
+  error: externalError,
 }: AddressInputProps) {
   const { addressDisplay } = useSettings()
 
@@ -203,10 +209,13 @@ export default function AddressInput({
     }
   }
 
-  const error = showError
+  const formatError = showError
     ? 'Invalid address. Stellar public keys are 56 characters starting with G.'
     : undefined
+  const error = externalError ?? formatError
   const hint = 'Stellar public key format (56 characters, starts with G)'
+  // Visual + FormField success only when format is valid and no external error.
+  const successMessage = !externalError && showSuccess ? 'Valid Stellar address' : undefined
 
   return (
     <div className={`address-input-wrapper ${className}`}>
@@ -215,7 +224,7 @@ export default function AddressInput({
         label={label}
         hint={hint}
         error={error}
-        success={showSuccess ? 'Valid Stellar address' : undefined}
+        success={successMessage}
       >
         <AddressInputInner
           inputRef={inputRef}
@@ -226,8 +235,8 @@ export default function AddressInput({
           disabled={disabled}
           handlePaste={handlePaste}
           focused={focused}
-          showError={showError}
-          showSuccess={showSuccess}
+          showError={Boolean(error)}
+          showSuccess={Boolean(successMessage)}
         />
       </FormField>
 

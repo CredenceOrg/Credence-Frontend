@@ -94,15 +94,25 @@ A structural wrapper for inputs to provide labels, hints, error messages, and su
 - **Story**: `Components/Forms/FormField`
 - **Accessibility**: Ensures proper ARIA wiring between labels, hints, errors, success messages, and the child input. Use `srOnlyLabel` when the visible UI relies on a placeholder but a hidden `<label>` linked via `htmlFor`/`id` is still required for assistive technology. Prefer one message owner per field — either `FormField` or the control, not both.
 
+### Input / Textarea
+
+Token-styled native controls meant to sit inside `FormField`.
+
+- **Source**: `src/components/forms/Input.tsx`, `src/components/forms/Textarea.tsx`
+- **Story**: `Components/Forms/Input`
+- **States**: Default, Error (via FormField / `aria-invalid`), Success (via FormField `data-state`), Disabled.
+- **Usage**: Import from `src/components/forms` (`FormField`, `Input`, `Textarea`). Use `Input compact` for short values such as quiet-hours times.
+
 ---
 
 ## Developer Guidelines
 
 1. **Always use FormField**: Wrap your inputs in `FormField` to ensure consistent labeling and accessibility wiring.
-2. **Handle Loading States**: If your input depends on asynchronous data, use the `isLoading` prop to prevent partial state interaction.
-3. **Validation**: Use `onValidationChange` (AddressInput) or `onValidityChange` (AmountInput) to gate form submission.
-4. **Design Tokens**: Do not hard-code colors or spacing. Rely on `--credence-*` tokens defined in `DESIGN_TOKENS.md`.
-
+2. **Prefer Input/Textarea primitives**: Avoid ad-hoc inline styles on raw `<input>` / `<textarea>` in shared flows; use the forms primitives so focus, invalid, and disabled styles stay token-driven.
+3. **Handle Loading States**: If your input depends on asynchronous data, use the `isLoading` prop to prevent partial state interaction.
+4. **Validation**: Use `onValidationChange` (AddressInput) or `onValidityChange` (AmountInput) to gate form submission.
+5. **Design Tokens**: Do not hard-code colors or spacing. Rely on `--credence-*` tokens defined in `DESIGN_TOKENS.md`.
+6. **Shared field errors**: When one message applies to multiple controls (e.g. quiet-hours start/end), put `error` on a single `FormField` and point sibling controls at that alert id with `aria-describedby` + `aria-invalid` so screen readers hear one alert.
 ## Quality Checklist
 
 - [ ] Input is reachable via keyboard (`Tab`).

@@ -13,7 +13,7 @@ import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/states/EmptyState'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
-import ConnectWalletModal from '../components/ConnectWalletModal'
+import ConnectWalletDialog from '../components/ConnectWalletDialog'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
@@ -352,7 +352,7 @@ export default function Bond() {
         </Suspense>
       )}
 
-      <ConnectWalletModal
+      <ConnectWalletDialog
         open={connectModalOpen}
         onClose={() => setConnectModalOpen(false)}
         returnFocusRef={connectTriggerRef}

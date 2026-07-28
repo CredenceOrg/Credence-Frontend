@@ -150,7 +150,78 @@ export default function CreateBondFlow() {
           <Banner severity="info">
             Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
           </Banner>
-          <FormField id="bond-amount" label="Amount (USDC)" error={error}>
+
+          {/* ── Balance display ── */}
+          <div
+            className="createBondFlow__balanceRow"
+            aria-live="polite"
+            aria-atomic="true"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              minHeight: '1.5rem',
+              marginBottom: 'var(--credence-space-2)',
+            }}
+          >
+            {!isConnected ? (
+              <span style={{ color: 'var(--credence-text-secondary)', fontSize: '0.875rem' }}>
+                Connect your wallet to see your available balance.
+              </span>
+            ) : balanceStatus === 'loading' ? (
+              <LoadingSkeleton variant="text" rows={1} width="12rem" />
+            ) : balanceStatus === 'error' ? (
+              balanceError instanceof SessionReauthRequiredError ? (
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  <span role="alert" style={{ color: 'var(--credence-text-secondary)' }}>
+                    Re-authentication required.
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={() => setShowReauthPrompt(true)}
+                    className="createBondFlow__retryButton"
+                    style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
+                  >
+                    Re-authenticate
+                  </Button>
+                </span>
+              ) : (
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
+                    Could not load balance.
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={refetchBalance}
+                    className="createBondFlow__retryButton"
+                    style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
+                  >
+                    Retry
+                  </Button>
+                </span>
+              )
+            ) : (
+              <span style={{ color: 'var(--credence-text-secondary)', fontSize: '0.875rem' }}>
+                Available: {formatUsdc(balance)}
+              </span>
+            )}
+          </div>
+
+          <FormField id="bond-amount" label="Amount (USDC)" error={error || undefined}>
             <AmountInput
               value={amount}
               onChange={(next) => {
@@ -161,6 +232,9 @@ export default function CreateBondFlow() {
               placeholder="0"
               presets={[30, 90, 180]}
               currencyLabel="USDC"
+              disabled={!isConnected}
+              hideErrorMessage={Boolean(error)}
+              aria-disabled={!isConnected || undefined}
             />
           </FormField>
         </div>

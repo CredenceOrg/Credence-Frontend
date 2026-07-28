@@ -566,53 +566,39 @@ export default function Settings() {
             />
           </FormField>
 
-          <div className="quiet-hours-fields">
-            <FormField
-              id="quiet-hours-start"
-              label="Start time"
-              hint="When toasts begin to be suppressed"
-              error={quietHoursError && !parseHHmm(draft.quietHoursStart).ok ? quietHoursError : undefined}
-            >
-              <input
-                type="time"
-                className="control-time"
-                value={draft.quietHoursStart}
-                onChange={(e) => updateDraft('quietHoursStart', e.target.value)}
-                disabled={!draft.quietHoursEnabled}
-                aria-disabled={!draft.quietHoursEnabled}
-              />
-            </FormField>
+          <FormField id="quiet-hours-start" label="Start time (HH:mm)" error={quietHoursError}>
+            <input
+              type="text"
+              value={draft.quietHoursStart}
+              onChange={(e) => updateDraft('quietHoursStart', e.target.value)}
+              placeholder="22:00"
+              maxLength={5}
+              style={{ width: '6rem', padding: '0.5rem 0.75rem' }}
+            />
+          </FormField>
 
-            <FormField
-              id="quiet-hours-end"
-              label="End time"
-              hint="When toasts resume"
-              error={quietHoursError && !parseHHmm(draft.quietHoursEnd).ok ? quietHoursError : undefined}
-            >
-              <input
-                type="time"
-                className="control-time"
-                value={draft.quietHoursEnd}
-                onChange={(e) => updateDraft('quietHoursEnd', e.target.value)}
-                disabled={!draft.quietHoursEnabled}
-                aria-disabled={!draft.quietHoursEnabled}
-              />
-            </FormField>
-          </div>
-
-          {quietHoursError && parseHHmm(draft.quietHoursStart).ok && parseHHmm(draft.quietHoursEnd).ok && (
-            <p id="quiet-hours-times-error" role="alert" className="form-error settings-quiet-hours-status">
-              {quietHoursError}
-            </p>
-          )}
-
-          {!quietHoursError && draft.quietHoursEnabled && (
-            <p className={`settings-quiet-hours-status${quietHoursCurrentlyActive ? ' settings-quiet-hours-status--active' : ''}`}>
-              {quietHoursCurrentlyActive
-                ? 'Quiet hours are currently active — non-critical toasts are suppressed.'
-                : 'Quiet hours are not currently active.'}
-            </p>
-          )}
+          <FormField
+            id="quiet-hours-end"
+            label="End time (HH:mm)"
+            success={
+              !quietHoursError && draft.quietHoursEnabled
+                ? quietHoursCurrentlyActive
+                  ? 'Quiet hours are currently active — non-critical toasts are suppressed.'
+                  : 'Quiet hours are not currently active.'
+                : undefined
+            }
+          >
+            <input
+              type="text"
+              value={draft.quietHoursEnd}
+              onChange={(e) => updateDraft('quietHoursEnd', e.target.value)}
+              placeholder="07:00"
+              maxLength={5}
+              style={{ width: '6rem', padding: '0.5rem 0.75rem' }}
+              aria-invalid={quietHoursError ? 'true' : undefined}
+              aria-describedby={quietHoursError ? 'quiet-hours-start-error' : undefined}
+            />
+          </FormField>
         </fieldset>
       </section>
 

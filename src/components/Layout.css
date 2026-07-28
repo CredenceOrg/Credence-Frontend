@@ -7,9 +7,11 @@
 }
 
 .appHeader {
-  padding: var(--credence-space-4) var(--credence-space-8);
+  padding-block: var(--credence-space-4);
   border-bottom: 1px solid var(--credence-border-default);
   background: var(--credence-surface-card);
+}
+.appHeader-inner {
   display: flex;
   align-items: center;
   gap: var(--credence-space-6);

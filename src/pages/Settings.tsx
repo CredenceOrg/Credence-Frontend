@@ -609,51 +609,39 @@ export default function Settings() {
             />
           </FormField>
 
-          <FormField id="quiet-hours-start" label="Start time (HH:mm)">
+          <FormField id="quiet-hours-start" label="Start time (HH:mm)" error={quietHoursError}>
             <input
               type="text"
-              id="quiet-hours-start"
               value={draft.quietHoursStart}
               onChange={(e) => updateDraft('quietHoursStart', e.target.value)}
               placeholder="22:00"
               maxLength={5}
               style={{ width: '6rem', padding: '0.5rem 0.75rem' }}
-              aria-invalid={!!quietHoursError}
-              aria-describedby={quietHoursError ? 'quiet-hours-error' : undefined}
             />
           </FormField>
 
-          <FormField id="quiet-hours-end" label="End time (HH:mm)">
+          <FormField
+            id="quiet-hours-end"
+            label="End time (HH:mm)"
+            success={
+              !quietHoursError && draft.quietHoursEnabled
+                ? quietHoursCurrentlyActive
+                  ? 'Quiet hours are currently active — non-critical toasts are suppressed.'
+                  : 'Quiet hours are not currently active.'
+                : undefined
+            }
+          >
             <input
               type="text"
-              id="quiet-hours-end"
               value={draft.quietHoursEnd}
               onChange={(e) => updateDraft('quietHoursEnd', e.target.value)}
               placeholder="07:00"
               maxLength={5}
               style={{ width: '6rem', padding: '0.5rem 0.75rem' }}
-              aria-invalid={!!quietHoursError}
-              aria-describedby={quietHoursError ? 'quiet-hours-error' : undefined}
+              aria-invalid={quietHoursError ? 'true' : undefined}
+              aria-describedby={quietHoursError ? 'quiet-hours-start-error' : undefined}
             />
           </FormField>
-
-          {quietHoursError && (
-            <p
-              id="quiet-hours-error"
-              role="alert"
-              className="form-error"
-              style={{ marginTop: '0.5rem' }}
-            >
-              {quietHoursError}
-            </p>
-          )}
-          {!quietHoursError && draft.quietHoursEnabled && (
-            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              {quietHoursCurrentlyActive
-                ? 'Quiet hours are currently active — non-critical toasts are suppressed.'
-                : 'Quiet hours are not currently active.'}
-            </p>
-          )}
         </fieldset>
       </section>
 

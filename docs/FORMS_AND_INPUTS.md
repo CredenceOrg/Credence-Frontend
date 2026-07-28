@@ -6,7 +6,7 @@ We maintain consistency across all inputs (text, numeric, selects, toggles) to e
 
 ## Core States
 
-Each form input variant supports the following four states:
+Each form input variant supports the following states:
 
 ### 1. Default
 
@@ -25,14 +25,25 @@ Used when the input value fails validation or an external error is provided.
   - Error message is linked via `aria-describedby`.
   - Error message uses `role="alert"` for immediate announcement.
 
-### 3. Disabled
+### 3. Success
+
+Used when the input value has passed validation and the UI should confirm that fact inline.
+
+- **Behavior**: Optional success border cue via `FormField` `data-state="success"`, accompanied by a short confirmation message.
+- **Accessibility**:
+  - Do **not** set `aria-invalid` for success.
+  - Success message is linked via `aria-describedby` (`${id}-success`).
+  - Success message uses `role="status"` (polite), never `role="alert"`.
+  - When both `error` and `success` are supplied to `FormField`, **error wins** and success is suppressed.
+
+### 4. Disabled
 
 Used when an input is temporarily or permanently unavailable for interaction.
 
 - **Behavior**: Reduced opacity, `not-allowed` cursor, interaction is suppressed.
 - **Implementation**: Native `disabled` attribute on the underlying input/button.
 
-### 4. Loading
+### 5. Loading
 
 Used when the component is waiting for data (e.g., fetching a balance or resolving an address).
 
@@ -77,11 +88,11 @@ Switch control for boolean settings.
 
 ### FormField
 
-A structural wrapper for inputs to provide labels, hints, and error messages.
+A structural wrapper for inputs to provide labels, hints, error messages, and success confirmations.
 
 - **Source**: `src/components/forms/FormField.tsx`
 - **Story**: `Components/Forms/FormField`
-- **Accessibility**: Ensures proper ARIA wiring between labels, hints, errors, and the child input. Use `srOnlyLabel` when the visible UI relies on a placeholder but a hidden `<label>` linked via `htmlFor`/`id` is still required for assistive technology.
+- **Accessibility**: Ensures proper ARIA wiring between labels, hints, errors, success messages, and the child input. Use `srOnlyLabel` when the visible UI relies on a placeholder but a hidden `<label>` linked via `htmlFor`/`id` is still required for assistive technology. Prefer one message owner per field — either `FormField` or the control, not both.
 
 ---
 

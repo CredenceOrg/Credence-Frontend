@@ -46,6 +46,34 @@ export const WithHintAndError: Story = {
   },
 }
 
+export const WithSuccess: Story = {
+  args: {
+    success: 'Looks good — address format is valid.',
+  },
+}
+
+export const WithHintAndSuccess: Story = {
+  args: {
+    hint: 'Stellar public keys are 56 characters starting with G.',
+    success: 'Valid Stellar address',
+  },
+}
+
+export const ErrorOverridesSuccess: Story = {
+  args: {
+    hint: 'Enter a USDC amount.',
+    success: 'Amount looks good.',
+    error: 'Amount exceeds available balance.',
+  },
+}
+
+export const Required: Story = {
+  args: {
+    required: true,
+    label: 'Bond amount',
+  },
+}
+
 export const SrOnlyLabel: Story = {
   args: {
     srOnlyLabel: true,

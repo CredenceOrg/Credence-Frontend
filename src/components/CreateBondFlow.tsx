@@ -260,7 +260,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             )}
           </div>
 
-          <FormField id="bond-amount" label="Amount (USDC)" error={error}>
+          <FormField id="bond-amount" label="Amount (USDC)" error={error || undefined}>
             <AmountInput
               value={amount}
               onChange={(next) => {
@@ -272,6 +272,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
               presets={[30, 90, 180]}
               currencyLabel="USDC"
               disabled={!isConnected}
+              hideErrorMessage={Boolean(error)}
               aria-disabled={!isConnected || undefined}
             />
           </FormField>

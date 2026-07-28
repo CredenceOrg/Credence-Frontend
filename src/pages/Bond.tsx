@@ -266,7 +266,7 @@ export default function Bond() {
               id="bond-amount-quick"
               label={t('bond.amount')}
               hint={t('bond.minimumAmount', { amount: MIN_BOND_AMOUNT })}
-              error={bondAmountError}
+              error={bondAmountError || undefined}
             >
               <AmountInput
                 value={bondAmount}
@@ -279,6 +279,7 @@ export default function Bond() {
                 presets={[100, 500, 1000]}
                 currencyLabel="USDC"
                 disabled={!isConnected || networkMismatch.mismatch}
+                hideErrorMessage={Boolean(bondAmountError)}
                 aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
               />
             </FormField>

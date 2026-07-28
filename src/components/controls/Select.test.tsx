@@ -102,4 +102,30 @@ describe('Select', () => {
       'network'
     )
   })
+
+  it('forwards FormField error aria wiring onto the native select', () => {
+    render(
+      <FormField id="network" label="Preferred network" error="Network is required">
+        <Select value="testnet" onChange={vi.fn()} options={networkOptions} />
+      </FormField>
+    )
+
+    const select = screen.getByRole('combobox', { name: 'Preferred network' })
+    expect(select).toHaveAttribute('aria-invalid', 'true')
+    expect(select).toHaveAttribute('aria-describedby', 'network-error')
+    expect(screen.getByRole('alert')).toHaveTextContent('⚠ Network is required')
+  })
+
+  it('forwards FormField success aria wiring onto the native select', () => {
+    render(
+      <FormField id="network" label="Preferred network" success="Network saved">
+        <Select value="testnet" onChange={vi.fn()} options={networkOptions} />
+      </FormField>
+    )
+
+    const select = screen.getByRole('combobox', { name: 'Preferred network' })
+    expect(select).not.toHaveAttribute('aria-invalid')
+    expect(select).toHaveAttribute('aria-describedby', 'network-success')
+    expect(screen.getByRole('status')).toHaveTextContent('Network saved')
+  })
 })

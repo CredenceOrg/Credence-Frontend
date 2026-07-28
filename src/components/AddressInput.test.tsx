@@ -241,6 +241,20 @@ describe('accessibility', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true')
   })
 
+  it('associates success confirmation via aria-describedby without aria-invalid', async () => {
+    const user = userEvent.setup()
+    render(<AddressInput id="test-addr" value={VALID_KEY} onChange={vi.fn()} />)
+    const input = screen.getByRole('textbox')
+
+    await user.click(input)
+    await user.tab()
+
+    const success = screen.getByRole('status')
+    expect(success).toHaveTextContent('Valid Stellar address')
+    expect(input.getAttribute('aria-describedby')).toContain('test-addr-success')
+    expect(input).not.toHaveAttribute('aria-invalid')
+  })
+
   it('ensures no duplicate IDs', () => {
     const { container } = render(<AddressInput id="test-addr" value="" onChange={vi.fn()} />)
     const elementsWithId = container.querySelectorAll('#test-addr')

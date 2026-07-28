@@ -31,6 +31,7 @@ Use inline form errors when user input fails validation (e.g., an invalid Stella
 - Sets `aria-invalid="true"` on the form control.
 - Renders with `role="alert"` so screen readers announce the validation message immediately.
 - Styled using danger CSS design tokens (`var(--credence-color-danger-text)`).
+- For successful validation confirmations, use `FormField`'s `success` prop instead: it links `${id}-success` via `aria-describedby`, uses `role="status"`, and does not set `aria-invalid`. If both `error` and `success` are provided, error takes precedence.
 
 ### Code Example
 

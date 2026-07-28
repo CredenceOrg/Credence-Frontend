@@ -199,6 +199,16 @@ describe('AmountInput', () => {
       expect(screen.getByRole('button', { name: /set max amount/i })).toBeDisabled()
       expect(screen.getByRole('alert')).toHaveTextContent('Amount exceeds available balance.')
     })
+
+    it('hides the inline error message when hideErrorMessage is true', () => {
+      renderInput({ value: '200.00', balance: 100, hideErrorMessage: true })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByRole('textbox').closest('.amountInput')).toHaveAttribute(
+        'data-invalid',
+        'true'
+      )
+    })
   })
 
   describe('onValidityChange callback', () => {

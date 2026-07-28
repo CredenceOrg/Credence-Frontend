@@ -9,16 +9,12 @@ import WalletConnect from './WalletConnect'
 import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
-import ThemeToggle from './ThemeToggle'
-import NetworkIndicator from './NetworkIndicator'
 import Banner from './Banner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
-import Banner from './Banner'
 import LINKS from '../config/links'
-import { PRELOADS_BY_PATH } from '../config/routes'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
@@ -26,7 +22,22 @@ import { DOM_EVENTS } from '../events'
 import './Layout.css'
 
 function FooterLink({ label, href }: { label: string; href: string }) {
+  const isPlaceholder = !href || href === '#'
   const isExternal = isExternalUrl(href)
+
+  if (isPlaceholder) {
+    return (
+      <span
+        className="footer-link footer-link--disabled"
+        aria-disabled="true"
+        title="Coming soon"
+        tabIndex={-1}
+      >
+        {label}
+      </span>
+    )
+  }
+
   return (
     <a
       href={href}
@@ -43,7 +54,6 @@ export default function Layout() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
-  const [launcherOpen, setLauncherOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
   // Refs so focus returns to the triggering button after each dialog closes
@@ -61,10 +71,8 @@ export default function Layout() {
 
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
-  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeLauncher = useCallback(() => setLauncherOpen(false), [])
   const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
-  const closeLauncher = useCallback(() => setLauncherOpen(false), [])
 
   const dismissInstallPrompt = useCallback(() => {
     markInstallPromptHandled()

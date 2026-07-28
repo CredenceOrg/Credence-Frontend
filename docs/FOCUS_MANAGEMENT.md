@@ -204,4 +204,4 @@ Manual, keyboard-only, per overlay:
 
 Automated coverage lives alongside the components (`useFocusTrap` tests,
 `RouteAnnouncer.test.tsx`, `ToastProvider.test.tsx`, and most dialogs' test
-files; `QRScannerModal` is the current gap); run with `npm run test`.
+files; `QRScannerDialog` is the current gap); run with `npm run test`.

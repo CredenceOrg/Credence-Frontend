@@ -1,13 +1,13 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import SessionTimeoutModal, { type SessionTimeoutModalProps } from './SessionTimeoutModal'
+import SessionTimeoutDialog, { type SessionTimeoutDialogProps } from './SessionTimeoutDialog'
 
-function renderModal(overrides: Partial<SessionTimeoutModalProps> = {}) {
+function renderModal(overrides: Partial<SessionTimeoutDialogProps> = {}) {
   const onStayLoggedIn = vi.fn()
   const onLogout = vi.fn()
 
-  const props: SessionTimeoutModalProps = {
+  const props: SessionTimeoutDialogProps = {
     open: true,
     timeLeftSeconds: 60,
     onStayLoggedIn,
@@ -15,7 +15,7 @@ function renderModal(overrides: Partial<SessionTimeoutModalProps> = {}) {
     ...overrides,
   }
 
-  const result = render(<SessionTimeoutModal {...props} />)
+  const result = render(<SessionTimeoutDialog {...props} />)
   return { ...result, onStayLoggedIn, onLogout }
 }
 
@@ -23,7 +23,7 @@ function subtitleText() {
   return screen.getByRole('dialog').querySelector('.confirm-dialog__subtitle')?.textContent
 }
 
-describe('SessionTimeoutModal', () => {
+describe('SessionTimeoutDialog', () => {
   beforeEach(() => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       cb(0)
@@ -95,7 +95,7 @@ describe('SessionTimeoutModal', () => {
       expect(subtitleText()).toBe('Your session will expire in 2 seconds due to inactivity.')
 
       rerender(
-        <SessionTimeoutModal
+        <SessionTimeoutDialog
           open
           timeLeftSeconds={60}
           onStayLoggedIn={vi.fn()}
@@ -112,7 +112,7 @@ describe('SessionTimeoutModal', () => {
         vi.advanceTimersByTime(2000)
       })
       rerender(
-        <SessionTimeoutModal
+        <SessionTimeoutDialog
           open={false}
           timeLeftSeconds={5}
           onStayLoggedIn={onStayLoggedIn}

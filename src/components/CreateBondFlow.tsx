@@ -214,7 +214,7 @@ export default function CreateBondFlow() {
             Step 3: Review Terms
           </h2>
 
-          <Banner severity="warning" title="Early withdrawal — slash exposure">
+          <Banner severity="warn" title="Early withdrawal — slash exposure">
             Withdrawing before lock maturity incurs a slash penalty on your principal. The figures
             below show exactly what you would receive if you exit early.
           </Banner>

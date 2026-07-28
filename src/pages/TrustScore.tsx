@@ -5,6 +5,7 @@ import { useToast } from '../components/ToastProvider'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
+import ConnectGate from '../components/ConnectGate'
 import TierLadder from '../components/TierLadder'
 import { EmptyState } from '../components/states'
 
@@ -74,6 +75,7 @@ export default function TrustScore() {
             Look up score
           </Button>
         </div>
+        </ConnectGate>
 
         <div
           style={{

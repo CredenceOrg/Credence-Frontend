@@ -103,7 +103,9 @@ export const CHANGELOG_STORAGE_KEY = 'credence:last-seen-update-id'
 ```tsx
 // src/config/featureFlags.ts — central registry
 export type FeatureFlag =
-  'enable-mobile-nav' | 'enable-redesigned-bond-form' | 'enable-activity-surface'
+  | 'enable-mobile-nav'
+  | 'enable-redesigned-bond-form'
+  | 'enable-activity-surface'
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlag, boolean> = {
   'enable-mobile-nav': false,

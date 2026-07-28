@@ -155,6 +155,157 @@ Tokens: tier/status color tokens, `--credence-font-size-xs`, `--credence-font-we
 ```tsx
 <Badge variant="gold" />
 <Badge variant="grace-period" label="Grace" />
+<Badge variant="slashed" srPrefix="Bond status:" />
+```
+
+## StatusBadge
+
+Source: [`src/components/StatusBadge.tsx`](../src/components/StatusBadge.tsx). Storybook: `Components/StatusBadge`.
+
+Displays a bond or operation lifecycle status as a colour-coded pill. Each variant maps to a distinct semantic colour family sourced entirely from `--credence-*` design tokens — no hard-coded colour values.
+
+| Prop        | Type                 | Default             |
+| ----------- | -------------------- | ------------------- |
+| `variant`   | `StatusBadgeVariant` | Required            |
+| `label`     | `string`             | Capitalised variant |
+| `className` | `string`             | `''`                |
+| `srPrefix`  | `string`             | —                   |
+| `ariaLabel` | `string`             | Display label       |
+
+### `StatusBadgeVariant`
+
+`'pending' | 'active' | 'completed' | 'failed'`
+
+| Variant     | Semantic intent | Token family                 |
+| ----------- | --------------- | ---------------------------- |
+| `pending`   | Neutral/waiting | `--credence-color-warning-*` |
+| `active`    | In progress     | `--credence-color-success-*` |
+| `completed` | Resolved        | `--credence-color-info-*`    |
+| `failed`    | Error/danger    | `--credence-color-danger-*`  |
+
+**`srPrefix`** renders an `.sr-only` `<span>` _before_ the visible label so assistive technology can announce the badge in context (e.g. `srPrefix="Bond status:"` causes a screen reader to read `"Bond status: Failed"` rather than just `"Failed"`). No extra DOM is inserted when the prop is omitted.
+
+Accessibility: renders text in a `<span>` with `aria-label` set to the display label (or the `ariaLabel` prop override). The visible label is always non-empty so meaning is never communicated by colour alone. Use `srPrefix` when a badge appears inside a list row or table cell where a screen reader needs additional context.
+
+Tokens: `--credence-color-warning-surface`, `--credence-color-warning-border`, `--credence-color-warning-text`, `--credence-color-success-surface`, `--credence-color-success-border`, `--credence-color-success-text`, `--credence-color-info-surface`, `--credence-color-info-border`, `--credence-color-info-text`, `--credence-color-danger-surface`, `--credence-color-danger-border`, `--credence-color-danger-text`, `--credence-font-size-xs`, `--credence-font-weight-semibold`, `--credence-radius-full`, `--credence-space-2`.
+
+```tsx
+<StatusBadge variant="pending" />
+<StatusBadge variant="active" />
+<StatusBadge variant="completed" label="Done" />
+<StatusBadge variant="failed" srPrefix="Bond status:" />
+```
+
+## AnalyticsWidget
+
+Source: [`src/components/AnalyticsWidget.tsx`](../src/components/AnalyticsWidget.tsx). Storybook: `Components/AnalyticsWidget`.
+
+Displays one or two periods of numeric metrics in a card layout. When `previousPeriod` is supplied a **Compare periods** toggle appears in the header; enabling it renders the previous period column alongside the current period so operators can do a quick side-by-side comparison without leaving the dashboard.
+
+The component supports both **uncontrolled** (default) and **controlled** modes:
+
+- **Uncontrolled**: omit `compareEnabled` / `onCompareChange`; the widget manages toggle state internally, optionally seeded by `defaultCompare`.
+- **Controlled**: supply both `compareEnabled` and `onCompareChange` to lift toggle state to the parent.
+
+### Props
+
+| Prop              | Type                      | Default  |
+| ----------------- | ------------------------- | -------- |
+| `title`           | `string`                  | Required |
+| `currentPeriod`   | `AnalyticsPeriodData`     | Required |
+| `previousPeriod`  | `AnalyticsPeriodData`     | —        |
+| `defaultCompare`  | `boolean`                 | `false`  |
+| `compareEnabled`  | `boolean`                 | —        |
+| `onCompareChange` | `(next: boolean) => void` | —        |
+| `className`       | `string`                  | `''`     |
+
+### `AnalyticsPeriodData`
+
+| Field     | Type                | Notes                                                              |
+| --------- | ------------------- | ------------------------------------------------------------------ |
+| `label`   | `string`            | Short period label shown in the column header (e.g. `"Jul 2026"`). |
+| `metrics` | `AnalyticsMetric[]` | One or more metrics to display.                                    |
+
+### `AnalyticsMetric`
+
+| Field    | Type                        | Notes                                                               |
+| -------- | --------------------------- | ------------------------------------------------------------------- |
+| `label`  | `string`                    | Human-readable metric name (e.g. `"Trust Score"`).                  |
+| `value`  | `number`                    | Numeric value for the period.                                       |
+| `format` | `(value: number) => string` | Optional formatter; defaults to `String(value)`.                    |
+| `unit`   | `string`                    | Optional suffix appended after the formatted value (e.g. `"USDC"`). |
+
+### Accessibility
+
+- Renders as a `<section>` with `aria-label` set to the `title` prop so it is a named landmark.
+- Title renders as an `<h2>`.
+- The compare toggle is a native `role="switch"` button with `aria-checked` and an `aria-label`. Its visible label (`"Compare periods"`) is linked via `<label htmlFor>`.
+- Each period column carries `aria-label="<period.label> metrics"`.
+- Metrics are structured as a `<dl>` (definition list) with `<dt>` for labels and `<dd>` for values, so assistive technology can navigate key/value pairs.
+
+### Tokens
+
+`--credence-border-default`, `--credence-color-primary`, `--credence-color-slate-50`, `--credence-font-family-base`, `--credence-font-size-lg`, `--credence-font-size-sm`, `--credence-font-size-xl`, `--credence-font-size-xs`, `--credence-font-weight-bold`, `--credence-font-weight-regular`, `--credence-font-weight-semibold`, `--credence-line-height-tight`, `--credence-motion-duration-base`, `--credence-motion-easing-standard`, `--credence-radius-lg`, `--credence-radius-xl`, `--credence-space-1`, `--credence-space-2`, `--credence-space-3`, `--credence-space-4`, `--credence-space-6`, `--credence-surface-card`, `--credence-text-primary`, `--credence-text-secondary`.
+
+```tsx
+// Uncontrolled — single period, no compare toggle
+<AnalyticsWidget
+  title="Analytics Overview"
+  currentPeriod={{
+    label: 'Jul 2026',
+    metrics: [
+      { label: 'Trust Score', value: 684 },
+      { label: 'Active Bonds', value: 3 },
+      { label: 'Total Bonded', value: 4250, format: (v) => v.toLocaleString(), unit: 'USDC' },
+    ],
+  }}
+/>
+
+// Uncontrolled — compare mode on by default
+<AnalyticsWidget
+  title="Analytics Overview"
+  currentPeriod={currentPeriod}
+  previousPeriod={previousPeriod}
+  defaultCompare
+/>
+
+// Controlled — parent owns toggle state
+<AnalyticsWidget
+  title="Analytics Overview"
+  currentPeriod={currentPeriod}
+  previousPeriod={previousPeriod}
+  compareEnabled={isComparing}
+  onCompareChange={setIsComparing}
+/>
+```
+
+## TooltipOnOverflow
+
+Source: [`src/components/TooltipOnOverflow.tsx`](../src/components/TooltipOnOverflow.tsx).
+
+| Prop        | Type                 | Default  |
+| ----------- | -------------------- | -------- |
+| `content`   | `string`             | Required |
+| `children`  | `React.ReactElement` | Required |
+| `className` | `string`             | `''`     |
+
+Wraps a single child element and displays a tooltip **only when the child's text is visually truncated** (overflowing). The tooltip appears on hover and on keyboard focus — keyboard users can dismiss it with Escape.
+
+Accessibility (WCAG 2.1 AA):
+
+- Sets `aria-describedby` on the child to associate tooltip content with the trigger.
+- Renders `role="tooltip"` with `aria-hidden` toggled for visibility.
+- Dismissible with Escape while focused, without stealing focus.
+- Respects `prefers-reduced-motion`; disables fade animation when set.
+- Color contrast uses design tokens (`--credence-color-slate-900` / `--credence-color-white`) meeting AA ratios (≥4.5:1).
+- Arrow pointers are CSS pseudo-elements (no extra DOM).
+
+Tokens: `--credence-surface-card`, `--credence-text-primary`, `--credence-color-slate-900`, `--credence-color-white`, `--credence-space-1`, `--credence-space-2`, `--credence-radius-md`, `--credence-font-size-xs`, `--credence-font-family-base`, `--credence-line-height-tight`, `--credence-motion-duration-fast`, `--credence-motion-easing-standard`, `--credence-shadow-toast`.
+
+```tsx
+<TooltipOnOverflow content="GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H">
+  <code>GBRPYHIL2CI3...OX2H</code>
+</TooltipOnOverflow>
 ```
 
 ## Banner
@@ -290,6 +441,18 @@ Accessibility: composes `FormField`, so label, hint, and error IDs wire through 
 
 Tokens: border, danger, primary, slate, success, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
 
+### Address echo display
+
+Once the user enters a valid address and blurs the input, a **"Recognized:"** echo line appears below the field. The format of the displayed address is driven by **Settings → Display → Address format** (`addressDisplay` in `SettingsContext`):
+
+| `addressDisplay` | Format                                    | Example                                                    |
+| ---------------- | ----------------------------------------- | ---------------------------------------------------------- |
+| `short`          | First 12 chars + `...` + last 8 (default) | `GBRPYHIL2CI3...X2H`                                       |
+| `full`           | Complete 56-character key                 | `GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H` |
+| `friendly`       | First 6 chars + `…` + last 4              | `GBRPYH…X2H`                                               |
+
+The formatting is provided by `formatAddressForDisplay(address, mode)` exported from `src/lib/stellar.ts`. The component reads the user's preference directly from `useSettings()` — no prop is needed.
+
 ```tsx
 <AddressInput
   id="recipient"
@@ -384,13 +547,14 @@ Tokens: border, info/success/warning color tokens, primary, font, line-height, r
 
 Source: [`src/components/forms/FormField.tsx`](../src/components/forms/FormField.tsx).
 
-| Prop       | Type                 | Default     |
-| ---------- | -------------------- | ----------- |
-| `id`       | `string`             | Required    |
-| `label`    | `string`             | Required    |
-| `hint`     | `string`             | `undefined` |
-| `error`    | `string`             | `undefined` |
-| `children` | `React.ReactElement` | Required    |
+| Prop          | Type                 | Default     |
+| ------------- | -------------------- | ----------- |
+| `id`          | `string`             | Required    |
+| `label`       | `string`             | Required    |
+| `hint`        | `string`             | `undefined` |
+| `error`       | `string`             | `undefined` |
+| `srOnlyLabel` | `boolean`            | `false`     |
+| `children`    | `React.ReactElement` | Required    |
 
 Accessibility: renders a `<label htmlFor={id}>`, optional hint, clones the child to inject `id`, merged `aria-describedby`, and `aria-invalid` when an error exists. Error text has `role="alert"`.
 
@@ -402,7 +566,54 @@ Tokens: `--credence-color-danger-text`, `--credence-font-size-sm`, `--credence-f
 </FormField>
 ```
 
-Storybook: `Components/Forms/FormField` — **Default** · **WithHint** · **WithError** · **WithHintAndError**.
+Placeholder-only layouts should still expose an accessible name:
+
+```tsx
+<FormField id="search" label="Search attestations" srOnlyLabel>
+  <input placeholder="Search attestations…" />
+</FormField>
+```
+
+## FilePicker
+
+Source: [`src/components/FilePicker.tsx`](../src/components/FilePicker.tsx).
+
+| Prop           | Type                      | Default                                |
+| -------------- | ------------------------- | -------------------------------------- |
+| `id`           | `string`                  | Auto-generated                         |
+| `label`        | `string`                  | `'Upload files'`                       |
+| `hint`         | `string`                  | `undefined`                            |
+| `error`        | `string`                  | `undefined`                            |
+| `files`        | `File[]`                  | Required                               |
+| `onChange`     | `(files: File[]) => void` | Required                               |
+| `accept`       | `string`                  | `undefined`                            |
+| `multiple`     | `boolean`                 | `false`                                |
+| `disabled`     | `boolean`                 | `false`                                |
+| `required`     | `boolean`                 | `false`                                |
+| `maxSizeBytes` | `number`                  | `undefined`                            |
+| `className`    | `string`                  | `''`                                   |
+| `title`        | `string`                  | Context-sensitive drag-and-drop prompt |
+| `dropHint`     | `string`                  | Accept format hint                     |
+| `ariaLabel`    | `string`                  | `undefined`                            |
+
+Accessibility: renders a dropzone with `role="button"`, `aria-roledescription="file drop zone"`, keyboard activation via Space/Enter, and `aria-controls` linking to live announcement regions. Drag state changes are announced via `aria-live="polite"` regions. File additions and rejections trigger screen-reader announcements. The dropzone is linked to `FormField` for label, hint, and error display. Hidden native `<input type="file">` is `aria-hidden` and focus is managed via the dropzone. File list items include remove buttons with descriptive `aria-label` attributes. Keyboard instructions are provided via sr-only text. Supports `prefers-reduced-motion` and dark mode.
+
+Tokens: border, danger, info, primary, slate, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
+
+```tsx
+<FilePicker
+  id="evidence"
+  label="Upload evidence"
+  files={files}
+  onChange={setFiles}
+  accept=".pdf,image/*"
+  multiple
+  maxSizeBytes={10 * 1024 * 1024}
+  hint="PDF or images. Max 10 MB per file."
+/>
+```
+
+Storybook: `Components/Forms/FilePicker` — **Default** · **SingleFile** · **MultipleFiles** · **WithFiles** · **WithError** · **Disabled** · **DisabledWithFiles** · **WithSizeLimit** · **Required** · **DragActivePreview**.
 
 ## controls/Select
 
@@ -544,7 +755,11 @@ Tokens: warning color tokens, spacing, radius.
 
 Source: [`src/components/navigation/BottomNav.tsx`](../src/components/navigation/BottomNav.tsx).
 
-Fixed bottom navigation bar showing the 5 primary routes. Visible on viewports ≤ `BREAKPOINTS.MD` (768 px); hidden at wider widths via `display: none` in CSS.
+| Prop        | Type         | Default     |
+| ----------- | ------------ | ----------- |
+| `title`     | `string`     | Required    |
+| `children`  | `ReactNode`  | Required    |
+| `onDismiss` | `() => void` | `undefined` |
 
 | Prop     | Type | Default |
 | -------- | ---- | ------- |
@@ -559,9 +774,69 @@ Accessibility: all tabs are native `<a>` elements reachable by Tab key in docume
 Tokens: `--credence-surface-card` (background), `--credence-border-default` (top border), `--credence-color-primary` (active tab indicator), `--credence-text-secondary` (inactive label), `--credence-text-primary` (hover), `--credence-space-1`, `--credence-space-2` (padding), `--credence-font-size-xs` (label size), `--credence-font-weight-semibold` (label weight), `--credence-font-weight-bold` (active label), `--credence-motion-duration-fast`, `--credence-motion-easing-standard` (transitions), `--credence-focus-ring`.
 
 ```tsx
-// BottomNav is rendered by Layout — no props needed.
-// It reads the current route via React Router context automatically.
-<BottomNav />
+<ActionCard title="Create bond">
+  <AmountInput value={amount} onChange={setAmount} balance={balance} />
+  <Button onClick={submit}>Submit</Button>
+</ActionCard>
+```
+
+## Disclaimer
+
+Source: [`src/components/Disclaimer.tsx`](../src/components/Disclaimer.tsx).
+
+| Prop        | Type     | Default       |
+| ----------- | -------- | ------------- |
+| `context`   | `string` | `undefined`   |
+| `termsHref` | `string` | `LINKS.terms` |
+
+Accessibility: renders as `<aside aria-label="Risk disclaimer">`. The terms link has an explicit `aria-label="Read full terms and conditions"`. When `termsHref` resolves to a placeholder (`'#'` or empty), a `<span aria-disabled="true">` is rendered instead of an anchor so the element is inert for keyboard and AT users.
+
+Tokens: secondary text and spacing tokens via `Disclaimer.css`.
+
+```tsx
+<Disclaimer context="Early withdrawal forfeits accrued rewards." />
+```
+
+## ThemeToggle
+
+Source: [`src/components/ThemeToggle.tsx`](../src/components/ThemeToggle.tsx). Focused docs: [dark mode](./dark-mode.md).
+
+Icon-only header control that flips the app between light and dark mode. The component is a pure consumer of `useSettings()`; it owns no theme state and writes to no storage key (see [dark mode](./dark-mode.md)).
+
+### Icon pair
+
+Inline SVG icons follow the same pattern as [`Banner.tsx`](../src/components/Banner.tsx) and [`Toast.tsx`](../src/components/Toast.tsx): `width="18"` / `height="18"`, `viewBox="0 0 20 20"`, `currentColor`, and `aria-hidden="true"` on the graphic.
+
+| Resolved theme | Icon shown | Meaning                                  |
+| -------------- | ---------- | ---------------------------------------- |
+| `light`        | Moon       | Dark mode is available; click to switch  |
+| `dark`         | Sun        | Light mode is available; click to switch |
+
+Sizing is driven by `--credence-theme-toggle-size` (18px) in `ThemeToggle.css`, keeping the 40×40px hit target consistent with other header icon buttons.
+
+### Interaction and motion
+
+| State         | Visual                                                                   |
+| ------------- | ------------------------------------------------------------------------ |
+| Default       | `--credence-surface-card` background, `--credence-border-default` border |
+| Hover         | Slate-100 (light) / slate-700 (dark) background; border darkens one step |
+| Focus-visible | `--credence-focus-ring` outline with 2px offset                          |
+| Disabled      | 65% opacity, `not-allowed` cursor                                        |
+
+Color transitions use `--credence-motion-duration-base` and `--credence-motion-easing-standard`. Under `prefers-reduced-motion: reduce`, transitions are disabled so the toggle does not animate.
+
+### Accessibility
+
+| Attribute      | Value                                                      |
+| -------------- | ---------------------------------------------------------- |
+| `aria-label`   | Static `"Toggle theme"` (stable accessible name)           |
+| `aria-pressed` | `true` when resolved theme is `dark`, `false` when `light` |
+| `title`        | Dynamic action label, e.g. `"Switch to dark theme"`        |
+
+The static `aria-label` avoids re-announcement churn in screen readers; `aria-pressed` communicates the current mode and `title` supplies a hover tooltip with the next action.
+
+```tsx
+<ThemeToggle />
 ```
 
 ## Progress
@@ -585,19 +860,15 @@ Accessibility: `role="progressbar"` on the root; `aria-label` is required. The i
 Tokens: `--credence-color-primary` (fill, default), `--credence-color-success-border`, `--credence-color-warning-border`, `--credence-color-danger-action` (fill, variant colours), `--credence-color-slate-200` (track background), `--credence-radius-full`, `--credence-space-1/2/3` (track heights), `--credence-motion-duration-base`, `--credence-motion-duration-slow`, `--credence-motion-easing-standard`.
 
 ```tsx
-{/* Determinate */}
-<Progress value={60} max={100} aria-label="Bond creation: step 3 of 5" />
+{
+  /* Determinate */
+}
+;<Progress value={60} max={100} aria-label="Bond creation: step 3 of 5" />
 
-{/* Indeterminate */}
-<Progress aria-label="Loading trust score" />
-
-{/* Colour variants */}
-<Progress value={60} color="success" aria-label="Upload complete" />
-<Progress value={60} color="warning" aria-label="Upload paused" />
-<Progress value={60} color="danger" aria-label="Upload failed" />
-
-{/* Indeterminate with colour variant */}
-<Progress color="success" aria-label="Processing" />
+{
+  /* Indeterminate */
+}
+;<Progress aria-label="Loading trust score" />
 ```
 
 ## RepoAvatar

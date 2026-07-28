@@ -1,5 +1,6 @@
-import type { Meta, StoryObj } from '@storybook/react'
-import AmountInput from './AmountInput'
+import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
+import AmountInput from './AmountInput';
 
 const meta: Meta<typeof AmountInput> = {
   title: 'Components/Forms/AmountInput',
@@ -65,4 +66,8 @@ export const BelowMin: Story = {
     balance: 1000,
     min: 10,
   },
-}
+  render: function BelowMinInteractive(args) {
+    const [value, setValue] = React.useState(args.value);
+    return <AmountInput {...args} value={value} onChange={setValue} />;
+  },
+};

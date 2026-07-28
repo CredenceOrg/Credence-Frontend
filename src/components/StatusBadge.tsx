@@ -1,4 +1,5 @@
 import './StatusBadge.css'
+import TooltipOnOverflow from './TooltipOnOverflow'
 
 /** The four lifecycle states a bond or operation can occupy. */
 export type StatusBadgeVariant = 'pending' | 'active' | 'completed' | 'failed'
@@ -43,12 +44,14 @@ export default function StatusBadge({
   const accessibleLabel = ariaLabel ?? displayLabel
 
   return (
-    <span
-      className={`status-badge status-badge--${variant} ${className}`.trim()}
-      aria-label={accessibleLabel}
-    >
-      {srPrefix && <span className="sr-only">{srPrefix} </span>}
-      {displayLabel}
-    </span>
+    <TooltipOnOverflow content={displayLabel}>
+      <span
+        className={`status-badge status-badge--${variant} ${className}`.trim()}
+        aria-label={accessibleLabel}
+      >
+        {srPrefix && <span className="sr-only">{srPrefix} </span>}
+        {displayLabel}
+      </span>
+    </TooltipOnOverflow>
   )
 }

@@ -43,47 +43,47 @@ This directory contains comprehensive design specifications and implementation g
    - Consolidated props, Storybook story paths and variants, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for all public shared UI components
    - Documents severity/variant vocabularies and cross-links focused component docs
 
-5. **[Component API Conventions](./COMPONENT_API.md)** ⭐ NEW
+6. **[Component API Conventions](./COMPONENT_API.md)** ⭐ NEW
    - Single-source for props conventions (naming rules, ordering rules, boolean-prop rules, and TypeScript interface contracts)
    - Code examples and review checklist for consistent component APIs
 
-6. **[UI States Guide](./UI_STATES_GUIDE.md)**
+7. **[UI States Guide](./UI_STATES_GUIDE.md)**
    - Complete guide for empty states, error states, and loading patterns
    - Microcopy guidelines and tone recommendations
    - When and how to use each state type
    - Validation checklist
 
-7. **[Error UI Pattern Guide](./ERROR_UI.md)** ⭐ NEW
+8. **[Error UI Pattern Guide](./ERROR_UI.md)** ⭐ NEW
    - Standardized guide for inline form errors, banners, toasts, and section/page error states
    - Surface decision matrix, component contracts, accessibility guidelines, and concrete code snippets
 
-8. **[Copy Tone Guide](./COPY_TONE.md)** ⭐ NEW
+9. **[Copy Tone Guide](./COPY_TONE.md)** ⭐ NEW
    - How we phrase success, error, empty, and loading UI copy
    - Voice principles (friendly, clear, concise, helpful)
    - State-by-state dos and don'ts with real codebase examples
    - Capitalization, punctuation, and i18n conventions
    - PR review checklist for user-facing strings
 
-9. **[Form Validation Timing](./FORM_VALIDATION_TIMING.md)** ⭐ NEW
-   - Practical guidance for when to use `onChange`, `onBlur`, and `onSubmit`
-   - Concrete examples for controlled input state, field-level validation, and final submission checks
-   - Recommended pattern for Credence forms and common mistakes to avoid
+10. **[Form Validation Timing](./FORM_VALIDATION_TIMING.md)** ⭐ NEW
+    - Practical guidance for when to use `onChange`, `onBlur`, and `onSubmit`
+    - Concrete examples for controlled input state, field-level validation, and final submission checks
+    - Recommended pattern for Credence forms and common mistakes to avoid
 
-10. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
+11. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
     - Standardized states (Default, Error, Disabled, Loading) for all input components
     - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
 
-11. **[Design Tokens](./DESIGN_TOKENS.md)**
+12. **[Design Tokens](./DESIGN_TOKENS.md)**
     - Canonical `--credence-*` CSS variable reference
     - Color, spacing, radius, typography, and motion scales
     - Guidance for replacing one-off hex values in components
 
-12. **[Motion Guidelines](./motion-guidelines.md)**
+13. **[Motion Guidelines](./motion-guidelines.md)**
     - Motion token strategy and reduced-motion defaults
     - Best practices for animation and transitions
     - Implementation examples for UI micro-interactions
 
-13. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+14. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
 
 - Visual design specifications
 - Color palette and design tokens
@@ -110,7 +110,6 @@ This directory contains comprehensive design specifications and implementation g
     - Accessibility requirements (WCAG 2.1 AA)
     - Testing guide and troubleshooting
     - [Decision Matrix](./mobile-navigation-DECISION.md) | [Reconnaissance Report](./mobile-nav-RECON.md) | [Figma Rules](./figma-nav-rules.md)
-
 
 14. [Keyboard Interactions Contract](./keyboard-interactions.md) ⭐ NEW
     - Developer-facing matrix of every interactive component and its expected keyboard behavior
@@ -153,6 +152,11 @@ This directory contains comprehensive design specifications and implementation g
 20. **[Offline Strategy](./PWA.md)**
     - What's cached (localStorage keys, in-memory widget cache), what's queued (pending transactions, auto-save retry), and what happens on cache miss
     - Offline-aware hooks (`useQuery`, `useWidgetCache`), offline banner, install prompt behaviour
+
+21. **[First Bond Coach Marks](./uiux/onboarding-coachmarks-first-bond.md)**
+    - First-run onboarding concept for creating a bond
+    - Coach mark placement, copy, sequencing, and dismissal behavior
+    - Accessibility, responsive behavior, and visual QA checklist
 
 ### Quick Start
 

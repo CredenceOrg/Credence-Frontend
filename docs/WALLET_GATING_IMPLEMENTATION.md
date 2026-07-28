@@ -67,6 +67,7 @@
   - Inputs visible but disabled when disconnected; fully interactive when connected
 
 - Wrapped "Active Bonds" card with:
+
   ```tsx
   <ConnectGate
     title={t('bond.manageBonds')}
@@ -89,6 +90,7 @@
 
 - Added `ConnectGate` import
 - Wrapped lookup card with:
+
   ```tsx
   <ConnectGate
     title={t('trustScore.lookupIdentity')}

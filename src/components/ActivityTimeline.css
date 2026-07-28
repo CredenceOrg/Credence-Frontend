@@ -54,6 +54,24 @@
   align-items: flex-start;
 }
 
+.activity-row--selectable {
+  cursor: pointer;
+  padding: var(--credence-space-2) var(--credence-space-3);
+  margin: calc(var(--credence-space-2) * -1) calc(var(--credence-space-3) * -1);
+  border-radius: var(--credence-radius-lg);
+  transition:
+    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.activity-row--selectable:hover {
+  background: var(--credence-surface-hover, var(--credence-color-slate-100));
+}
+
+.activity-row--selectable:focus-within {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
 .activity-row__rail {
   position: relative;
   min-height: 100%;

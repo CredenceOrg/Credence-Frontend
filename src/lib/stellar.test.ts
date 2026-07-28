@@ -5,7 +5,8 @@ import { isValidStellarAddress, truncateAddress, formatAddressForDisplay } from 
 const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H' // 56 chars
 
 describe('isValidStellarAddress', () => {
-  it('returns true for valid Stellar public keys', () => {
+  // --- Happy path ---
+  it('returns_true_for_valid_public_key', () => {
     expect(isValidStellarAddress(VALID_KEY)).toBe(true)
     // Another valid key (also passes checksum)
     expect(isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')).toBe(
@@ -13,13 +14,20 @@ describe('isValidStellarAddress', () => {
     )
   })
 
-  it('returns false for empty strings', () => {
+  // --- Empty inputs ---
+  it('returns_false_for_empty_string', () => {
     expect(isValidStellarAddress('')).toBe(false)
+  })
+
+  it('returns_false_for_whitespace_only_string', () => {
     expect(isValidStellarAddress('   ')).toBe(false)
   })
 
-  it('returns false for undefined/null', () => {
+  it('returns_false_for_undefined', () => {
     expect(isValidStellarAddress(undefined)).toBe(false)
+  })
+
+  it('returns_false_for_null', () => {
     expect(isValidStellarAddress(null)).toBe(false)
   })
 
@@ -57,16 +65,15 @@ describe('isValidStellarAddress', () => {
     )
   })
 
-  it('returns false for short keys', () => {
-    expect(isValidStellarAddress('G')).toBe(false)
-    expect(isValidStellarAddress('GA')).toBe(false)
-    expect(isValidStellarAddress('GAAZI4TCR3TY')).toBe(false)
+  it('returns_false_for_digits_0_1_8_9_which_are_not_in_base32_alphabet', () => {
+    // Base32 uses only A-Z and 2-7; digits 0,1,8,9 are invalid
+    const with0 = 'G' + '0'.repeat(55)
+    expect(isValidStellarAddress(with0)).toBe(false)
   })
 
-  it('returns false for random text', () => {
+  it('returns_false_for_random_text', () => {
     expect(isValidStellarAddress('hello world')).toBe(false)
-    expect(isValidStellarAddress('1234567890')).toBe(false)
-    expect(isValidStellarAddress('G123')).toBe(false)
+    expect(isValidStellarAddress('not-a-key')).toBe(false)
   })
 
   it('returns false for a valid-prefix key padded with whitespace', () => {

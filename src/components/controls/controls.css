@@ -68,6 +68,13 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .control-select-spinner,
+  .control-toggle-spinner {
+    animation: none !important;
+  }
+}
+
 /* ── Toggle ──────────────────────────────────────────── */
 
 .control-toggle-wrapper {
@@ -129,4 +136,80 @@
   border-top-color: transparent;
   border-radius: 50%;
   animation: control-spin 1s linear infinite;
+}
+
+/* ── SegmentedControl ──────────────────────────────────── */
+
+.control-segmented {
+  display: inline-flex;
+  border-radius: var(--credence-radius-lg);
+  border: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-card);
+  padding: var(--credence-space-1);
+  gap: var(--credence-space-1);
+  flex-wrap: wrap;
+}
+
+.control-segmented[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control-segmented__option {
+  padding: var(--credence-space-1) var(--credence-space-3);
+  border-radius: var(--credence-radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--credence-text-secondary);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-medium);
+  line-height: var(--credence-line-height-tight);
+  cursor: pointer;
+  transition:
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  white-space: nowrap;
+}
+
+.control-segmented__option--selected {
+  background: var(--credence-color-primary);
+  border-color: var(--credence-color-primary);
+  color: var(--credence-color-white);
+}
+
+.control-segmented__option:hover:not(:disabled):not(.control-segmented__option--selected) {
+  background: var(--credence-color-slate-100);
+  color: var(--credence-text-primary);
+}
+
+[data-theme='dark'] .control-segmented__option:hover:not(:disabled):not(.control-segmented__option--selected) {
+  background: var(--credence-color-slate-700);
+}
+
+.control-segmented__option--selected:hover:not(:disabled) {
+  background: var(--credence-color-primary-strong);
+  border-color: var(--credence-color-primary-strong);
+}
+
+.control-segmented__option:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.control-segmented__option:disabled {
+  cursor: not-allowed;
+}
+
+/* On narrow mobile, let the strip wrap rather than overflow */
+@media (max-width: 374px) {
+  .control-segmented {
+    width: 100%;
+  }
+
+  .control-segmented__option {
+    flex: 1;
+    text-align: center;
+  }
 }

@@ -1,47 +1,198 @@
+/*
+ * Home page CTA link-buttons
+ *
+ * Interactive states mirror src/components/Button.css (primary / secondary variants).
+ * Tokens: --credence-color-primary*, --credence-color-focus-ring, slate/surface/border tokens.
+ *
+ * State redlines (both variants):
+ *   default       — base colours, pointer cursor
+ *   hover         — primary-strong / slate-100 background shift (no change when disabled)
+ *   active        — 1px translateY press + stronger background (matches .credence-button:active)
+ *   focus-visible — 3px focus ring + page-colour halo (WCAG 2.1 SC 2.4.7)
+ *   disabled      — 50% opacity, not-allowed cursor, muted palette (aria-disabled="true" on Link)
+ *
+ * Recommendation: keep Link CTAs here for client-side routing; styles intentionally align with
+ * .credence-button--primary / --secondary so a future Button-as-link wrapper can reuse these classes.
+ */
+
 .home {
   display: grid;
   gap: var(--credence-space-6);
 }
 
+/**
+ * CTA Row: Responsive button layout
+ * - Mobile (375px): Full-width primary button, secondary below
+ * - Tablet (768px+): Side-by-side buttons with primary emphasis
+ */
 .home__ctaRow {
   display: flex;
+  flex-direction: column;
   gap: var(--credence-space-4);
-  flex-wrap: wrap;
 }
 
+/* ─── Base CTA (shared link-button chrome) ─────────────────────────────────── */
+
 .home__cta {
-  padding: var(--credence-space-3) var(--credence-space-5);
-  border-radius: var(--credence-radius-lg);
-  font-weight: var(--credence-font-weight-semibold);
-  text-decoration: none;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: var(--credence-space-3) var(--credence-space-5);
+  border-radius: var(--credence-radius-lg);
+  border: 2px solid transparent;
+  font-family: var(--credence-font-family-base);
+  font-weight: var(--credence-font-weight-semibold);
+  font-size: var(--credence-font-size-base);
+  line-height: var(--credence-line-height-tight);
+  text-decoration: none;
+  cursor: pointer;
+  isolation: isolate;
   transition:
-    background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
-    color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
-    box-shadow var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    transform var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
+
+.home__cta:active:not([aria-disabled='true']) {
+  transform: translateY(1px);
+}
+
+/* ─── Focus (matches .credence-button:focus-visible) ───────────────────────── */
+
+.home__cta:focus-visible {
+  outline: 3px solid var(--credence-color-focus-ring);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px var(--credence-surface-page);
+}
+
+[data-theme='dark'] .home__cta:focus-visible {
+  outline-color: var(--credence-color-primary);
+  box-shadow:
+    0 0 0 5px var(--credence-surface-page),
+    0 0 0 7px var(--credence-color-primary);
+}
+
+@media (forced-colors: active) {
+  .home__cta:focus-visible {
+    outline: 3px solid ButtonText;
+    outline-offset: 3px;
+    box-shadow: none;
+  }
+}
+
+/* ─── Primary variant (matches .credence-button--primary) ──────────────────── */
 
 .home__cta--primary {
   background: var(--credence-color-primary);
-  color: var(--credence-surface-page);
+  color: var(--credence-color-white);
+  border-color: var(--credence-color-primary);
 }
 
-.home__cta--primary:hover {
+.home__cta--primary:hover:not([aria-disabled='true']) {
   background: var(--credence-color-primary-strong);
+  border-color: var(--credence-color-primary-strong);
 }
+
+.home__cta--primary:active:not([aria-disabled='true']) {
+  background: var(--credence-color-primary-strong);
+  border-color: var(--credence-color-primary-strong);
+}
+
+.home__cta--primary[aria-disabled='true'] {
+  background: var(--credence-color-slate-400);
+  border-color: var(--credence-color-slate-400);
+  color: var(--credence-color-white);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ─── Secondary variant (matches .credence-button--secondary) ──────────────── */
 
 .home__cta--secondary {
-  background: var(--credence-border-default);
+  background: var(--credence-surface-card);
   color: var(--credence-text-primary);
+  border-color: var(--credence-border-default);
 }
 
-.home__cta--secondary:hover {
+.home__cta--secondary:hover:not([aria-disabled='true']) {
+  background: var(--credence-color-slate-100);
+  border-color: var(--credence-color-slate-400);
+}
+
+.home__cta--secondary:active:not([aria-disabled='true']) {
   background: var(--credence-color-slate-200);
+  border-color: var(--credence-color-slate-400);
 }
 
-.home__cta:focus-visible {
-  outline: var(--credence-focus-ring);
-  outline-offset: 2px;
+.home__cta--secondary[aria-disabled='true'] {
+  background: var(--credence-color-slate-100);
+  border-color: var(--credence-color-slate-200);
+  color: var(--credence-color-slate-400);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+[data-theme='dark'] .home__cta--secondary {
+  background: var(--credence-color-slate-700);
+  border-color: var(--credence-color-slate-600);
+}
+
+[data-theme='dark'] .home__cta--secondary:hover:not([aria-disabled='true']) {
+  background: var(--credence-color-slate-600);
+  border-color: var(--credence-color-slate-500);
+}
+
+[data-theme='dark'] .home__cta--secondary:active:not([aria-disabled='true']) {
+  background: var(--credence-color-slate-600);
+}
+
+[data-theme='dark'] .home__cta--secondary[aria-disabled='true'] {
+  background: var(--credence-color-slate-700);
+  border-color: var(--credence-color-slate-600);
+  color: var(--credence-color-slate-500);
+}
+
+/* ─── Responsive (matches .credence-button--md mobile adjustments) ─────────── */
+
+@media (max-width: 768px) {
+  .home__cta {
+    padding: var(--credence-space-3) var(--credence-space-4);
+    font-size: var(--credence-font-size-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home__cta {
+    transition: none;
+  }
+
+  .home__cta:active:not([aria-disabled='true']) {
+    transform: none;
+  }
+}
+
+/* Tablet and up: Side-by-side layout with primary emphasis */
+@media (min-width: 768px) {
+  .home__ctaRow {
+    flex-direction: row;
+    gap: var(--credence-space-5);
+    align-items: center;
+  }
+
+  .home__cta {
+    width: auto;
+    padding: var(--credence-space-3) var(--credence-space-6);
+    font-size: var(--credence-font-size-base);
+    flex: 0 1 auto;
+  }
+
+  .home__cta--primary {
+    order: 0;
+    font-size: var(--credence-font-size-base);
+    padding: var(--credence-space-3) var(--credence-space-6);
+    min-width: 200px;
+  }
 }

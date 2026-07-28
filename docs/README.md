@@ -47,37 +47,42 @@ This directory contains comprehensive design specifications and implementation g
    - When and how to use each state type
    - Validation checklist
 
-6. **[Error UI Pattern Guide](./ERROR_UI.md)** ⭐ NEW
+7. **[Loading States Decision Guide](./LOADING_STATES.md)** ⭐ NEW
+   - When to use skeletons (`LoadingSkeleton`), spinners (`LoadingSpinner`), and SSR/progressive render
+   - Concrete code examples from the codebase
+   - Quick decision guide and accessibility notes
+
+8. **[Error UI Pattern Guide](./ERROR_UI.md)** ⭐ NEW
    - Standardized guide for inline form errors, banners, toasts, and section/page error states
    - Surface decision matrix, component contracts, accessibility guidelines, and concrete code snippets
 
-7. **[Copy Tone Guide](./COPY_TONE.md)** ⭐ NEW
+9. **[Copy Tone Guide](./COPY_TONE.md)** ⭐ NEW
    - How we phrase success, error, empty, and loading UI copy
    - Voice principles (friendly, clear, concise, helpful)
    - State-by-state dos and don'ts with real codebase examples
    - Capitalization, punctuation, and i18n conventions
    - PR review checklist for user-facing strings
 
-7. **[Form Validation Timing](./FORM_VALIDATION_TIMING.md)** ⭐ NEW
-   - Practical guidance for when to use `onChange`, `onBlur`, and `onSubmit`
-   - Concrete examples for controlled input state, field-level validation, and final submission checks
-   - Recommended pattern for Credence forms and common mistakes to avoid
+10. **[Form Validation Timing](./FORM_VALIDATION_TIMING.md)** ⭐ NEW
+    - Practical guidance for when to use `onChange`, `onBlur`, and `onSubmit`
+    - Concrete examples for controlled input state, field-level validation, and final submission checks
+    - Recommended pattern for Credence forms and common mistakes to avoid
 
-8. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
-   - Standardized states (Default, Error, Disabled, Loading) for all input components
-   - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
+11. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
+    - Standardized states (Default, Error, Disabled, Loading) for all input components
+    - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
 
-9. **[Design Tokens](./DESIGN_TOKENS.md)**
-   - Canonical `--credence-*` CSS variable reference
-   - Color, spacing, radius, typography, and motion scales
-   - Guidance for replacing one-off hex values in components
+12. **[Design Tokens](./DESIGN_TOKENS.md)**
+    - Canonical `--credence-*` CSS variable reference
+    - Color, spacing, radius, typography, and motion scales
+    - Guidance for replacing one-off hex values in components
 
-10. **[Motion Guidelines](./motion-guidelines.md)**
+13. **[Motion Guidelines](./motion-guidelines.md)**
     - Motion token strategy and reduced-motion defaults
     - Best practices for animation and transitions
     - Implementation examples for UI micro-interactions
 
-11. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+14. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
 
 - Visual design specifications
 - Color palette and design tokens
@@ -115,10 +120,11 @@ This directory contains comprehensive design specifications and implementation g
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling
 
-14. **[Security Checklist](./SECURITY_CHECKLIST_FRONTEND.md)**
+16. **[Security Checklist](./SECURITY_CHECKLIST_FRONTEND.md)**
     - CSP policy, browser storage rules, third-party script posture, and dependency audit workflow
     - Concrete review checklist for each security area
-**[Settings Auto-Save Indicator](./auto-save.md)** ⭐ NEW (closes #564)
+      **[Settings Auto-Save Indicator](./auto-save.md)** ⭐ NEW (closes #564)
+
 - Debounced `PATCH /settings` flow with `useDebouncedAutoSave` hook.
 - `<AutoSaveIndicator />` token-driven pill showing `Saving…` / `Saved just now` / "Couldn't save" with retry.
 - In-flight cancellation via `AbortController` so stale PATCHes can't overwrite newer state.
@@ -142,7 +148,7 @@ This directory contains comprehensive design specifications and implementation g
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 
-19. **[Offline Strategy](./PWA.md)**
+20. **[Offline Strategy](./PWA.md)**
     - What's cached (localStorage keys, in-memory widget cache), what's queued (pending transactions, auto-save retry), and what happens on cache miss
     - Offline-aware hooks (`useQuery`, `useWidgetCache`), offline banner, install prompt behaviour
 

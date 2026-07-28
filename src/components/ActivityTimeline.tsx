@@ -198,21 +198,9 @@ export default function ActivityTimeline({
                     <span aria-hidden="true">{disclosureLabel}</span>
                   </button>
 
-                  {!onSelect && isExpanded && (
-                    <div
-                      id={`details-${item.id}`}
-                      className="activity-row__detail-panel"
-                      style={{
-                        marginTop: 'var(--credence-space-3)',
-                        padding: 'var(--credence-space-3)',
-                        background: 'var(--credence-surface-page)',
-                        borderRadius: 'var(--credence-radius-md)',
-                      }}
-                    >
-                      <p
-                        className="activity-row__actor"
-                        style={{ marginBottom: 'var(--credence-space-1)' }}
-                      >
+                  {isExpanded && (
+                    <div id={panelId} className="activity-row__detail-panel" role="region" aria-label="Details">
+                      <p className="activity-row__actor">
                         <strong>Actor:</strong> {item.actor}
                       </p>
                       <p className="activity-row__meta">

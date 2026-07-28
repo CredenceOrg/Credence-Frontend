@@ -59,10 +59,15 @@ describe('EmptyState', () => {
     expect(screen.queryByRole('button')).toBeNull()
   })
 
-  it('description margin collapses when no action is provided', () => {
+  it('description uses hasAction modifier class when action is provided', () => {
+    const { container } = render(<EmptyState {...baseProps} action={{ label: 'Do it', onClick: vi.fn() }} />)
+    const p = container.querySelector('p') as HTMLElement
+    expect(p.className).toContain('empty-state__description--hasAction')
+  })
+
+  it('description does not have hasAction modifier when no action', () => {
     const { container } = render(<EmptyState {...baseProps} />)
     const p = container.querySelector('p') as HTMLElement
-    // jsdom normalises '0' → '0px' in inline styles
-    expect(p.style.marginBottom).toMatch(/^0(px)?$/)
+    expect(p.className).not.toContain('empty-state__description--hasAction')
   })
 })

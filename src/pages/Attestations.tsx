@@ -4,33 +4,9 @@ import AttestationForm from '../components/AttestationForm'
 import ActivityTimeline, { type ActivityItem } from '../components/ActivityTimeline'
 import AttestationDetailDrawer from '../components/AttestationDetailDrawer'
 import { ACTIVITY_ITEMS } from '../data/activity'
-import PageHeader from '../components/PageHeader'
-import EmptyState from '../components/states/EmptyState'
-import {
-  ATTESTATION_EVENTS,
-  ATTESTATION_STATUS_ALL,
-  type AttestationPayload,
-  type AttestationStatus,
-  toneToStatus,
-} from '../events'
-import './Attestations.css'
-
-type FilterStatus = AttestationStatus | typeof ATTESTATION_STATUS_ALL
-
-const FILTER_ORDER: ReadonlyArray<{
-  value: FilterStatus
-  i18nKey: string
-  pillClass: string
-}> = [
-  { value: ATTESTATION_STATUS_ALL, i18nKey: 'attestations.filter.all', pillClass: 'all' },
-  { value: 'accepted', i18nKey: 'attestations.filter.accepted', pillClass: 'accepted' },
-  {
-    value: 'needs-update',
-    i18nKey: 'attestations.filter.needsUpdate',
-    pillClass: 'needsUpdate',
-  },
-  { value: 'in-review', i18nKey: 'attestations.filter.inReview', pillClass: 'inReview' },
-]
+import Select from '../components/controls/Select'
+import { EmptyState } from '../components/states'
+import { ATTESTATION_EVENTS, type AttestationPayload, type ActivityItem } from '../events'
 
 export default function Attestations() {
   const { t } = useTranslation()
@@ -112,6 +88,8 @@ export default function Attestations() {
     emptyTitle: t('attestations.empty.title'),
   }
 
+  const filterLabel = filterOptions.find((o) => o.value === filterTone)?.label ?? filterTone
+
   return (
     <div className="attestationsPage">
       <PageHeader
@@ -172,37 +150,25 @@ export default function Attestations() {
               {summary}
             </p>
           </div>
-
-          {filteredItems.length === 0 ? (
+          {filteredItems.length === 0 && filterTone !== 'all' ? (
             <EmptyState
               illustration="attestation"
-              title={
-                filterStatus === ATTESTATION_STATUS_ALL
-                  ? t('attestations.empty.noAttestationsTitle')
-                  : t('attestations.empty.noMatchingTitle')
-              }
-              description={
-                filterStatus === ATTESTATION_STATUS_ALL
-                  ? t('attestations.empty.noAttestationsDescription')
-                  : t('attestations.empty.noMatchingDescription')
-              }
-              action={
-                filterStatus === ATTESTATION_STATUS_ALL
-                  ? undefined
-                  : {
-                      label: t('attestations.empty.clearFilter'),
-                      onClick: () => setFilterStatus(ATTESTATION_STATUS_ALL),
-                      variant: 'secondary',
-                    }
-              }
+              title={t('attestations.noFilterResults')}
+              description={t('attestations.noFilterResultsDescription', { filter: filterLabel })}
+              action={{
+                label: t('attestations.clearFilter'),
+                onClick: () => setFilterTone('all'),
+                variant: 'secondary',
+              }}
             />
           ) : (
             <ActivityTimeline
               items={filteredItems}
-              onSelect={handleSelect}
+              emptyTitle={t('attestations.emptyTitle')}
+              emptyDescription={t('attestations.emptyDescription')}
             />
           )}
-        </div>
+        </section>
       </div>
 
       <AttestationDetailDrawer

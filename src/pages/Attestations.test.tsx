@@ -71,20 +71,17 @@ describe('Attestations Page — filter, drawer, and live region', () => {
     expect(screen.getByText(/showing 2 of 5 attestations/i)).toBeInTheDocument()
   })
 
-  it('opens the drawer when a row is activated and closes it on Escape', async () => {
-    const user = userEvent.setup()
-    renderInRouter(<Attestations />)
+  it('shows attestation-specific empty state when filter yields no results', () => {
+    render(<Attestations />)
+    const filterSelect = screen.getByRole('combobox', { name: /filter attestations/i })
 
     const rows = screen.getAllByRole('listitem')
     await user.click(rows[0]!)
 
-    const dialog = await screen.findByRole('dialog', {
-      name: /attestation submitted/i,
-    })
-    expect(dialog).toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-    expect(dialog).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+    // Should show the attestation-specific empty state, not the ActivityTimeline default
+    expect(screen.getByRole('heading', { name: /no matching attestations/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /clear filter/i })).toBeInTheDocument()
   })
 
   it('drawer surfaces validator, transaction hash, evidence, and timestamp', async () => {
@@ -93,50 +90,11 @@ describe('Attestations Page — filter, drawer, and live region', () => {
     const rows = screen.getAllByRole('listitem')
     await user.click(rows[0]!)
 
-    const dialog = await screen.findByRole('dialog')
-    expect(dialog).toHaveTextContent(/validator node 12/i)
-    expect(dialog).toHaveTextContent(/identity evidence package uploaded/i)
-    expect(dialog).toHaveTextContent(/apr 28/i)
-    expect(dialog.querySelector('.copyable-hash')).toBeInTheDocument()
-  })
+    // Panel is hidden — use queryByTestId since CopyableHash is not mocked here
+    expect(screen.queryByTestId('copyable-hash')).not.toBeInTheDocument()
+    fireEvent.click(expandBtn)
 
-  it('drawer is focus-trapped — focus stays inside the dialog as the user tabs', async () => {
-    const user = userEvent.setup()
-    renderInRouter(<Attestations />)
-    const rows = screen.getAllByRole('listitem')
-    await user.click(rows[0]!)
-
-    const dialog = await screen.findByRole('dialog')
-    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true))
-    // Tab through the focusable elements in the dialog body. The cycle is
-    // header close → CopyableHash copy / explorer → footer close →
-    // wraps via useFocusTrap. We tab once into the body to confirm the
-    // first hop lands inside the dialog; further cycles wrap and stay
-    // inside.
-    await user.tab()
-    expect(dialog.contains(document.activeElement)).toBe(true)
-  })
-
-  it('closes the drawer when the footer Close button is activated', async () => {
-    const user = userEvent.setup()
-    renderInRouter(<Attestations />)
-    const rows = screen.getAllByRole('listitem')
-    await user.click(rows[0]!)
-
-    const dialog = await screen.findByRole('dialog')
-    // The header (icon-only ×) close button has aria-label="Close attestation
-    // details" — find it via that. The footer button has visible text "Close"
-    // only — find it via a scoped text-name query inside the dialog.
-    within(dialog).getByRole('button', { name: /close attestation details/i })
-    const footerClose = within(dialog).getByRole('button', { name: /^Close$/ })
-    await user.click(footerClose)
-    expect(dialog).not.toBeInTheDocument()
-  })
-
-  it('timeline rows expose "View details" with a status-aware aria-label', () => {
-    renderInRouter(<Attestations />)
-    const viewButtons = screen.getAllByRole('button', { name: /view details/i })
-    expect(viewButtons.length).toBeGreaterThan(0)
-    expect(viewButtons[0]).toHaveAccessibleName(/accepted.*view details/i)
+    expect(expandBtn).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText(/Validator/)).toBeVisible()
   })
 })

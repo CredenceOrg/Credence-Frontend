@@ -1,12 +1,6 @@
 import { useCallback, useRef, useState, type ReactElement } from 'react'
 import './ActivityTimeline.css'
-import {
-  ACTIVITY_ITEMS,
-  SAMPLE_ACTIVITY,
-  type ActivityItem,
-  type ActivityTone,
-} from '../data/activity'
-import { toneToStatus, type AttestationStatus } from '../events'
+import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
@@ -46,20 +40,10 @@ export function resolveItemStatus(item: ActivityItem): AttestationStatus | null 
 export interface ActivityTimelineProps {
   compact?: boolean
   items?: ActivityItem[]
-  /**
-   * Called when the user activates a row ("View details"). The
-   * Attestations route uses this to open the `AttestationDetailDrawer`.
-   *
-   * When provided:
-   *  - the disclosure button reads "View details"
-   *  - activating the row (or pressing Enter/Space on the disclosure)
-   *    invokes `onSelect(item)` instead of toggling inline expansion
-   *  - the row gets a click-to-open affordance (cursor + hover state)
-   *
-   * When omitted (default), the timeline keeps the original inline
-   * disclosure behavior. The Trust Score surface relies on this path.
-   */
-  onSelect?: (item: ActivityItem) => void
+  /** Override the default empty-state title (defaults to "No activity yet"). */
+  emptyTitle?: string
+  /** Override the default empty-state description. */
+  emptyDescription?: string
 }
 
 /**
@@ -82,7 +66,8 @@ export interface ActivityTimelineProps {
 export default function ActivityTimeline({
   compact = false,
   items = SAMPLE_ACTIVITY,
-  onSelect,
+  emptyTitle = 'No activity yet',
+  emptyDescription = 'Attestations and events will appear here once activity begins.',
 }: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -128,8 +113,8 @@ export default function ActivityTimeline({
       {count === 0 ? (
         <EmptyState
           illustration="activity"
-          title="No activity yet"
-          description="Attestations and events will appear here once activity begins."
+          title={emptyTitle}
+          description={emptyDescription}
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">

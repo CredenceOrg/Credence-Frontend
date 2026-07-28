@@ -9,7 +9,7 @@ import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatUsdc } from '../lib/format'
 import ConfirmDialog from '../components/ConfirmDialog'
-import ConnectWalletModal from '../components/ConnectWalletModal'
+import ConnectWalletDialog from '../components/ConnectWalletDialog'
 import { computeWithdrawBreakdown, calcUnlockDate, type MockBond } from '../lib/bondPenalty'
 import './BondDetail.css'
 
@@ -231,7 +231,7 @@ export default function BondDetail() {
         />
       )}
 
-      <ConnectWalletModal
+      <ConnectWalletDialog
         open={connectModalOpen}
         onClose={() => setConnectModalOpen(false)}
         returnFocusRef={connectTriggerRef}

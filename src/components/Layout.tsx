@@ -111,6 +111,7 @@ export default function Layout() {
       <RouteAnnouncer />
 
       <header className="appHeader">
+        <div className="container appHeader-inner">
         {/* Mobile: hamburger toggle (hidden ≥640px via CSS) */}
         <MobileNav />
 
@@ -150,6 +151,7 @@ export default function Layout() {
           <span aria-hidden="true">?</span>
           <span className="sr-only">{t('layout.keyboardShortcuts')}</span>
         </button>
+        </div>
       </header>
 
       {showInstallPrompt && (

@@ -22,10 +22,9 @@ describe('Banner', () => {
 
   describe('role mapping', () => {
     it.each<[BannerSeverity, 'alert' | 'status']>([
-      ['critical', 'alert'],
-      ['warning', 'alert'],
+      ['incident', 'alert'],
+      ['warn', 'alert'],
       ['info', 'status'],
-      ['success', 'status'],
     ])('severity "%s" → role="%s"', (severity, role) => {
       render(<Banner severity={severity}>Message</Banner>)
       expect(screen.getByRole(role)).toBeInTheDocument()
@@ -37,13 +36,12 @@ describe('Banner', () => {
   describe('aria-label', () => {
     it.each<[BannerSeverity, string]>([
       ['info', 'Information banner'],
-      ['success', 'Success banner'],
-      ['warning', 'Warning banner'],
-      ['critical', 'Critical banner'],
+      ['warn', 'Warning banner'],
+      ['incident', 'Incident banner'],
     ])('severity "%s" → aria-label="%s"', (severity, label) => {
       render(<Banner severity={severity}>Message</Banner>)
       // getByRole with name option asserts both the role and accessible name
-      const isUrgent = severity === 'critical' || severity === 'warning'
+      const isUrgent = severity === 'incident' || severity === 'warn'
       expect(screen.getByRole(isUrgent ? 'alert' : 'status', { name: label })).toBeInTheDocument()
     })
   })
@@ -96,7 +94,7 @@ describe('Banner', () => {
           <button ref={ref} type="button">
             Return target
           </button>
-          <Banner severity="warning" dismissible returnFocusRef={ref}>
+          <Banner severity="warn" dismissible returnFocusRef={ref}>
             Message
           </Banner>
         </>
@@ -141,7 +139,7 @@ describe('Banner', () => {
     it('triggers dismissal when Escape is pressed on the dismiss button', () => {
       const onDismiss = vi.fn()
       render(
-        <Banner severity="critical" dismissible onDismiss={onDismiss}>
+        <Banner severity="incident" dismissible onDismiss={onDismiss}>
           Message
         </Banner>
       )
@@ -154,7 +152,7 @@ describe('Banner', () => {
     it('does not trigger dismissal on other keys', () => {
       const onDismiss = vi.fn()
       render(
-        <Banner severity="critical" dismissible onDismiss={onDismiss}>
+        <Banner severity="incident" dismissible onDismiss={onDismiss}>
           Message
         </Banner>
       )
@@ -168,7 +166,7 @@ describe('Banner', () => {
     it('does not trigger dismissal when Escape is fired on the banner wrapper', () => {
       const onDismiss = vi.fn()
       render(
-        <Banner severity="critical" dismissible onDismiss={onDismiss}>
+        <Banner severity="incident" dismissible onDismiss={onDismiss}>
           Message
         </Banner>
       )

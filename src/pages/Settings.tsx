@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSettings } from '../context/SettingsContext'
-import ThemeToggle from '../components/ThemeToggle'
 import { useToast } from '../components/ToastProvider'
 import { FormField } from '../components/forms/FormField'
 import Toggle from '../components/controls/Toggle'
 import Select from '../components/controls/Select'
+import SegmentedControl from '../components/controls/SegmentedControl'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { ErrorState } from '../components/states'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
@@ -14,6 +13,8 @@ import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
 import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
 import { apiFetch } from '../api/client'
 import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
+import { DOM_EVENTS } from '../config/domEvents'
+import type { AutoDismissOption } from '../context/SettingsContext'
 import './Settings.css'
 
 function computeDiff(
@@ -52,6 +53,18 @@ const FIELD_LABELS: Record<string, string> = {
   quietHoursEnd: 'Quiet hours end',
 }
 
+const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+]
+
+const ADDRESS_OPTIONS: { value: 'full' | 'short' | 'friendly'; label: string }[] = [
+  { value: 'full', label: 'Full (G…)' },
+  { value: 'short', label: 'Short (G……)' },
+  { value: 'friendly', label: 'Friendly' },
+]
+
 export default function Settings() {
   const {
     themeMode,
@@ -64,13 +77,6 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
-    quietHoursEnabled,
-    setQuietHoursEnabled,
-    quietHoursStart,
-    setQuietHoursStart,
-    quietHoursEnd,
-    setQuietHoursEnd,
-    saveSettings,
   } = useSettings()
   const { addToast } = useToast()
 
@@ -119,7 +125,7 @@ export default function Settings() {
       return 'Start and end times must be in HH:mm format (e.g. 22:00, 07:30).'
     }
     if (draft.quietHoursStart === draft.quietHoursEnd) {
-      return 'Start and end times must be in HH:mm format (e.g. 22:00, 07:30).'
+      return 'Start and end times must differ.'
     }
     return undefined
   }, [draft.quietHoursStart, draft.quietHoursEnd])
@@ -350,7 +356,7 @@ export default function Settings() {
     setNetwork(importPreview.network as 'public' | 'test')
     setAddressDisplay(importPreview.addressDisplay as 'full' | 'short' | 'friendly')
     setToastsEnabled(importPreview.toastsEnabled)
-    setAutoDismiss(importPreview.autoDismiss)
+    setAutoDismiss(importPreview.autoDismiss as AutoDismissOption)
     setQuietHoursEnabled(importPreview.quietHoursEnabled ?? false)
     setQuietHoursStart(importPreview.quietHoursStart ?? '22:00')
     setQuietHoursEnd(importPreview.quietHoursEnd ?? '07:00')
@@ -391,46 +397,22 @@ export default function Settings() {
         <p>
           The following settings from <strong>{importFileName || 'file'}</strong> will be applied:
         </p>
-        <table style={{ marginTop: '0.75rem', borderCollapse: 'collapse', width: '100%' }}>
+        <table className="settings-diff-table">
           <thead>
             <tr>
-              <th
-                style={{
-                  textAlign: 'left',
-                  padding: '0.25rem 0.5rem',
-                  borderBottom: '1px solid var(--border-default)',
-                }}
-              >
-                Setting
-              </th>
-              <th
-                style={{
-                  textAlign: 'left',
-                  padding: '0.25rem 0.5rem',
-                  borderBottom: '1px solid var(--border-default)',
-                }}
-              >
-                Current
-              </th>
-              <th
-                style={{
-                  textAlign: 'left',
-                  padding: '0.25rem 0.5rem',
-                  borderBottom: '1px solid var(--border-default)',
-                }}
-              >
-                Imported
-              </th>
+              <th>Setting</th>
+              <th>Current</th>
+              <th>Imported</th>
             </tr>
           </thead>
           <tbody>
             {diffs.map((d) => (
               <tr key={d.key}>
-                <td style={{ padding: '0.25rem 0.5rem' }}>{FIELD_LABELS[d.key] || d.key}</td>
-                <td style={{ padding: '0.25rem 0.5rem' }}>
+                <td>{FIELD_LABELS[d.key] || d.key}</td>
+                <td>
                   <code>{d.from}</code>
                 </td>
-                <td style={{ padding: '0.25rem 0.5rem' }}>
+                <td>
                   <code>{d.to}</code>
                 </td>
               </tr>
@@ -443,63 +425,51 @@ export default function Settings() {
 
   return (
     <div className="settings-page">
-      <h1>Settings</h1>
+      <h1 style={{ marginTop: 0 }}>Settings</h1>
 
+      {/* ── Appearance ──────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">Appearance</h2>
-        <p className="form-hint">Controls for theme and visual preferences.</p>
+        <p className="settings-section__description">Controls for theme and visual preferences.</p>
 
-        <FormField id="theme-seg" label="Theme">
-          <div role="radiogroup" aria-label="Theme mode" style={{ display: 'flex', gap: '0.5rem' }}>
-            <label>
-              <input
-                type="radio"
-                name="theme"
-                checked={draft.themeMode === 'light'}
-                onChange={() => updateDraft('themeMode', 'light')}
-              />{' '}
-              Light
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="theme"
-                checked={draft.themeMode === 'dark'}
-                onChange={() => updateDraft('themeMode', 'dark')}
-              />{' '}
-              Dark
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="theme"
-                checked={draft.themeMode === 'system'}
-                onChange={() => updateDraft('themeMode', 'system')}
-              />{' '}
-              System
-            </label>
-          </div>
-        </FormField>
-
-        <FormField id="theme-toggle" label="Quick toggle">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ThemeToggle />
-            <span className="form-hint">
-              Use the quick toggle to flip light/dark immediately. Theme radio buttons above apply
-              on Save.
-            </span>
-          </div>
-        </FormField>
+        {/*
+         * fieldset + legend groups the three radio-style theme options so that
+         * screen readers announce "Theme mode: Light / Dark / System" as a
+         * single navigable group, satisfying WCAG 1.3.1 (Info & Relationships).
+         * The SegmentedControl renders role="radiogroup" internally, so the
+         * outer fieldset provides the additional native form landmark and the
+         * legend provides the visible/AT-readable caption.
+         */}
+        <fieldset className="settings-fieldset">
+          <legend className="settings-fieldset__legend">Theme mode</legend>
+          <SegmentedControl
+            id="theme-mode"
+            ariaLabel="Theme mode"
+            value={draft.themeMode}
+            onChange={(v) => updateDraft('themeMode', v)}
+            options={THEME_OPTIONS}
+          />
+          <p className="settings-field-hint">
+            <em>System</em> follows your OS preference automatically.
+          </p>
+        </fieldset>
       </section>
 
+      {/* ── Network ─────────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="network-heading">
         <h2 id="network-heading">Network</h2>
-        <p className="form-hint">Choose the Stellar network to interact with.</p>
+        <p className="settings-section__description">
+          Choose the Stellar network to interact with.
+        </p>
 
-        <FormField id="network-select" label="Stellar Network">
+        <FormField
+          id="network-select"
+          label="Stellar Network"
+          hint="Changing to Testnet uses isolated, non-real assets."
+        >
           <Select
-            value={draft.network}
-            onChange={(v) => updateDraft('network', v)}
+            value={network}
+            onChange={setNetwork}
             options={[
               { value: 'public', label: 'Public (Mainnet)' },
               { value: 'test', label: 'Test (Testnet)' },
@@ -508,62 +478,55 @@ export default function Settings() {
         </FormField>
       </section>
 
+      {/* ── Display ─────────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="display-heading">
         <h2 id="display-heading">Display</h2>
-        <p className="form-hint">How addresses and identifiers are presented in the UI.</p>
+        <p className="settings-section__description">
+          How addresses and identifiers are presented in the UI.
+        </p>
 
-        <fieldset style={{ border: 'none', padding: 0 }}>
-          <legend className="sr-only">Address display format</legend>
-          <FormField id="address-display" label="Address format">
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <label>
-                <input
-                  type="radio"
-                  name="address"
-                  checked={draft.addressDisplay === 'full'}
-                  onChange={() => updateDraft('addressDisplay', 'full')}
-                />{' '}
-                Full (G...)
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="address"
-                  checked={draft.addressDisplay === 'short'}
-                  onChange={() => updateDraft('addressDisplay', 'short')}
-                />{' '}
-                Short (G...…)
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="address"
-                  checked={draft.addressDisplay === 'friendly'}
-                  onChange={() => updateDraft('addressDisplay', 'friendly')}
-                />{' '}
-                Friendly (when available)
-              </label>
-            </div>
-          </FormField>
+        {/*
+         * fieldset + legend provides a native grouping landmark for the three
+         * address-format options. The SegmentedControl renders role="radiogroup"
+         * internally; the outer fieldset ensures the group is announced even in
+         * browsing mode (not just forms mode) for screen readers that do not
+         * expose ARIA radiogroup in browsing mode.
+         */}
+        <fieldset className="settings-fieldset">
+          <legend className="settings-fieldset__legend">Address format</legend>
+          <SegmentedControl
+            id="address-display"
+            ariaLabel="Address display format"
+            value={draft.addressDisplay}
+            onChange={(v) => updateDraft('addressDisplay', v)}
+            options={ADDRESS_OPTIONS}
+          />
+          <p className="settings-field-hint">
+            <em>Friendly</em> shows a registered name when available, otherwise falls back to{' '}
+            <em>Short</em>.
+          </p>
         </fieldset>
       </section>
 
+      {/* ── Notifications ───────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="notifications-heading">
         <h2 id="notifications-heading">Notifications</h2>
-        <p className="form-hint">Control toast and notification behavior.</p>
+        <p className="settings-section__description">
+          Control toast and notification behavior.
+        </p>
 
         <FormField id="toasts-enabled" label="Enable toasts">
-          <Toggle
-            checked={draft.toastsEnabled}
-            onChange={(v) => updateDraft('toastsEnabled', v)}
-            ariaLabel="Enable toasts"
-          />
+          <Toggle checked={toastsEnabled} onChange={setToastsEnabled} ariaLabel="Enable toasts" />
         </FormField>
 
-        <FormField id="auto-dismiss" label="Auto-dismiss duration">
+        <FormField
+          id="auto-dismiss"
+          label="Auto-dismiss duration"
+          hint="How long before a toast automatically closes. Danger toasts always require manual dismissal."
+        >
           <Select
-            value={draft.autoDismiss}
-            onChange={(v) => updateDraft('autoDismiss', v)}
+            value={autoDismiss}
+            onChange={setAutoDismiss}
             options={[
               { value: 'off', label: 'Off (require manual dismiss)' },
               { value: '3s', label: '3 seconds' },
@@ -573,32 +536,26 @@ export default function Settings() {
           />
         </FormField>
 
-        <FormField id="toast-preview" label="Preview">
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={() => addToast('info', 'This is a preview notification')}
-              style={{ padding: '0.5rem 0.75rem' }}
-              aria-label="Show preview toast"
-            >
-              Show preview
-            </button>
-            <span className="form-hint">Preview respects current toast settings.</span>
-          </div>
-        </FormField>
+        <div className="settings-preview-row">
+          <button
+            type="button"
+            className="settings-btn settings-btn--secondary"
+            onClick={() => addToast('info', 'This is a preview notification')}
+            aria-label="Show preview toast notification"
+          >
+            Show preview
+          </button>
+          <span className="settings-field-hint">Preview respects current toast settings.</span>
+        </div>
 
-        {/* Quiet Hours subsection */}
-        <fieldset
-          style={{
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-md)',
-            padding: '1rem',
-            marginTop: '1.5rem',
-          }}
-        >
-          <legend style={{ fontWeight: 600, paddingInline: '0.5rem' }}>Quiet Hours</legend>
-          <p className="form-hint" style={{ marginBottom: '0.75rem' }}>
+        {/* Quiet Hours sub-section */}
+        <fieldset className="settings-fieldset settings-fieldset--card" aria-describedby="quiet-hours-desc">
+          <legend className="settings-fieldset__legend settings-fieldset__legend--card">
+            Quiet Hours
+          </legend>
+          <p id="quiet-hours-desc" className="settings-section__description">
             When enabled, non-critical toasts will be suppressed during the configured window.
+            Critical (danger) toasts always surface regardless.
           </p>
 
           <FormField id="quiet-hours-enabled" label="Enable quiet hours">
@@ -609,46 +566,48 @@ export default function Settings() {
             />
           </FormField>
 
-          <FormField id="quiet-hours-start" label="Start time (HH:mm)">
-            <input
-              type="text"
+          <div className="quiet-hours-fields">
+            <FormField
               id="quiet-hours-start"
-              value={draft.quietHoursStart}
-              onChange={(e) => updateDraft('quietHoursStart', e.target.value)}
-              placeholder="22:00"
-              maxLength={5}
-              style={{ width: '6rem', padding: '0.5rem 0.75rem' }}
-              aria-invalid={!!quietHoursError}
-              aria-describedby={quietHoursError ? 'quiet-hours-error' : undefined}
-            />
-          </FormField>
-
-          <FormField id="quiet-hours-end" label="End time (HH:mm)">
-            <input
-              type="text"
-              id="quiet-hours-end"
-              value={draft.quietHoursEnd}
-              onChange={(e) => updateDraft('quietHoursEnd', e.target.value)}
-              placeholder="07:00"
-              maxLength={5}
-              style={{ width: '6rem', padding: '0.5rem 0.75rem' }}
-              aria-invalid={!!quietHoursError}
-              aria-describedby={quietHoursError ? 'quiet-hours-error' : undefined}
-            />
-          </FormField>
-
-          {quietHoursError && (
-            <p
-              id="quiet-hours-error"
-              role="alert"
-              className="form-error"
-              style={{ marginTop: '0.5rem' }}
+              label="Start time"
+              hint="When toasts begin to be suppressed"
+              error={quietHoursError && !parseHHmm(draft.quietHoursStart).ok ? quietHoursError : undefined}
             >
+              <input
+                type="time"
+                className="control-time"
+                value={draft.quietHoursStart}
+                onChange={(e) => updateDraft('quietHoursStart', e.target.value)}
+                disabled={!draft.quietHoursEnabled}
+                aria-disabled={!draft.quietHoursEnabled}
+              />
+            </FormField>
+
+            <FormField
+              id="quiet-hours-end"
+              label="End time"
+              hint="When toasts resume"
+              error={quietHoursError && !parseHHmm(draft.quietHoursEnd).ok ? quietHoursError : undefined}
+            >
+              <input
+                type="time"
+                className="control-time"
+                value={draft.quietHoursEnd}
+                onChange={(e) => updateDraft('quietHoursEnd', e.target.value)}
+                disabled={!draft.quietHoursEnabled}
+                aria-disabled={!draft.quietHoursEnabled}
+              />
+            </FormField>
+          </div>
+
+          {quietHoursError && parseHHmm(draft.quietHoursStart).ok && parseHHmm(draft.quietHoursEnd).ok && (
+            <p id="quiet-hours-times-error" role="alert" className="form-error settings-quiet-hours-status">
               {quietHoursError}
             </p>
           )}
+
           {!quietHoursError && draft.quietHoursEnabled && (
-            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <p className={`settings-quiet-hours-status${quietHoursCurrentlyActive ? ' settings-quiet-hours-status--active' : ''}`}>
               {quietHoursCurrentlyActive
                 ? 'Quiet hours are currently active — non-critical toasts are suppressed.'
                 : 'Quiet hours are not currently active.'}
@@ -657,17 +616,18 @@ export default function Settings() {
         </fieldset>
       </section>
 
+      {/* ── Backup & Restore ────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="backup-heading">
         <h2 id="backup-heading">Backup &amp; Restore</h2>
-        <p className="form-hint">
+        <p className="settings-section__description">
           Export your settings as a JSON file, or import settings from a previous export.
         </p>
 
         <div className="settings-backup-row">
           <button
             type="button"
+            className="settings-btn settings-btn--secondary"
             onClick={handleExport}
-            style={{ padding: '0.5rem 0.75rem' }}
             aria-label="Export settings to JSON file"
           >
             Export settings
@@ -678,14 +638,14 @@ export default function Settings() {
             type="file"
             accept=".json,application/json"
             onChange={handleFileChange}
-            style={{ display: 'none' }}
+            className="sr-only"
             aria-hidden="true"
             tabIndex={-1}
           />
           <button
             type="button"
+            className="settings-btn settings-btn--secondary"
             onClick={() => fileInputRef.current?.click()}
-            style={{ padding: '0.5rem 0.75rem' }}
             aria-label="Import settings from JSON file"
           >
             Import settings
@@ -693,7 +653,7 @@ export default function Settings() {
         </div>
 
         {importError && (
-          <div role="alert" style={{ marginTop: '0.75rem' }}>
+          <div role="alert" className="settings-import-error">
             <ErrorState
               type="validation"
               title="Invalid settings file"
@@ -707,7 +667,8 @@ export default function Settings() {
         )}
       </section>
 
-      <div className="settings-actions">
+      {/* ── Actions bar ─────────────────────────────────────────── */}
+      <div className="settings-actions" role="group" aria-label="Save or discard settings">
         <AutoSaveIndicator
           status={autoSave.status}
           lastSavedAt={autoSave.lastSavedAt}
@@ -716,29 +677,21 @@ export default function Settings() {
         />
         <button
           type="button"
+          className="settings-btn settings-btn--primary"
           onClick={handleSave}
           disabled={!isDirty || !!quietHoursError}
           aria-disabled={!isDirty || !!quietHoursError}
-          style={{ padding: '0.5rem 0.75rem' }}
         >
           {isDirty ? 'Save' : 'Saved'}
         </button>
-        <button type="button" onClick={handleCancel} style={{ padding: '0.5rem 0.75rem' }}>
+        <button
+          type="button"
+          className="settings-btn settings-btn--secondary"
+          onClick={handleCancel}
+        >
           Cancel
         </button>
       </div>
-
-      <ConfirmDialog
-        open={importConfirmOpen}
-        title="Import Settings"
-        subtitle={diffs.length > 0 ? 'Review the changes below before applying.' : undefined}
-        description={confirmDescription}
-        confirmPhrase="IMPORT"
-        confirmHint="This will overwrite your current settings with the imported values."
-        confirmLabel="Import settings"
-        onConfirm={handleImportConfirm}
-        onCancel={handleImportCancel}
-      />
     </div>
   )
 }

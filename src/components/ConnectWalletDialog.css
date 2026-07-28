@@ -1,6 +1,6 @@
 /* ─── Backdrop ─────────────────────────────────────────────────────────────── */
 
-.connect-wallet-modal__backdrop {
+.connect-wallet-dialog__backdrop {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -13,13 +13,13 @@
     var(--credence-motion-easing-decelerate);
 }
 
-[data-theme='dark'] .connect-wallet-modal__backdrop {
+[data-theme='dark'] .connect-wallet-dialog__backdrop {
   background: var(--credence-backdrop-dark);
 }
 
 /* ─── Dialog panel ─────────────────────────────────────────────────────────── */
 
-.connect-wallet-modal {
+.connect-wallet-dialog {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -33,18 +33,18 @@
     var(--credence-motion-easing-decelerate);
 }
 
-[data-theme='dark'] .connect-wallet-modal {
+[data-theme='dark'] .connect-wallet-dialog {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
 }
 
 /* ─── Header ───────────────────────────────────────────────────────────────── */
 
-.connect-wallet-modal__header {
+.connect-wallet-dialog__header {
   padding: var(--credence-space-5) var(--credence-space-5) var(--credence-space-4);
   border-bottom: 1px solid var(--credence-border-default);
 }
 
-.connect-wallet-modal__title {
+.connect-wallet-dialog__title {
   margin: 0;
   font-size: var(--credence-font-size-lg);
   font-weight: var(--credence-font-weight-bold);
@@ -54,20 +54,20 @@
 
 /* ─── Body ─────────────────────────────────────────────────────────────────── */
 
-.connect-wallet-modal__body {
+.connect-wallet-dialog__body {
   padding: var(--credence-space-5);
   display: grid;
   gap: var(--credence-space-4);
 }
 
-.connect-wallet-modal__description {
+.connect-wallet-dialog__description {
   margin: 0;
   font-size: var(--credence-font-size-sm);
   line-height: var(--credence-line-height-base);
   color: var(--credence-text-secondary);
 }
 
-.connect-wallet-modal__error {
+.connect-wallet-dialog__error {
   padding: var(--credence-space-3) var(--credence-space-4);
   border: 1px solid var(--credence-color-danger-border);
   border-radius: var(--credence-radius-md);
@@ -79,14 +79,14 @@
 
 /* ─── Footer ───────────────────────────────────────────────────────────────── */
 
-.connect-wallet-modal__footer {
+.connect-wallet-dialog__footer {
   display: flex;
   gap: var(--credence-space-3);
   padding: var(--credence-space-4) var(--credence-space-5) var(--credence-space-5);
   border-top: 1px solid var(--credence-border-default);
 }
 
-.connect-wallet-modal__footer .credence-button {
+.connect-wallet-dialog__footer .credence-button {
   flex: 1;
 }
 
@@ -117,8 +117,8 @@
 /* ─── Reduced motion ───────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .connect-wallet-modal__backdrop,
-  .connect-wallet-modal {
+  .connect-wallet-dialog__backdrop,
+  .connect-wallet-dialog {
     animation: none;
   }
 }
@@ -126,17 +126,17 @@
 /* ─── Mobile: bottom sheet ─────────────────────────────────────────────────── */
 
 @media (max-width: 767px) {
-  .connect-wallet-modal__backdrop {
+  .connect-wallet-dialog__backdrop {
     align-items: flex-end;
     padding: 0;
   }
 
-  .connect-wallet-modal {
+  .connect-wallet-dialog {
     max-width: none;
     border-radius: var(--credence-radius-xl) var(--credence-radius-xl) 0 0;
   }
 
-  .connect-wallet-modal__footer {
+  .connect-wallet-dialog__footer {
     flex-direction: column-reverse;
   }
 }

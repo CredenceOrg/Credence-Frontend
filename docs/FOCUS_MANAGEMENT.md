@@ -50,13 +50,13 @@ Chosen initial-focus targets today:
 
 | Component                              | File                                     | Initial focus  |
 | -------------------------------------- | ---------------------------------------- | -------------- |
-| `ConnectWalletModal`                   | `src/components/ConnectWalletModal.tsx`  | Cancel button  |
+| `ConnectWalletDialog`                   | `src/components/ConnectWalletDialog.tsx`  | Cancel button  |
 | `ConfirmDialog`                        | `src/components/ConfirmDialog.tsx`       | Cancel button  |
-| `SessionTimeoutModal` (wraps `ConfirmDialog`) | `src/components/SessionTimeoutModal.tsx` | Cancel button |
+| `SessionTimeoutDialog` (wraps `ConfirmDialog`) | `src/components/SessionTimeoutDialog.tsx` | Cancel button |
 | `ReauthPrompt`                         | `src/components/ReauthPrompt.tsx`        | Cancel button  |
 | `WhatsNewDialog`                       | `src/components/WhatsNewDialog.tsx`      | Close button   |
 | `KeyboardShortcutsDialog`              | `src/components/KeyboardShortcutsDialog.tsx` | Close button |
-| `QRScannerModal`                       | `src/components/QRScannerModal.tsx`      | Close button   |
+| `QRScannerDialog`                       | `src/components/QRScannerDialog.tsx`      | Close button   |
 | `MobileNav`                            | `src/components/navigation/MobileNav.tsx` | Close button  |
 | `ActionLauncher`                       | `src/components/ActionLauncher.tsx`      | Search input   |
 
@@ -204,4 +204,4 @@ Manual, keyboard-only, per overlay:
 
 Automated coverage lives alongside the components (`useFocusTrap` tests,
 `RouteAnnouncer.test.tsx`, `ToastProvider.test.tsx`, and most dialogs' test
-files; `QRScannerModal` is the current gap); run with `npm run test`.
+files; `QRScannerDialog` is the current gap); run with `npm run test`.

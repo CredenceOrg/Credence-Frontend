@@ -24,6 +24,8 @@ behavior notes, and a minimal usage example linking to source.
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useForwardRef`](#useforwardref)
+  - [`useDebouncedValue`](#usedebouncedvalue)
+  - [`useOnceMounted`](#useoncemounted)
   - [`useMediaQuery`](#usemediaquery)
   - [`useApiQuery`](#useapiquery)
   - [`useQuery`](#usequery)
@@ -234,6 +236,125 @@ const FancyInput = forwardRef<HTMLInputElement, FancyInputProps>(function FancyI
     </label>
   )
 })
+```
+
+---
+
+### `useDebouncedValue`
+
+Source: [`src/hooks/useDebouncedValue.ts`](../src/hooks/useDebouncedValue.ts)
+
+```ts
+function useDebouncedValue<T>(value: T, delayMs: number, options?: UseDebouncedValueOptions): T
+
+interface UseDebouncedValueOptions {
+  setTimeoutImpl?: typeof setTimeout // default: global setTimeout (for tests / fake timers)
+  clearTimeoutImpl?: typeof clearTimeout // default: global clearTimeout
+}
+```
+
+Returns a debounced copy of `value` that only updates after the input has remained stable
+for `delayMs` milliseconds. The single source of truth for search-input and filter debouncing
+across the app — components should never call `setTimeout` directly for this purpose. Pairs
+with `useDebouncedAutoSave` when a debounced _side effect_ is needed instead of a debounced
+_value_.
+
+**Parameters**
+
+| Parameter | Required | Description                                                                                  |
+| --------- | :------: | -------------------------------------------------------------------------------------------- |
+| `value`   |    ✓     | The source value to debounce. Generics preserve reference identity when the value is stable. |
+| `delayMs` |    ✓     | Debounce window in milliseconds. `<= 0` short-circuits to a synchronous pass-through.        |
+| `options` |          | Optional `setTimeoutImpl` / `clearTimeoutImpl` injection for tests or alternate runtimes.    |
+
+**Behavior notes**
+
+- **Restart on change:** every change to `value` (or `delayMs`) cancels the prior timer and
+  starts a fresh `delayMs` window, collapsing rapid bursts into the final value.
+- **`delayMs <= 0` short-circuit:** when non-positive, the hook returns the raw `value`
+  synchronously on every render — useful for tests and for consumer-controllable debounce
+  windows (e.g. "Search immediately").
+- **No unmount warnings:** the pending timer is always cleared on unmount, so a later
+  `setState` on an unmounted component is impossible.
+- **Referential stability:** when the input `value` reference is unchanged, the returned
+  value is the same reference as the previous render — safe as a `useEffect` dependency.
+- **Testable without mocking the import:** the optional `setTimeoutImpl` / `clearTimeoutImpl`
+  injection lets individual tests assert that timers are scheduled and cleared without
+  `vi.mock('@/hooks/useDebouncedValue')`. Errors from `clearTimeoutImpl` are swallowed so a
+  broken test double cannot crash the render path.
+- **SSR-safe / cleanup:** all timer work happens inside `useEffect`; the effect cleanup
+  always clears the pending timer.
+
+```tsx
+import { useEffect, useState } from 'react'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+
+function TrustLookupSearch() {
+  const [query, setQuery] = useState('')
+  // Settle for 300ms before triggering an API call so we don't slam the backend
+  // on every keystroke.
+  const debouncedQuery = useDebouncedValue(query, 300)
+
+  useEffect(() => {
+    if (debouncedQuery) searchAPI(debouncedQuery)
+  }, [debouncedQuery])
+
+  return <input value={query} onChange={(e) => setQuery(e.target.value)} />
+}
+```
+
+---
+
+### `useOnceMounted`
+
+Source: [`src/hooks/useOnceMounted.ts`](../src/hooks/useOnceMounted.ts)
+
+```ts
+function useOnceMounted(callback: () => void | (() => void)): void
+```
+
+Runs the provided callback exactly once per component mount, even under React 18 StrictMode
+where effects are intentionally double-invoked in development. Use this for actions that should
+fire **once and only once** when a component becomes alive — analytics page views, one-shot
+feature flags, telemetry, single-run side effects.
+
+**Parameters**
+
+| Parameter  | Required | Description                                                                                                                     |
+| ---------- | :------: | ------------------------------------------------------------------------------------------------------------------------------- |
+| `callback` |    ✓     | Function invoked on mount. May return a cleanup function, which will be invoked on unmount (or StrictMode's simulated unmount). |
+
+**Behavior notes**
+
+- **StrictMode-safe:** React 18 StrictMode in development intentionally mounts → unmounts →
+  remounts every component to surface lifecycle bugs. A `calledRef` guard persists across
+  that simulated unmount, so the callback only fires **once** despite the double-invoke.
+- **True remount rebinds:** a true unmount followed by a remount (different component
+  instance) starts fresh and fires the callback again — the right semantics for "run once
+  per lifetime of _this_ instance".
+- **Latest callback wins:** the `callback` is captured via a ref that is refreshed every
+  render, so callers do not need to wrap it in `useCallback` or include it in dependency
+  arrays.
+- **Optional cleanup:** if the callback returns a function, it is stored and invoked on
+  unmount. Under StrictMode, cleanup also runs on the simulated unmount, but the callback
+  itself still only fires once.
+- **Synchronous errors propagate** out of the mount effect — wrap your callback in a
+  `try/catch` if swallowing is desired.
+- **SSR-safe / cleanup:** runs inside `useEffect`; the cleanup function returned by the
+  callback is invoked on unmount.
+
+```tsx
+import { useOnceMounted } from '../hooks/useOnceMounted'
+
+function BondPage() {
+  // Fires exactly once when BondPage mounts, even under StrictMode's
+  // double-invoke, and never again while the page stays mounted.
+  useOnceMounted(() => {
+    analytics.track('route_view', { route: 'bond' })
+  })
+
+  return <main>…</main>
+}
 ```
 
 ---

@@ -274,3 +274,144 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe(42)
   })
 })
+
+describe('useDebouncedValue — options injection', () => {
+  it('uses the injected setTimeout / clearTimeout implementations', () => {
+    const setTimeoutImpl = vi.fn().mockReturnValue(42 as unknown as ReturnType<typeof setTimeout>)
+    const clearTimeoutImpl = vi.fn()
+
+    const { rerender } = renderHook(
+      ({ value, delayMs, options }) => useDebouncedValue(value, delayMs, options),
+      { initialProps: { value: 'a', delayMs: 200, options: { setTimeoutImpl, clearTimeoutImpl } } }
+    )
+
+    // Initial render schedules a debounce via the injected setTimeout
+    expect(setTimeoutImpl).toHaveBeenCalledTimes(1)
+    expect(setTimeoutImpl).toHaveBeenCalledWith(expect.any(Function), 200)
+
+    // A value change should cancel the previous timer and schedule a new one
+    rerender({ value: 'b', delayMs: 200, options: { setTimeoutImpl, clearTimeoutImpl } })
+    expect(clearTimeoutImpl).toHaveBeenCalledWith(42)
+    expect(setTimeoutImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it('passes the injected setTimeout result through to clearTimeout on unmount', () => {
+    const setTimeoutImpl = vi.fn().mockReturnValue(99 as unknown as ReturnType<typeof setTimeout>)
+    const clearTimeoutImpl = vi.fn()
+
+    const { unmount } = renderHook(() =>
+      useDebouncedValue('a', 200, { setTimeoutImpl, clearTimeoutImpl })
+    )
+
+    expect(setTimeoutImpl).toHaveBeenCalled()
+    unmount()
+
+    expect(clearTimeoutImpl).toHaveBeenCalledWith(99)
+  })
+
+  it('does not crash when clearTimeoutImpl throws on cancellation', () => {
+    const setTimeoutImpl = vi.fn().mockReturnValue(1 as unknown as ReturnType<typeof setTimeout>)
+    const clearTimeoutImpl = vi.fn(() => {
+      throw new Error('boom')
+    })
+
+    expect(() => {
+      const { rerender } = renderHook(
+        ({ value }) => useDebouncedValue(value, 200, { setTimeoutImpl, clearTimeoutImpl }),
+        { initialProps: { value: 'a' } }
+      )
+      rerender({ value: 'b' })
+    }).not.toThrow()
+  })
+
+  it('does not crash when clearTimeoutImpl throws on unmount cleanup', () => {
+    const setTimeoutImpl = vi.fn().mockReturnValue(1 as unknown as ReturnType<typeof setTimeout>)
+    const clearTimeoutImpl = vi.fn(() => {
+      throw new Error('boom')
+    })
+
+    expect(() => {
+      const { unmount } = renderHook(() =>
+        useDebouncedValue('a', 200, { setTimeoutImpl, clearTimeoutImpl })
+      )
+      unmount()
+    }).not.toThrow()
+  })
+
+  it('does not call setTimeoutImpl when delayMs is <= 0 (short-circuit path)', () => {
+    const setTimeoutImpl = vi.fn().mockReturnValue(1 as unknown as ReturnType<typeof setTimeout>)
+    const clearTimeoutImpl = vi.fn()
+
+    const { result, rerender } = renderHook(
+      ({ value, delayMs }) =>
+        useDebouncedValue(value, delayMs, { setTimeoutImpl, clearTimeoutImpl }),
+      { initialProps: { value: 'a', delayMs: 0 } }
+    )
+    expect(result.current).toBe('a')
+    expect(setTimeoutImpl).not.toHaveBeenCalled()
+
+    rerender({ value: 'b', delayMs: -1 })
+    expect(result.current).toBe('b')
+    expect(setTimeoutImpl).not.toHaveBeenCalled()
+  })
+
+  it('fires the injected setTimeoutImpl callback and updates the debounced value', () => {
+    // vi.advanceTimersByTime only fires timers created via vitest's controlled
+    // setTimeout — when the caller injects their own setTimeoutImpl, the timer
+    // is registered with that impl, so we capture the scheduled callback and
+    // invoke it manually to simulate the timer firing.
+    let scheduled: (() => void) | null = null
+    const setTimeoutImpl = vi.fn((cb: () => void, _ms: number) => {
+      scheduled = cb
+      return 7 as unknown as ReturnType<typeof setTimeout>
+    })
+    const clearTimeoutImpl = vi.fn()
+
+    const { result, rerender } = renderHook(
+      ({ value, delayMs }) =>
+        useDebouncedValue(value, delayMs, { setTimeoutImpl, clearTimeoutImpl }),
+      { initialProps: { value: 'a', delayMs: 200 } }
+    )
+
+    expect(result.current).toBe('a')
+    rerender({ value: 'b', delayMs: 200 })
+    // Still pending — value has not been committed yet
+    expect(result.current).toBe('a')
+    expect(scheduled).not.toBeNull()
+
+    act(() => {
+      scheduled?.()
+    })
+    expect(result.current).toBe('b')
+  })
+
+  it('does not re-run the effect when only the injected impl references change', () => {
+    // The implementation objects are kept in refs; changing the references
+    // across renders must NOT cancel and reschedule the timer.
+    const impl1 = {
+      set: vi.fn().mockReturnValue(1 as unknown as ReturnType<typeof setTimeout>),
+      clear: vi.fn(),
+    }
+    const impl2 = {
+      set: vi.fn().mockReturnValue(2 as unknown as ReturnType<typeof setTimeout>),
+      clear: vi.fn(),
+    }
+
+    const { rerender } = renderHook(
+      ({ value, options }) => useDebouncedValue(value, 200, options),
+      {
+        initialProps: {
+          value: 'a',
+          options: { setTimeoutImpl: impl1.set, clearTimeoutImpl: impl1.clear },
+        },
+      }
+    )
+    expect(impl1.set).toHaveBeenCalledTimes(1)
+
+    // Same value, but new impl references — effect must NOT re-run.
+    rerender({ value: 'a', options: { setTimeoutImpl: impl2.set, clearTimeoutImpl: impl2.clear } })
+    expect(impl1.set).toHaveBeenCalledTimes(1)
+    expect(impl1.clear).not.toHaveBeenCalled()
+    expect(impl2.set).not.toHaveBeenCalled()
+  })
+})

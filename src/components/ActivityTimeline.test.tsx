@@ -63,22 +63,24 @@ describe('ActivityTimeline', () => {
       expect(screen.getByRole('heading', { name: 'Attestation timeline' })).toBeInTheDocument()
     })
 
-    it('shows "3 recent events" summary for the sample data', () => {
+    it('shows "5 recent events" summary for the sample data', () => {
       render(<ActivityTimeline />)
-      expect(screen.getByText('3 recent events')).toBeInTheDocument()
+      expect(screen.getByText('5 recent events')).toBeInTheDocument()
     })
 
     it('renders the sample timeline list', () => {
       render(<ActivityTimeline />)
       expect(screen.getByRole('list', { name: /recent timeline events/i })).toBeInTheDocument()
-      expect(screen.getAllByRole('listitem')).toHaveLength(3)
+      expect(screen.getAllByRole('listitem')).toHaveLength(5)
     })
 
-    it('renders all three sample event titles', () => {
+    it('renders all five sample event titles', () => {
       render(<ActivityTimeline />)
       expect(screen.getByText('Attestation submitted')).toBeInTheDocument()
       expect(screen.getByText('Proof mismatch detected')).toBeInTheDocument()
       expect(screen.getByText('Credential refreshed')).toBeInTheDocument()
+      expect(screen.getByText('Bond-backed identity confirmed')).toBeInTheDocument()
+      expect(screen.getByText('Stale credential flagged')).toBeInTheDocument()
     })
   })
 

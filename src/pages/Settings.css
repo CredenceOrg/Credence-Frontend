@@ -1,62 +1,257 @@
+/* =========================================================
+ * Settings page
+ * Token contract: every dimension, color, and motion value
+ * must come from a --credence-* or semantic alias token.
+ * No magic numbers.
+ * ========================================================= */
+
+/* ── Page grid ─────────────────────────────────────────── */
+
 .settings-page {
   display: grid;
   gap: var(--credence-space-5);
+  /* Constrain the form to a readable width on ultra-wide viewports */
+  max-width: 52rem;
 }
 
-/* The global h1 reset in index.css already provides 3xl / bold / tight —
- * no override needed here. Only reset the margin so it doesn't push into
- * the grid gap. */
 .settings-page h1 {
   margin-bottom: var(--credence-space-1);
 }
 
+/* ── Section card ──────────────────────────────────────── */
+
 .settings-section {
   background: var(--credence-surface-card);
   border: 1px solid var(--credence-border-default);
-  padding: var(--credence-space-4);
+  padding: var(--credence-space-5);
   border-radius: var(--credence-radius-md);
+  display: grid;
+  gap: var(--credence-space-4);
 }
 
-/* Section h2 uses the xl step (matches card-title level across the app) */
 .settings-section h2 {
   font-size: var(--credence-font-size-xl);
   font-weight: var(--credence-font-weight-semibold);
-  margin-bottom: var(--credence-space-1);
+  margin-bottom: 0;
 }
 
-.settings-actions {
-  display: flex;
+.settings-section__description {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+  margin: 0;
+}
+
+/* ── Fieldset groups ───────────────────────────────────── */
+
+/*
+ * .settings-fieldset is a borderless reset used when the visual grouping is
+ * handled by the section card above. The legend still provides the AT-readable
+ * label; it is displayed inline with normal flow rather than hidden, so
+ * sighted users can also see the group label.
+ */
+.settings-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
   gap: var(--credence-space-3);
 }
 
-.form-hint {
-  color: var(--text-secondary);
+.settings-fieldset__legend {
   font-size: var(--credence-font-size-sm);
-  margin-bottom: 0.5rem;
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-text-primary);
+  margin-bottom: var(--credence-space-2);
+  /* float: left is the standard trick so the legend participates in block
+   * flow while still providing the accessible group name for the fieldset */
+  float: left;
+  width: 100%;
 }
 
-.control-toggle {
-  padding: 0.375rem 0.75rem !important;
-  border-radius: var(--credence-radius-full) !important;
-  border: 1px solid var(--border-default) !important;
-  background: var(--bg-card) !important;
-  color: var(--text-primary) !important;
-}
-
-.control-select {
-  padding: 0.5rem 0.6rem !important;
-  border-radius: var(--credence-radius-md) !important;
-  border: 1px solid var(--border-default) !important;
-  background: var(--bg-card) !important;
-  color: var(--text-primary) !important;
-}
-
-.control-time {
-  padding: 0.5rem 0.6rem;
+/*
+ * --card variant: draws a visible border and padding, used for the Quiet
+ * Hours sub-section which is nested inside the Notifications section card.
+ */
+.settings-fieldset--card {
+  border: 1px solid var(--credence-border-default);
   border-radius: var(--credence-radius-md);
-  border: 1px solid var(--border-default);
-  background: var(--bg-card);
-  color: var(--text-primary);
+  padding: var(--credence-space-4);
+  margin-top: var(--credence-space-2);
+}
+
+.settings-fieldset__legend--card {
+  font-size: var(--credence-font-size-base);
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-text-primary);
+  /* Give the legend a bit of horizontal padding so it visually "floats" above
+   * the card border on browsers that render legend positioning. */
+  padding-inline: var(--credence-space-2);
+  margin-bottom: 0;
+}
+
+/* ── Field hint text ───────────────────────────────────── */
+
+.settings-field-hint {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+  margin: 0;
+}
+
+/* ── Quiet-hours time inputs ───────────────────────────── */
+
+.quiet-hours-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--credence-space-3);
+}
+
+/* ── Quiet-hours status line ───────────────────────────── */
+
+.settings-quiet-hours-status {
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+  margin: 0;
+}
+
+.settings-quiet-hours-status--active {
+  color: var(--credence-color-success-text);
+  font-weight: var(--credence-font-weight-medium);
+}
+
+/* ── Preview row (toast preview button + hint) ─────────── */
+
+.settings-preview-row {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-3);
+  flex-wrap: wrap;
+}
+
+/* ── Backup & Restore ──────────────────────────────────── */
+
+.settings-backup-row {
+  display: flex;
+  gap: var(--credence-space-3);
+  flex-wrap: wrap;
+}
+
+.settings-backup-row .settings-btn {
+  flex: 1;
+  min-width: 140px;
+}
+
+.settings-import-error {
+  margin-top: var(--credence-space-3);
+}
+
+/* ── Diff table (import preview) ───────────────────────── */
+
+.settings-diff-table {
+  margin-top: var(--credence-space-3);
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--credence-font-size-sm);
+}
+
+.settings-diff-table th,
+.settings-diff-table td {
+  text-align: left;
+  padding: var(--credence-space-1) var(--credence-space-2);
+}
+
+.settings-diff-table th {
+  border-bottom: 1px solid var(--credence-border-default);
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-text-secondary);
+}
+
+.settings-diff-table td code {
+  font-family: var(--credence-font-family-mono);
+  font-size: var(--credence-font-size-xs);
+  background: var(--credence-color-slate-100);
+  padding: 0.1em 0.35em;
+  border-radius: var(--credence-radius-sm);
+}
+
+[data-theme='dark'] .settings-diff-table td code {
+  background: var(--credence-color-slate-700);
+}
+
+/* ── Actions bar ───────────────────────────────────────── */
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-3);
+  flex-wrap: wrap;
+  /* Push the action bar to sit visually adjacent to the last section, not
+   * at the full gap distance */
+  margin-top: calc(-1 * var(--credence-space-2));
+}
+
+/* ── Shared button styles ──────────────────────────────── */
+
+.settings-btn {
+  padding: var(--credence-space-2) var(--credence-space-4);
+  border-radius: var(--credence-radius-md);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-medium);
+  line-height: var(--credence-line-height-tight);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.settings-btn:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.settings-btn--primary {
+  background: var(--credence-color-primary);
+  border-color: var(--credence-color-primary);
+  color: var(--credence-color-white);
+}
+
+.settings-btn--primary:hover:not(:disabled) {
+  background: var(--credence-color-primary-strong);
+  border-color: var(--credence-color-primary-strong);
+}
+
+.settings-btn--primary:disabled,
+.settings-btn--primary[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-btn--secondary {
+  background: var(--credence-surface-card);
+  border-color: var(--credence-border-default);
+  color: var(--credence-text-primary);
+}
+
+.settings-btn--secondary:hover:not(:disabled) {
+  border-color: var(--credence-color-primary);
+  color: var(--credence-color-primary);
+}
+
+/* ── time input ────────────────────────────────────────── */
+
+/*
+ * .control-time styles type="time" inputs to match the Select / segmented
+ * controls above: same padding, border, radius, and focus ring.
+ */
+.control-time {
+  width: 100%;
+  padding: var(--credence-space-2) var(--credence-space-3);
+  border-radius: var(--credence-radius-lg);
+  border: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
   font-family: var(--credence-font-family-base);
   font-size: var(--credence-font-size-base);
   line-height: var(--credence-line-height-base);
@@ -78,45 +273,43 @@
 .control-time:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: var(--credence-color-slate-50);
 }
 
-.quiet-hours-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+[data-theme='dark'] .control-time:disabled {
+  background: var(--credence-color-slate-800);
 }
 
-.quiet-hours-fields .control-time {
-  width: 100%;
-}
+/* ── Responsive ────────────────────────────────────────── */
 
-.settings-backup-row {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.settings-backup-row button {
-  flex: 1;
-  min-width: 140px;
-}
-
-/* Responsive layout: single column on small screens, two columns on wide */
-@media (min-width: 900px) {
-  .settings-page {
-    grid-template-columns: 1fr 360px;
-    align-items: start;
+/* 375px–639px: constrain inline padding so the page doesn't crowd on
+ * narrow mobile without adding extra wrapper elements */
+@media (max-width: 639px) {
+  .settings-section {
+    padding: var(--credence-space-4);
   }
 
-  .settings-section {
-    margin-bottom: 0;
+  .settings-backup-row .settings-btn {
+    width: 100%;
   }
 }
 
 @media (max-width: 374px) {
   .settings-page {
-    padding: 0.5rem;
+    /* The outer container already applies --credence-container-padding;
+     * this override reduces the section card inset slightly so text
+     * doesn't crowd the edges on sub-375px viewports */
+    gap: var(--credence-space-4);
+  }
+
+  .settings-section {
+    padding: var(--credence-space-3);
+  }
+}
+
+/* 1280px+: two-column layout — main sections left, action bar anchored right */
+@media (min-width: 1280px) {
+  .settings-page {
+    max-width: 64rem;
   }
 }

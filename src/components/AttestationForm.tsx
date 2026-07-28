@@ -5,6 +5,7 @@ import { FormField } from './forms/FormField'
 import Button from './Button'
 import ConfirmDialog from './ConfirmDialog'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useToast } from './ToastProvider'
 import { ATTESTATION_EVENTS, type AttestationPayload } from '../events'
 
@@ -36,6 +37,7 @@ export default function AttestationForm({
 }: AttestationFormProps) {
   const { addToast } = useToast()
   const { copy, copied } = useCopyToClipboard()
+  const reducedMotion = useReducedMotion()
   const [subject, setSubject] = useState('')
   const [isSubjectValid, setIsSubjectValid] = useState(false)
   const [type, setType] = useState<string>(ATTESTATION_EVENTS.TYPES.IDENTITY)
@@ -255,7 +257,7 @@ export default function AttestationForm({
                     color: 'var(--credence-text-secondary)',
                     cursor: 'pointer',
                     flexShrink: 0,
-                    transition: 'all 0.2s ease',
+                    transition: reducedMotion ? 'none' : 'all 0.2s ease',
                   }}
                 >
                   {copied ? (

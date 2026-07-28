@@ -29,7 +29,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/EmptyState       | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                                   |
 | states/ErrorState       | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                                   |
 | states/LoadingSkeleton  | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                                   |
-| SessionTimeoutModal     | Inline styles in `src/components/SessionTimeoutModal.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                                        |
+| SessionTimeoutDialog     | Inline styles in `src/components/SessionTimeoutDialog.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                                        |
 | ActionCard              | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                               |
 | VirtualizedList         | `src/components/VirtualizedList.tsx`                                                | No dedicated CSS file; uses consumer-provided layout and spacing.                                                                   |
 | Disclaimer              | `src/components/Disclaimer.css`                                                     | None.                                                                                                                               |
@@ -516,9 +516,9 @@ Tokens: inline styles consume `--credence-skeleton-gradient`, `--credence-motion
 <LoadingSkeleton variant="card" rows={2} />
 ```
 
-## SessionTimeoutModal
+## SessionTimeoutDialog
 
-Source: [`src/components/SessionTimeoutModal.tsx`](../src/components/SessionTimeoutModal.tsx).
+Source: [`src/components/SessionTimeoutDialog.tsx`](../src/components/SessionTimeoutDialog.tsx).
 
 | Prop              | Type         | Default  |
 | ----------------- | ------------ | -------- |
@@ -532,7 +532,7 @@ Accessibility: uses `ConfirmDialog` primitive.
 Tokens: warning color tokens, spacing, radius.
 
 ```tsx
-<SessionTimeoutModal
+<SessionTimeoutDialog
   open={showWarning}
   timeLeftSeconds={60}
   onStayLoggedIn={stay}

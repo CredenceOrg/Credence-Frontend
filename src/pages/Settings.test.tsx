@@ -269,7 +269,8 @@ describe('Settings — unsaved-changes guard', () => {
       await act(async () => {})
 
       const handler = addListenerSpy.mock.calls.find(([event]) => event === 'beforeunload')?.[1] as
-        ((e: Event) => void) | undefined
+        | ((e: Event) => void)
+        | undefined
       expect(handler).toBeDefined()
 
       const event = new Event('beforeunload', { cancelable: true })

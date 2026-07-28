@@ -17,13 +17,13 @@ describe('ErrorBoundary', () => {
     const FailChild = () => {
       throw new Error('Something went wrong in component render')
     }
-    
+
     render(
       <ErrorBoundary>
         <FailChild />
       </ErrorBoundary>
     )
-    
+
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
     })
@@ -34,13 +34,13 @@ describe('ErrorBoundary', () => {
     const LazyFailComponent = () => {
       throw new Error('Component render failure')
     }
-    
+
     render(
       <ErrorBoundary>
         <LazyFailComponent />
       </ErrorBoundary>
     )
-    
+
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
     })
@@ -48,7 +48,7 @@ describe('ErrorBoundary', () => {
 
   it('ErrorBoundary allows retry after component succeeds on reset', async () => {
     let shouldThrow = true
-    
+
     const FlakyComponent = () => {
       if (shouldThrow) {
         Promise.resolve().then(() => {
@@ -58,19 +58,19 @@ describe('ErrorBoundary', () => {
       }
       return <div>Recovered content</div>
     }
-    
+
     render(
       <ErrorBoundary>
         <FlakyComponent />
       </ErrorBoundary>
     )
-    
+
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
     })
-    
+
     fireEvent.click(screen.getByRole('button', { name: /try again/i }))
-    
+
     await waitFor(() => {
       expect(screen.getByText('Recovered content')).toBeInTheDocument()
     })

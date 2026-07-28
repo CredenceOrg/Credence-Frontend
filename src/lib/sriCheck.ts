@@ -125,8 +125,7 @@ export function checkSri(htmlSource: string, ownOrigin = ''): SriResult {
     if (!url) continue // inline script or link without href — skip
 
     // Same-origin check
-    const isExternal =
-      isCrossOrigin(url) && (ownOrigin === '' || !url.startsWith(ownOrigin))
+    const isExternal = isCrossOrigin(url) && (ownOrigin === '' || !url.startsWith(ownOrigin))
 
     if (!isExternal) continue // relative / same-origin — SRI not required
 

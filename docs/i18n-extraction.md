@@ -1,6 +1,6 @@
 # Extracting i18n Messages
 
-This guide is for **contributors** who need to extract hardcoded user-facing strings from React components into our localization files. 
+This guide is for **contributors** who need to extract hardcoded user-facing strings from React components into our localization files.
 
 By extracting these strings into `src/i18n/locales/en.json`, we keep the application auditable, safe to change, and ready for future translations.
 
@@ -29,31 +29,33 @@ If you are adding an empty state to the Dashboard:
 In your component, import the `useTranslation` hook from `react-i18next` and reference the newly created key.
 
 **Before (Hardcoded):**
+
 ```tsx
 import { EmptyState } from '@/components/states'
 
 export function DashboardActivity() {
   return (
-    <EmptyState 
-      title="No recent activity" 
-      description="New trust score events will appear here once bonds, attestations, or score updates occur." 
+    <EmptyState
+      title="No recent activity"
+      description="New trust score events will appear here once bonds, attestations, or score updates occur."
     />
   )
 }
 ```
 
 **After (Extracted):**
+
 ```tsx
 import { useTranslation } from 'react-i18next'
 import { EmptyState } from '@/components/states'
 
 export function DashboardActivity() {
   const { t } = useTranslation()
-  
+
   return (
-    <EmptyState 
-      title={t('dashboard.emptyStateTitle')} 
-      description={t('dashboard.emptyStateDescription')} 
+    <EmptyState
+      title={t('dashboard.emptyStateTitle')}
+      description={t('dashboard.emptyStateDescription')}
     />
   )
 }

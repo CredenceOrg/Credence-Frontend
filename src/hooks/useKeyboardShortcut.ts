@@ -93,7 +93,9 @@ export function parseShortcutSpec(spec: ShortcutKeys): string[][] {
     const stringArray = spec as string[]
 
     // If any item contains a '+', treat array as multiple shortcut strings (e.g. ['Mod+K', 'Alt+S'])
-    const hasPlusCombo = stringArray.some((s) => typeof s === 'string' && s.includes('+') && s.trim() !== '+')
+    const hasPlusCombo = stringArray.some(
+      (s) => typeof s === 'string' && s.includes('+') && s.trim() !== '+'
+    )
     if (hasPlusCombo) {
       return stringArray.map((s) => parseSingleShortcutString(s))
     }
@@ -113,7 +115,6 @@ function parseSingleShortcutString(str: string): string[] {
     .map((k) => k.trim())
     .filter(Boolean)
 }
-
 
 /** Normalizes key names for comparisons (e.g. Esc -> Escape, Option -> Alt). */
 function normalizeKeyName(key: string): string {
@@ -145,11 +146,7 @@ function normalizeKeyName(key: string): string {
 }
 
 /** Evaluates whether a KeyboardEvent matches a parsed shortcut token array. */
-export function matchesShortcut(
-  event: KeyboardEvent,
-  tokens: string[],
-  isMac: boolean
-): boolean {
+export function matchesShortcut(event: KeyboardEvent, tokens: string[], isMac: boolean): boolean {
   let reqMod = false
   let reqCtrl = false
   let reqCmd = false
@@ -261,7 +258,12 @@ export function useKeyboardShortcut(
   let onShortcut: ShortcutCallback
   let configOpts: UseKeyboardShortcutOptions
 
-  if (typeof keysOrConfig === 'object' && !Array.isArray(keysOrConfig) && 'keys' in keysOrConfig && 'onShortcut' in keysOrConfig) {
+  if (
+    typeof keysOrConfig === 'object' &&
+    !Array.isArray(keysOrConfig) &&
+    'keys' in keysOrConfig &&
+    'onShortcut' in keysOrConfig
+  ) {
     const { keys: k, onShortcut: cb, ...rest } = keysOrConfig as UseKeyboardShortcutConfig
     keys = k
     onShortcut = cb
@@ -327,13 +329,5 @@ export function useKeyboardShortcut(
     return () => {
       targetElement?.removeEventListener('keydown', handleKeyDown as EventListener)
     }
-  }, [
-    keys,
-    enabled,
-    preventDefault,
-    stopPropagation,
-    ignoreInputElements,
-    target,
-    userAgent,
-  ])
+  }, [keys, enabled, preventDefault, stopPropagation, ignoreInputElements, target, userAgent])
 }

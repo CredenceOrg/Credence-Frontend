@@ -29,9 +29,7 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
   ) {
     return elements
   }
-  return elements.filter(
-    (el) => el.offsetParent !== null || el.getClientRects().length > 0
-  )
+  return elements.filter((el) => el.offsetParent !== null || el.getClientRects().length > 0)
 }
 
 /**

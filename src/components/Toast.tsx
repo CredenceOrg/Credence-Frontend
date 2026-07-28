@@ -1,7 +1,14 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
+import type { ToastSeverity, ToastData } from '../events'
+import { explorerUrl } from '../lib/explorerUrl'
+import { truncateAddress } from '../lib/stellar'
 import './Toast.css'
 
 export type { ToastSeverity, ToastData }
+export interface ToastOptions {
+  txHash?: string
+  network?: string
+}
 
 const ICONS: Record<ToastSeverity, React.ReactNode> = {
   info: (
@@ -67,7 +74,6 @@ const ICONS: Record<ToastSeverity, React.ReactNode> = {
     </svg>
   ),
 }
-
 
 interface ToastProps {
   toast: ToastData
@@ -214,7 +220,34 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       </div>
       <div className="toast__content">
         <span className="toast__message">{toast.message}</span>
-        {/* toast.txHash functionality removed temporarily to fix build errors */}
+        {toast.txHash && (
+          <div className="toast__action">
+            <span className="toast__tx-hash">{truncateAddress(toast.txHash)}</span>
+            <a
+              href={explorerUrl(toast.network ?? 'public', toast.txHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="toast__link"
+              aria-label="View transaction on Stellar Explorer"
+            >
+              View on Explorer
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+                className="toast__link-arrow"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </a>
+          </div>
+        )}
       </div>
       <button
         type="button"

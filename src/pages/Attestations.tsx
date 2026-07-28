@@ -14,23 +14,26 @@ export default function Attestations() {
   const handleSubmitSuccess = (payload: AttestationPayload) => {
     const formatTimestamp = () => {
       const now = new Date()
-      return now.toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }) + ' UTC'
+      return (
+        now.toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }) + ' UTC'
+      )
     }
 
     const newItem: ActivityItem = {
       id: `evt-new-${items.length + 1}`,
       timestamp: formatTimestamp(),
-      title: payload.type === ATTESTATION_EVENTS.TYPES.IDENTITY 
-        ? t('activityTimeline.identityAttestation') 
-        : payload.type === ATTESTATION_EVENTS.TYPES.PEER_VOUCH 
-          ? t('activityTimeline.peerVouch') 
-          : t('activityTimeline.credentialCertification'),
+      title:
+        payload.type === ATTESTATION_EVENTS.TYPES.IDENTITY
+          ? t('activityTimeline.identityAttestation')
+          : payload.type === ATTESTATION_EVENTS.TYPES.PEER_VOUCH
+            ? t('activityTimeline.peerVouch')
+            : t('activityTimeline.credentialCertification'),
       description: payload.evidence,
       actor: 'Current User',
       statusLabel: t('activityTimeline.submitted'),
@@ -63,7 +66,7 @@ export default function Attestations() {
       }}
     >
       <header>
-        <h1 style={{ marginTop: 0, color: 'var(--credence-text-primary)' }}>{t('attestations.title')}</h1>
+        <h1>{t('attestations.title')}</h1>
         <p style={{ color: 'var(--credence-text-secondary)', margin: 0 }}>
           {t('attestations.description')}
         </p>
@@ -85,7 +88,13 @@ export default function Attestations() {
         </section>
 
         <section aria-labelledby="timeline-heading">
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--credence-space-4)' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginBottom: 'var(--credence-space-4)',
+            }}
+          >
             <div style={{ width: '200px' }}>
               <Select
                 id="attestation-filter"

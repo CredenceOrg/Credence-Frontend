@@ -61,13 +61,13 @@ The app uses `localStorage` (never `sessionStorage`). All keys are namespaced wi
 
 ### Storage keys in use
 
-| Key | Location | Purpose |
-|---|---|---|
-| `credence:settings` | `src/context/SettingsContext.tsx` | Persisted user preferences (theme, network, address display, toasts) |
-| `credence:recent-lookups` | `src/pages/TrustScore.tsx` | Recent Stellar address lookup history (max 5) |
-| `credence:last-seen-update-id` | `src/hooks/useProductUpdates.ts` | Tracks the newest product update the user has seen |
-| `credence:onboarding:step` | `src/config/onboarding.ts` | Current onboarding tour step |
-| `credence:onboarding:onboardedAt` | `src/config/onboarding.ts` | Onboarding completion timestamp |
+| Key                               | Location                          | Purpose                                                              |
+| --------------------------------- | --------------------------------- | -------------------------------------------------------------------- |
+| `credence:settings`               | `src/context/SettingsContext.tsx` | Persisted user preferences (theme, network, address display, toasts) |
+| `credence:recent-lookups`         | `src/pages/TrustScore.tsx`        | Recent Stellar address lookup history (max 5)                        |
+| `credence:last-seen-update-id`    | `src/hooks/useProductUpdates.ts`  | Tracks the newest product update the user has seen                   |
+| `credence:onboarding:step`        | `src/config/onboarding.ts`        | Current onboarding tour step                                         |
+| `credence:onboarding:onboardedAt` | `src/config/onboarding.ts`        | Onboarding completion timestamp                                      |
 
 ### Checklist
 
@@ -88,7 +88,7 @@ The app uses `localStorage` (never `sessionStorage`). All keys are namespaced wi
 // src/hooks/useLocalStorage.ts — use this hook; don't call localStorage directly
 const [settings, setSettings] = useLocalStorage<PersistedSettings>(
   'credence:settings',
-  defaultPersistedSettings,
+  defaultPersistedSettings
 )
 ```
 
@@ -102,10 +102,10 @@ in `index.html`.
 
 ### External dependency surface
 
-| Dependency | Role | Load mechanism |
-|---|---|---|
-| `@stellar/freighter-api` | Stellar wallet bridge (Freighter extension) | Dynamic `import()` at runtime (`src/lib/freighterClient.ts:28`) — bundled by Vite, not fetched from a CDN |
-| `i18next-browser-languagedetector` | Language detection from browser preferences | Static import, bundled by Vite |
+| Dependency                         | Role                                        | Load mechanism                                                                                            |
+| ---------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `@stellar/freighter-api`           | Stellar wallet bridge (Freighter extension) | Dynamic `import()` at runtime (`src/lib/freighterClient.ts:28`) — bundled by Vite, not fetched from a CDN |
+| `i18next-browser-languagedetector` | Language detection from browser preferences | Static import, bundled by Vite                                                                            |
 
 ### Checklist
 
@@ -114,11 +114,8 @@ in `index.html`.
       `innerHTML` with script content, `eval`, or `Function` constructor).
 - [ ] The only dynamic `import()` used in production is
       `@stellar/freighter-api` (lazy-loaded only when the user connects a wallet).
-- [ ] If a third-party script must be loaded, it requires:
-      1. A documented exception in this checklist.
-      2. A `crossorigin` attribute and Subresource Integrity (SRI) hash.
-      3. A corresponding CSP `script-src` adjustment (prefer a strict hash or nonce
-         over `'unsafe-inline'`).
+- [ ] If a third-party script must be loaded, it requires: 1. A documented exception in this checklist. 2. A `crossorigin` attribute and Subresource Integrity (SRI) hash. 3. A corresponding CSP `script-src` adjustment (prefer a strict hash or nonce
+      over `'unsafe-inline'`).
 
 ### Real-world example
 
@@ -144,11 +141,11 @@ the Freighter SDK). Dev tooling carries the bulk of reported vulnerabilities.
 
 ### Current audit snapshot (July 2026)
 
-| Severity | Count | Notable packages |
-|---|---|---|
-| Critical | 2 | Transitive in dev tooling |
-| High | 4 | `brace-expansion`, `postcss`, `undici` (transitive dev) |
-| Moderate | 9 | `react-router-dom` (2), `esbuild` (Vite dev), `uuid` (Storybook) |
+| Severity | Count | Notable packages                                                 |
+| -------- | ----- | ---------------------------------------------------------------- |
+| Critical | 2     | Transitive in dev tooling                                        |
+| High     | 4     | `brace-expansion`, `postcss`, `undici` (transitive dev)          |
+| Moderate | 9     | `react-router-dom` (2), `esbuild` (Vite dev), `uuid` (Storybook) |
 
 Only `react-router-dom`'s moderate advisories affect the production runtime. The
 remaining vulnerabilities are in dev-time tooling (Storybook, Vitest,

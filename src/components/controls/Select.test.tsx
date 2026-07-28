@@ -13,7 +13,9 @@ const networkOptions = [
 describe('Select', () => {
   it('renders every provided option', () => {
     // Behavior under test: option labels and values are rendered for Settings choices.
-    render(<Select value="testnet" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />)
+    render(
+      <Select value="testnet" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />
+    )
 
     expect(screen.getByRole('option', { name: 'Testnet' })).toHaveValue('testnet')
     expect(screen.getByRole('option', { name: 'Mainnet' })).toHaveValue('mainnet')
@@ -22,10 +24,14 @@ describe('Select', () => {
 
   it('reflects the value prop as the selected option', () => {
     // Behavior under test: the controlled value determines which Settings option is selected.
-    render(<Select value="mainnet" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />)
+    render(
+      <Select value="mainnet" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />
+    )
 
     expect(screen.getByRole('combobox', { name: 'Network' })).toHaveValue('mainnet')
-    expect((screen.getByRole('option', { name: 'Mainnet' }) as HTMLOptionElement).selected).toBe(true)
+    expect((screen.getByRole('option', { name: 'Mainnet' }) as HTMLOptionElement).selected).toBe(
+      true
+    )
   })
 
   it('calls onChange with the newly selected value', async () => {
@@ -33,7 +39,14 @@ describe('Select', () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
 
-    render(<Select value="testnet" onChange={handleChange} options={networkOptions} ariaLabel="Network" />)
+    render(
+      <Select
+        value="testnet"
+        onChange={handleChange}
+        options={networkOptions}
+        ariaLabel="Network"
+      />
+    )
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Network' }), 'futurenet')
 
@@ -43,7 +56,9 @@ describe('Select', () => {
 
   it('applies aria-label when no associated label is present', () => {
     // Behavior under test: standalone Selects still expose an accessible name.
-    render(<Select value="testnet" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />)
+    render(
+      <Select value="testnet" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />
+    )
 
     expect(screen.getByRole('combobox', { name: 'Network' })).toBeInTheDocument()
   })
@@ -58,12 +73,20 @@ describe('Select', () => {
 
   it('keeps the combobox empty when value is not present in options', () => {
     // Behavior under test: invalid persisted values do not select an unrelated option.
-    render(<Select value="unknown" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />)
+    render(
+      <Select value="unknown" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />
+    )
 
     expect(screen.getByRole('combobox', { name: 'Network' })).toHaveValue('testnet')
-    expect((screen.getByRole('option', { name: 'Testnet' }) as HTMLOptionElement).selected).toBe(true)
-    expect((screen.getByRole('option', { name: 'Mainnet' }) as HTMLOptionElement).selected).toBe(false)
-    expect((screen.getByRole('option', { name: 'Futurenet' }) as HTMLOptionElement).selected).toBe(false)
+    expect((screen.getByRole('option', { name: 'Testnet' }) as HTMLOptionElement).selected).toBe(
+      true
+    )
+    expect((screen.getByRole('option', { name: 'Mainnet' }) as HTMLOptionElement).selected).toBe(
+      false
+    )
+    expect((screen.getByRole('option', { name: 'Futurenet' }) as HTMLOptionElement).selected).toBe(
+      false
+    )
   })
 
   it('composes with FormField label and id wiring without ariaLabel', () => {
@@ -74,6 +97,9 @@ describe('Select', () => {
       </FormField>
     )
 
-    expect(screen.getByRole('combobox', { name: 'Preferred network' })).toHaveAttribute('id', 'network')
+    expect(screen.getByRole('combobox', { name: 'Preferred network' })).toHaveAttribute(
+      'id',
+      'network'
+    )
   })
 })

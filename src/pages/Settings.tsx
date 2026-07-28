@@ -11,15 +11,15 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
 import { isQuietHoursActive, parseHHmm } from '../lib/quietHours'
 import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
-import {
-  AutoSaveIndicator,
-  type AutoSaveIndicatorLabels,
-} from '../components/indicators'
+import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
 import { apiFetch } from '../api/client'
 import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
 import './Settings.css'
 
-function computeDiff(current: Omit<SettingsBlob, keyof unknown>, incoming: SettingsBlob): { key: string; from: string; to: string }[] {
+function computeDiff(
+  current: Omit<SettingsBlob, keyof unknown>,
+  incoming: SettingsBlob
+): { key: string; from: string; to: string }[] {
   const diffs: { key: string; from: string; to: string }[] = []
   const keys: (keyof SettingsBlob)[] = [
     'themeMode',
@@ -148,7 +148,7 @@ export default function Settings() {
       a.quietHoursEnabled === b.quietHoursEnabled &&
       a.quietHoursStart === b.quietHoursStart &&
       a.quietHoursEnd === b.quietHoursEnd,
-    [],
+    []
   )
 
   // Debounced auto-save: every field change triggers a PATCH against the
@@ -159,8 +159,7 @@ export default function Settings() {
   // available offline.
   const autoSave = useDebouncedAutoSave({
     value: draft,
-    save: (next, signal) =>
-      apiFetch<void>('/settings', { method: 'PATCH', body: next, signal }),
+    save: (next, signal) => apiFetch<void>('/settings', { method: 'PATCH', body: next, signal }),
     delayMs: AUTO_SAVE_DEFAULTS.DEBOUNCE_MS,
     isEqual: draftIsEqual,
   })
@@ -173,7 +172,7 @@ export default function Settings() {
       error: "Couldn't save. Try again.",
       retry: 'Retry',
     }),
-    [],
+    []
   )
 
   const handleRetry = useCallback(() => {
@@ -208,7 +207,7 @@ export default function Settings() {
   const handleCancel = () => {
     if (isDirty) {
       const confirmed = window.confirm(
-        'You have unsaved changes. Are you sure you want to discard them?',
+        'You have unsaved changes. Are you sure you want to discard them?'
       )
       if (!confirmed) return
     }
@@ -293,7 +292,17 @@ export default function Settings() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
     addToast('success', 'Settings exported successfully')
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, quietHoursEnabled, quietHoursStart, quietHoursEnd, addToast])
+  }, [
+    themeMode,
+    network,
+    addressDisplay,
+    toastsEnabled,
+    autoDismiss,
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
+    addToast,
+  ])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -379,21 +388,51 @@ export default function Settings() {
 
     return (
       <div>
-        <p>The following settings from <strong>{importFileName || 'file'}</strong> will be applied:</p>
+        <p>
+          The following settings from <strong>{importFileName || 'file'}</strong> will be applied:
+        </p>
         <table style={{ marginTop: '0.75rem', borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>Setting</th>
-              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>Current</th>
-              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>Imported</th>
+              <th
+                style={{
+                  textAlign: 'left',
+                  padding: '0.25rem 0.5rem',
+                  borderBottom: '1px solid var(--border-default)',
+                }}
+              >
+                Setting
+              </th>
+              <th
+                style={{
+                  textAlign: 'left',
+                  padding: '0.25rem 0.5rem',
+                  borderBottom: '1px solid var(--border-default)',
+                }}
+              >
+                Current
+              </th>
+              <th
+                style={{
+                  textAlign: 'left',
+                  padding: '0.25rem 0.5rem',
+                  borderBottom: '1px solid var(--border-default)',
+                }}
+              >
+                Imported
+              </th>
             </tr>
           </thead>
           <tbody>
             {diffs.map((d) => (
               <tr key={d.key}>
                 <td style={{ padding: '0.25rem 0.5rem' }}>{FIELD_LABELS[d.key] || d.key}</td>
-                <td style={{ padding: '0.25rem 0.5rem' }}><code>{d.from}</code></td>
-                <td style={{ padding: '0.25rem 0.5rem' }}><code>{d.to}</code></td>
+                <td style={{ padding: '0.25rem 0.5rem' }}>
+                  <code>{d.from}</code>
+                </td>
+                <td style={{ padding: '0.25rem 0.5rem' }}>
+                  <code>{d.to}</code>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -404,7 +443,7 @@ export default function Settings() {
 
   return (
     <div className="settings-page">
-      <h1 style={{ marginTop: 0 }}>Settings</h1>
+      <h1>Settings</h1>
 
       <section className="settings-section" aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">Appearance</h2>
@@ -599,7 +638,12 @@ export default function Settings() {
           </FormField>
 
           {quietHoursError && (
-            <p id="quiet-hours-error" role="alert" className="form-error" style={{ marginTop: '0.5rem' }}>
+            <p
+              id="quiet-hours-error"
+              role="alert"
+              className="form-error"
+              style={{ marginTop: '0.5rem' }}
+            >
               {quietHoursError}
             </p>
           )}
@@ -615,7 +659,9 @@ export default function Settings() {
 
       <section className="settings-section" aria-labelledby="backup-heading">
         <h2 id="backup-heading">Backup &amp; Restore</h2>
-        <p className="form-hint">Export your settings as a JSON file, or import settings from a previous export.</p>
+        <p className="form-hint">
+          Export your settings as a JSON file, or import settings from a previous export.
+        </p>
 
         <div className="settings-backup-row">
           <button

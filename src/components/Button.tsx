@@ -5,9 +5,13 @@ import './Button.css'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Visual style variant */
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'link'
+  /** Size variant */
+  size?: 'sm' | 'md' | 'lg'
   /** Loading state - shows spinner and disables interaction */
   isLoading?: boolean
+  /** Loading text override - defaults based on children text */
+  loadingText?: string
   /** Full width button */
   fullWidth?: boolean
   /** Button content */
@@ -22,7 +26,9 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
     variant = 'primary',
+    size = 'md',
     isLoading = false,
+    loadingText,
     fullWidth = false,
     disabled,
     children,
@@ -36,6 +42,29 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   const isDisabled = disabled || isLoading
   const finalTestId = dataTestId ?? (variant === 'primary' ? TEST_IDS.PRIMARY_CTA : undefined)
 
+  // Determine loading announcement text
+  const getLoadingText = (): string => {
+    if (loadingText) return loadingText
+
+    // Extract text from children if it's a string
+    const childText = typeof children === 'string' ? children.toLowerCase() : ''
+
+    if (childText.includes('create') || childText.includes('bond')) {
+      return 'Creating bond…'
+    }
+    if (childText.includes('lookup') || childText.includes('look up')) {
+      return 'Looking up…'
+    }
+    if (childText.includes('withdraw')) {
+      return 'Withdrawing…'
+    }
+    if (childText.includes('submit')) {
+      return 'Submitting…'
+    }
+
+    return 'Loading…'
+  }
+
   return (
     <button
       ref={ref}
@@ -45,6 +74,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       className={[
         'credence-button',
         `credence-button--${variant}`,
+        `credence-button--${size}`,
         fullWidth ? 'credence-button--full-width' : '',
         className,
       ]
@@ -62,7 +92,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
         />
       )}
       <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {isLoading ? 'Sending…' : ''}
+        {isLoading ? getLoadingText() : ''}
       </span>
       <span className={isLoading ? 'credence-button__content--loading' : ''}>{children}</span>
     </button>

@@ -11,20 +11,28 @@ export interface UseApiMutationOptions<TData, TVariables, TContext = unknown> {
   mutationFn: (variables: TVariables) => Promise<TData>
   onMutate?: (
     variables: TVariables,
-    helpers: ApiMutationHelpers<TData>,
+    helpers: ApiMutationHelpers<TData>
   ) => Promise<TContext | void> | TContext | void
-  onSuccess?: (data: TData, variables: TVariables, context: TContext | undefined) => void | Promise<void>
-  onError?: (error: Error, variables: TVariables, context: TContext | undefined) => void | Promise<void>
+  onSuccess?: (
+    data: TData,
+    variables: TVariables,
+    context: TContext | undefined
+  ) => void | Promise<void>
+  onError?: (
+    error: Error,
+    variables: TVariables,
+    context: TContext | undefined
+  ) => void | Promise<void>
   onSettled?: (
     data: TData | undefined,
     error: Error | null,
     variables: TVariables,
-    context: TContext | undefined,
+    context: TContext | undefined
   ) => void | Promise<void>
   initialData?: TData
 }
 
-export interface UseApiMutationResult<TData, TVariables, TContext = unknown> {
+export interface UseApiMutationResult<TData, TVariables> {
   data: TData | undefined
   error: Error | null
   isPending: boolean
@@ -37,16 +45,9 @@ export interface UseApiMutationResult<TData, TVariables, TContext = unknown> {
 }
 
 export function useApiMutation<TData, TVariables, TContext = unknown>(
-  options: UseApiMutationOptions<TData, TVariables, TContext>,
-): UseApiMutationResult<TData, TVariables, TContext> {
-  const {
-    mutationFn,
-    onMutate,
-    onSuccess,
-    onError,
-    onSettled,
-    initialData,
-  } = options
+  options: UseApiMutationOptions<TData, TVariables, TContext>
+): UseApiMutationResult<TData, TVariables> {
+  const { mutationFn, onMutate, onSuccess, onError, onSettled, initialData } = options
 
   const [data, setDataState] = useState<TData | undefined>(initialData)
   const [error, setError] = useState<Error | null>(null)
@@ -56,15 +57,18 @@ export function useApiMutation<TData, TVariables, TContext = unknown>(
   const dataRef = useRef<TData | undefined>(initialData)
   const previousDataRef = useRef<TData | undefined>(initialData)
 
-  const setData = useCallback((updater: TData | ((current: TData | undefined) => TData | undefined)) => {
-    const nextValue =
-      typeof updater === 'function'
-        ? (updater as (current: TData | undefined) => TData | undefined)(dataRef.current)
-        : updater
+  const setData = useCallback(
+    (updater: TData | ((current: TData | undefined) => TData | undefined)) => {
+      const nextValue =
+        typeof updater === 'function'
+          ? (updater as (current: TData | undefined) => TData | undefined)(dataRef.current)
+          : updater
 
-    dataRef.current = nextValue
-    setDataState(nextValue)
-  }, [])
+      dataRef.current = nextValue
+      setDataState(nextValue)
+    },
+    []
+  )
 
   const rollback = useCallback(() => {
     const nextValue = previousDataRef.current
@@ -115,12 +119,15 @@ export function useApiMutation<TData, TVariables, TContext = unknown>(
         await onSettled?.(settledData, settledError, variables, context)
       }
     },
-    [mutationFn, onError, onMutate, onSettled, onSuccess, rollback, setData],
+    [mutationFn, onError, onMutate, onSettled, onSuccess, rollback, setData]
   )
 
-  const mutate = useCallback((variables: TVariables) => {
-    void mutateAsync(variables)
-  }, [mutateAsync])
+  const mutate = useCallback(
+    (variables: TVariables) => {
+      void mutateAsync(variables)
+    },
+    [mutateAsync]
+  )
 
   return {
     data,

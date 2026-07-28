@@ -20,9 +20,9 @@ describe('RouteAnnouncer Component', () => {
     )
 
     const announcerRegion = document.querySelector('.sr-only') as HTMLElement
-    expect(announcerRegion).toHaveAttribute('aria-live', 'polite');
-    expect(announcerRegion).toHaveAttribute('aria-atomic', 'true');
-  });
+    expect(announcerRegion).toHaveAttribute('aria-live', 'polite')
+    expect(announcerRegion).toHaveAttribute('aria-atomic', 'true')
+  })
 
   it('defers the announcement text setup until after layout paint', () => {
     render(
@@ -32,7 +32,7 @@ describe('RouteAnnouncer Component', () => {
     )
 
     const announcer = document.querySelector('.sr-only') as HTMLElement
-    expect(announcer.textContent).toBe('');
+    expect(announcer.textContent).toBe('')
 
     act(() => {
       vi.advanceTimersByTime(100)
@@ -47,8 +47,10 @@ describe('RouteAnnouncer Component', () => {
       </MemoryRouter>
     )
 
-    act(() => { vi.advanceTimersByTime(100); });
-    expect(screen.getByText('Dashboard page loaded')).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(screen.getByText('Dashboard page loaded')).toBeInTheDocument()
 
     rerender(
       <MemoryRouter key="/trust" initialEntries={['/trust']}>
@@ -56,8 +58,10 @@ describe('RouteAnnouncer Component', () => {
       </MemoryRouter>
     )
 
-    act(() => { vi.advanceTimersByTime(100); });
-    expect(screen.getByText('Trust Score page loaded')).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(screen.getByText('Trust Score page loaded')).toBeInTheDocument()
   })
 
   it('falls back gracefully to structural 404 descriptions given unknown routes', () => {
@@ -67,7 +71,9 @@ describe('RouteAnnouncer Component', () => {
       </MemoryRouter>
     )
 
-    act(() => { vi.advanceTimersByTime(100); });
-    expect(screen.getByText('Page Not Found loaded')).toBeInTheDocument();
-  });
-});
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(screen.getByText('Page Not Found loaded')).toBeInTheDocument()
+  })
+})

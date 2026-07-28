@@ -56,8 +56,14 @@ export const WithFiles: Story = {
     multiple: true,
     accept: 'image/*,.pdf',
     files: [
-      new File(['pdf-content'], 'evidence-report.pdf', { type: 'application/pdf', lastModified: 1700000000000 }),
-      new File(['img-content'], 'screenshot.png', { type: 'image/png', lastModified: 1700000001000 }),
+      new File(['pdf-content'], 'evidence-report.pdf', {
+        type: 'application/pdf',
+        lastModified: 1700000000000,
+      }),
+      new File(['img-content'], 'screenshot.png', {
+        type: 'image/png',
+        lastModified: 1700000001000,
+      }),
     ],
     hint: 'Images or PDFs. Up to 5 files, 10 MB each.',
   },
@@ -85,7 +91,10 @@ export const DisabledWithFiles: Story = {
     multiple: true,
     disabled: true,
     files: [
-      new File(['pdf-content'], 'evidence-report.pdf', { type: 'application/pdf', lastModified: 1700000000000 }),
+      new File(['pdf-content'], 'evidence-report.pdf', {
+        type: 'application/pdf',
+        lastModified: 1700000000000,
+      }),
     ],
     hint: 'Uploads are locked after submission.',
   },

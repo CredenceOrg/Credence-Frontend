@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './Bond.css'
 import Banner from '../components/Banner'
+import ConnectGate from '../components/ConnectGate'
 import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
 import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
+import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/states/EmptyState'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
@@ -182,12 +184,16 @@ export default function Bond() {
     if (penaltyUsdc > 0) {
       addToast(
         'warning',
-        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`
+        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
+        { txHash: 'b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3', network: walletNetwork ?? 'public' }
       )
     } else {
-      addToast('success', 'Bond withdrawn successfully.')
+      addToast('success', 'Bond withdrawn successfully.', {
+        txHash: 'c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
+        network: walletNetwork ?? 'public',
+      })
     }
-  }, [withdrawTarget, withdrawBreakdown, addToast, isPendingWithdraw])
+  }, [withdrawTarget, withdrawBreakdown, addToast, isPendingWithdraw, walletNetwork])
 
   const slashExposureBond = useMemo(() => bonds.find((b) => getPenaltyRate(b.status) > 0), [bonds])
 
@@ -199,26 +205,13 @@ export default function Bond() {
   return (
     <div className="bond__container">
       {/* aria-live region announces async transaction progress to assistive tech */}
-      <div
-        id={txStatusId}
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-      >
+      <div id={txStatusId} role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {txStatus}
       </div>
 
-      <div className="bond__headerSection">
-        <h1 className="bond__title">{t('bond.title')}</h1>
-        <p id="bond-desc" className="bond__description">
-          {t('bond.description')}
-        </p>
-      </div>
+      <PageHeader title={t('bond.title')} description={t('bond.description')} />
 
-      <Banner severity="info">
-        {t('bond.infoBanner')}
-      </Banner>
+      <Banner severity="info">{t('bond.infoBanner')}</Banner>
 
       {!isConnected && (
         <Banner
@@ -242,7 +235,7 @@ export default function Bond() {
           <span id={mismatchBannerId}>
             {t('bond.networkMismatchDescription', {
               expected: networkMismatch.expected,
-              actual: networkMismatch.actual
+              actual: networkMismatch.actual,
             })}
           </span>
         </Banner>
@@ -255,76 +248,90 @@ export default function Bond() {
             status: slashExposureBond.status === 'locked' ? 'locked' : 'in grace period',
             penaltyAmount: slashBannerBreakdown.penaltyAmount,
             percent: slashBannerBreakdown.penaltyPercent,
-            result: slashBannerBreakdown.resultingBalance
+            result: slashBannerBreakdown.resultingBalance,
           })}
         </Banner>
       )}
 
       <div className="bond__cardGrid">
-        <ActionCard title={t('bond.createNewBond')}>
-          <p style={{ color: 'var(--credence-text-secondary)', margin: 0 }}>
-            {t('bond.createBondDescription')}
-          </p>
+        <ConnectGate
+          title={t('bond.createNewBond')}
+          description={t('bond.connectToCreateBond')}
+          hideWhenDisconnected={false}
+        >
+          <ActionCard title={t('bond.createNewBond')}>
+            <p className="bond__cardDescription">{t('bond.createBondDescription')}</p>
 
-          <FormField
-            id="bond-amount-quick"
-            label={t('bond.amount')}
-            hint={t('bond.minimumAmount', { amount: MIN_BOND_AMOUNT })}
-            error={bondAmountError}
-          >
-            <AmountInput
-              value={bondAmount}
-              onChange={(next) => {
-                setBondAmount(next)
-                if (bondAmountError) setBondAmountError('')
-              }}
-              balance={0}
-              min={MIN_BOND_AMOUNT}
-              presets={[100, 500, 1000]}
-              currencyLabel="USDC"
-              disabled={networkMismatch.mismatch}
+            <FormField
+              id="bond-amount-quick"
+              label={t('bond.amount')}
+              hint={t('bond.minimumAmount', { amount: MIN_BOND_AMOUNT })}
+              error={bondAmountError}
+            >
+              <AmountInput
+                value={bondAmount}
+                onChange={(next) => {
+                  setBondAmount(next)
+                  if (bondAmountError) setBondAmountError('')
+                }}
+                balance={0}
+                min={MIN_BOND_AMOUNT}
+                presets={[100, 500, 1000]}
+                currencyLabel="USDC"
+                disabled={!isConnected || networkMismatch.mismatch}
+                aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+              />
+            </FormField>
+
+            <Button
+              type="button"
+              onClick={handleCreateBond}
+              fullWidth
+              disabled={
+                !isConnected ||
+                networkMismatch.mismatch ||
+                (isConnected ? isPendingCreate : isConnecting)
+              }
+              isLoading={isConnected ? isPendingCreate : isConnecting}
               aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
-            />
-          </FormField>
+              aria-haspopup={!isConnected ? 'dialog' : undefined}
+            >
+              {isConnected ? t('bond.createBond') : t('bond.connectToContinue')}
+            </Button>
+          </ActionCard>
+        </ConnectGate>
 
-          <Button
-            type="button"
-            onClick={handleCreateBond}
-            fullWidth
-            disabled={networkMismatch.mismatch || (isConnected ? isPendingCreate : isConnecting)}
-            isLoading={isConnected ? isPendingCreate : isConnecting}
-            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
-            aria-haspopup={!isConnected ? 'dialog' : undefined}
-          >
-            {isConnected ? t('bond.createBond') : t('bond.connectToContinue')}
-          </Button>
-        </ActionCard>
-
-        <ActionCard title={t('bond.activeBonds')}>
-          {bonds.length === 0 ? (
-            <EmptyState
-              illustration="bond"
-              title={t('bond.noActiveBonds')}
-              description={t('bond.noActiveBondsDescription')}
-              action={{
-                label: t('bond.createFirstBond'),
-                onClick: handleCreateBond,
-              }}
-            />
-          ) : (
-            <ul className="bond__listContainer">
-              {bonds.map((bond) => (
-                <BondRow
-                  key={bond.id}
-                  bond={bond}
-                  isConnected={isConnected}
-                  onWithdraw={requestWithdraw}
+        <ConnectGate
+          title={t('bond.manageBonds')}
+          description={t('bond.connectToManageBonds')}
+          hideWhenDisconnected={true}
+        >
+          <ActionCard title={t('bond.activeBonds')}>
+            {bonds.length === 0 ? (
+              <EmptyState
+                illustration="bond"
+                title={t('bond.noActiveBonds')}
+                description={t('bond.noActiveBondsDescription')}
+                action={{
+                  label: t('bond.createFirstBond'),
+                  onClick: handleCreateBond,
+                }}
+              />
+            ) : (
+              <ul className="bond__listContainer">
+                {bonds.map((bond) => (
+                  <BondRow
+                    key={bond.id}
+                    bond={bond}
+                    isConnected={isConnected}
+                    onWithdraw={requestWithdraw}
                     onConnect={() => setConnectModalOpen(true)}
-                />
-              ))}
-            </ul>
-          )}
-        </ActionCard>
+                  />
+                ))}
+              </ul>
+            )}
+          </ActionCard>
+        </ConnectGate>
       </div>
 
       {withdrawTarget && withdrawBreakdown && (
@@ -334,7 +341,7 @@ export default function Bond() {
             title={t('bond.confirmWithdrawal')}
             subtitle={t('bond.withdrawalSubtitle', {
               id: withdrawTarget.id,
-              amount: formatUsdc(withdrawTarget.amountUsdc)
+              amount: formatUsdc(withdrawTarget.amountUsdc),
             })}
             breakdown={withdrawBreakdown}
             onConfirm={confirmWithdraw}
@@ -351,9 +358,7 @@ export default function Bond() {
         returnFocusRef={connectTriggerRef}
       />
 
-      <Disclaimer
-        context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
-      />
+      <Disclaimer context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply." />
     </div>
   )
 }

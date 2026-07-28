@@ -55,7 +55,7 @@ interface CreateBondFlowProps {
 export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowProps = {}) {
   const prefersReducedMotion = useReducedMotion()
   const { addToast } = useToast()
-  const { isConnected, connect, reauth, isReauthRequired: checkIsReauthRequired } = useWallet()
+  const { isConnected, connect, reauth, isReauthRequired: checkIsReauthRequired, network: walletNetwork } = useWallet()
   const { balance, status: balanceStatus, error: balanceError, refetch: refetchBalance } =
     useUsdcBalance()
   const [step, setStep] = useState(1)
@@ -129,7 +129,12 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   }
 
   const handleConfirm = () => {
-    addToast('success', 'Bond created successfully.')
+    const unlockDate = duration ? calcUnlockDate(duration) : ''
+    const message = `Bond created. ${formatUsdc(Number(amount))} locked until ${unlockDate}.`
+    addToast('success', message, {
+      txHash: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+      network: walletNetwork ?? 'public',
+    })
     if (onComplete) {
       onComplete()
     } else {
@@ -206,7 +211,14 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
               <LoadingSkeleton variant="text" rows={1} width="12rem" />
             ) : balanceStatus === 'error' ? (
               balanceError instanceof SessionReauthRequiredError ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                  }}
+                >
                   <span role="alert" style={{ color: 'var(--credence-text-secondary)' }}>
                     Re-authentication required.
                   </span>
@@ -220,7 +232,14 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                   </Button>
                 </span>
               ) : (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.875rem',
+                  }}
+                >
                   <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
                     Could not load balance.
                   </span>
@@ -387,7 +406,9 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
               /* Fallback: breakdown unavailable (should not normally be reached in step 3) */
               <div className="createBondFlow__reviewRow">
                 <span className="createBondFlow__reviewLabel">Slash Terms:</span>
-                <strong style={{ color: 'var(--credence-color-danger-text)' }}>Penalties Apply</strong>
+                <strong style={{ color: 'var(--credence-color-danger-text)' }}>
+                  Penalties Apply
+                </strong>
               </div>
             )}
           </div>

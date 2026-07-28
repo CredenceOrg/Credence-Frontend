@@ -7,6 +7,10 @@
 }
 
 .appHeader {
+  /* Fluid padding via --credence-space-* tokens (see src/index.css).
+   * On Narrow Mobile (≤ 360px) this resolves to ~0.75rem / ~1.5rem and
+   * gracefully scales to 1rem / 2rem at the Widescreen Desktop breakpoint
+   * (1280px) without an explicit media query. */
   padding: var(--credence-space-4) var(--credence-space-8);
   border-bottom: 1px solid var(--credence-border-default);
   background: var(--credence-surface-card);
@@ -54,6 +58,14 @@
   text-decoration-color: var(--credence-color-primary);
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
+}
+
+/* Keep the active indication visible when the active link is also hovered
+   or focused — .appNav-link:hover otherwise wins on specificity and hides it. */
+.appNav-link--active:hover,
+.appNav-link--active:focus-visible {
+  background: var(--credence-color-slate-100);
+  color: var(--credence-color-primary);
 }
 
 .appNav-link:focus-visible {
@@ -191,31 +203,29 @@
   background: var(--credence-color-slate-700);
 }
 
-/* Mobile: hide desktop nav, tighten header padding */
+/* Mobile (BREAKPOINTS.SM, 640px): hide desktop in-line nav. Header padding
+ * automatically tightens via the fluid --credence-space-* tokens, so no
+ * explicit padding override is needed. */
 @media (max-width: 640px) {
   .appNav {
     display: none;
   }
-
-  .appHeader {
-    padding: var(--credence-space-3) var(--credence-space-4);
-  }
 }
 
-/* Very small screens (360px): further tighten header padding */
+/* Narrow Mobile (BREAKPOINTS.XS, 360px): brand wordmark shrinks one step
+ * to fit the smallest supported viewport. Spacing continues to scale fluidly
+ * via tokens, so no padding override is needed. */
 @media (max-width: 360px) {
-  .appHeader {
-    padding: var(--credence-space-2) var(--credence-space-3);
-  }
-
   .appBrand {
     font-size: var(--credence-font-size-lg);
   }
 }
 
-/* Safe area: prevent content from being obscured by the fixed BottomNav */
+/* Safe area: prevent content from being obscured by the fixed BottomNav at
+ * the mobile/tablet breakpoint. Uses the fluid --credence-space-16 token
+ * (introduced in src/index.css to round out the spacing scale). */
 @media (max-width: 768px) {
   .appMain {
-    padding-bottom: calc(var(--credence-space-16, 4rem) + var(--credence-space-4));
+    padding-bottom: calc(var(--credence-space-16) + var(--credence-space-4));
   }
 }

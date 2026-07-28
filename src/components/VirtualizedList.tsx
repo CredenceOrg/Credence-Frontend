@@ -28,7 +28,7 @@ export default function VirtualizedList<T>({
   renderItem,
   className,
   containerClassName,
-  style,
+  style: _style,
   containerStyle,
   emptyMessage,
   height = 320,

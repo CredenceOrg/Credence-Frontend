@@ -52,14 +52,15 @@ describe('useRoutePrefetch', () => {
   })
 
   it('allows retry when preload rejects', async () => {
-    const preload = vi.fn()
+    const preload = vi
+      .fn()
       .mockRejectedValueOnce(new Error('fail'))
       .mockResolvedValueOnce(undefined)
     const { result } = renderHook(() => useRoutePrefetch(preload))
 
     result.current.onMouseEnter()
 
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
     result.current.onMouseEnter()
 

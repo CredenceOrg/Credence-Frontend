@@ -295,9 +295,7 @@ describe('apiFetch rate limiting (defence-in-depth)', () => {
     // TEST_MAX + 2 calls is well over the configured cap, but skipRateLimit
     // should let them all through and hit fetch every time.
     for (let i = 0; i < TEST_MAX + 2; i++) {
-      await expect(
-        apiFetch('/loop', { skipRateLimit: true })
-      ).resolves.toEqual({ ok: true })
+      await expect(apiFetch('/loop', { skipRateLimit: true })).resolves.toEqual({ ok: true })
     }
 
     expect(fetchMock).toHaveBeenCalledTimes(TEST_MAX + 2)

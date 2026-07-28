@@ -258,7 +258,9 @@ describe('AmountInput', () => {
       const input = screen.getByRole('textbox')
       const errorId = input.getAttribute('aria-describedby')
       expect(errorId).toBeTruthy()
-      expect(document.getElementById(errorId!)).toHaveTextContent('Amount must be at least 10 USDC.')
+      expect(document.getElementById(errorId!)).toHaveTextContent(
+        'Amount must be at least 10 USDC.'
+      )
     })
 
     it('explicit error prop overrides the below-min error', () => {

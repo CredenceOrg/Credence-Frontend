@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import { isWithinQuietHours, nowMinutesSinceMidnight } from '../lib/quietHours'
-import Toast, { type ToastData, type ToastSeverity } from './Toast'
+import Toast, { type ToastData, type ToastSeverity, type ToastOptions } from './Toast'
 import './Toast.css'
 
 const TIMEOUTS: Record<ToastSeverity, number> = {
@@ -15,7 +15,7 @@ const TIMEOUTS: Record<ToastSeverity, number> = {
 const MAX_TOASTS = 3
 
 interface ToastContextValue {
-  addToast: (severity: ToastSeverity, message: string) => void
+  addToast: (severity: ToastSeverity, message: string, options?: ToastOptions) => void
   removeToast: (id: string) => void
   removeAllToasts: () => void
   /** Broadcasts a visually-hidden message to screen readers. */
@@ -31,13 +31,8 @@ export function useToast() {
 }
 
 export default function ToastProvider({ children }: { children: ReactNode }) {
-  const {
-    toastsEnabled,
-    autoDismiss,
-    quietHoursEnabled,
-    quietHoursStart,
-    quietHoursEnd,
-  } = useSettings()
+  const { toastsEnabled, autoDismiss, quietHoursEnabled, quietHoursStart, quietHoursEnd } =
+    useSettings()
 
   /**
    * We use a ref to track the current settings to avoid recreating `addToast`
@@ -97,7 +92,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addToast = useCallback(
-    (severity: ToastSeverity, message: string) => {
+    (severity: ToastSeverity, message: string, options?: ToastOptions) => {
       const {
         toastsEnabled,
         autoDismiss,
@@ -142,7 +137,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
       }
 
       const id = String(++idCounter.current)
-      const newToast: ToastData = { id, severity, message, durationMs: timeout > 0 ? timeout : 0 }
+      const newToast: ToastData = { id, severity, message, durationMs: timeout > 0 ? timeout : 0, ...options }
 
       // Enforce max toast limit: remove oldest if needed
       setToasts((prev: ToastData[]) => {

@@ -562,3 +562,137 @@ describe('Button – class string shape (no stray spaces regression)', () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// 13. Link variant
+// ---------------------------------------------------------------------------
+
+describe('Button – link variant', () => {
+  it('applies credence-button--link class for variant="link"', () => {
+    render(<Button variant="link">Go back</Button>)
+    expect(getBtn()).toHaveClass('credence-button--link')
+    expect(getBtn()).not.toHaveClass('credence-button--primary')
+  })
+
+  it('fires onClick when link variant is clicked and enabled', async () => {
+    const handler = vi.fn()
+    render(
+      <Button variant="link" onClick={handler}>
+        Cancel
+      </Button>
+    )
+    await userEvent.click(getBtn())
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not fire onClick when link variant is disabled', async () => {
+    const handler = vi.fn()
+    render(
+      <Button variant="link" disabled onClick={handler}>
+        Disabled link
+      </Button>
+    )
+    await userEvent.click(getBtn())
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('is still a <button> element (not an <a>)', () => {
+    render(<Button variant="link">Link-style</Button>)
+    expect(getBtn().tagName).toBe('BUTTON')
+  })
+
+  it('forwards ref correctly for link variant', () => {
+    const ref = createRef<HTMLButtonElement>()
+    render(
+      <Button ref={ref} variant="link">
+        Ref link
+      </Button>
+    )
+    expect(ref.current).toBeInstanceOf(HTMLButtonElement)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 14. Size prop
+// ---------------------------------------------------------------------------
+
+describe('Button – size prop', () => {
+  it('applies credence-button--md class by default when size is omitted', () => {
+    render(<Button>No size</Button>)
+    expect(getBtn()).toHaveClass('credence-button--md')
+  })
+
+  it('applies credence-button--sm class for size="sm"', () => {
+    render(<Button size="sm">Small</Button>)
+    expect(getBtn()).toHaveClass('credence-button--sm')
+    expect(getBtn()).not.toHaveClass('credence-button--md')
+    expect(getBtn()).not.toHaveClass('credence-button--lg')
+  })
+
+  it('applies credence-button--md class for size="md"', () => {
+    render(<Button size="md">Medium</Button>)
+    expect(getBtn()).toHaveClass('credence-button--md')
+    expect(getBtn()).not.toHaveClass('credence-button--sm')
+    expect(getBtn()).not.toHaveClass('credence-button--lg')
+  })
+
+  it('applies credence-button--lg class for size="lg"', () => {
+    render(<Button size="lg">Large</Button>)
+    expect(getBtn()).toHaveClass('credence-button--lg')
+    expect(getBtn()).not.toHaveClass('credence-button--sm')
+    expect(getBtn()).not.toHaveClass('credence-button--md')
+  })
+
+  it('each size produces exactly one size class', () => {
+    const sizes = ['sm', 'md', 'lg'] as const
+    for (const size of sizes) {
+      const { unmount } = render(<Button size={size}>S</Button>)
+      const btn = getBtn()
+      const sizeClasses = ['sm', 'md', 'lg'].filter((s) =>
+        btn.classList.contains(`credence-button--${s}`)
+      )
+      expect(sizeClasses).toHaveLength(1)
+      expect(sizeClasses[0]).toBe(size)
+      unmount()
+    }
+  })
+
+  it('size and variant classes coexist correctly', () => {
+    render(
+      <Button variant="secondary" size="lg">
+        Big secondary
+      </Button>
+    )
+    const btn = getBtn()
+    expect(btn).toHaveClass('credence-button--secondary')
+    expect(btn).toHaveClass('credence-button--lg')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 15. Class string shape — includes size classes (regression)
+// ---------------------------------------------------------------------------
+
+describe('Button – class string shape with size prop (no stray spaces regression)', () => {
+  it('class string has no leading/double spaces for all variant+size combos', () => {
+    const cases = [
+      { variant: 'primary' as const, size: 'sm' as const },
+      { variant: 'primary' as const, size: 'md' as const },
+      { variant: 'primary' as const, size: 'lg' as const },
+      { variant: 'secondary' as const, size: 'md' as const },
+      { variant: 'ghost' as const, size: 'sm' as const },
+      { variant: 'danger' as const, size: 'lg' as const },
+      { variant: 'link' as const, size: 'md' as const },
+    ]
+    for (const { variant, size } of cases) {
+      const { unmount } = render(
+        <Button variant={variant} size={size}>
+          Test
+        </Button>
+      )
+      const cls = getBtn().className
+      expect(cls).not.toMatch(/\s{2,}/)
+      unmount()
+    }
+  })
+})

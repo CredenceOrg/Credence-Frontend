@@ -177,7 +177,7 @@
 }
 
 .toast__tx-hash {
-  font-family: var(--credence-font-mono, monospace);
+  font-family: var(--credence-font-family-mono);
   font-size: 0.75rem;
   opacity: 0.75;
 }

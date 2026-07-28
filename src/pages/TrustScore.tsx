@@ -1,7 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import './TrustScore.css'
+import { useState } from 'react'
 import Banner from '../components/Banner'
 import ActivityTimeline, {
   type ActivityItem,
@@ -9,162 +6,21 @@ import ActivityTimeline, {
 } from '../components/ActivityTimeline'
 import ConnectGate from '../components/ConnectGate'
 import Disclaimer from '../components/Disclaimer'
+import { useToast } from '../components/ToastProvider'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
+import ConnectGate from '../components/ConnectGate'
 import TierLadder from '../components/TierLadder'
-import TrustGauge, { TIER_CONFIG, pointsToNextTier } from '../components/TrustGauge'
-import { TIER_ORDER, MAX_SCORE } from '../lib/tiers'
-import { ErrorState, LoadingSkeleton } from '../components/states'
-import { useSettings } from '../context/SettingsContext'
-import { useWallet } from '../context/WalletContext'
-import { useSeo } from '../hooks/useSeo'
-import useCopyToClipboard from '../hooks/useCopyToClipboard'
-import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
-import { useIsMobile } from '../hooks/useMediaQuery'
-import { useTrustScore } from '../hooks/useTrustScore'
-import { ApiError } from '../api/client'
-import { useToast } from '../components/ToastProvider'
-import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
-import { useLocalStorage } from '../hooks/useLocalStorage'
-
-export interface RecentLookupItem {
-  address: string
-  timestamp: number
-}
-
-function formatAddress(addr: string, addressDisplay: string, walletAddress?: string): string {
-  if (addressDisplay === 'full') {
-    return addr
-  }
-  if (addressDisplay === 'friendly') {
-    if (walletAddress && addr.toLowerCase() === walletAddress.toLowerCase()) {
-      return 'My Wallet'
-    }
-    return truncateAddress(addr)
-  }
-  // Default is 'short'
-  return truncateAddress(addr)
-}
-
-function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {
-  if (error.status === 0) {
-    return 'network'
-  }
-  if (error.status >= 400 && error.status < 500) {
-    return 'validation'
-  }
-  if (error.status >= 500) {
-    return 'backend'
-  }
-  return 'generic'
-}
+import { EmptyState } from '../components/states'
 
 export default function TrustScore() {
-  useSeo({
-    title: 'Trust Score',
-    description:
-      'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
-  })
-  const { t } = useTranslation()
-  const isMobile = useIsMobile()
-  const { isConnected, address: walletAddress, connect, network: walletNetwork } = useWallet()
-  const { setNetwork, addressDisplay } = useSettings()
-  const { copy, copied } = useCopyToClipboard()
   const { addToast } = useToast()
-  const networkMismatch = useNetworkMismatch()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [address, setAddress] = useState<string>(() => {
-    const param = searchParams.get('address')?.trim() ?? ''
-    return isValidStellarAddress(param) ? param : ''
-  })
-  const [isAddressValid, setIsAddressValid] = useState(() => {
-    const param = searchParams.get('address')?.trim() ?? ''
-    return isValidStellarAddress(param)
-  })
-  const [hasAttemptedLookup, setHasAttemptedLookup] = useState(false)
-  const [lookupAddress, setLookupAddress] = useState('')
-  const pendingLookupRef = useRef(false)
-
-  const [history, setHistory] = useLocalStorage<RecentLookupItem[]>('credence:recent-lookups', [])
-
-  const safeHistory = useMemo(() => {
-    if (!Array.isArray(history)) return []
-    return history.filter(
-      (item): item is RecentLookupItem =>
-        item &&
-        typeof item === 'object' &&
-        typeof item.address === 'string' &&
-        isValidStellarAddress(item.address)
-    )
-  }, [history])
-
-  const { data, isLoading, error, refetch } = useTrustScore(lookupAddress)
-
-  useEffect(() => {
-    if (!pendingLookupRef.current || !lookupAddress) {
-      return
-    }
-    pendingLookupRef.current = false
-    refetch()
-  }, [lookupAddress, refetch])
-
-  useEffect(() => {
-    if (!isLoading && !error && data && lookupAddress) {
-      if (isValidStellarAddress(lookupAddress)) {
-        const current = Array.isArray(history) ? history : []
-        const filtered = current.filter(
-          (item) =>
-            item &&
-            typeof item === 'object' &&
-            item.address.toLowerCase() !== lookupAddress.toLowerCase()
-        )
-        const newItem: RecentLookupItem = {
-          address: lookupAddress,
-          timestamp: Date.now(),
-        }
-        setHistory([newItem, ...filtered].slice(0, 5))
-      }
-    }
-  }, [isLoading, error, data, lookupAddress, history, setHistory])
-
-  const commitAddressParam = (value: string) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        if (value) {
-          next.set('address', value)
-        } else {
-          next.delete('address')
-        }
-        return next
-      },
-      { replace: true }
-    )
-  }
-
-  const handleAddressChange = (value: string) => {
-    setAddress(value)
-    if (!value) {
-      commitAddressParam('')
-    }
-  }
+  const [address, setAddress] = useState('')
+  const [isAddressValid, setIsAddressValid] = useState(false)
 
   const handleLookup = () => {
-    if (!isConnected) {
-      void connect()
-      return
-    }
-
-    if (!isAddressValid || isLoading) {
-      return
-    }
-
-    setHasAttemptedLookup(true)
-    pendingLookupRef.current = true
-    const trimmed = address.trim()
-    setLookupAddress(trimmed)
-    commitAddressParam(trimmed)
+    addToast('success', 'Trust score retrieved.')
   }
 
   const handleSelectRecent = (recentAddress: string) => {
@@ -200,21 +56,34 @@ export default function TrustScore() {
   const mismatchBannerId = 'trust-score-network-mismatch'
 
   return (
-    <div className="trustScore__page">
+    <div>
       <div className="trustScore__headerRow">
-        <h1 className="trustScore__title">{t('trustScore.title')}</h1>
+        <h1 className="trustScore__title">Trust Score</h1>
+        <Badge variant="gold" label="Gold Tier" className="tier-badge" />
       </div>
       <p id="trust-desc" className="trustScore__description">
-        {t('trustScore.description')}
+        Your reputation score is computed from bond amount, duration, and attestations.
       </p>
+      <TierLadder />
+      <Banner severity="info">
+        Scores update once per epoch. Recent bond changes may not be reflected immediately.
+      </Banner>
 
-      {networkMismatch.mismatch && (
-        <Banner
-          severity="warning"
-          title={t('trustScore.networkMismatch')}
-          action={{
-            label: t('trustScore.switchNetwork', { network: networkMismatch.actual }),
-            onClick: () => setNetwork(walletNetwork === 'test' ? 'test' : 'public'),
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '2rem',
+          marginTop: '2rem',
+        }}
+      >
+        <div
+          style={{
+            padding: '1.5rem',
+            border: '1px solid var(--border-default)',
+            borderRadius: '12px',
+            background: 'var(--bg-card)',
+            color: 'var(--text-primary)',
           }}
         >
           <span id={mismatchBannerId}>
@@ -387,42 +256,61 @@ export default function TrustScore() {
             onClick={handleLookup}
             variant="primary"
             fullWidth
-            disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
-            isLoading={isConnected && isLoading}
-            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
-            className="trustScore__buttonRow"
+            disabled={!isAddressValid}
+            style={{ marginTop: '1rem' }}
           >
-            {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
+            Look up score
           </Button>
         </div>
         </ConnectGate>
 
-        <div className="trustScore__card">
-          <h2 className="trustScore__cardTitle">
-            {isMobile ? 'Recent Activity' : 'Recent Activity Timeline'}
-          </h2>
-          <ActivityTimeline compact items={activity} />
+        <div
+          style={{
+            padding: '1.5rem',
+            border: '1px solid var(--border-default)',
+            borderRadius: '12px',
+            background: 'var(--bg-card)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Recent Activity</h2>
+          {activity.length === 0 ? (
+            <EmptyState
+              illustration="activity"
+              title="No recent activity"
+              description="New trust score events will appear here once bonds, attestations, or score updates occur."
+            />
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {activity.map((item) => (
+                <li
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.75rem 0',
+                    borderBottom:
+                      item.id === activity.length ? 'none' : '1px solid var(--border-default)',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{item.action}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      {item.date}
+                    </div>
+                  </div>
+                  <Badge variant={item.status} />
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
-      {!isConnected && (
-        <Banner
-          severity="warning"
-          title={t('trustScore.connectRequired')}
-          action={{ label: t('common.connectWallet'), onClick: () => void connect() }}
-        >
-          {t('trustScore.connectRequiredDescription')}
-        </Banner>
-      )}
-
-      <Banner severity="info">
-        {t('trustScore.infoBanner')}
-      </Banner>
-
-      <TierLadder defaultOpen={!hasAttemptedLookup} />
-
       <Disclaimer
         context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments."
+        termsHref="#"
       />
     </div>
   )

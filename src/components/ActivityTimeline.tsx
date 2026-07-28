@@ -1,6 +1,12 @@
-import { useState, useCallback, useRef, type ReactElement } from 'react'
+import { useCallback, useRef, useState, type ReactElement } from 'react'
 import './ActivityTimeline.css'
-import { ACTIVITY_ITEMS, ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
+import {
+  ACTIVITY_ITEMS,
+  SAMPLE_ACTIVITY,
+  type ActivityItem,
+  type ActivityTone,
+} from '../data/activity'
+import { toneToStatus, type AttestationStatus } from '../events'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
@@ -27,24 +33,56 @@ export function isTxHash(meta: string): boolean {
   return /^Tx\s+0x/i.test(meta)
 }
 
+/**
+ * Resolves the filterable status for an activity item. Prefers the
+ * explicit `status` field and falls back to `toneToStatus(tone)` so
+ * legacy items added before `status` was introduced keep working.
+ */
+export function resolveItemStatus(item: ActivityItem): AttestationStatus | null {
+  if (item.status) return item.status
+  return toneToStatus(item.tone)
+}
+
 export interface ActivityTimelineProps {
   compact?: boolean
   items?: ActivityItem[]
+  /**
+   * Called when the user activates a row ("View details"). The
+   * Attestations route uses this to open the `AttestationDetailDrawer`.
+   *
+   * When provided:
+   *  - the disclosure button reads "View details"
+   *  - activating the row (or pressing Enter/Space on the disclosure)
+   *    invokes `onSelect(item)` instead of toggling inline expansion
+   *  - the row gets a click-to-open affordance (cursor + hover state)
+   *
+   * When omitted (default), the timeline keeps the original inline
+   * disclosure behavior. The Trust Score surface relies on this path.
+   */
+  onSelect?: (item: ActivityItem) => void
 }
 
 /**
- * Attestation evidence detail panel component.
- * Displays full evidence details including actor, status badge, and meta.
+ * Attestation timeline surface.
  *
- * Implements accessible disclosure pattern with:
- * - aria-expanded/aria-controls wiring
- * - Enter/Space toggle activation
- * - Escape key to close and return focus
- * - Focus management on open/close
+ * The original disclosure pattern (Show/Hide details) is the default and
+ * is what the Trust Score surface consumes (via `compact`). The
+ * Attestations route opts in to drawer-based navigation by passing
+ * `onSelect`, which swaps the disclosure button to "View details" and
+ * makes the entire row clickable.
+ *
+ * Implements accessible disclosure pattern (inline path only):
+ * - aria-expanded / aria-controls wiring
+ * - Enter / Space toggle activation
+ * - Escape to collapse + return focus
+ * - Focus management on open / close
+ *
+ * See docs/ATTESTATIONS_VIEW_DESIGN.md, §3 and §4.
  */
 export default function ActivityTimeline({
   compact = false,
   items = SAMPLE_ACTIVITY,
+  onSelect,
 }: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -58,12 +96,15 @@ export default function ActivityTimeline({
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
-      if (event.key !== 'Escape' || !expandedId) return
+      // Escape handling is meaningful only for the inline disclosure path.
+      // When `onSelect` is provided the drawer owns the focus trap and
+      // its own Escape handler — see AttestationDetailDrawer.
+      if (event.key !== 'Escape' || !expandedId || onSelect) return
       const openId = expandedId
       setExpandedId(null)
       triggerRefs.current.get(openId)?.focus()
     },
-    [expandedId]
+    [expandedId, onSelect]
   )
 
   return (
@@ -77,7 +118,11 @@ export default function ActivityTimeline({
           <p className="activity-surface__eyebrow">Activity Surface Concept</p>
           <h2 className="activity-surface__title">Attestation timeline</h2>
         </div>
-        {count > 0 && <p className="activity-surface__summary">{summary}</p>}
+        {count > 0 && (
+          <p className="activity-surface__summary" aria-live="polite" aria-atomic="true">
+            {summary}
+          </p>
+        )}
       </header>
 
       {count === 0 ? (
@@ -92,8 +137,35 @@ export default function ActivityTimeline({
             const isExpanded = expandedId === item.id
             const panelId = `details-${item.id}`
             const buttonId = `trigger-${item.id}`
+            const rowClassName = [
+              'activity-row',
+              onSelect ? 'activity-row--selectable' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')
+            const disclosureLabel = onSelect
+              ? 'View details'
+              : isExpanded
+                ? 'Hide details'
+                : 'Show details'
+            const statusPrefix = item.statusLabel ? `${item.statusLabel}. ` : ''
             return (
-              <li className="activity-row" key={item.id}>
+              <li
+                className={rowClassName}
+                key={item.id}
+                onClick={
+                  onSelect
+                    ? (event) => {
+                        // Stop propagation so a click on the disclosure
+                        // button (which also lives in this row) doesn't
+                        // double-fire — the button's onClick owns
+                        // activation in both paths via stopPropagation.
+                        event.stopPropagation()
+                        onSelect(item)
+                      }
+                    : undefined
+                }
+              >
                 <div className="activity-row__rail" aria-hidden="true">
                   <span className={`activity-row__node activity-row__node--${item.tone}`} />
                   <span className="activity-row__line" />
@@ -111,23 +183,40 @@ export default function ActivityTimeline({
                   <button
                     id={buttonId}
                     type="button"
-                    aria-expanded={isExpanded}
-                    aria-controls={panelId}
-                    onClick={() => toggleExpand(item.id)}
+                    className="activity-row__disclosure"
+                    aria-expanded={onSelect ? undefined : isExpanded}
+                    aria-controls={onSelect ? undefined : panelId}
+                    aria-label={`${statusPrefix}${disclosureLabel}`}
+                    onClick={(event) => {
+                      if (onSelect) {
+                        event.stopPropagation()
+                        onSelect(item)
+                        return
+                      }
+                      toggleExpand(item.id)
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
+                        if (onSelect) {
+                          onSelect(item)
+                          return
+                        }
                         toggleExpand(item.id)
                       }
                     }}
-                    className="activity-row__disclosure"
+                    ref={(el) => {
+                      if (el) triggerRefs.current.set(item.id, el)
+                      else triggerRefs.current.delete(item.id)
+                    }}
                   >
-                    {isExpanded ? 'Hide details' : 'Show details'}
+                    <span aria-hidden="true">{disclosureLabel}</span>
                   </button>
 
-                  {isExpanded && (
+                  {!onSelect && isExpanded && (
                     <div
                       id={`details-${item.id}`}
+                      className="activity-row__detail-panel"
                       style={{
                         marginTop: 'var(--credence-space-3)',
                         padding: 'var(--credence-space-3)',
@@ -160,3 +249,7 @@ export default function ActivityTimeline({
     </section>
   )
 }
+
+/** Re-exported for legacy callers (e.g. Trust Score surface) that
+ *  previously imported `SAMPLE_ACTIVITY` directly from this module. */
+export { SAMPLE_ACTIVITY, ACTIVITY_ITEMS }

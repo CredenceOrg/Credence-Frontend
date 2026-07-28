@@ -2,7 +2,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--credence-spacing-xs, 0.25rem);
-  font-family: var(--credence-font-mono, monospace);
+  font-family: var(--credence-font-family-mono);
   font-size: 0.9em;
   color: var(--credence-color-text, inherit);
 }

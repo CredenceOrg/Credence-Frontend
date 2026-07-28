@@ -166,7 +166,13 @@ export default function AddressInput({
 
   return (
     <div className={`address-input-wrapper ${className}`}>
-      <FormField id={id} label={label} hint={hint} error={error}>
+      <FormField
+        id={id}
+        label={label}
+        hint={hint}
+        error={error}
+        success={showSuccess ? 'Valid Stellar address' : undefined}
+      >
         <AddressInputInner
           inputRef={inputRef}
           value={value}

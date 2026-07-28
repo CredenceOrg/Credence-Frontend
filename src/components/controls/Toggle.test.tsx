@@ -82,4 +82,27 @@ describe('Toggle', () => {
       'toasts-enabled'
     )
   })
+
+  it('forwards FormField error and success aria wiring onto the switch', () => {
+    const { rerender } = render(
+      <FormField id="toasts-enabled" label="Enable toasts" error="Toasts unavailable">
+        <Toggle checked={false} onChange={vi.fn()} />
+      </FormField>
+    )
+
+    let toggle = screen.getByRole('switch', { name: 'Enable toasts' })
+    expect(toggle).toHaveAttribute('aria-invalid', 'true')
+    expect(toggle).toHaveAttribute('aria-describedby', 'toasts-enabled-error')
+
+    rerender(
+      <FormField id="toasts-enabled" label="Enable toasts" success="Preference saved">
+        <Toggle checked onChange={vi.fn()} />
+      </FormField>
+    )
+
+    toggle = screen.getByRole('switch', { name: 'Enable toasts' })
+    expect(toggle).not.toHaveAttribute('aria-invalid')
+    expect(toggle).toHaveAttribute('aria-describedby', 'toasts-enabled-success')
+    expect(screen.getByRole('status')).toHaveTextContent('Preference saved')
+  })
 })

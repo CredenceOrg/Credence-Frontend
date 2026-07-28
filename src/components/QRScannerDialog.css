@@ -101,6 +101,12 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .qr-scanner-spinner {
+    animation: none !important;
+  }
+}
+
 .qr-scanner-viewport {
   position: relative;
   display: flex;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'

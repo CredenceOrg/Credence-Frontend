@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useNavigate, Link } from 'react-router-dom'
 import Button from '../components/Button'
 import './NotFound.css'

@@ -7,7 +7,7 @@ import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 import EmptyState from '../components/states/EmptyState'
-import { ErrorState } from '../components/states'
+import { LoadingSkeleton } from '../components/states'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
 import AmountInput from '../components/AmountInput'
@@ -102,6 +102,9 @@ export default function Bond() {
   // Simulated bonds-fetch error state — replace with real data-fetch hook error when available.
   // When the bond list fails to load, surface an inline ErrorState inside the Active Bonds card.
   const [bondsError] = useState<{ type: ReturnType<typeof bondErrorType>; message: string } | null>(null)
+
+  // TODO: replace with real loading state when bond list is fetched from the API
+  const isLoadingBonds = false
 
   const bonds = initialBonds
 
@@ -329,18 +332,10 @@ export default function Bond() {
           hideWhenDisconnected={true}
         >
           <ActionCard title={t('bond.activeBonds')}>
-            {bondsError ? (
-              <div role="alert">
-                <ErrorState
-                  type={bondsError.type}
-                  title={
-                    bondsError.type === 'network'
-                      ? 'Could not load bonds'
-                      : 'Failed to load bonds'
-                  }
-                  message={bondsError.message}
-                  action={{ label: 'Try again', onClick: () => { /* retry bonds fetch */ } }}
-                />
+            {isLoadingBonds ? (
+              // Skeleton shown while bond list is loading from the API
+              <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading bonds">
+                <LoadingSkeleton variant="bond-row" rows={3} />
               </div>
             ) : bonds.length === 0 ? (
               <EmptyState

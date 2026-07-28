@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import en from './locales/en.json'
 import { handleLanguageChanged, setPreviousLng } from './localeBreadcrumb'
+import { DEFAULT_LOCALE_CONFIG } from '../config/i18n'
 
 i18n
   .use(LanguageDetector)
@@ -12,8 +13,8 @@ i18n
     resources: {
       en: { translation: en },
     },
-    fallbackLng: defaultLocale,
-    lng: defaultLocale,
+    fallbackLng: DEFAULT_LOCALE_CONFIG.defaultLocale,
+    lng: DEFAULT_LOCALE_CONFIG.defaultLocale,
     interpolation: {
       escapeValue: false,
     },

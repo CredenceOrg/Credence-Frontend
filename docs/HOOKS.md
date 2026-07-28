@@ -936,24 +936,38 @@ formatUsdc(Number(str)) // when amount comes from a string state value
 sanitizeUSDCInput('12.345') // "12.34"
 ```
 
-### `stellar` — address validation
+### `stellar` — address validation & middle truncation
 
 Source: [`src/lib/stellar.ts`](../src/lib/stellar.ts) · Single source of truth for address handling.
 
 ```ts
 isValidStellarAddress(address: string | undefined | null): boolean
 truncateAddress(address: string | undefined | null): string
+formatAddressForDisplay(address: string | undefined | null, mode: AddressDisplayMode | string | undefined): string
+type AddressDisplayMode = 'full' | 'short' | 'friendly'
 ```
 
 **Behavior notes:** validation requires exactly 56 uppercase-alphanumeric characters starting
-with `G`. `truncateAddress` shows `first 12 … last 8` for long addresses, leaves anything
-≤ 20 chars untouched, trims whitespace, and returns `""` for nullish/empty input. SSR-safe.
+with `G`.
+
+`truncateAddress` performs **middle truncation**: for strings longer than 20 characters, it
+preserves both the start (first 12 characters) and the end (last 8 characters), separated by
+`...`. Strings ≤ 20 characters are returned unchanged. Whitespace is trimmed, and nullish/
+empty input returns `""`.
+
+`formatAddressForDisplay` renders an address in one of three modes:
+- `'full'` — the complete address unchanged
+- `'short'` — middle-truncated via `truncateAddress` (first 12 + `...` + last 8)
+- `'friendly'` — a compact form (first 6 + `…` + last 4)
+
+SSR-safe (pure functions, no DOM access).
 
 ```ts
-import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
+import { isValidStellarAddress, truncateAddress, formatAddressForDisplay } from '@/lib/stellar'
 
 isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA') // true
 truncateAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA') // "GAAZI4TCR3TY...CCWNA"
+formatAddressForDisplay('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', 'friendly') // "GAAZI4…CCWNA"
 ```
 
 ### `tier` — trust tiers

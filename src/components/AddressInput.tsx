@@ -2,56 +2,12 @@ import React, { useState, useRef } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
 import { useSettings } from '../context/SettingsContext'
-
-interface AddressInputProps {
-  id: string
-  label?: string
-  value: string
-  onChange: (value: string) => void
-  onValidationChange?: (isValid: boolean) => void
-  disabled?: boolean
-  className?: string
-}
-
-/**
- * Validates Stellar public key format.
- * Valid addresses: 56 characters, starts with 'G'
- */
-function isValidStellarAddress(address: string): boolean {
-  if (!address) return false
-  // Stellar addresses are 56 characters and start with 'G'
-  return /^G[A-Z0-9]{55}$/.test(address)
-}
-
-/**
- * Truncates address for display: shows first 12 and last 8 characters.
- */
-export function truncateAddress(address: string): string {
-  if (address.length <= 20) return address
-  return `${address.substring(0, 12)}...${address.substring(address.length - 8)}`
-}
-
-export type AddressDisplayMode = 'full' | 'short' | 'friendly'
-
-/**
- * Formats an address for UI display based on the user's addressDisplay setting.
- *
- * Notes:
- * - `friendly` name resolution is not available yet. It falls back to `short`.
- * - This helper is intentionally pure and safe to call during render.
- */
-export function formatAddressForDisplay(address: string, mode: AddressDisplayMode): string {
-  switch (mode) {
-    case 'full':
-      return address
-    case 'friendly':
-      // TODO: Resolve friendly names when available on-chain.
-      return truncateAddress(address)
-    case 'short':
-    default:
-      return truncateAddress(address)
-  }
-}
+import {
+  isValidStellarAddress,
+  truncateAddress,
+  formatAddressForDisplay,
+  type AddressDisplayMode,
+} from '../lib/stellar'
 
 /**
  * Internal component to handle prop injection from FormField

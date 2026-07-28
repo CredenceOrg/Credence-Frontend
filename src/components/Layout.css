@@ -7,10 +7,6 @@
 }
 
 .appHeader {
-  /* Fluid padding via --credence-space-* tokens (see src/index.css).
-   * On Narrow Mobile (≤ 360px) this resolves to ~0.75rem / ~1.5rem and
-   * gracefully scales to 1rem / 2rem at the Widescreen Desktop breakpoint
-   * (1280px) without an explicit media query. */
   padding: var(--credence-space-4) var(--credence-space-8);
   border-bottom: 1px solid var(--credence-border-default);
   background: var(--credence-surface-card);
@@ -26,63 +22,10 @@
   text-decoration: none;
 }
 
-/* Desktop inline nav */
 .appNav {
   display: flex;
   gap: var(--credence-space-4);
   flex: 1;
-}
-
-.appNav-link {
-  padding: var(--credence-space-2) var(--credence-space-3);
-  font-weight: var(--credence-font-weight-semibold);
-  font-size: var(--credence-font-size-sm);
-  color: var(--credence-text-secondary);
-  text-decoration: none;
-  border-radius: var(--credence-radius-lg);
-  transition:
-    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
-    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
-}
-
-.appNav-link:hover {
-  background: var(--credence-color-slate-100);
-  color: var(--credence-text-primary);
-}
-
-.appNav-link--active {
-  color: var(--credence-color-primary);
-  font-weight: var(--credence-font-weight-bold);
-  /* token-driven underline for active nav */
-  text-decoration: underline;
-  text-decoration-color: var(--credence-color-primary);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-}
-
-/* Keep the active indication visible when the active link is also hovered
-   or focused — .appNav-link:hover otherwise wins on specificity and hides it. */
-.appNav-link--active:hover,
-.appNav-link--active:focus-visible {
-  background: var(--credence-color-slate-100);
-  color: var(--credence-color-primary);
-}
-
-.appNav-link:focus-visible {
-  outline: 2px solid var(--credence-color-primary);
-  outline-offset: 2px;
-}
-
-.appInstallPrompt {
-  width: 100%;
-  max-width: var(--credence-container-max);
-  margin: var(--credence-space-4) auto 0;
-  padding: 0 var(--credence-container-padding);
-}
-
-.appInstallPrompt-copy {
-  margin: 0;
-  color: var(--credence-text-secondary);
 }
 
 .appMain {
@@ -99,133 +42,8 @@
   margin-bottom: var(--credence-space-1);
 }
 
-/* ── What's New button ───────────────────────────────────────────────────── */
-
-.appHeader-whats-new-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 1px solid var(--credence-border-default);
-  border-radius: var(--credence-radius-full);
-  background: transparent;
-  color: var(--credence-text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
-    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
-    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
-  flex-shrink: 0;
-}
-
-.appHeader-whats-new-btn:hover {
-  background: var(--credence-color-slate-100);
-  color: var(--credence-text-primary);
-  border-color: var(--credence-color-slate-400);
-}
-
-.appHeader-whats-new-btn:focus-visible {
-  outline: var(--credence-focus-ring);
-  outline-offset: 2px;
-}
-
-[data-theme='dark'] .appHeader-whats-new-btn:hover {
-  background: var(--credence-color-slate-700);
-}
-
-.appHeader-whats-new-icon {
-  width: 1rem;
-  height: 1rem;
-}
-
-.appHeader-whats-new-badge {
-  position: absolute;
-  top: -0.25rem;
-  right: -0.25rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1rem;
-  height: 1rem;
-  padding: 0 var(--credence-space-1);
-  background: var(--credence-color-primary);
-  color: var(--credence-color-white);
-  border-radius: var(--credence-radius-full);
-  font-size: var(--credence-font-size-xs);
-  font-weight: var(--credence-font-weight-bold);
-  line-height: 1;
-  pointer-events: none;
-}
-
-/* ── Header icon buttons ─────────────────────────────────────────────────── */
-
-.appHeader-launcher-btn,
-.appHeader-shortcuts-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 1px solid var(--credence-border-default);
-  border-radius: var(--credence-radius-full);
-  background: transparent;
-  font-family: var(--credence-font-family-base);
-  font-size: var(--credence-font-size-sm);
-  font-weight: var(--credence-font-weight-bold);
-  color: var(--credence-text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
-    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
-    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
-  flex-shrink: 0;
-}
-
-.appHeader-launcher-btn:hover,
-.appHeader-shortcuts-btn:hover {
-  background: var(--credence-color-slate-100);
-  color: var(--credence-text-primary);
-  border-color: var(--credence-color-slate-400);
-}
-
-.appHeader-launcher-btn:focus-visible,
-.appHeader-shortcuts-btn:focus-visible {
-  outline: var(--credence-focus-ring);
-  outline-offset: 2px;
-}
-
-[data-theme='dark'] .appHeader-launcher-btn:hover,
-[data-theme='dark'] .appHeader-shortcuts-btn:hover {
-  background: var(--credence-color-slate-700);
-}
-
-/* Mobile (BREAKPOINTS.SM, 640px): hide desktop in-line nav. Header padding
- * automatically tightens via the fluid --credence-space-* tokens, so no
- * explicit padding override is needed. */
-@media (max-width: 640px) {
-  .appNav {
-    display: none;
-  }
-}
-
-/* Narrow Mobile (BREAKPOINTS.XS, 360px): brand wordmark shrinks one step
- * to fit the smallest supported viewport. Spacing continues to scale fluidly
- * via tokens, so no padding override is needed. */
-@media (max-width: 360px) {
-  .appBrand {
-    font-size: var(--credence-font-size-lg);
-  }
-}
-
-/* Safe area: prevent content from being obscured by the fixed BottomNav at
- * the mobile/tablet breakpoint. Uses the fluid --credence-space-16 token
- * (introduced in src/index.css to round out the spacing scale). */
-@media (max-width: 768px) {
-  .appMain {
-    padding-bottom: calc(var(--credence-space-16) + var(--credence-space-4));
+@media (max-width: 480px) {
+  .appHeader {
+    padding: var(--credence-space-4) var(--credence-space-4);
   }
 }

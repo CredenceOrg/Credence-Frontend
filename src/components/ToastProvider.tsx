@@ -93,13 +93,8 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
 
   const addToast = useCallback(
     (severity: ToastSeverity, message: string, options?: ToastOptions) => {
-      const {
-        toastsEnabled,
-        autoDismiss,
-        quietHoursEnabled,
-        quietHoursStart,
-        quietHoursEnd,
-      } = settingsRef.current
+      const { toastsEnabled, autoDismiss, quietHoursEnabled, quietHoursStart, quietHoursEnd } =
+        settingsRef.current
 
       // respect global toast enable setting
       if (!toastsEnabled) return
@@ -137,7 +132,13 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
       }
 
       const id = String(++idCounter.current)
-      const newToast: ToastData = { id, severity, message, durationMs: timeout > 0 ? timeout : 0, ...options }
+      const newToast: ToastData = {
+        id,
+        severity,
+        message,
+        durationMs: timeout > 0 ? timeout : 0,
+        ...options,
+      }
 
       // Enforce max toast limit: remove oldest if needed
       setToasts((prev: ToastData[]) => {

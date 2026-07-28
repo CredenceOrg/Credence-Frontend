@@ -47,7 +47,7 @@ The wallet connection follows a strict state transition flow to ensure consisten
 
 ### 1. Connection Gating
 
-Action surfaces (e.g., "Create Bond", "Attest") MUST check `isConnected`. If `false`, the UI must surface the `ConnectWalletModal`.
+Action surfaces (e.g., "Create Bond", "Attest") MUST check `isConnected`. If `false`, the UI must surface the `ConnectWalletDialog`.
 
 ### 2. Not Installed
 

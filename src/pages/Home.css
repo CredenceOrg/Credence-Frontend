@@ -3,33 +3,52 @@
   gap: var(--credence-space-6);
 }
 
+/**
+ * CTA Row: Responsive button layout
+ * - Mobile (375px): Full-width primary button, secondary below
+ * - Tablet (768px+): Side-by-side buttons with primary emphasis
+ */
 .home__ctaRow {
   display: flex;
+  flex-direction: column;
   gap: var(--credence-space-4);
-  flex-wrap: wrap;
 }
 
+/* Mobile: Ensure buttons stack and primary takes full width */
 .home__cta {
-  padding: var(--credence-space-3) var(--credence-space-5);
+  padding: var(--credence-space-4) var(--credence-space-5);
   border-radius: var(--credence-radius-lg);
   font-weight: var(--credence-font-weight-semibold);
+  font-size: var(--credence-font-size-base);
   text-decoration: none;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  min-height: 48px;
   transition:
     background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
     color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
-    box-shadow var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+    box-shadow var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    transform var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
 }
 
 .home__cta--primary {
   background: var(--credence-color-primary);
   color: var(--credence-surface-page);
+  order: -1;
+  /* Primary button slightly larger on mobile */
+  font-size: var(--credence-font-size-lg);
+  padding: var(--credence-space-4) var(--credence-space-6);
 }
 
 .home__cta--primary:hover {
   background: var(--credence-color-primary-strong);
+  transform: translateY(-2px);
+}
+
+.home__cta--primary:active {
+  transform: translateY(0);
 }
 
 .home__cta--secondary {
@@ -44,4 +63,27 @@
 .home__cta:focus-visible {
   outline: var(--credence-focus-ring);
   outline-offset: 2px;
+}
+
+/* Tablet and up: Side-by-side layout with primary emphasis */
+@media (min-width: 768px) {
+  .home__ctaRow {
+    flex-direction: row;
+    gap: var(--credence-space-5);
+    align-items: center;
+  }
+
+  .home__cta {
+    width: auto;
+    padding: var(--credence-space-3) var(--credence-space-6);
+    font-size: var(--credence-font-size-base);
+    flex: 0 1 auto;
+  }
+
+  .home__cta--primary {
+    order: 0;
+    font-size: var(--credence-font-size-base);
+    padding: var(--credence-space-3) var(--credence-space-6);
+    min-width: 200px;
+  }
 }

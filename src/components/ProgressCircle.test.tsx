@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import Progress, { ProgressCircle } from './Progress'
@@ -31,7 +32,7 @@ describe('ProgressCircle', () => {
       const { container } = render(<ProgressCircle value={50} variant={variant} />)
 
       expect(container.firstElementChild).toHaveClass(`progress-circle--${variant}`)
-    },
+    }
   )
 
   it('preserves the zero-value boundary as determinate progress', () => {

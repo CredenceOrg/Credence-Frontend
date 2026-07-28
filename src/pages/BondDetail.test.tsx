@@ -27,7 +27,7 @@ vi.mock('../context/WalletContext', () => ({
   }),
 }))
 
-vi.mock('../components/ConnectWalletModal', () => ({
+vi.mock('../components/ConnectWalletDialog', () => ({
   __esModule: true,
   default: ({ open, onClose }: { open: boolean; onClose: () => void }) => {
     if (!open) return null
@@ -200,7 +200,7 @@ describe('BondDetail Page', () => {
     expect(screen.getByRole('heading', { name: /Confirm bond withdrawal/i })).toBeInTheDocument()
   })
 
-  it('opens the ConnectWalletModal when withdraw is clicked while disconnected', () => {
+  it('opens the ConnectWalletDialog when withdraw is clicked while disconnected', () => {
     mockConnected = false
 
     render(

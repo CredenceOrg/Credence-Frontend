@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import jsQR from 'jsqr'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import './QRScannerModal.css'
+import './QRScannerDialog.css'
 
-interface QRScannerModalProps {
+interface QRScannerDialogProps {
   open: boolean
   onScan: (value: string) => void
   onClose: () => void
@@ -11,7 +11,7 @@ interface QRScannerModalProps {
 
 type ScannerState = 'requesting' | 'scanning' | 'error' | 'success'
 
-export default function QRScannerModal({ open, onScan, onClose }: QRScannerModalProps) {
+export default function QRScannerDialog({ open, onScan, onClose }: QRScannerModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)

@@ -104,7 +104,7 @@ export default function ConnectGate({
     <>
       {!isConnected && (
         <Banner
-          severity="warning"
+          severity="warn"
           title={title}
           action={{
             label: actionLabel,

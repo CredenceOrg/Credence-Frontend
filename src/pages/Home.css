@@ -20,10 +20,15 @@
   gap: var(--credence-space-6);
 }
 
+/**
+ * CTA Row: Responsive button layout
+ * - Mobile (375px): Full-width primary button, secondary below
+ * - Tablet (768px+): Side-by-side buttons with primary emphasis
+ */
 .home__ctaRow {
   display: flex;
+  flex-direction: column;
   gap: var(--credence-space-4);
-  flex-wrap: wrap;
 }
 
 /* ─── Base CTA (shared link-button chrome) ─────────────────────────────────── */
@@ -166,5 +171,28 @@
 
   .home__cta:active:not([aria-disabled='true']) {
     transform: none;
+  }
+}
+
+/* Tablet and up: Side-by-side layout with primary emphasis */
+@media (min-width: 768px) {
+  .home__ctaRow {
+    flex-direction: row;
+    gap: var(--credence-space-5);
+    align-items: center;
+  }
+
+  .home__cta {
+    width: auto;
+    padding: var(--credence-space-3) var(--credence-space-6);
+    font-size: var(--credence-font-size-base);
+    flex: 0 1 auto;
+  }
+
+  .home__cta--primary {
+    order: 0;
+    font-size: var(--credence-font-size-base);
+    padding: var(--credence-space-3) var(--credence-space-6);
+    min-width: 200px;
   }
 }

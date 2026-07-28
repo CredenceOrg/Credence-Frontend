@@ -201,11 +201,40 @@
     "submitForm": "Submit Attestation Form",
     "timeline": "Activity Timeline",
     "filterLabel": "Filter attestations by status",
+    "emptyTitle": "No attestations yet",
+    "emptyDescription": "Submit your first attestation to start building verifiable trust. Attestations from peers strengthen your on-chain reputation.",
+    "noFilterResults": "No matching attestations",
+    "noFilterResultsDescription": "There are no attestations with the \"{{filter}}\" status. Try a different filter to see more results.",
+    "clearFilter": "Clear filter",
     "filter": {
+      "legend": "Filter by status",
       "all": "All statuses",
+      "accepted": "Accepted",
+      "needsUpdate": "Needs update",
+      "inReview": "In review",
       "success": "Accepted / Submitted",
       "warning": "Needs update",
       "info": "In review"
+    },
+    "filterSummary": "Showing {{filtered}} of {{total}} attestations",
+    "drawer": {
+      "close": "Close attestation details",
+      "validator": "Validator",
+      "transaction": "Transaction hash",
+      "rule": "Rule",
+      "note": "Note",
+      "evidence": "Evidence",
+      "timestamp": "Timestamp",
+      "viewOnExplorer": "View on Stellar Explorer",
+      "title": "Attestation details"
+    },
+    "empty": {
+      "title": "No attestation selected",
+      "noAttestationsTitle": "No attestations yet",
+      "noAttestationsDescription": "Your attestations will appear here once you finish your first attestation submission.",
+      "noMatchingTitle": "No attestations match this status",
+      "noMatchingDescription": "Try viewing all attestations to see recent activity.",
+      "clearFilter": "View all attestations"
     }
   },
   "transactions": {

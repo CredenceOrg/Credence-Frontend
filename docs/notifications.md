@@ -108,9 +108,9 @@ const triggerRef = useRef<HTMLButtonElement>(null)
 
 | Severity  | Auto-dismiss | Quieted by Quiet hours? | Rationale                                        |
 | --------- | ------------ | ----------------------- | ------------------------------------------------ |
-| `info`    | 5 seconds*   | Yes                     | Low urgency, informational                       |
-| `success` | 5 seconds*   | Yes                     | Confirmation — user can move on                  |
-| `warning` | 8 seconds*   | Yes                     | Needs attention but not blocking                 |
+| `info`    | 5 seconds\*  | Yes                     | Low urgency, informational                       |
+| `success` | 5 seconds\*  | Yes                     | Confirmation — user can move on                  |
+| `warning` | 8 seconds\*  | Yes                     | Needs attention but not blocking                 |
 | `danger`  | Manual only  | **No**                  | Must be acknowledged explicitly — never silenced |
 
 _\* Timers pause while the pointer is hovering over the toast or while keyboard focus is inside it._

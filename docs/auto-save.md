@@ -105,7 +105,6 @@ A pure presentational pill. Container components supply i18n-aware labels.
 
 ```tsx
 import { AutoSaveIndicator } from '../components/indicators'
-
 ;<AutoSaveIndicator
   status={autoSave.status}
   lastSavedAt={autoSave.lastSavedAt}

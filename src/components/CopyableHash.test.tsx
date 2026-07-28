@@ -49,8 +49,8 @@ describe('CopyableHash', () => {
     const hash = '0x93a1234567890abcdef1234567890abcdef22f4'
     render(<CopyableHash hash={hash} />)
 
-    // First 6 chars: "0x93a1", Last 4 chars: "22f4"
-    expect(screen.getByText('0x93a1…22f4')).toBeInTheDocument()
+    // Uses truncateAddress: first 12 + "..." + last 8
+    expect(screen.getByText('0x93a1234567...cdef22f4')).toBeInTheDocument()
   })
 
   it('renders a full tx hash if it is short', () => {

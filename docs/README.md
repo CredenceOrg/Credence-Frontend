@@ -306,21 +306,36 @@ This module is the single source of truth for all Stellar address validation and
 // Validate Stellar public key format (56 chars, starts with 'G')
 isValidStellarAddress(address: string | undefined | null): boolean
 
-// Truncate address for display (first 12 + ... + last 8 chars)
+// Middle-truncate address for display: preserves both start and end
 truncateAddress(address: string | undefined | null): string
+
+// Format address according to display mode ('full' | 'short' | 'friendly')
+formatAddressForDisplay(address: string | undefined | null, mode: AddressDisplayMode | string | undefined): string
 ```
+
+**Middle Truncation Behavior:**
+
+`truncateAddress` performs middle truncation — instead of only showing the beginning of a
+long string, it preserves both the start (first 12 characters) and the end (last 8 characters),
+separated by `...`. Strings shorter than 20 characters are returned unchanged.
 
 **Usage Examples:**
 
 ```typescript
-import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
+import { isValidStellarAddress, truncateAddress, formatAddressForDisplay } from '@/lib/stellar'
 
 // Address validation
 isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA') // → true
 
-// Address truncation
+// Address truncation (middle truncation: start...end)
 truncateAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')
 // → "GAAZI4TCR3TY...CCWNA"
+
+// Format for display in different modes
+formatAddressForDisplay('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', 'short')
+// → "GAAZI4TCR3TY...CCWNA"
+formatAddressForDisplay('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', 'friendly')
+// → "GAAZI4…CCWNA"
 ```
 
 **Behavior Preservation:**
@@ -328,7 +343,8 @@ truncateAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')
 - Exact 56-character validation
 - 'G' prefix requirement
 - Uppercase alphanumeric characters only
-- Short addresses (<20 chars) displayed unchanged
+- Middle truncation for long strings: first 12 + `...` + last 8
+- Short addresses (≤20 chars) displayed unchanged
 - Whitespace trimmed automatically
 - Null/undefined values handled gracefully
 

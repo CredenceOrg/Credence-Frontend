@@ -25,7 +25,12 @@ describe('ErrorBoundary', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      // Use data-attributes on the ErrorState panel to make the assertion
+      // resilient to copy edits (per #810 standardisation).
+      const panel = screen.getByRole('alert')
+      expect(panel).toHaveAttribute('data-error-kind', 'generic')
+      expect(panel).toHaveAttribute('data-error-severity', 'danger')
+      expect(panel).toHaveTextContent(/something went wrong/i)
     })
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
@@ -42,7 +47,10 @@ describe('ErrorBoundary', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      const panel = screen.getByRole('alert')
+      expect(panel).toHaveAttribute('data-error-kind', 'generic')
+      expect(panel).toHaveAttribute('data-error-severity', 'danger')
+      expect(panel).toHaveTextContent(/something went wrong/i)
     })
   })
 
@@ -66,7 +74,9 @@ describe('ErrorBoundary', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      const panel = screen.getByRole('alert')
+      expect(panel).toHaveAttribute('data-error-kind', 'generic')
+      expect(panel).toHaveTextContent(/something went wrong/i)
     })
 
     fireEvent.click(screen.getByRole('button', { name: /try again/i }))
@@ -92,7 +102,12 @@ describe('ErrorBoundary', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /connection issue/i })).toBeInTheDocument()
+      const panel = screen.getByRole('alert')
+      expect(panel).toHaveAttribute('data-error-kind', 'network')
+      expect(panel).toHaveAttribute('data-error-severity', 'danger')
+      // Chunk-load failures fall through to the title override "Something
+      // went wrong" so the whole-app-crash tone is preserved.
+      expect(panel).toHaveTextContent(/something went wrong/i)
     })
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })

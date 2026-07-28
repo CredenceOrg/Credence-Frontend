@@ -230,14 +230,13 @@ export default function Transactions() {
       )}
 
       {!isLoading && error && (
-        <div role="alert">
-          <ErrorState
-            type={error.status === 0 ? 'network' : error.status >= 500 ? 'backend' : 'generic'}
-            title={t('transactions.unableToLoad')}
-            message={error.message}
-            action={{ label: t('common.tryAgain'), onClick: refetch }}
-          />
-        </div>
+        <ErrorState
+          type={error.status === 0 ? 'network' : error.status >= 500 ? 'backend' : 'generic'}
+          title={t('transactions.unableToLoad')}
+          message={error.message}
+          action={{ label: t('common.tryAgain'), onClick: refetch }}
+          ariaLabel={t('transactions.unableToLoad')}
+        />
       )}
 
       {hasData && visibleTransactions.length === 0 && (

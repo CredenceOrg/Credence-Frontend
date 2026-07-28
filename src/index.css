@@ -120,6 +120,9 @@
   --credence-color-danger-action: #dc2626;
   --credence-color-danger-text: #991b1b;
   --credence-color-danger-text-muted: #7f1d1d;
+  --credence-color-incident-surface: #fef2f2;
+  --credence-color-incident-border: #dc2626;
+  --credence-color-incident-text: #991b1b;
 
   /* Tier and illustration accents */
   --credence-color-bronze-surface: #fef3c7;
@@ -185,6 +188,9 @@
   --bg-danger: var(--credence-color-danger-surface);
   --border-danger: var(--credence-color-danger-border);
   --text-danger: var(--credence-color-danger-text);
+  --bg-incident: var(--credence-color-incident-surface);
+  --border-incident: var(--credence-color-incident-border);
+  --text-incident: var(--credence-color-incident-text);
   --space-6: var(--credence-space-6);
   --container-padding: var(--credence-container-padding);
   --container-max: var(--credence-container-max);
@@ -215,6 +221,9 @@
   --credence-color-danger-surface: rgba(239, 68, 68, 0.15);
   --credence-color-danger-border: #ef4444;
   --credence-color-danger-text: #fca5a5;
+  --credence-color-incident-surface: rgba(239, 68, 68, 0.15);
+  --credence-color-incident-border: #dc2626;
+  --credence-color-incident-text: #fca5a5;
   --credence-color-bronze-surface: rgba(245, 158, 11, 0.1);
   --credence-color-bronze-border: #b45309;
   --credence-color-bronze-text: #fcd34d;
@@ -236,6 +245,23 @@
   --credence-text-primary: var(--credence-color-slate-50);
   --credence-text-secondary: var(--credence-color-slate-400);
   --credence-border-default: var(--credence-color-slate-700);
+  --credence-color-trust-surface: rgba(139, 92, 246, 0.15);
+  --credence-color-attestation-surface: rgba(34, 197, 94, 0.15);
+  --credence-color-danger-surface-strong: rgba(239, 68, 68, 0.25);
+  --credence-color-danger-action: #ef4444;
+  --credence-color-danger-text-muted: #fca5a5;
+  --credence-skeleton-gradient: linear-gradient(
+    90deg,
+    rgba(51, 65, 85, 0.4) 25%,
+    rgba(71, 85, 105, 0.5) 50%,
+    rgba(51, 65, 85, 0.4) 75%
+  );
+  /* Explicit legacy alias overrides */
+  --bg-page: var(--credence-surface-page);
+  --bg-card: var(--credence-surface-card);
+  --text-primary: var(--credence-text-primary);
+  --text-secondary: var(--credence-text-secondary);
+  --border-default: var(--credence-border-default);
   --slate-900: var(--credence-color-slate-50);
 }
 

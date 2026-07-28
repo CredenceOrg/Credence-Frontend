@@ -13,7 +13,7 @@ import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/states/EmptyState'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
-import ConnectWalletModal from '../components/ConnectWalletModal'
+import ConnectWalletDialog from '../components/ConnectWalletDialog'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
@@ -215,7 +215,7 @@ export default function Bond() {
 
       {!isConnected && (
         <Banner
-          severity="warning"
+          severity="warn"
           title="Connect wallet required"
           action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
         >
@@ -225,7 +225,7 @@ export default function Bond() {
 
       {networkMismatch.mismatch && (
         <Banner
-          severity="warning"
+          severity="warn"
           title={t('bond.networkMismatch')}
           action={{
             label: t('bond.switchNetwork', { network: networkMismatch.actual }),
@@ -242,7 +242,7 @@ export default function Bond() {
       )}
 
       {slashBannerBreakdown && slashExposureBond && (
-        <Banner severity="warning" title={t('bond.slashExposure')}>
+        <Banner severity="warn" title={t('bond.slashExposure')}>
           {t('bond.slashExposureDescription', {
             amount: formatUsdc(slashExposureBond.amountUsdc),
             status: slashExposureBond.status === 'locked' ? 'locked' : 'in grace period',
@@ -352,7 +352,7 @@ export default function Bond() {
         </Suspense>
       )}
 
-      <ConnectWalletModal
+      <ConnectWalletDialog
         open={connectModalOpen}
         onClose={() => setConnectModalOpen(false)}
         returnFocusRef={connectTriggerRef}

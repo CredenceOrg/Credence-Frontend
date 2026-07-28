@@ -1,8 +1,6 @@
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { useSmartBack } from '../hooks/useSmartBack'
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { useNavigate, Link } from 'react-router-dom'
 import Button from '../components/Button'
-import { suggestRoute } from '../lib/suggestRoute'
 import './NotFound.css'
 
 export default function NotFound() {
@@ -13,68 +11,72 @@ export default function NotFound() {
   useDocumentTitle('Page Not Found')
 
   return (
-    <main className="not-found-container">
-      {/* Accessible SVG replacing raw emoji icon */}
-      <div className="not-found-icon-wrap">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-          width="32"
-          height="32"
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+    <div className="not-found-page">
+      {/* 404 Icon Visual */}
+      <div className="not-found-page__visual" aria-hidden="true">
+        🔍
       </div>
 
-      <h1 className="not-found-title">Page Not Found</h1>
+      {/* Subheading/Code */}
+      <p className="not-found-page__code">Error 404</p>
 
-      <p className="not-found-code">404</p>
+      {/* Heading */}
+      <h1 className="not-found-page__title">Page Not Found</h1>
 
-      <p className="not-found-description">
-        The page at <code>{location.pathname}</code> does not exist. It may have been moved or
-        removed.
+      {/* Description */}
+      <p className="not-found-page__description">
+        We couldn't find the page you are looking for. It might have been moved, deleted, or the URL
+        might be incorrect.
       </p>
-      {suggestion.suggestion && (
-        <Button variant="primary" onClick={() => navigate(suggestion.suggestion!)}>
-          Did you mean {suggestion.suggestion}?
-        </Button>
-      )}
-      <div className="not-found-canonical">
-        <Button variant="primary" onClick={() => navigate('/')}>
-          Home
-        </Button>
-        <Button variant="primary" onClick={() => navigate('/bond')}>
-          Bond
-        </Button>
-        <Button variant="primary" onClick={() => navigate('/trust')}>
-          Trust Score
-        </Button>
-        <Button variant="primary" onClick={() => navigate('/settings')}>
-          Settings
-        </Button>
-      </div>
 
-      <div className="not-found-actions">
-        <Button variant="primary" onClick={() => navigate('/')}>
+      {/* Recovery Actions */}
+      <div className="not-found-page__actions">
+        <Button variant="primary" onClick={() => navigate('/')} style={{ minWidth: '140px' }}>
           Back to Home
         </Button>
-
-        <Button variant="secondary" onClick={goBack}>
+        <Button variant="secondary" onClick={() => navigate(-1)} style={{ minWidth: '140px' }}>
           Go Back
         </Button>
       </div>
 
-      <p className="not-found-footer-text">
-        Use the navigation above to find what you're looking for, or{' '}
-        <a href="/" className="not-found-link">
-          return home
-        </a>
-        .
-      </p>
-    </main>
+      {/* Quick Recovery Links */}
+      <div className="not-found-page__quick-links-container">
+        <h2 className="not-found-page__quick-links-title">Quick Navigation</h2>
+        <ul className="not-found-page__quick-links-list">
+          <li className="not-found-page__link-item">
+            <Link to="/" className="not-found-page__link">
+              <span className="not-found-page__link-icon" aria-hidden="true">
+                📊
+              </span>
+              <span>Dashboard</span>
+            </Link>
+          </li>
+          <li className="not-found-page__link-item">
+            <Link to="/bond" className="not-found-page__link">
+              <span className="not-found-page__link-icon" aria-hidden="true">
+                🔒
+              </span>
+              <span>Bond Management</span>
+            </Link>
+          </li>
+          <li className="not-found-page__link-item">
+            <Link to="/trust" className="not-found-page__link">
+              <span className="not-found-page__link-icon" aria-hidden="true">
+                ⭐
+              </span>
+              <span>Trust Score Lookup</span>
+            </Link>
+          </li>
+          <li className="not-found-page__link-item">
+            <Link to="/settings" className="not-found-page__link">
+              <span className="not-found-page__link-icon" aria-hidden="true">
+                ⚙️
+              </span>
+              <span>Settings</span>
+            </Link>
+          </li>
+        </ul>
+      </div>
+    </div>
   )
 }

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { FormField } from './forms/FormField'
-import QRScannerModal from './QRScannerModal'
+import QRScannerDialog from './QRScannerDialog'
 import './AddressInput.css'
 import {
   isValidStellarAddress,
@@ -347,7 +347,7 @@ export default function AddressInput({
         />
       </FormField>
 
-      <QRScannerModal open={scannerOpen} onScan={handleScan} onClose={handleCloseScanner} />
+      <QRScannerDialog open={scannerOpen} onScan={handleScan} onClose={handleCloseScanner} />
 
       {/* Address echo display when valid */}
       {showSuccess && value && (

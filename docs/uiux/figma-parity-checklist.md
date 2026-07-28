@@ -58,6 +58,7 @@ Confirm these before checking individual screens. All screens inherit these valu
 
 - [ ] Hero section layout and vertical rhythm match Figma.
 - [ ] CTA button row wraps correctly on narrow mobile (< 640px) per Figma mobile frame.
+- [x] Home CTA link-buttons define hover, active, focus-visible, and disabled states (see `Home.css`, `docs/button-system.md`).
 - [ ] Card grid spacing uses `--credence-space-6` gap.
 - [ ] Empty state (no bonds) matches Figma empty-state frame.
 - [ ] Loading skeleton matches the Figma skeleton layout for this screen.

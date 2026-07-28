@@ -46,7 +46,7 @@ export default function Disclaimer({
           <>
             {' '}
             {/* optional learn more link */}{' '}
-            {learnMoreHref === '#' || !learnMoreHref ? (
+            {learnMoreHref === '#' ? (
               <span
                 aria-disabled="true"
                 className="disclaimer-terms-disabled"

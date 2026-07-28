@@ -19,9 +19,9 @@ vi.mock('@/hooks/useDebouncedValue', () => ({
   useDebouncedValue: mockDebouncedValue,
 }))
 
-// --- QRScannerModal mocking ---
+// --- QRScannerDialog mocking ---
 
-vi.mock('./QRScannerModal', () => ({
+vi.mock('./QRScannerDialog', () => ({
   default: ({
     open,
     onScan,

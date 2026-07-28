@@ -34,7 +34,8 @@ export const QUIET_HOURS_DEFAULTS: QuietHoursDefaults = {
 
 /** Outcome of parsing a `HH:mm` string. */
 export type ParsedTime =
-  { ok: true; hours: number; minutes: number; totalMinutes: number } | { ok: false }
+  | { ok: true; hours: number; minutes: number; totalMinutes: number }
+  | { ok: false }
 
 /**
  * Parse a `HH:mm` time string into discrete hour/minute values.

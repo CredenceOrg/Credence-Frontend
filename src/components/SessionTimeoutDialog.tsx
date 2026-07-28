@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import ConfirmDialog from './ConfirmDialog'
 
-export interface SessionTimeoutModalProps {
+export interface SessionTimeoutDialogProps {
   open: boolean
   onStayLoggedIn: () => void
   onLogout: () => void
@@ -11,12 +11,12 @@ export interface SessionTimeoutModalProps {
 /**
  * Modal shown when the user's session is about to expire due to inactivity.
  */
-export default function SessionTimeoutModal({
+export default function SessionTimeoutDialog({
   open,
   onStayLoggedIn,
   onLogout,
   timeLeftSeconds,
-}: SessionTimeoutModalProps) {
+}: SessionTimeoutDialogProps) {
   const [internalTimeLeft, setInternalTimeLeft] = useState(timeLeftSeconds)
 
   useEffect(() => {

@@ -226,7 +226,7 @@
 }
 
 .dashboard__pullArrow {
-  transition: transform 0.15s ease-out;
+  transition: transform var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 
 .dashboard__pullSpinner {
@@ -241,5 +241,11 @@
 @keyframes dashboard-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard__pullSpinner {
+    animation: none !important;
   }
 }

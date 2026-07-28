@@ -223,6 +223,16 @@
   }
 }
 
+/* ─── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .whats-new-dialog__backdrop,
+  .whats-new-dialog,
+  .whats-new-dialog__spinner {
+    animation: none !important;
+  }
+}
+
 /* ─── Mobile: bottom sheet ─────────────────────────────────────────────────── */
 
 @media (max-width: 767px) {

@@ -22,11 +22,11 @@ reimplementing them. If a new overlay needs focus management, it should call
 
 ```ts
 useFocusTrap({
-  containerRef,   // the dialog element
-  isActive,       // true while the overlay is open
-  initialFocusRef,// element focused on open (optional; falls back to first focusable)
+  containerRef, // the dialog element
+  isActive, // true while the overlay is open
+  initialFocusRef, // element focused on open (optional; falls back to first focusable)
   returnFocusRef, // element focused on close (optional; falls back to the trigger)
-  onEscape,       // called on Escape; caller closes the overlay
+  onEscape, // called on Escape; caller closes the overlay
   // returnFocusOnDeactivate defaults to true
 })
 ```
@@ -48,17 +48,17 @@ is not yet laid out.
 
 Chosen initial-focus targets today:
 
-| Component                              | File                                     | Initial focus  |
-| -------------------------------------- | ---------------------------------------- | -------------- |
-| `ConnectWalletModal`                   | `src/components/ConnectWalletModal.tsx`  | Cancel button  |
-| `ConfirmDialog`                        | `src/components/ConfirmDialog.tsx`       | Cancel button  |
-| `SessionTimeoutModal` (wraps `ConfirmDialog`) | `src/components/SessionTimeoutModal.tsx` | Cancel button |
-| `ReauthPrompt`                         | `src/components/ReauthPrompt.tsx`        | Cancel button  |
-| `WhatsNewDialog`                       | `src/components/WhatsNewDialog.tsx`      | Close button   |
-| `KeyboardShortcutsDialog`              | `src/components/KeyboardShortcutsDialog.tsx` | Close button |
-| `QRScannerModal`                       | `src/components/QRScannerModal.tsx`      | Close button   |
-| `MobileNav`                            | `src/components/navigation/MobileNav.tsx` | Close button  |
-| `ActionLauncher`                       | `src/components/ActionLauncher.tsx`      | Search input   |
+| Component                                     | File                                         | Initial focus |
+| --------------------------------------------- | -------------------------------------------- | ------------- |
+| `ConnectWalletModal`                          | `src/components/ConnectWalletModal.tsx`      | Cancel button |
+| `ConfirmDialog`                               | `src/components/ConfirmDialog.tsx`           | Cancel button |
+| `SessionTimeoutModal` (wraps `ConfirmDialog`) | `src/components/SessionTimeoutModal.tsx`     | Cancel button |
+| `ReauthPrompt`                                | `src/components/ReauthPrompt.tsx`            | Cancel button |
+| `WhatsNewDialog`                              | `src/components/WhatsNewDialog.tsx`          | Close button  |
+| `KeyboardShortcutsDialog`                     | `src/components/KeyboardShortcutsDialog.tsx` | Close button  |
+| `QRScannerModal`                              | `src/components/QRScannerModal.tsx`          | Close button  |
+| `MobileNav`                                   | `src/components/navigation/MobileNav.tsx`    | Close button  |
+| `ActionLauncher`                              | `src/components/ActionLauncher.tsx`          | Search input  |
 
 Destructive dialogs (`ConfirmDialog`) focus **Cancel**, not the confirm action,
 so keyboard/Enter cannot trigger the destructive path by accident.
@@ -180,13 +180,13 @@ No toast changes the user's current focus.
 
 ## 8. WCAG alignment
 
-| Criterion               | Covered by                                                        |
-| ----------------------- | ----------------------------------------------------------------- |
-| 2.1.1 Keyboard          | Trap keeps keyboard users inside the active overlay (Rule 2)      |
-| 2.1.2 No Keyboard Trap  | Escape always closes and releases the trap (Rule 4)               |
-| 2.4.3 Focus Order       | Initial focus targets the most logical element per dialog (Rule 1)|
-| 2.4.7 Focus Visible     | Existing `:focus-visible` styles (see ACCESSIBILITY.md)           |
-| 4.1.2 Name, Role, Value | `role="dialog"` + `aria-modal` + `aria-labelledby` on each dialog |
+| Criterion               | Covered by                                                         |
+| ----------------------- | ------------------------------------------------------------------ |
+| 2.1.1 Keyboard          | Trap keeps keyboard users inside the active overlay (Rule 2)       |
+| 2.1.2 No Keyboard Trap  | Escape always closes and releases the trap (Rule 4)                |
+| 2.4.3 Focus Order       | Initial focus targets the most logical element per dialog (Rule 1) |
+| 2.4.7 Focus Visible     | Existing `:focus-visible` styles (see ACCESSIBILITY.md)            |
+| 4.1.2 Name, Role, Value | `role="dialog"` + `aria-modal` + `aria-labelledby` on each dialog  |
 
 ---
 
@@ -204,4 +204,4 @@ Manual, keyboard-only, per overlay:
 
 Automated coverage lives alongside the components (`useFocusTrap` tests,
 `RouteAnnouncer.test.tsx`, `ToastProvider.test.tsx`, and most dialogs' test
-files; `QRScannerModal` is the current gap); run with `npm run test`.
+files; `QRScannerDialog` is the current gap); run with `npm run test`.

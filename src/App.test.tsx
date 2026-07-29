@@ -1,5 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, act, waitFor } from '@testing-library/react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { lazy, Suspense } from 'react'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import App from './App'
 import { DOM_EVENTS } from './events'
 
@@ -81,5 +83,98 @@ describe('App routing', () => {
     window.dispatchEvent(createBeforeInstallPromptEvent())
 
     expect(screen.queryByText(/Install Credence/i)).not.toBeInTheDocument()
+  })
+})
+
+// ─── route-level loading skeleton ────────────────────────────────────────
+
+describe('route-level loading skeleton', () => {
+  it('shows the loading skeleton while a lazy route is being resolved', () => {
+    let resolveLazy!: (value: { default: React.ComponentType }) => void
+    const LazyPage = lazy(
+      () =>
+        new Promise<{ default: React.ComponentType }>((resolve) => {
+          resolveLazy = resolve
+        })
+    )
+
+    render(
+      <MemoryRouter initialEntries={['/lazy-test']}>
+        <Suspense fallback={<div>Loading...</div>}>
+          <Routes>
+            <Route path="/lazy-test" element={<LazyPage />} />
+          </Routes>
+        </Suspense>
+      </MemoryRouter>
+    )
+
+    // The skeleton (fallback) should be visible while the module is pending
+    expect(screen.getByText('Loading...')).toBeInTheDocument()
+  })
+
+  it('removes the loading skeleton after the lazy route resolves', async () => {
+    let resolveLazy!: (value: { default: React.ComponentType }) => void
+    const LazyPage = lazy(
+      () =>
+        new Promise<{ default: React.ComponentType }>((resolve) => {
+          resolveLazy = resolve
+        })
+    )
+
+    render(
+      <MemoryRouter initialEntries={['/lazy-test']}>
+        <Suspense fallback={<div>Loading...</div>}>
+          <Routes>
+            <Route path="/lazy-test" element={<LazyPage />} />
+          </Routes>
+        </Suspense>
+      </MemoryRouter>
+    )
+
+    // Confirm skeleton is showing
+    expect(screen.getByText('Loading...')).toBeInTheDocument()
+
+    // Resolve the lazy module
+    await act(async () => {
+      resolveLazy({ default: () => <div>Lazy Content Loaded</div> })
+    })
+
+    // Skeleton should be gone, loaded content should be visible
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+      expect(screen.getByText('Lazy Content Loaded')).toBeInTheDocument()
+    })
+  })
+
+  it('does not leave the loading skeleton in the DOM after a lazy route resolves', async () => {
+    let resolveLazy!: (value: { default: React.ComponentType }) => void
+    const LazyPage = lazy(
+      () =>
+        new Promise<{ default: React.ComponentType }>((resolve) => {
+          resolveLazy = resolve
+        })
+    )
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/lazy-test']}>
+        <Suspense fallback={<div>Loading...</div>}>
+          <Routes>
+            <Route path="/lazy-test" element={<LazyPage />} />
+          </Routes>
+        </Suspense>
+      </MemoryRouter>
+    )
+
+    // Resolve the lazy module
+    await act(async () => {
+      resolveLazy({ default: () => <div>Clean Unmount</div> })
+    })
+
+    await waitFor(() => {
+      // The fallback text must not appear anywhere in the DOM
+      expect(container.textContent).not.toContain('Loading...')
+      // The loaded content should be present
+      expect(container.textContent).toContain('Clean Unmount')
+    })
   })
 })

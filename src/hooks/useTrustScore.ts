@@ -59,7 +59,10 @@ export function useTrustScore(address: string): UseTrustScoreResult {
 
     setIsLoading(true)
     setError(null)
-    setData(null)
+    
+    // Clear data only if we are fetching a new address. 
+    // This prevents flickering on refetch for the same address.
+    setData((currentData) => currentData?.address !== targetAddress ? null : currentData)
 
     try {
       const result = await apiFetch<TrustScore>(

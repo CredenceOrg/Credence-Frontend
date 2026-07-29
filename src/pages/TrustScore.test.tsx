@@ -164,6 +164,39 @@ describe('TrustScore', () => {
     await user.click(screen.getByRole('button', { name: /switch app to test \(testnet\)/i }))
     expect(mockSetNetwork).toHaveBeenCalledWith('test')
   })
+
+  it('does not flicker the chart (skeleton) on refetch if data is already present', () => {
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    mockTrustScoreState = {
+      data: {
+        address: VALID_ADDRESS,
+        score: 85,
+        tier: 'gold',
+        attestations: 1,
+        updatedAt: '2026-06-29T10:00:00Z',
+      },
+      isLoading: true, // simulates refetching
+      error: null,
+    }
+    render(<TrustScore />)
+
+    // The data should be displayed, and the loading skeleton should NOT be present.
+    expect(screen.getByRole('region', { name: /Trust score result/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Loading trust score/i)).not.toBeInTheDocument()
+  })
+
+  it('displays the error state and clears data on a failed lookup/refetch', () => {
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    mockTrustScoreState = {
+      data: null,
+      isLoading: false,
+      error: { message: 'Simulated failure mode', status: 500 },
+    }
+    render(<TrustScore />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/Simulated failure mode/i)
+    expect(screen.queryByRole('region', { name: /Trust score result/i })).not.toBeInTheDocument()
+  })
 })
 
 describe('TrustScore URL sync', () => {

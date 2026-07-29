@@ -101,14 +101,14 @@ export default function TrustScore() {
             {t('trustScore.results')}
           </h2>
 
-          {isLoading && (
+          {isLoading && !data && (
             <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading trust score">
               <p className="sr-only">{t('trustScore.loading')}</p>
               <LoadingSkeleton variant="trust-score" />
             </div>
           )}
 
-          {!isLoading && error && (
+          {!isLoading && error && !data && (
             <div role="alert">
               <ErrorState
                 type={trustScoreErrorType(error)}
@@ -119,7 +119,7 @@ export default function TrustScore() {
             </div>
           )}
 
-          {!isLoading && !error && data && lookupAddress === address.trim() && (
+          {data && lookupAddress === address.trim() && (
             <div className="trustScore__hero" role="region" aria-label="Trust score result">
               <div className="trustScore__heroScore">
                 <span className="trustScore__heroScoreValue">{data.score}</span>

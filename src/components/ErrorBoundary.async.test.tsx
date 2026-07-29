@@ -1,5 +1,5 @@
 /**
- * Tests for ErrorBoundary catching thrown async renders — issue #742
+ * Tests for ErrorBoundary catching thrown async renders — issue #988
  *
  * A React error boundary catches render-phase throws regardless of whether the
  * throw was triggered synchronously or by a resolved async operation.  These
@@ -48,7 +48,7 @@ function makeLazyThrowingComponent(message: string) {
 // suite
 // ---------------------------------------------------------------------------
 
-describe('ErrorBoundary – async render throws (#742)', () => {
+describe('ErrorBoundary – async render throws (#988)', () => {
   beforeEach(() => {
     // React's own error logging is noisy in test output; silence it.
     vi.spyOn(console, 'error').mockImplementation(() => {})

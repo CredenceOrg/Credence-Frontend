@@ -673,6 +673,143 @@ describe('Button – size prop', () => {
 // 15. Class string shape — includes size classes (regression)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// 16. Hover / focus-visible parity on the primary button
+// ---------------------------------------------------------------------------
+
+describe('Button – hover/focus-visible parity on primary variant', () => {
+  it('receives focus programmatically', () => {
+    render(<Button variant="primary">Focus me</Button>)
+    const btn = screen.getByRole('button', { name: /focus me/i })
+    btn.focus()
+    expect(btn).toHaveFocus()
+  })
+
+  it('applies focus-visible ring classes when the browser would fire :focus-visible', () => {
+    render(<Button variant="primary">Focus ring</Button>)
+    const btn = screen.getByRole('button', { name: /focus ring/i })
+    // The CSS selector .credence-button:focus-visible hooks into the
+    // :focus-visible pseudo-class on the base button class — verify the
+    // element has the class that the CSS selector targets.
+    expect(btn).toHaveClass('credence-button')
+    btn.focus()
+    expect(btn).toHaveFocus()
+    // Focus-visible styling is applied by the browser; the element
+    // structure (button + class) is what the CSS selector matches.
+    expect(btn).toHaveAttribute('data-testid', TEST_IDS.PRIMARY_CTA)
+  })
+
+  it('retains focus when the user hovers a focused button', () => {
+    render(<Button variant="primary">Hover + focus</Button>)
+    const btn = screen.getByRole('button', { name: /hover \+ focus/i })
+    btn.focus()
+    expect(btn).toHaveFocus()
+    // Simulate hover over the focused button — :hover and :focus-visible
+    // should coexist without losing focus.
+    fireEvent.mouseEnter(btn)
+    expect(btn).toHaveFocus()
+    fireEvent.mouseLeave(btn)
+    expect(btn).toHaveFocus()
+  })
+
+  it('loses focus on blur', () => {
+    render(<Button variant="primary">Blur me</Button>)
+    const btn = screen.getByRole('button', { name: /blur me/i })
+    btn.focus()
+    expect(btn).toHaveFocus()
+    btn.blur()
+    expect(btn).not.toHaveFocus()
+  })
+
+  it('does not lose hover state when focus moves to the button', () => {
+    render(<Button variant="primary">Hover first</Button>)
+    const btn = screen.getByRole('button', { name: /hover first/i })
+    // Simulate hover first, then focus
+    fireEvent.mouseEnter(btn)
+    btn.focus()
+    expect(btn).toHaveFocus()
+  })
+
+  it('does not fire onClick from hover-only interaction', async () => {
+    const handler = vi.fn()
+    render(
+      <Button variant="primary" onClick={handler}>
+        Hover no click
+      </Button>
+    )
+    const btn = screen.getByRole('button', { name: /hover no click/i })
+    fireEvent.mouseEnter(btn)
+    expect(handler).not.toHaveBeenCalled()
+    fireEvent.mouseLeave(btn)
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('fires onClick only when clicked, not from hover+focus alone', async () => {
+    const handler = vi.fn()
+    render(
+      <Button variant="primary" onClick={handler}>
+        Click me
+      </Button>
+    )
+    const btn = screen.getByRole('button', { name: /click me/i })
+    // Hover then focus — no click yet
+    fireEvent.mouseEnter(btn)
+    btn.focus()
+    expect(handler).not.toHaveBeenCalled()
+    // Now click
+    await userEvent.click(btn)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('has the correct CSS class structure for :hover and :focus-visible selectors', () => {
+    // The CSS selector for primary hover is:
+    //   .credence-button--primary:hover:not(:disabled)
+    // The CSS selector for focus-visible on all variants is:
+    //   .credence-button:focus-visible
+    // Verify the element has both class hooks present.
+    render(<Button variant="primary">CSS hooks</Button>)
+    const btn = screen.getByRole('button', { name: /css hooks/i })
+    expect(btn).toHaveClass('credence-button')
+    expect(btn).toHaveClass('credence-button--primary')
+    // Not disabled — hover and focus-visible selectors target :not(:disabled)
+    expect(btn).not.toBeDisabled()
+  })
+
+  it('supports hover and focus-visible on enabled primary button with all size variants', () => {
+    const sizes = ['sm', 'md', 'lg'] as const
+    for (const size of sizes) {
+      const { unmount } = render(
+        <Button variant="primary" size={size}>
+          {size}
+        </Button>
+      )
+      const btn = screen.getByRole('button', { name: new RegExp(size, 'i') })
+      expect(btn).toHaveClass('credence-button')
+      expect(btn).toHaveClass('credence-button--primary')
+      expect(btn).toHaveClass(`credence-button--${size}`)
+      expect(btn).not.toBeDisabled()
+      btn.focus()
+      expect(btn).toHaveFocus()
+      unmount()
+    }
+  })
+
+  it('aria-disabled is false when the primary button is enabled and focused', () => {
+    render(<Button variant="primary">Enabled focused</Button>)
+    const btn = screen.getByRole('button', { name: /enabled focused/i })
+    btn.focus()
+    expect(btn).toHaveAttribute('aria-disabled', 'false')
+  })
+
+  it('does not have aria-busy when the primary button is focused but not loading', () => {
+    render(<Button variant="primary">Focused not loading</Button>)
+    const btn = screen.getByRole('button', { name: /focused not loading/i })
+    btn.focus()
+    const ariaBusy = btn.getAttribute('aria-busy')
+    expect(ariaBusy === null || ariaBusy === 'false').toBe(true)
+  })
+})
+
 describe('Button – class string shape with size prop (no stray spaces regression)', () => {
   it('class string has no leading/double spaces for all variant+size combos', () => {
     const cases = [

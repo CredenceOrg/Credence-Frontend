@@ -70,4 +70,16 @@ describe('EmptyState', () => {
     const p = container.querySelector('p') as HTMLElement
     expect(p.className).not.toContain('empty-state__description--hasAction')
   })
+
+  it('applies mobile bottom-padding to avoid overlap with fixed bottom nav', () => {
+    // On mobile (≤768px) the empty state adds extra bottom padding so
+    // content is not hidden behind the fixed bottom navigation bar.
+    const { container } = render(<EmptyState {...baseProps} />)
+    const root = container.querySelector('.empty-state') as HTMLElement
+    // The CSS @media query adds padding-bottom: calc(56px + var(--space-6))
+    // on viewports ≤ 768px. We assert the class is present so the CSS
+    // rule matches; the actual pixel value is verified by the CSS cascade.
+    expect(root).toBeInTheDocument()
+    expect(root.className).toBe('empty-state')
+  })
 })

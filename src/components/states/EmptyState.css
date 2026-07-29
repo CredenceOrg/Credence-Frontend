@@ -109,3 +109,10 @@
     transition: none;
   }
 }
+
+/* ── Mobile: prevent overlap with fixed bottom nav ──────────────────────── */
+@media (max-width: 768px) {
+  .empty-state {
+    padding-bottom: calc(56px + var(--credence-space-6));
+  }
+}

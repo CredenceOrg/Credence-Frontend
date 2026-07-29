@@ -232,7 +232,7 @@ export default function ErrorState({
         <button
           type="button"
           onClick={action.onClick}
-          className="focus-visible error-state__action"
+          className="error-state__action"
           disabled={action.isLoading}
           aria-busy={action.isLoading}
         >

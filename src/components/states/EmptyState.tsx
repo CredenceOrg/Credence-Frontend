@@ -134,8 +134,9 @@ export default function EmptyState({
       </p>
       {action && (
         <button
+          type="button"
           onClick={action.onClick}
-          className={`focus-visible empty-state__action${action.variant === 'secondary' ? ' empty-state__action--secondary' : ''}`}
+          className={`empty-state__action${action.variant === 'secondary' ? ' empty-state__action--secondary' : ''}`}
           disabled={action.isLoading}
           aria-busy={action.isLoading}
         >

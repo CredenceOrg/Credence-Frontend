@@ -63,13 +63,12 @@
 /* ─── Focus (matches .credence-button:focus-visible) ───────────────────────── */
 
 .home__cta:focus-visible {
-  outline: 3px solid var(--credence-color-focus-ring);
+  outline: var(--credence-focus-ring);
   outline-offset: 3px;
   box-shadow: 0 0 0 5px var(--credence-surface-page);
 }
 
 [data-theme='dark'] .home__cta:focus-visible {
-  outline-color: var(--credence-color-primary);
   box-shadow:
     0 0 0 5px var(--credence-surface-page),
     0 0 0 7px var(--credence-color-primary);

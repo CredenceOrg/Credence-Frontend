@@ -177,8 +177,6 @@
 }
 
 .error-state__action:focus-visible {
-  /* Use the project's focus-ring token so the contrast is consistent
-     across light/dark themes. */
   outline: var(--credence-focus-ring);
   outline-offset: 2px;
 }

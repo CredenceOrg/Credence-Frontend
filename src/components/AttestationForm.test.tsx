@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import AttestationForm from './AttestationForm'
@@ -88,10 +88,26 @@ describe('AttestationForm', () => {
       const evidenceTextarea = screen.getByRole('textbox', { name: /evidence/i })
       const countEl = document.querySelector('[aria-live="polite"]')
 
-      expect(countEl?.textContent?.trim()).toBe('0 / 28 bytes')
+      expect(countEl?.textContent?.trim()).toBe('0 / 2,000 chars')
 
       await user.type(evidenceTextarea, 'hello')
-      expect(countEl?.textContent?.trim()).toBe('5 / 28 bytes')
+      expect(countEl?.textContent?.trim()).toBe('5 / 2,000 chars')
+    })
+
+    it('rejects evidence exceeding 2,000 characters', async () => {
+      const user = userEvent.setup()
+      renderForm()
+
+      const addressInput = screen.getByRole('textbox', { name: /subject address/i })
+      const evidenceTextarea = screen.getByRole('textbox', { name: /evidence/i })
+      const submitButton = screen.getByRole('button', { name: /submit attestation/i })
+
+      await user.type(addressInput, VALID_KEY)
+      // Use fireEvent for the long string to avoid userEvent timeout
+      fireEvent.change(evidenceTextarea, { target: { value: 'A'.repeat(2001) } })
+      await user.click(submitButton)
+
+      expect(screen.getByText(/Evidence cannot exceed 2,000 characters/)).toBeInTheDocument()
     })
   })
 

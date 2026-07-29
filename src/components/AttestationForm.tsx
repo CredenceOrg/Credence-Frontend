@@ -28,7 +28,7 @@ export interface AttestationFormProps {
  * AttestationForm handles the input and validation for submitting attestations.
  * Validation Contract:
  * - A valid Stellar subject public key address is required.
- * - Evidence text is required and cannot exceed 500 characters.
+ * - Evidence text is required and cannot exceed 2,000 characters.
  * - Confirms the submission using a customized ConfirmDialog.
  */
 export default function AttestationForm({
@@ -74,8 +74,8 @@ export default function AttestationForm({
 
     if (!evidence.trim()) {
       newErrors.evidence = 'Evidence is required.'
-    } else if (new TextEncoder().encode(evidence).length > 28) {
-      newErrors.evidence = 'Evidence cannot exceed 28 bytes.'
+    } else if (evidence.length > 2000) {
+      newErrors.evidence = 'Evidence cannot exceed 2,000 characters.'
     }
 
     setErrors(newErrors)
@@ -142,7 +142,7 @@ export default function AttestationForm({
           <FormField
             id="evidence-input"
             label="Evidence"
-            hint="Add supporting proof or description (max 28 bytes)"
+            hint="Add supporting proof or description (max 2,000 chars)"
             error={errors.evidence}
             required
           >
@@ -163,7 +163,7 @@ export default function AttestationForm({
             }}
             aria-live="polite"
           >
-            {new TextEncoder().encode(evidence).length} / 28 bytes
+            {evidence.length} / 2,000 chars
           </div>
         </div>
 

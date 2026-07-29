@@ -5,6 +5,7 @@ import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWa
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useToast } from '../components/ToastProvider'
 import SessionTimeoutDialog from '../components/SessionTimeoutDialog'
+import { clearAppLocalStorage } from '../lib/clearAppLocalStorage'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean
@@ -61,6 +62,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [wallet.isConnected, lastReauthTime])
 
   const handleLogout = useCallback(() => {
+    clearAppLocalStorage()
     wallet.disconnect()
     setShowWarning(false)
     setLastReauthTime(null)

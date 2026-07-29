@@ -165,8 +165,12 @@ describe('TrustScore', () => {
     expect(mockSetNetwork).toHaveBeenCalledWith('test')
   })
 
-  it('does not flicker the chart (skeleton) on refetch if data is already present', () => {
+  it('does not flicker the chart (skeleton) on refetch if data is already present', async () => {
+    const user = userEvent.setup()
+    mockConnected = true
     mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    
+    // Initial state: data is loaded
     mockTrustScoreState = {
       data: {
         address: VALID_ADDRESS,
@@ -175,18 +179,37 @@ describe('TrustScore', () => {
         attestations: 1,
         updatedAt: '2026-06-29T10:00:00Z',
       },
-      isLoading: true, // simulates refetching
+      isLoading: false,
       error: null,
     }
-    render(<TrustScore />)
+    const { rerender } = render(<TrustScore />)
 
-    // The data should be displayed, and the loading skeleton should NOT be present.
+    // Wait for the button to be enabled based on valid URL param and click it
+    const lookupButton = await screen.findByRole('button', { name: /look up score/i })
+    expect(lookupButton).not.toBeDisabled()
+    await user.click(lookupButton)
+
+    // The data should be displayed
+    expect(await screen.findByRole('region', { name: /Trust score result/i })).toBeInTheDocument()
+
+    // Now simulate a refetch starting
+    mockTrustScoreState = {
+      ...mockTrustScoreState,
+      isLoading: true,
+    }
+    rerender(<TrustScore />)
+
+    // The data should STILL be displayed, and the loading skeleton should NOT be present.
     expect(screen.getByRole('region', { name: /Trust score result/i })).toBeInTheDocument()
     expect(screen.queryByLabelText(/Loading trust score/i)).not.toBeInTheDocument()
   })
 
-  it('displays the error state and clears data on a failed lookup/refetch', () => {
+  it('displays the error state and clears data on a failed lookup/refetch', async () => {
+    const user = userEvent.setup()
+    mockConnected = true
     mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    
+    // Simulate failed state
     mockTrustScoreState = {
       data: null,
       isLoading: false,
@@ -194,7 +217,11 @@ describe('TrustScore', () => {
     }
     render(<TrustScore />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/Simulated failure mode/i)
+    const lookupButton = await screen.findByRole('button', { name: /look up score/i })
+    expect(lookupButton).not.toBeDisabled()
+    await user.click(lookupButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Simulated failure mode/i)
     expect(screen.queryByRole('region', { name: /Trust score result/i })).not.toBeInTheDocument()
   })
 })

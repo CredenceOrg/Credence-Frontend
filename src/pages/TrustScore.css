@@ -122,11 +122,10 @@
 .trustScore__clearButton:hover,
 .trustScore__clearButton:focus-visible {
   color: var(--credence-text-primary);
-  outline: none;
 }
 
 .trustScore__clearButton:focus-visible {
-  outline: 2px solid var(--credence-color-primary);
+  outline: var(--credence-focus-ring);
   outline-offset: 2px;
   border-radius: var(--credence-radius-sm);
 }
@@ -168,7 +167,7 @@
 }
 
 .trustScore__recentItemBtn:focus-visible {
-  outline: 2px solid var(--credence-color-primary);
+  outline: var(--credence-focus-ring);
   outline-offset: 2px;
 }
 
@@ -192,7 +191,7 @@
 }
 
 .trustScore__recentCopyBtn:focus-visible {
-  outline: 2px solid var(--credence-color-primary);
+  outline: var(--credence-focus-ring);
   outline-offset: 2px;
 }
 

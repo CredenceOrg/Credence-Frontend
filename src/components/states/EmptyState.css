@@ -95,7 +95,7 @@
 }
 
 .empty-state__action:focus-visible {
-  outline: 2px solid var(--credence-color-primary-soft);
+  outline: var(--credence-focus-ring);
   outline-offset: 2px;
 }
 
@@ -103,9 +103,7 @@
   background: var(--credence-border-default-hover, var(--credence-border-default));
 }
 
-.empty-state__action--secondary:focus-visible {
-  outline-color: var(--credence-text-primary);
-}
+
 @media (prefers-reduced-motion: reduce) {
   .empty-state__action {
     transition: none;

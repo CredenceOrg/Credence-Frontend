@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
 import AddressDisplay from '../components/AddressDisplay'
@@ -15,6 +15,8 @@ import {
   ONBOARDING_STEP_STORAGE_KEY,
 } from '../config/onboarding'
 import { useWallet } from '../context/WalletContext'
+import { useIsMobile } from '../hooks/useMediaQuery'
+import { useQuery } from '../hooks/useQuery'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
@@ -80,8 +82,45 @@ export default function Dashboard() {
 
   const { address, connected, connect, isConnecting } = useWallet()
   const reducedMotion = useReducedMotion()
+  const isMobile = useIsMobile()
   const location = useLocation()
   const [searchParams] = useSearchParams()
+  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const [pullDistance, setPullDistance] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  useEffect(() => {
+    const handleOnline = () => setOnline(true)
+    const handleOffline = () => setOnline(false)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  const fetchScore = useCallback(async () => {
+    // Placeholder: will be replaced with actual API call
+    return { score: 684, tier: 'gold' as const }
+  }, [])
+
+  const { data: queryData } = useQuery(fetchScore, { enabled: connected })
+
+  const displayScore = queryData ? queryData.score : 0
+  const displayTier = queryData ? queryData.tier : 'bronze'
+
+  const handleTouchStart = useCallback(() => {
+    // Pull-to-refresh will be implemented in a follow-up
+  }, [])
+
+  const handleTouchMove = useCallback(() => {
+    // Pull-to-refresh will be implemented in a follow-up
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    // Pull-to-refresh will be implemented in a follow-up
+  }, [])
 
   const buildWidgetUrl = (widget: string): string => {
     return `${window.location.origin}${location.pathname}?widget=${widget}`

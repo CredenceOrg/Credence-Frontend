@@ -166,15 +166,56 @@ export function BondActionButton() {
 
 ## 4. Page & Section Error States (`ErrorState` & `ErrorBoundary`)
 
+### Severity Tokens (canonical)
+
+| Severity   | Border / Surface tokens (light)         | Border / Surface tokens (dark)          | Use for                                                  |
+| ---------- | --------------------------------------- | -------------------------------------- | -------------------------------------------------------- |
+| `danger`   | `--credence-color-danger-border` / `-surface` | translucent `--credence-color-danger-…` (alpha) | Blocking failures: lost connection, server crash, unhandled exception |
+| `warning`  | `--credence-color-warning-border` / `-surface` | translucent `--credence-color-warning-…`        | Recoverable: validation, slow path, scheduled maintenance         |
+| `info`     | `--credence-color-info-border` / `-surface`    | translucent `--credence-color-info-…`           | Non-blocking: cached fallback, 404, "no records" edge cases        |
+
+The dark-mode block in `src/index.css` swaps these to translucent alpha values so the same component renders correctly under `[data-theme='dark']` without per-component overrides.
+
 ### Use Case
 
 Use section or full-page error states when data failed to load completely or a component unhandled exception occurred, rendering content unusable.
 
 ### Accessibility & Behavior
 
-- Displays a prominent error icon, error heading, detailed description, and an actionable retry CTA button.
+- Renders `role="alert"` and `aria-live="assertive"` so screen readers announce the failure immediately.
+- The default title and message are derived from the `type` prop. Override via `title` / `message` for context-specific copy.
+- The CTA has `min-height: 2.75rem` (WCAG 2.5.5 target size) and a `focus-visible` ring tinted from `--credence-color-primary`.
+- A subtle entrance animation (translateY) is dropped entirely under `prefers-reduced-motion: reduce`.
 - Wrapped around route hierarchies via `ErrorBoundary` to prevent white-screen crashes.
-- Styled using standard `--credence-color-danger-*` variables and centered layout panels.
+- All color tones come from design tokens (no hard-coded hex).
+
+### Severity Vocabulary
+
+The `severity` prop is independent of the `type` prop. Use it to dial down the alarm. Defaults are derived from `type`:
+
+| `type`        | Default `severity` | When to override                                |
+| ------------- | ------------------ | ---------------------------------------------- |
+| `network`     | `danger`           | Use `warning` for cached-fallback retrials     |
+| `backend`     | `danger`           | Use `warning` for scheduled maintenance windows |
+| `validation`  | `warning`          | Use `danger` for auth/permission errors        |
+| `generic`     | `danger`           | Use `info` for gracefully degraded views       |
+| `pageNotFound` | `info`            | Use `danger` if page is part of a critical flow |
+
+### Copy Deck (default messages)
+
+Calmer, non-alarming phrasing aligned with [Copy Tone Guide](./COPY_TONE.md):
+
+| `type`         | Title                            | Message                                                                  |
+| -------------- | -------------------------------- | ------------------------------------------------------------------------ |
+| `network`      | Connection issue                 | We can't reach the service right now. Check your connection and try again in a moment. |
+| `backend`      | Service temporarily unavailable  | We're hitting a brief snag on our end. Try again in a moment and we'll be back. |
+| `validation`   | Check your input                 | One or more fields need attention. Review the highlighted items and try again. |
+| `generic`      | Something didn't load            | An unexpected hiccup stopped this view. Try again — if it persists, reach out and we'll help. |
+| `pageNotFound` | Page not found                   | The page you're looking for doesn't exist. It may have moved or been renamed. |
+
+### Iconography
+
+Inline SVG glyphs using `currentColor` and `aria-hidden="true"`. The accessible name comes from the surrounding title/message text. Never use emoji for error/sad-state visuals (see PR #936).
 
 ### Code Example
 

@@ -9,20 +9,19 @@
 #   2. npm run lint          — ESLint
 #   3. npm run build         — TypeScript compile + Vite production build
 #   4. npm run test          — Vitest unit / component tests
+#   5. node scripts/check-console-log.mjs — Production-bundle console.log check
+#   6. npx lhci autorun      — Lighthouse performance / accessibility / best-practices CI
 
 name: CI
-
-on:
+'on':
   push:
     branches:
-      - main
-  pull_request:
-
+    - main
+  pull_request: null
 jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -51,3 +50,13 @@ jobs:
       # ── 4. Tests ─────────────────────────────────────────────────────────────
       - name: Run tests (Vitest)
         run: npm run test
+
+      # ── 5. Console-log check ─────────────────────────────────────────────────
+      - name: Check for console.log in production bundle
+        run: node scripts/check-console-log.mjs
+
+      # ── 6. Lighthouse CI ─────────────────────────────────────────────────────
+      - name: Run Lighthouse CI
+        run: npx lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.GITHUB_TOKEN }}

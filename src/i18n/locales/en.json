@@ -269,6 +269,12 @@
       "hoursAgo": "{{count}}h ago",
       "daysAgo": "{{count}}d ago"
     },
+    "pagination": {
+      "label": "Transaction pages",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{page}} of {{total}}"
+    },
     "bulk": {
       "selectLabel": "Select transaction {{id}}",
       "selectAll": "Select all transactions",

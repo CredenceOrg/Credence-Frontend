@@ -42,9 +42,9 @@ export default function CopyableHash({
         displayHash = truncateAddress(hash)
       }
     } else {
-      // Transaction hash truncation: head…tail
-      if (hash.length > 10) {
-        displayHash = `${hash.slice(0, 6)}…${hash.slice(-4)}`
+      // Transaction hash truncation: use canonical middle truncation
+      if (hash.length > 20) {
+        displayHash = truncateAddress(hash)
       }
     }
   }

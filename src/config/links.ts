@@ -4,9 +4,9 @@
 // - VITE_TERMS_URL
 // - VITE_PRIVACY_URL
 const defaults = {
-  docs: '/docs',
-  terms: '/legal/terms',
-  privacy: '/legal/privacy',
+  docs: '#',
+  terms: '#',
+  privacy: '#',
 } as const
 
 const envDocs =

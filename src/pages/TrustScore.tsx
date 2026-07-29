@@ -130,7 +130,7 @@ export default function TrustScore() {
 
   const commitAddressParam = (value: string) => {
     setSearchParams(
-      (prev) => {
+      (prev: URLSearchParams) => {
         const next = new URLSearchParams(prev)
         if (value) {
           next.set('address', value)
@@ -306,7 +306,6 @@ export default function TrustScore() {
               value={address}
               onChange={handleAddressChange}
               onValidationChange={setIsAddressValid}
-              selfAddress={walletAddress}
               disabled={!isConnected}
             />
             {safeHistory.length > 0 && (
@@ -326,7 +325,7 @@ export default function TrustScore() {
                   </button>
                 </div>
                 <ul className="trustScore__recentList" aria-labelledby="recent-lookups-heading">
-                  {safeHistory.map((item) => {
+                  {safeHistory.map((item: RecentLookupItem) => {
                     const displayLabel = formatAddress(item.address, addressDisplay, walletAddress)
                     return (
                       <li key={item.address} className="trustScore__recentListItem">

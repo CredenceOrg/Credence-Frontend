@@ -10,7 +10,6 @@ import EmptyState from '../components/states/EmptyState'
 import { LoadingSkeleton } from '../components/states'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
-import AmountInput from '../components/AmountInput'
 import { formatUsdc } from '../lib/format'
 
 /**
@@ -43,8 +42,6 @@ function bondErrorType(err: unknown): 'network' | 'backend' | 'validation' | 'ge
   }
   return 'generic'
 }
-
-const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
 interface MockBond {
   id: number
@@ -339,6 +336,7 @@ export default function Bond() {
                 <LoadingSkeleton variant="bond-row" rows={3} />
               </div>
             ) : bonds.length === 0 ? (
+              // ✅ EMPTY STATE - This is what we're adding
               <EmptyState
                 illustration="bond"
                 title={t('bond.noActiveBonds')}

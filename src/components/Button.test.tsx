@@ -833,3 +833,110 @@ describe('Button – class string shape with size prop (no stray spaces regressi
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// 18. Accessibility regression — primary CTA
+// ---------------------------------------------------------------------------
+
+describe('Button – a11y regression on primary CTA', () => {
+  it('is a native <button> element (implicit role="button")', () => {
+    render(<Button variant="primary">CTA</Button>)
+    const btn = screen.getByRole('button', { name: /cta/i })
+    expect(btn.tagName).toBe('BUTTON')
+  })
+
+  it('is keyboard-focusable by default via Tab (natural tab order)', async () => {
+    render(
+      <>
+        <input data-testid="before" />
+        <Button variant="primary">Primary CTA</Button>
+        <input data-testid="after" />
+      </>
+    )
+    screen.getByTestId('before').focus()
+    expect(screen.getByTestId('before')).toHaveFocus()
+
+    // Simulate Tab: moves to the primary CTA
+    await userEvent.tab()
+    expect(screen.getByRole('button', { name: /primary cta/i })).toHaveFocus()
+  })
+
+  it('remains in the tab order when enabled', async () => {
+    render(
+      <>
+        <input data-testid="start" />
+        <Button variant="primary" data-testid="primary-cta">
+          Continue
+        </Button>
+      </>
+    )
+    screen.getByTestId('start').focus()
+    await userEvent.tab()
+    expect(screen.getByTestId('primary-cta')).toHaveFocus()
+  })
+
+  it('is skipped in the tab order when disabled', async () => {
+    render(
+      <>
+        <input data-testid="before" />
+        <Button variant="primary" disabled>
+          Disabled CTA
+        </Button>
+        <input data-testid="after" />
+      </>
+    )
+    screen.getByTestId('before').focus()
+    await userEvent.tab()
+    // Because the disabled button is skipped, focus lands on the next input
+    expect(screen.getByTestId('after')).toHaveFocus()
+    expect(screen.getByRole('button', { name: /disabled cta/i })).not.toHaveFocus()
+  })
+
+  it('accepts tabIndex={-1} to be removed from the tab order', async () => {
+    render(
+      <>
+        <input data-testid="before" />
+        <Button variant="primary" tabIndex={-1}>
+          Removed CTA
+        </Button>
+        <input data-testid="after" />
+      </>
+    )
+    screen.getByTestId('before').focus()
+    await userEvent.tab()
+    // tabIndex={-1} removes the button from the tab order
+    expect(screen.getByTestId('after')).toHaveFocus()
+  })
+
+  it('is focusable programmatically even with tabIndex={-1}', () => {
+    render(<Button variant="primary" tabIndex={-1}>Focused CTA</Button>)
+    const btn = screen.getByRole('button', { name: /focused cta/i })
+    btn.focus()
+    expect(btn).toHaveFocus()
+  })
+
+  it('has the CSS class hooks that :focus-visible and :hover selectors target', () => {
+    render(<Button variant="primary">a11y CSS hooks</Button>)
+    const btn = screen.getByRole('button', { name: /a11y css hooks/i })
+    expect(btn).toHaveClass('credence-button')
+    expect(btn).toHaveClass('credence-button--primary')
+    // The CSS selectors also require a non-disabled button
+    expect(btn).not.toBeDisabled()
+  })
+
+  it('has the data-testid PRIMARY_CTA when variant="primary" and no explicit testId', () => {
+    render(<Button variant="primary">Primary CTA</Button>)
+    const btn = screen.getByRole('button', { name: /primary cta/i })
+    expect(btn).toHaveAttribute('data-testid', TEST_IDS.PRIMARY_CTA)
+  })
+
+  it('does not assign PRIMARY_CTA testId to non-primary variants', () => {
+    const variants = ['secondary', 'ghost', 'danger', 'link'] as const
+    for (const variant of variants) {
+      const { unmount } = render(<Button variant={variant}>Other</Button>)
+      const btn = screen.getByRole('button', { name: /other/i })
+      expect(btn).not.toHaveAttribute('data-testid', TEST_IDS.PRIMARY_CTA)
+      unmount()
+    }
+  })
+})

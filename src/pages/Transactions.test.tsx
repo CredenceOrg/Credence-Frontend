@@ -82,6 +82,10 @@ function mockLoaded(transactions: any = [TX1, TX2, TX3]) {
     isLoading: false,
     error: null,
     refetch: vi.fn(),
+    page: 1,
+    totalPages: 1,
+    goToPage: vi.fn(),
+    prefetchPage: vi.fn(),
   })
 }
 
@@ -91,6 +95,10 @@ function mockLoading() {
     isLoading: true,
     error: null,
     refetch: vi.fn(),
+    page: 1,
+    totalPages: 0,
+    goToPage: vi.fn(),
+    prefetchPage: vi.fn(),
   })
 }
 
@@ -100,6 +108,10 @@ function mockError() {
     isLoading: false,
     error: { status: 500, message: 'Boom' },
     refetch: vi.fn(),
+    page: 1,
+    totalPages: 0,
+    goToPage: vi.fn(),
+    prefetchPage: vi.fn(),
   })
 }
 
@@ -109,6 +121,10 @@ function mockEmpty() {
     isLoading: false,
     error: null,
     refetch: vi.fn(),
+    page: 1,
+    totalPages: 0,
+    goToPage: vi.fn(),
+    prefetchPage: vi.fn(),
   })
 }
 

@@ -2,12 +2,61 @@ import React, { useState, useRef } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
 import { useSettings } from '../context/SettingsContext'
-import {
-  isValidStellarAddress,
-  truncateAddress,
-  formatAddressForDisplay,
-  type AddressDisplayMode,
-} from '../lib/stellar'
+
+interface AddressInputProps {
+  id: string
+  label?: string
+  value: string
+  onChange: (value: string) => void
+  onValidationChange?: (isValid: boolean) => void
+  disabled?: boolean
+  className?: string
+  /**
+   * External validation message (e.g. required-on-submit).
+   * Takes precedence over the built-in format error when provided.
+   */
+  error?: string
+}
+
+/**
+ * Validates Stellar public key format.
+ * Valid addresses: 56 characters, starts with 'G'
+ */
+function isValidStellarAddress(address: string): boolean {
+  if (!address) return false
+  // Stellar addresses are 56 characters and start with 'G'
+  return /^G[A-Z0-9]{55}$/.test(address)
+}
+
+/**
+ * Truncates address for display: shows first 12 and last 8 characters.
+ */
+export function truncateAddress(address: string): string {
+  if (address.length <= 20) return address
+  return `${address.substring(0, 12)}...${address.substring(address.length - 8)}`
+}
+
+export type AddressDisplayMode = 'full' | 'short' | 'friendly'
+
+/**
+ * Formats an address for UI display based on the user's addressDisplay setting.
+ *
+ * Notes:
+ * - `friendly` name resolution is not available yet. It falls back to `short`.
+ * - This helper is intentionally pure and safe to call during render.
+ */
+export function formatAddressForDisplay(address: string, mode: AddressDisplayMode): string {
+  switch (mode) {
+    case 'full':
+      return address
+    case 'friendly':
+      // TODO: Resolve friendly names when available on-chain.
+      return truncateAddress(address)
+    case 'short':
+    default:
+      return truncateAddress(address)
+  }
+}
 
 /**
  * Internal component to handle prop injection from FormField
@@ -102,6 +151,7 @@ export default function AddressInput({
   onValidationChange,
   disabled = false,
   className = '',
+  error: externalError,
 }: AddressInputProps) {
   const { addressDisplay } = useSettings()
 
@@ -159,10 +209,13 @@ export default function AddressInput({
     }
   }
 
-  const error = showError
+  const formatError = showError
     ? 'Invalid address. Stellar public keys are 56 characters starting with G.'
     : undefined
+  const error = externalError ?? formatError
   const hint = 'Stellar public key format (56 characters, starts with G)'
+  // Visual + FormField success only when format is valid and no external error.
+  const successMessage = !externalError && showSuccess ? 'Valid Stellar address' : undefined
 
   return (
     <div className={`address-input-wrapper ${className}`}>
@@ -171,7 +224,7 @@ export default function AddressInput({
         label={label}
         hint={hint}
         error={error}
-        success={showSuccess ? 'Valid Stellar address' : undefined}
+        success={successMessage}
       >
         <AddressInputInner
           inputRef={inputRef}
@@ -182,8 +235,8 @@ export default function AddressInput({
           disabled={disabled}
           handlePaste={handlePaste}
           focused={focused}
-          showError={showError}
-          showSuccess={showSuccess}
+          showError={Boolean(error)}
+          showSuccess={Boolean(successMessage)}
         />
       </FormField>
 

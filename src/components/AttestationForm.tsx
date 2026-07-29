@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react'
 import AddressInput from './AddressInput'
 import Select from './controls/Select'
-import { FormField } from './forms/FormField'
+import { FormField, Textarea } from './forms'
 import Button from './Button'
 import ConfirmDialog from './ConfirmDialog'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
@@ -144,27 +144,14 @@ export default function AttestationForm({
             label="Evidence"
             hint="Add supporting proof or description (max 28 bytes)"
             error={errors.evidence}
+            required
           >
-            <textarea
-              id="evidence-input"
+            <Textarea
               value={evidence}
               onChange={handleEvidenceChange}
               disabled={disabled}
               placeholder="Provide proof or verification details..."
               rows={4}
-              style={{
-                width: '100%',
-                padding: 'var(--credence-space-3)',
-                borderRadius: 'var(--credence-radius-lg)',
-                border: '1px solid var(--credence-border-default)',
-                background: 'var(--credence-surface-card)',
-                color: 'var(--credence-text-primary)',
-                minHeight: '100px',
-                fontFamily: 'var(--credence-font-family-base)',
-                fontSize: 'var(--credence-font-size-base)',
-                resize: 'vertical',
-                boxSizing: 'border-box',
-              }}
             />
           </FormField>
           <div

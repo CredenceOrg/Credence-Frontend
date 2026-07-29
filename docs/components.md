@@ -2,7 +2,7 @@
 
 This catalog is the source-facing reference for shared UI under `src/components/`. It documents current TypeScript props, accessibility contracts, styling ownership, and the `--credence-*` design tokens each component consumes. Keep this page in sync whenever component props or CSS tokens change.
 
-Related focused docs: [button system](./button-system.md), [notifications](./notifications.md), [design tokens](./DESIGN_TOKENS.md), [dark mode](./dark-mode.md), [focus patterns](./focus-patterns.md), [UI states](./UI_STATES_GUIDE.md), [TrustGauge quick reference](./TRUST_GAUGE_QUICK_REFERENCE.md), and [tier thresholds](./tier-thresholds.md).
+Related focused docs: [button system](./button-system.md), [notifications](./notifications.md), [design tokens](./DESIGN_TOKENS.md), [dark mode](./dark-mode.md), [focus patterns](./focus-patterns.md), [UI states](./UI_STATES_GUIDE.md), [forms & inputs](./FORMS_AND_INPUTS.md), [TrustGauge quick reference](./TRUST_GAUGE_QUICK_REFERENCE.md), and [tier thresholds](./tier-thresholds.md).
 
 **Storybook**: Components that have stories are listed with their Storybook path and variant names. Run `npm run storybook` (defaults to port 6006) to browse and interact with them. Components without a Storybook entry have no story file yet.
 
@@ -24,6 +24,8 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | ActivityTimeline        | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                                 |
 | WindowedList            | `src/components/WindowedList.tsx`                                                   | Lightweight helper for large lists; uses the shared threshold in `src/config/listing.ts` and preserves the existing list semantics. |
 | FormField               | `src/components/forms/FormField.css`                                                | None.                                                                                                                               |
+| forms/Input             | `src/components/forms/Input.css`                                                    | None.                                                                                                                               |
+| forms/Textarea          | `src/components/forms/Input.css`                                                    | Shares Input.css.                                                                                                                   |
 | controls/Select         | `src/components/controls/controls.css`                                              | None.                                                                                                                               |
 | controls/Toggle         | `src/components/controls/controls.css`                                              | None.                                                                                                                               |
 | states/EmptyState       | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                                   |
@@ -384,25 +386,73 @@ Tokens: border, info/success/warning color tokens, primary, font, line-height, r
 
 Source: [`src/components/forms/FormField.tsx`](../src/components/forms/FormField.tsx).
 
-| Prop       | Type                 | Default     |
-| ---------- | -------------------- | ----------- |
-| `id`       | `string`             | Required    |
-| `label`    | `string`             | Required    |
-| `hint`     | `string`             | `undefined` |
-| `error`    | `string`             | `undefined` |
-| `children` | `React.ReactElement` | Required    |
+| Prop          | Type                 | Default     |
+| ------------- | -------------------- | ----------- |
+| `id`          | `string`             | Required    |
+| `label`       | `string`             | Required    |
+| `hint`        | `string`             | `undefined` |
+| `error`       | `string`             | `undefined` |
+| `success`     | `string`             | `undefined` |
+| `srOnlyLabel` | `boolean`            | `false`     |
+| `required`    | `boolean`            | `false`     |
+| `className`   | `string`             | `undefined` |
+| `children`    | `React.ReactElement` | Required    |
 
-Accessibility: renders a `<label htmlFor={id}>`, optional hint, clones the child to inject `id`, merged `aria-describedby`, and `aria-invalid` when an error exists. Error text has `role="alert"`.
+Accessibility:
 
-Tokens: `--credence-color-danger-text`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-space-2`, `--credence-text-secondary`.
+- Renders `<label htmlFor={id}>` (optionally `.sr-only` via `srOnlyLabel`).
+- Clones the child to inject `id`, merged `aria-describedby` (existing + hint + error + success), `aria-invalid` when `error` is set (preserves a child-supplied `aria-invalid` otherwise), and `aria-required` when `required`.
+- Error text uses `role="alert"` and id `${id}-error`.
+- Success text uses `role="status"` and id `${id}-success`; never sets `aria-invalid`.
+- When both `error` and `success` are supplied, **error wins** and success is suppressed.
+- Root exposes `data-state="default" | "error" | "success"` for border cues on nested inputs.
+
+Tokens: `--credence-color-danger-text`, `--credence-color-success-text`, `--credence-color-danger-border`, `--credence-color-success-border`, `--credence-font-size-sm`, `--credence-font-weight-semibold`, `--credence-space-2`, `--credence-text-secondary`.
 
 ```tsx
-<FormField id="amount" label="Bond amount" hint="Enter USDC" error={error}>
-  <input value={amount} onChange={handleAmountChange} />
+import { FormField, Input } from '@/components/forms'
+
+<FormField id="amount" label="Bond amount" hint="Enter USDC" error={error} success={success}>
+  <Input value={amount} onChange={(e) => setAmount(e.target.value)} />
 </FormField>
 ```
 
-Storybook: `Components/Forms/FormField` — **Default** · **WithHint** · **WithError** · **WithHintAndError**.
+Storybook: `Components/Forms/FormField` — **Default** · **WithHint** · **WithError** · **WithHintAndError** · **WithSuccess** · **WithHintAndSuccess** · **ErrorOverridesSuccess** · **Required** · **SrOnlyLabel**.
+
+## forms/Input
+
+Source: [`src/components/forms/Input.tsx`](../src/components/forms/Input.tsx).
+
+| Prop               | Type                                               | Default     |
+| ------------------ | -------------------------------------------------- | ----------- |
+| `compact`          | `boolean`                                          | `false`     |
+| Native input props | `InputHTMLAttributes<HTMLInputElement>` (forwarded)| —           |
+
+Accessibility: forwards `id`, `aria-describedby`, `aria-invalid`, and `aria-required` from `FormField`. Use `compact` for short values (e.g. `HH:mm`). Prefer pairing with `FormField` rather than a standalone `aria-label` unless the control is icon-only or search-like with `srOnlyLabel`.
+
+Tokens: border, danger, primary, slate, focus, font, motion, radius, spacing, surface, and text tokens via `Input.css`.
+
+```tsx
+import { FormField, Input } from '@/components/forms'
+
+<FormField id="quiet-start" label="Start time (HH:mm)" error={error}>
+  <Input compact value={start} onChange={(e) => setStart(e.target.value)} placeholder="22:00" />
+</FormField>
+```
+
+Storybook: `Components/Forms/Input` — **Default** · **WithError** · **WithSuccess** · **Disabled** · **Multiline**.
+
+## forms/Textarea
+
+Source: [`src/components/forms/Textarea.tsx`](../src/components/forms/Textarea.tsx). Shares `Input.css` (`.form-textarea`). Same FormField ARIA contract as `Input`.
+
+```tsx
+import { FormField, Textarea } from '@/components/forms'
+
+<FormField id="evidence" label="Evidence" hint="Max 28 bytes" error={error} required>
+  <Textarea value={evidence} onChange={(e) => setEvidence(e.target.value)} rows={4} />
+</FormField>
+```
 
 ## controls/Select
 

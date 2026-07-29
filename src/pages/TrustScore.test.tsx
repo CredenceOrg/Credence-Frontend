@@ -320,7 +320,7 @@ describe('TrustScore URL sync', () => {
     expect(options).toEqual({ replace: true })
   })
 
-  it('does not write to the URL on partial keystrokes — only on clear or lookup', () => {
+  it('does not write to the URL on partial keystrokes â€” only on clear or lookup', () => {
     render(<TrustScore />)
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'GAAZI4' } })

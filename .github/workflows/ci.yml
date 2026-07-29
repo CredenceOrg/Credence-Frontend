@@ -1,3 +1,17 @@
+# Continuous Integration — Credence Frontend
+#
+# Runs on every push to main and on every pull request.
+# The badge in README.md tracks this workflow by name:
+#   .github/workflows/ci.yml
+#
+# Quality gate (matches README "Continuous Integration" section):
+#   1. npm run format:check  — Prettier formatting
+#   2. npm run lint          — ESLint
+#   3. npm run build         — TypeScript compile + Vite production build
+#   4. npm run test          — Vitest unit / component tests
+#   5. node scripts/check-console-log.mjs — Production-bundle console.log check
+#   6. npx lhci autorun      — Lighthouse performance / accessibility / best-practices CI
+
 name: CI
 'on':
   push:
@@ -9,5 +23,40 @@ jobs:
     name: Quality Gate
     runs-on: ubuntu-latest
     steps:
-    - name: "Quality Gate (paused \u2014 CI stabilization in progress)"
-      run: echo 'Quality Gate check intentionally stubbed while main-branch CI is being stabilized.'
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 1. Formatting ────────────────────────────────────────────────────────
+      - name: Check formatting (Prettier)
+        run: npm run format:check
+
+      # ── 2. Linting ───────────────────────────────────────────────────────────
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      # ── 3. Build ─────────────────────────────────────────────────────────────
+      - name: Build (TypeScript + Vite)
+        run: npm run build
+
+      # ── 4. Tests ─────────────────────────────────────────────────────────────
+      - name: Run tests (Vitest)
+        run: npm run test
+
+      # ── 5. Console-log check ─────────────────────────────────────────────────
+      - name: Check for console.log in production bundle
+        run: node scripts/check-console-log.mjs
+
+      # ── 6. Lighthouse CI ─────────────────────────────────────────────────────
+      - name: Run Lighthouse CI
+        run: npx lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.GITHUB_TOKEN }}

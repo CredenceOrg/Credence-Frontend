@@ -14,3 +14,6 @@ storybook-static
 test-results
 playwright-report
 blob-report
+
+# Lighthouse CI reports
+lhci-reports

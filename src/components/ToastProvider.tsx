@@ -2,17 +2,13 @@ import { createContext, useContext, useState, useCallback, useRef, type ReactNod
 import { useSettings } from '../context/SettingsContext'
 import { isWithinQuietHours, nowMinutesSinceMidnight } from '../lib/quietHours'
 import Toast, { type ToastData, type ToastSeverity, type ToastOptions } from './Toast'
+import { TOAST_CONFIG } from '../config/toast'
 import './Toast.css'
 
-const TIMEOUTS: Record<ToastSeverity, number> = {
-  info: 5000,
-  success: 5000,
-  warning: 8000,
-  danger: 0,
-}
+const TIMEOUTS: Record<ToastSeverity, number> = TOAST_CONFIG.timeouts
 
 // Maximum number of toasts displayed simultaneously
-const MAX_TOASTS = 3
+const MAX_TOASTS = TOAST_CONFIG.maxToasts
 
 interface ToastContextValue {
   addToast: (severity: ToastSeverity, message: string, options?: ToastOptions) => void

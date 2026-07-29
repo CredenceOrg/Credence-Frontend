@@ -59,9 +59,9 @@ export default function TrustSummary() {
         </button>
       </header>
 
-      {isLoading && <LoadingSkeleton variant="card" />}
+      {isLoading && !data && <LoadingSkeleton variant="card" />}
 
-      {error && (
+      {error && !data && (
         <ErrorState
           type={trustScoreErrorType(error)}
           title="Unable to load trust score"

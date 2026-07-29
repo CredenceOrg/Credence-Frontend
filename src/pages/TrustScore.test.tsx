@@ -164,6 +164,66 @@ describe('TrustScore', () => {
     await user.click(screen.getByRole('button', { name: /switch app to test \(testnet\)/i }))
     expect(mockSetNetwork).toHaveBeenCalledWith('test')
   })
+
+  it('does not flicker the chart (skeleton) on refetch if data is already present', async () => {
+    const user = userEvent.setup()
+    mockConnected = true
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    
+    // Initial state: data is loaded
+    mockTrustScoreState = {
+      data: {
+        address: VALID_ADDRESS,
+        score: 85,
+        tier: 'gold',
+        attestations: 1,
+        updatedAt: '2026-06-29T10:00:00Z',
+      },
+      isLoading: false,
+      error: null,
+    }
+    const { rerender } = render(<TrustScore />)
+
+    // Wait for the button to be enabled based on valid URL param and click it
+    const lookupButton = await screen.findByRole('button', { name: /look up score/i })
+    expect(lookupButton).not.toBeDisabled()
+    await user.click(lookupButton)
+
+    // The data should be displayed
+    expect(await screen.findByRole('region', { name: /Trust score result/i })).toBeInTheDocument()
+
+    // Now simulate a refetch starting
+    mockTrustScoreState = {
+      ...mockTrustScoreState,
+      isLoading: true,
+    }
+    rerender(<TrustScore />)
+
+    // The data should STILL be displayed, and the loading skeleton should NOT be present.
+    expect(screen.getByRole('region', { name: /Trust score result/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Loading trust score/i)).not.toBeInTheDocument()
+  })
+
+  it('displays the error state and clears data on a failed lookup/refetch', async () => {
+    const user = userEvent.setup()
+    mockConnected = true
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    
+    // Simulate failed state
+    mockTrustScoreState = {
+      data: null,
+      isLoading: false,
+      error: { message: 'Simulated failure mode', status: 500 },
+    }
+    render(<TrustScore />)
+
+    const lookupButton = await screen.findByRole('button', { name: /look up score/i })
+    expect(lookupButton).not.toBeDisabled()
+    await user.click(lookupButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Simulated failure mode/i)
+    expect(screen.queryByRole('region', { name: /Trust score result/i })).not.toBeInTheDocument()
+  })
 })
 
 describe('TrustScore URL sync', () => {
@@ -260,7 +320,7 @@ describe('TrustScore URL sync', () => {
     expect(options).toEqual({ replace: true })
   })
 
-  it('does not write to the URL on partial keystrokes — only on clear or lookup', () => {
+  it('does not write to the URL on partial keystrokes â€” only on clear or lookup', () => {
     render(<TrustScore />)
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'GAAZI4' } })

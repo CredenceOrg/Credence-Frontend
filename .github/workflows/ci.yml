@@ -13,18 +13,15 @@
 #   6. npx lhci autorun      — Lighthouse performance / accessibility / best-practices CI
 
 name: CI
-
-on:
+'on':
   push:
     branches:
-      - main
-  pull_request:
-
+    - main
+  pull_request: null
 jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

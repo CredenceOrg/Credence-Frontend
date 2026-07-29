@@ -12,14 +12,38 @@ describe('useRoutePrefetch', () => {
     expect(preload).toHaveBeenCalledTimes(1)
   })
 
-  it('does not call preload again on second onMouseEnter', () => {
+  it('logs debug events on preload start and success', async () => {
     const preload = vi.fn().mockResolvedValue(undefined)
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {})
     const { result } = renderHook(() => useRoutePrefetch(preload))
 
     result.current.onMouseEnter()
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(debug).toHaveBeenCalledTimes(2)
+    expect(debug.mock.calls[0]?.[0]).toMatch(/event=route_prefetch_start/)
+    expect(debug.mock.calls[1]?.[0]).toMatch(/event=route_prefetch_complete/)
+  })
+
+  it('logs debug event on preload failure and allows retry', async () => {
+    const preload = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('fail'))
+      .mockResolvedValueOnce(undefined)
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {})
+    const { result } = renderHook(() => useRoutePrefetch(preload))
+
     result.current.onMouseEnter()
 
-    expect(preload).toHaveBeenCalledTimes(1)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(debug.mock.calls[0]?.[0]).toMatch(/event=route_prefetch_start/)
+    expect(debug.mock.calls[1]?.[0]).toMatch(/event=route_prefetch_retry/)
+
+    result.current.onMouseEnter()
+
+    expect(preload).toHaveBeenCalledTimes(2)
   })
 
   it('calls preload on onFocus', () => {

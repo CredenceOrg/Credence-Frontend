@@ -9,6 +9,7 @@ import {
 import Button from './Button'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { formatAddressForDisplay } from '../lib/stellar'
+import { WalletIcon } from './icons'
 import './WalletConnect.css'
 
 /** Spec-only demo address — no Freighter / SDK calls (issue #832 UI/UX scope). */
@@ -175,12 +176,14 @@ export default function WalletConnect({
           isLoading={status === 'connecting'}
           loadingText="Connecting…"
           onClick={handleConnect}
-          aria-label={
-            status === 'connecting' ? 'Connecting wallet' : 'Connect wallet'
-          }
+          aria-label={status === 'connecting' ? 'Connecting wallet' : 'Connect wallet'}
+          title="Connect your Stellar wallet to create bonds and view your trust score"
           className="walletConnect__connectBtn"
           data-testid="wallet-connect-btn"
         >
+          {status !== 'connecting' && (
+            <WalletIcon width={16} height={16} className="walletConnect__connectIcon" />
+          )}
           Connect wallet
         </Button>
         <span className="sr-only" aria-live="polite" aria-atomic="true">
@@ -218,9 +221,7 @@ export default function WalletConnect({
           <span className="walletConnect__address" title={address}>
             {truncated}
           </span>
-          {balanceHint ? (
-            <span className="walletConnect__balance">{balanceHint}</span>
-          ) : null}
+          {balanceHint ? <span className="walletConnect__balance">{balanceHint}</span> : null}
         </span>
         <span className="walletConnect__chevron" aria-hidden="true">
           ▾

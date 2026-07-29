@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type ReactElement } from 'react'
 import './ActivityTimeline.css'
-import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY } from '../data/activity'
+import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY, ACTIVITY_ITEMS } from '../data/activity'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
@@ -44,6 +44,8 @@ export interface ActivityTimelineProps {
   emptyTitle?: string
   /** Override the default empty-state description. */
   emptyDescription?: string
+  /** Opts into drawer-based navigation: swaps the disclosure button to "View details" and makes the row clickable. */
+  onSelect?: (item: ActivityItem) => void
 }
 
 /**
@@ -68,6 +70,7 @@ export default function ActivityTimeline({
   items = SAMPLE_ACTIVITY,
   emptyTitle = 'No activity yet',
   emptyDescription = 'Attestations and events will appear here once activity begins.',
+  onSelect,
 }: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())

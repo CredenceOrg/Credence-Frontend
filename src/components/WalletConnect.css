@@ -17,6 +17,12 @@
   padding-inline: var(--credence-space-4);
 }
 
+.walletConnect__connectIcon {
+  flex-shrink: 0;
+  vertical-align: -3px;
+  margin-right: var(--credence-space-1);
+}
+
 /* Connected pill ─────────────────────────────────────────────────────────── */
 
 .walletConnect__pill {

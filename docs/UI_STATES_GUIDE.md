@@ -181,6 +181,12 @@ Error states inform users when something goes wrong and help them recover.
 
 ### Core Error States
 
+> **Standardised in PR #810.** All error surfaces now route through `ErrorState`
+> (see `src/components/states/ErrorState.tsx`) and consume the severity
+> vocabulary documented in [`docs/ERROR_UI.md`](./ERROR_UI.md). The component
+> renders `role="alert"` automatically and inherits contrast-correct tokens
+> from `src/index.css` for both light and dark themes.
+
 #### 1. Network Failure
 
 **When**: Unable to connect to Stellar network or backend
@@ -196,7 +202,8 @@ Error states inform users when something goes wrong and help them recover.
 />
 ```
 
-**Default Message**: "Unable to connect to the network. Check your internet connection and try again."
+**Default Title**: "Connection issue"
+**Default Message**: "We can't reach the service right now. Check your connection and try again in a moment."
 
 ---
 
@@ -208,14 +215,15 @@ Error states inform users when something goes wrong and help them recover.
 ```tsx
 <ErrorState
   type="backend"
-  title="Service temporarily unavailable"
-  message="We're experiencing technical difficulties. Please try again in a few moments."
   action={{
     label: 'Retry',
     onClick: () => refetch(),
   }}
 />
 ```
+
+**Default Title**: "Service temporarily unavailable"
+**Default Message**: "We're hitting a brief snag on our end. Try again in a moment and we'll be back."
 
 ---
 
@@ -236,6 +244,9 @@ Error states inform users when something goes wrong and help them recover.
 />
 ```
 
+> Default `validation` copy is also reworked to be calm and not blame the
+> user — see the [copy deck](./ERROR_UI.md#copy-deck-default-messages).
+
 ---
 
 #### 4. Transaction Failed
@@ -254,6 +265,25 @@ Error states inform users when something goes wrong and help them recover.
   }}
 />
 ```
+
+#### 5. Page Not Found (404)
+
+**When**: router reports a 404 (route miss) or a deliberate unknown path
+**Trigger**: User lands on a route that doesn't exist; resource is moved/renamed
+
+```tsx
+<ErrorState
+  type="pageNotFound"
+  severity="info"
+  action={{
+    label: 'Back to home',
+    onClick: () => navigate('/'),
+  }}
+/>
+```
+
+**Default Title**: "Page not found"
+**Default Message**: "The page you're looking for doesn't exist. It may have moved or been renamed."
 
 ---
 

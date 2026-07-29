@@ -1,66 +1,55 @@
 /*
  * 404 / NotFound Page styles
- * Uses Credence design system tokens and supports responsive layouts
+ *
+ * Migrated to consume the standardised `error-state` panel for the headline
+ * treatment (see src/components/states/ErrorState.css) and replace four emoji
+ * glyphs with token-based SVG icons. The page keeps its bespoke quick-links
+ * card because the four primary routes are unique to this 404 recovery flow.
+ *
+ * Uses Credence design system tokens and supports responsive layouts.
  */
 
 .not-found-page {
   text-align: center;
   padding: var(--credence-space-12) var(--credence-space-6);
-  max-width: 32rem; /* 512px, perfect for quick links card */
+  max-width: 32rem; /* 512px, perfect for the embedded ErrorState panel + quick-links card */
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 60vh;
+  gap: var(--credence-space-6);
 }
 
-/* 404 Visual / Illustration */
-.not-found-page__visual {
-  width: 80px;
-  height: 80px;
-  border-radius: var(--credence-radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto var(--credence-space-6);
-  font-size: 2.5rem;
-  background: var(--credence-color-danger-surface-strong);
-  border: 2px solid var(--credence-color-danger-border);
-  box-shadow: 0 8px 16px rgba(239, 68, 68, 0.1);
-  transition: transform var(--credence-motion-duration-slow) var(--credence-motion-easing-standard);
-  user-select: none;
-}
-
-.not-found-page__visual:hover {
-  transform: rotate(-10deg) scale(1.05);
-}
-
-/* Large 404 Subtitle */
+/* Subheading / error code badge — calm, not loud. */
 .not-found-page__code {
-  font-size: var(--credence-font-size-sm);
+  font-size: var(--credence-font-size-xs);
   font-weight: var(--credence-font-weight-bold);
   color: var(--credence-color-danger-text);
-  margin-bottom: var(--credence-space-2);
-  letter-spacing: 0.05em;
+  margin: 0;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-/* Heading */
+/* Heading — uses primary text so it isn't read as "another error message". */
 .not-found-page__title {
-  font-size: 2rem;
+  font-size: var(--credence-font-size-3xl);
   font-weight: var(--credence-font-weight-bold);
   color: var(--credence-text-primary);
-  margin-bottom: var(--credence-space-4);
+  margin: 0;
   line-height: var(--credence-line-height-tight);
+  letter-spacing: var(--credence-letter-spacing-tight);
 }
 
-/* Description */
-.not-found-page__description {
-  color: var(--credence-text-secondary);
-  font-size: var(--credence-font-size-base);
-  line-height: var(--credence-line-height-relaxed);
-  margin-bottom: var(--credence-space-8);
+/* Wrapper around the standardised ErrorState panel. We override the
+   panel's default `max-width: 28rem` so it fills the page column. */
+.not-found-page__panel {
+  width: 100%;
+}
+
+.not-found-page__panel .error-state {
+  max-width: none;
 }
 
 /* Recovery Actions Row */
@@ -70,7 +59,7 @@
   gap: var(--credence-space-4);
   width: 100%;
   justify-content: center;
-  margin-bottom: var(--credence-space-8);
+  margin-bottom: var(--credence-space-4);
 }
 
 /* Quick Links Card / Section */
@@ -114,11 +103,11 @@
 .not-found-page__link {
   display: flex;
   align-items: center;
-  gap: var(--credence-space-2);
+  gap: var(--credence-space-3);
   color: var(--credence-color-primary);
   font-weight: var(--credence-font-weight-semibold);
   font-size: var(--credence-font-size-sm);
-  padding: var(--credence-space-2);
+  padding: var(--credence-space-3);
   border-radius: var(--credence-radius-md);
   width: 100%;
   transition: all var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
@@ -127,7 +116,7 @@
 .not-found-page__link:hover {
   background: var(--credence-color-info-surface);
   color: var(--credence-color-primary-strong);
-  padding-left: var(--credence-space-3);
+  padding-left: var(--credence-space-4);
 }
 
 .not-found-page__link:focus-visible {
@@ -135,8 +124,22 @@
   outline-offset: 2px;
 }
 
+/* Token-based SVG icons (replaced emoji per PR #936 standardisation) */
 .not-found-page__link-icon {
-  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--credence-radius-sm);
+  background: var(--credence-color-info-surface);
+  color: var(--credence-color-primary-strong);
+  flex-shrink: 0;
+}
+
+.not-found-page__link-icon svg {
+  width: 1rem;
+  height: 1rem;
 }
 
 /* Responsive adjustments */
@@ -144,10 +147,11 @@
   .not-found-page {
     padding: var(--credence-space-8) var(--credence-space-4);
     min-height: 50vh;
+    gap: var(--credence-space-4);
   }
 
   .not-found-page__title {
-    font-size: 1.75rem;
+    font-size: var(--credence-font-size-2xl);
   }
 
   .not-found-page__actions {
@@ -157,5 +161,11 @@
 
   .not-found-page__quick-links-list {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .not-found-page__link {
+    transition: none;
   }
 }

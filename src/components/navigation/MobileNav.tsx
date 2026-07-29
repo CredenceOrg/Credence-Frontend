@@ -7,6 +7,7 @@ import { useScrollPreserver } from '../../hooks/useScrollPreserver'
 import './MobileNav.css'
 import { useTranslation } from 'react-i18next'
 import { SECONDARY_NAV_LINKS } from '../../config/navLinks'
+import { DOM_EVENTS } from '../../events'
 
 export default function MobileNav() {
   const { t } = useTranslation()

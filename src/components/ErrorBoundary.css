@@ -1,0 +1,44 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   ErrorBoundary fallback container
+   ─────────────────────────────────────────────────────────────────────────
+   Centres the standardised ErrorState panel vertically inside the
+   viewport. Used by both ErrorBoundary's default fallback and
+   RouteErrorPage's router-level error element.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.error-fallback-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  padding: var(--credence-space-6);
+  gap: var(--credence-space-4);
+}
+
+/* Route-level errors take the full viewport so they remain centred even on
+   a freshly-mounted route that has not laid out the rest of the shell yet. */
+.error-fallback-container--full {
+  min-height: 100vh;
+}
+
+.error-fallback-secondary-link {
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: var(--credence-font-weight-medium);
+  /* The link is keyboard-only — make it 44px tall so it satisfies WCAG
+     2.5.5 target size on focus rings. */
+  padding: var(--credence-space-2) var(--credence-space-3);
+  border-radius: var(--credence-radius-sm);
+}
+
+.error-fallback-secondary-link:hover {
+  color: var(--credence-text-primary);
+}
+
+.error-fallback-secondary-link:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}

@@ -1,0 +1,220 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   ErrorState — Standardised error panel
+   ─────────────────────────────────────────────────────────────────────────
+   A reusable, non-alarming placeholder for section- or page-level failures.
+   Mirrors EmptyState's BEM vocabulary so the two surfaces feel like siblings.
+
+   Severity vocabulary (compliant with docs/UI_STATES_GUIDE):
+     • danger  — page-blocking failure (network / backend / generic). Default.
+     • warning — recoverable / user-actionable issue (validation, slow paths).
+     • info    — non-blocking but worth surfacing (e.g. cached fallback).
+
+   Tone:
+     • Body copy is muted by design. Calmer surfaces feedback without
+       pretending nothing went wrong.
+     • Title weight stays at 600 — large enough to scan, not so large it
+       dominates the surrounding layout.
+     • No harsh red border. The icon ring absorbs the chromatic emphasis
+       so the rest of the panel can stay neutral.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.error-state {
+  text-align: center;
+  padding: var(--credence-space-12) var(--credence-space-6);
+  max-width: 28rem;
+  margin: 0 auto;
+  border: 1px solid var(--credence-color-danger-surface-strong);
+  border-radius: var(--credence-radius-xl);
+  background: var(--credence-color-danger-surface);
+  color: var(--credence-text-primary);
+  animation: error-state-enter var(--credence-motion-duration-base)
+    var(--credence-motion-easing-decelerate);
+}
+
+/* Severity: danger — default */
+.error-state--danger .error-state__icon {
+  background: var(--credence-color-danger-surface-strong);
+  color: var(--credence-color-danger-text);
+}
+
+.error-state--danger .error-state__title {
+  color: var(--credence-color-danger-text);
+}
+
+.error-state--danger .error-state__message {
+  color: var(--credence-color-danger-text-muted);
+}
+
+.error-state--danger .error-state__action {
+  background: var(--credence-color-danger-action);
+  color: var(--credence-color-white);
+}
+
+.error-state--danger .error-state__action:hover:not(:disabled) {
+  background: var(--credence-color-danger-border);
+}
+
+/* Severity: warning — calmer, recoverable (validation, slow paths) */
+.error-state--warning {
+  border-color: var(--credence-color-warning-border);
+  background: var(--credence-color-warning-surface);
+}
+
+.error-state--warning .error-state__icon {
+  background: var(--credence-color-warning-surface);
+  color: var(--credence-color-warning-text);
+}
+
+.error-state--warning .error-state__title {
+  color: var(--credence-color-warning-text);
+}
+
+.error-state--warning .error-state__message {
+  color: var(--credence-color-warning-text);
+}
+
+.error-state--warning .error-state__action {
+  background: var(--credence-color-warning-border);
+  color: var(--credence-color-white);
+}
+
+.error-state--warning .error-state__action:hover:not(:disabled) {
+  /* Stronger-than-border warning tone — reuses the existing
+     --credence-color-warning-text token so the hover state stays inside
+     the warning family without hard-coding a hex value. */
+  background: var(--credence-color-warning-text);
+}
+
+/* Severity: info — non-blocking (404, cached fallback, etc.) */
+.error-state--info {
+  border-color: var(--credence-color-info-border);
+  background: var(--credence-color-info-surface);
+}
+
+.error-state--info .error-state__icon {
+  background: var(--credence-color-info-surface);
+  color: var(--credence-color-info-text);
+}
+
+.error-state--info .error-state__title {
+  color: var(--credence-color-info-text);
+}
+
+.error-state--info .error-state__message {
+  color: var(--credence-text-primary);
+}
+
+.error-state--info .error-state__action {
+  background: var(--credence-color-primary-soft);
+  color: var(--credence-color-white);
+}
+
+.error-state--info .error-state__action:hover:not(:disabled) {
+  background: var(--credence-color-primary-strong);
+}
+
+/* Icon wrapper — 64 px ring, matches EmptyState__icon */
+.error-state__icon {
+  width: 4rem; /* 64px */
+  height: 4rem;
+  border-radius: var(--credence-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--credence-space-4);
+  flex-shrink: 0;
+}
+
+.error-state__icon svg {
+  width: 2rem; /* 32px */
+  height: 2rem;
+}
+
+/* Semantic heading — h3 per the EmptyState contract */
+.error-state__title {
+  font-size: var(--credence-font-size-lg);
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-color-danger-text);
+  margin: 0 0 var(--credence-space-2);
+  line-height: var(--credence-line-height-tight);
+}
+
+/* Body copy — 1–2 sentences, calm secondary tone */
+.error-state__message {
+  color: var(--credence-color-danger-text-muted);
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-base);
+  margin: 0;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.error-state__message--has-action {
+  margin-bottom: var(--credence-space-6);
+}
+
+/* CTA button — primary action affordance */
+.error-state__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--credence-space-2);
+  padding: var(--credence-space-3) var(--credence-space-6);
+  border: 1px solid transparent;
+  border-radius: var(--credence-radius-lg);
+  font-weight: var(--credence-font-weight-semibold);
+  font-size: var(--credence-font-size-sm);
+  cursor: pointer;
+  min-height: 2.75rem; /* meets WCAG 2.5.5 target size */
+  transition:
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    transform var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.error-state__action:active:not(:disabled) {
+  /* Calm press feedback — a slight dip, never a "shake" */
+  transform: translateY(1px);
+}
+
+.error-state__action:focus-visible {
+  /* Use the project's focus-ring token so the contrast is consistent
+     across light/dark themes. */
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.error-state__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* Subtle entrance animation */
+@keyframes error-state-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Reduced-motion: drop the entrance animation entirely */
+@media (prefers-reduced-motion: reduce) {
+  .error-state {
+    animation: none;
+  }
+  .error-state__action {
+    transition: none;
+  }
+}
+
+/* Dark-mode reconciliation: tokens in [data-theme='dark'] already override
+   the danger/warning/info palettes to translucent alpha values, so the
+   panel updates automatically when the theme toggles. We only need to
+   make sure the muted danger text stays readable against the new surface.
+*/
+[data-theme='dark'] .error-state--danger .error-state__message {
+  color: var(--credence-color-danger-text-muted);
+}

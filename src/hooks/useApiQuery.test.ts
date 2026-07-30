@@ -59,6 +59,38 @@ describe('useApiQuery', () => {
     expect(result.current.isStale).toBe(false)
   })
 
+  it('scrubs PII before exposing and caching a query response', async () => {
+    apiFetchMock.mockResolvedValueOnce({
+      score: 720,
+      tier: 'gold',
+      email: 'holder@example.com',
+      profile: { fullName: 'Wallet Holder', score: 720 },
+    })
+
+    const { result, unmount } = renderHook(() =>
+      useApiQuery<MockData & { email: string; profile: { fullName: string; score: number } }>(
+        '/trust-score/GABC'
+      )
+    )
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data).toMatchObject({
+      score: 720,
+      email: '[REDACTED]',
+      profile: { fullName: '[REDACTED]', score: 720 },
+    })
+
+    unmount()
+    const { result: cachedResult } = renderHook(() =>
+      useApiQuery<MockData & { email: string; profile: { fullName: string; score: number } }>(
+        '/trust-score/GABC'
+      )
+    )
+    expect(cachedResult.current.data?.email).toBe('[REDACTED]')
+    expect(apiFetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('skips fetch when enabled=false', async () => {
     const { result } = renderHook(() =>
       useApiQuery<MockData>('/trust-score/GABC', { enabled: false })

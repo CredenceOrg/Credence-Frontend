@@ -167,24 +167,24 @@ export default function TrustScore() {
     commitAddressParam(trimmed)
   }
 
-  const handleSelectRecent = (recentAddress: string) => {
-    setAddress(recentAddress)
+  const handleSelectRecent = (item: RecentLookupItem) => {
+    setAddress(item.address)
     setIsAddressValid(true)
     setHasAttemptedLookup(true)
     pendingLookupRef.current = true
-    setLookupAddress(recentAddress)
-    commitAddressParam(recentAddress)
+    setLookupAddress(item.address)
+    commitAddressParam(item.address)
 
     // Move to top of history immediately
     const current = Array.isArray(history) ? history : []
     const filtered = current.filter(
-      (item) =>
-        item &&
-        typeof item === 'object' &&
-        item.address.toLowerCase() !== recentAddress.toLowerCase()
+      (h) =>
+        h &&
+        typeof h === 'object' &&
+        h.address.toLowerCase() !== item.address.toLowerCase()
     )
     const newItem: RecentLookupItem = {
-      address: recentAddress,
+      address: item.address,
       timestamp: Date.now(),
     }
     setHistory([newItem, ...filtered].slice(0, 5))
@@ -217,24 +217,21 @@ export default function TrustScore() {
             onClick: () => setNetwork(walletNetwork === 'test' ? 'test' : 'public'),
           }}
         >
-          <span id={mismatchBannerId}>
-            {t('trustScore.networkMismatchDescription', {
-              expected: networkMismatch.expected,
-              actual: networkMismatch.actual,
-            })}
-          </span>
+          Credence is set to {networkMismatch.expected}, but
+          Freighter is on{' '}
+          {networkMismatch.actual}
         </Banner>
       )}
 
       {hasAttemptedLookup && (
         <section aria-labelledby="trust-score-results-heading" className="trustScore__results">
           <h2 id="trust-score-results-heading" className="sr-only">
-            {t('trustScore.results')}
+            Trust Score Results
           </h2>
 
           {isLoading && !data && (
             <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading trust score">
-              <p className="sr-only">{t('trustScore.loading')}</p>
+              <p className="sr-only">Loading trust score</p>
               <LoadingSkeleton variant="trust-score" />
             </div>
           )}
@@ -243,9 +240,9 @@ export default function TrustScore() {
             <div role="alert">
               <ErrorState
                 type={trustScoreErrorType(error)}
-                title={t('trustScore.unableToLoad')}
+                title="Unable to load trust score"
                 message={error.message}
-                action={{ label: t('common.tryAgain'), onClick: refetch }}
+                action={{ label: 'Try again', onClick: refetch }}
               />
             </div>
           )}
@@ -258,7 +255,7 @@ export default function TrustScore() {
               </div>
 
               <div className="trustScore__heroMeta">
-                <Badge variant={data.tier} label={tierLabel} className="trustScore__heroBadge" />
+                <Badge variant={data.tier} label={tierLabel!} className="trustScore__heroBadge" />
                 <p className="trustScore__heroNext">
                   {data.tier === 'platinum' && data.score >= MAX_SCORE
                     ? 'Platinum tier \u2014 maximum score achieved'
@@ -276,14 +273,17 @@ export default function TrustScore() {
                 <span className="trustScore__heroFooterItem">
                   {formatAddress(data.address, addressDisplay, walletAddress)}
                 </span>
-                <span className="trustScore__heroFooterSep" aria-hidden="true">&#183;</span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">&middot;</span>
                 <span className="trustScore__heroFooterItem">
                   {data.attestations} attestation{data.attestations !== 1 ? 's' : ''}
                 </span>
-                <span className="trustScore__heroFooterSep" aria-hidden="true">&#183;</span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">&middot;</span>
                 <span className="trustScore__heroFooterItem">
-                  Updated {new Date(data.updatedAt).toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'short', day: 'numeric'
+                  Updated{' '}
+                  {new Date(data.updatedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
                   })}
                 </span>
               </div>
@@ -332,7 +332,7 @@ export default function TrustScore() {
                         <button
                           type="button"
                           className="trustScore__recentItemBtn"
-                          onClick={() => handleSelectRecent(item.address)}
+                          onClick={() => handleSelectRecent(item)}
                           aria-label={`Look up address ${displayLabel}`}
                           disabled={!isConnected}
                         >

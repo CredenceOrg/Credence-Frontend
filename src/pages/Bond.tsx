@@ -1,20 +1,30 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import Banner from '../components/Banner'
-import Disclaimer from '../components/Disclaimer'
-import { useToast } from '../components/ToastProvider'
+import './Bond.css'
 import ActionCard from '../components/ActionCard'
+import Banner from '../components/Banner'
+import Badge from '../components/Badge'
 import Button from '../components/Button'
 import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
 import ConnectGate from '../components/ConnectGate'
-import EmptyState from '../components/states/EmptyState'
-import { LoadingSkeleton } from '../components/states'
-import AmountInput from '../components/AmountInput'
+import Disclaimer from '../components/Disclaimer'
 import { FormField } from '../components/forms/FormField'
+import AmountInput from '../components/AmountInput'
+import { useToast } from '../components/ToastProvider'
 import { useWallet } from '../context/WalletContext'
+import { useSettings } from '../context/SettingsContext'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
+import { EmptyState, LoadingSkeleton } from '../components/states'
+
+type BondStatus = 'active' | 'locked' | 'grace-period'
+
+interface MockBond {
+  id: number
+  amountUsdc: number
+  status: BondStatus
+}
 
 /**
  * Error-channel decision table for Bond actions
@@ -47,17 +57,13 @@ function bondErrorType(err: unknown): 'network' | 'backend' | 'validation' | 'ge
   return 'generic'
 }
 
-type BondStatus = 'active' | 'locked' | 'grace-period'
-
 const MIN_BOND_AMOUNT = 100
 
-interface MockBond {
-  id: number
-  amountUsdc: number
-  status: BondStatus
-}
-
-// formatUsdc is imported from src/lib/format.ts — do not redeclare here.
+const initialBonds: MockBond[] = [
+  { id: 1, amountUsdc: 1000, status: 'locked' },
+  { id: 2, amountUsdc: 500, status: 'grace-period' },
+  { id: 3, amountUsdc: 750, status: 'active' },
+]
 
 function getPenaltyRate(status: BondStatus): number {
   switch (status) {
@@ -158,17 +164,12 @@ function BondRow({
   )
 }
 
-const initialBonds: MockBond[] = [
-  { id: 1, amountUsdc: 1000, status: 'locked' },
-  { id: 2, amountUsdc: 500, status: 'grace-period' },
-  { id: 3, amountUsdc: 750, status: 'active' },
-]
-
 export default function Bond() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { addToast } = useToast()
   const { isConnected, connect, isConnecting, network: walletNetwork } = useWallet()
+  const { network: appNetwork, setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
 
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
@@ -211,7 +212,7 @@ export default function Bond() {
     }
     if (isPendingCreate) return
 
-    // Client-side amount validation — surfaces inline in the FormField
+    // Client-side amount validation
     const parsed = parseFloat(bondAmount)
     if (!bondAmount || isNaN(parsed) || parsed < MIN_BOND_AMOUNT) {
       setBondAmountError(
@@ -220,6 +221,7 @@ export default function Bond() {
       return
     }
 
+    setBondAmountError('')
     setCreateError(null)
     setIsPendingCreate(true)
     setTxStatus('Submitting transaction…')
@@ -275,11 +277,10 @@ export default function Bond() {
         addToast(
           'warning',
           `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
-          { txHash: 'b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3', network: walletNetwork ?? 'public' }
+          { network: walletNetwork ?? 'public' }
         )
       } else {
         addToast('success', 'Bond withdrawn successfully.', {
-          txHash: 'c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
           network: walletNetwork ?? 'public',
         })
       }
@@ -299,15 +300,14 @@ export default function Bond() {
   }, [withdrawTarget, withdrawBreakdown, addToast, walletNetwork, isPendingWithdraw, setIsPendingWithdraw, setTxStatus, setWithdrawError])
 
   const slashExposureBond = useMemo(() => bonds.find((b) => getPenaltyRate(b.status) > 0), [bonds])
-
   const slashBannerBreakdown = slashExposureBond
     ? computeWithdrawBreakdown(slashExposureBond)
     : null
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--credence-space-8)' }}>
+    <div className="bond__container">
       <div style={{ display: 'grid', gap: 'var(--credence-space-3)' }}>
-        <h1 style={{ color: 'var(--text-primary)' }}>Bond USDC</h1>
+        <h1>Bond USDC</h1>
         <p id="bond-desc" style={{ color: 'var(--text-secondary)', maxWidth: '42rem' }}>
           Lock USDC into the Credence contract to build your economic reputation.
         </p>
@@ -327,8 +327,28 @@ export default function Bond() {
         </Banner>
       )}
 
-      {/* Persistent error banner for bond-create failures (wallet rejected, network down).
-          Dismissed by the user or cleared automatically on the next successful attempt. */}
+      {/* Network mismatch banner */}
+      {networkMismatch.mismatch && (
+        <div role="alert" id={mismatchBannerId}>
+          <Banner
+            severity="warning"
+            title="Network mismatch"
+            action={
+              walletNetwork
+                ? {
+                    label: `Switch app to ${walletNetwork === 'test' ? 'Test (Testnet)' : 'Public (Mainnet)'}`,
+                    onClick: () => setNetwork(walletNetwork!),
+                  }
+                : undefined
+            }
+          >
+            Credence is set to {appNetwork === 'test' ? 'Test (Testnet)' : 'Public (Mainnet)'}, but
+            Freighter is on {walletNetwork === 'test' ? 'Test (Testnet)' : 'Public (Mainnet)'}
+          </Banner>
+        </div>
+      )}
+
+      {/* Persistent error banner for bond-create failures */}
       {createError && (
         <div role="alert" id={createErrorBannerId}>
           <Banner
@@ -348,7 +368,7 @@ export default function Bond() {
         </div>
       )}
 
-      {/* Persistent error banner for bond-withdraw failures. */}
+      {/* Persistent error banner for bond-withdraw failures */}
       {withdrawError && (
         <div role="alert" id={withdrawErrorBannerId}>
           <Banner
@@ -368,6 +388,9 @@ export default function Bond() {
         </div>
       )}
 
+      {/* Transaction status announcer for screen readers */}
+      {txStatusAnnouncer}
+
       <div className="bond__cardGrid">
         <ConnectGate
           title={t('bond.createNewBond')}
@@ -375,7 +398,9 @@ export default function Bond() {
           hideWhenDisconnected={false}
         >
           <ActionCard title={t('bond.createNewBond')}>
-            <p className="bond__cardDescription">{t('bond.createBondDescription')}</p>
+            <p className="bond__cardDescription">
+              Lock USDC in the Credence smart contract to establish your on-chain reputation.
+            </p>
 
             <FormField
               id="bond-amount-quick"
@@ -430,16 +455,14 @@ export default function Bond() {
         >
           <ActionCard title={t('bond.activeBonds')}>
             {isLoadingBonds ? (
-              // Skeleton shown while bond list is loading from the API
               <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading bonds">
                 <LoadingSkeleton variant="bond-row" rows={3} />
               </div>
             ) : bonds.length === 0 ? (
-              // ✅ EMPTY STATE - This is what we're adding
               <EmptyState
                 illustration="bond"
-                title={t('bond.noActiveBonds')}
-                description={t('bond.noActiveBondsDescription')}
+                title="No active bonds"
+                description="Create your first bond to start building your on-chain reputation."
                 action={{
                   label: t('bond.createFirstBond'),
                   onClick: handleCreateBond,
@@ -462,6 +485,11 @@ export default function Bond() {
         </ConnectGate>
       </div>
 
+      <Disclaimer
+        context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
+        termsHref="#"
+      />
+
       {withdrawTarget && withdrawBreakdown && (
         <ConfirmDialog
           open
@@ -473,13 +501,6 @@ export default function Bond() {
           returnFocusRef={withdrawTriggerRef}
         />
       )}
-
-      <Disclaimer
-        context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
-        termsHref="#"
-      />
-
-      {txStatusAnnouncer}
     </div>
   )
 }

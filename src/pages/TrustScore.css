@@ -106,12 +106,23 @@
   opacity: 0.5;
 }
 
-/* ─── Supporting Grid ────────────────────────────────────────────────── */
-
+/* ─── Card grid ───────────────────────────────────────────────────────────
+ * Responsive two-column grid shared with Bond page (see src/pages/Bond.css).
+ * Uses `min(100%, 22rem)` so cards never overflow on narrow viewports yet
+ * settle into a comfortable minimum width (22rem ≈ 352px) once the viewport
+ * can accommodate two columns. Remaining space distributes evenly via 1fr.
+ *
+ * Breakpoint stack order (mobile-first):
+ *   • <  640px — single column, primary-action card first, gap: space-6
+ *   • ≥  640px — auto-fit two columns, gap: space-6
+ *   • ≥ 1280px — auto-fit two columns, gap: space-8
+ */
 .trustScore__grid {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: var(--credence-space-8);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--credence-space-6);
+  margin-top: var(--credence-space-8);
+  align-items: start;
 }
 
 .trustScore__card {
@@ -480,5 +491,12 @@
 
   .trustScore__cardTitle {
     font-size: var(--credence-font-size-sm);
+  }
+}
+
+/* Desktop: 1280px (XL) — two columns with generous gap */
+@media (min-width: 1280px) {
+  .trustScore__grid {
+    gap: var(--credence-space-8);
   }
 }

@@ -98,7 +98,9 @@
 
 .credence-button--primary {
   background: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  /* Flips with the theme — primary is a light tint in dark mode, where a white
+   * label would render at 1.67:1. */
+  color: var(--credence-color-on-primary);
   border-color: var(--credence-color-primary);
 }
 
@@ -113,29 +115,34 @@
 
 /* ─── Secondary variant — alternative actions ────────────────────────────── */
 
+/*
+ * The secondary button's fill matches the card it sits on, so its border is the
+ * only thing that identifies it as a control. That makes the border subject to
+ * the 3:1 non-text floor (SC 1.4.11) — --credence-border-default managed 1.23:1.
+ */
 .credence-button--secondary {
   background: var(--credence-surface-card);
   color: var(--credence-text-primary);
-  border-color: var(--credence-border-default);
+  border-color: var(--credence-color-border-interactive);
 }
 
 .credence-button--secondary:hover:not(:disabled) {
   background: var(--credence-color-slate-100);
-  border-color: var(--credence-color-slate-400);
+  border-color: var(--credence-color-border-interactive-hover);
 }
 
 .credence-button--secondary:active:not(:disabled) {
   background: var(--credence-color-slate-200);
 }
 
+/* Only the fill changes in dark mode; the border comes from
+ * --credence-color-border-interactive, which already flips lighter. */
 [data-theme='dark'] .credence-button--secondary {
   background: var(--credence-color-slate-700);
-  border-color: var(--credence-color-slate-600);
 }
 
 [data-theme='dark'] .credence-button--secondary:hover:not(:disabled) {
   background: var(--credence-color-slate-600);
-  border-color: var(--credence-color-slate-500);
 }
 
 /* ─── Ghost variant — subtle actions ─────────────────────────────────────── */
@@ -165,20 +172,29 @@
 
 /* ─── Danger variant — destructive confirmations ─────────────────────────── */
 
+/*
+ * Hover and active darken the fill rather than lightening it. The previous
+ * hover moved to --credence-color-danger-border (#ef4444), which dropped the
+ * white label to 3.76:1; in dark mode the base fill did the same.
+ *
+ * Because the fill darkens, the border is pinned to --credence-color-danger-
+ * border for hover/active so the button's outer edge keeps 3:1 against the page
+ * in dark mode, where a darkened red would otherwise sink into the background.
+ */
 .credence-button--danger {
-  background: var(--credence-color-danger-action);
+  background: var(--credence-color-danger-fill);
   color: var(--credence-color-white);
-  border-color: var(--credence-color-danger-action);
+  border-color: var(--credence-color-danger-fill);
 }
 
 .credence-button--danger:hover:not(:disabled) {
-  background: var(--credence-color-danger-border);
+  background: var(--credence-color-danger-fill-hover);
   border-color: var(--credence-color-danger-border);
 }
 
 .credence-button--danger:active:not(:disabled) {
-  background: var(--credence-color-danger-text);
-  border-color: var(--credence-color-danger-text);
+  background: var(--credence-color-danger-fill-active);
+  border-color: var(--credence-color-danger-border);
 }
 
 .credence-button--danger:disabled {

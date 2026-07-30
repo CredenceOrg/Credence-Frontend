@@ -102,7 +102,7 @@
 .control-toggle[aria-checked='true'] {
   background: var(--credence-color-primary);
   border-color: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  color: var(--credence-color-on-primary);
 }
 
 .control-toggle:focus-visible {
@@ -176,7 +176,7 @@
 .control-segmented__option--selected {
   background: var(--credence-color-primary);
   border-color: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  color: var(--credence-color-on-primary);
 }
 
 .control-segmented__option:hover:not(:disabled):not(.control-segmented__option--selected) {

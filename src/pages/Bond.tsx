@@ -1,15 +1,19 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Banner from '../components/Banner'
 import Disclaimer from '../components/Disclaimer'
 import { useToast } from '../components/ToastProvider'
-import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
+import ConnectGate from '../components/ConnectGate'
 import EmptyState from '../components/states/EmptyState'
 import { LoadingSkeleton } from '../components/states'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
+import { useWallet } from '../context/WalletContext'
+import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
 
 /**
@@ -42,6 +46,10 @@ function bondErrorType(err: unknown): 'network' | 'backend' | 'validation' | 'ge
   }
   return 'generic'
 }
+
+type BondStatus = 'active' | 'locked' | 'grace-period'
+
+const MIN_BOND_AMOUNT = 100
 
 interface MockBond {
   id: number
@@ -79,15 +87,98 @@ function computeWithdrawBreakdown(bond: MockBond): ConfirmDialogPenaltyBreakdown
   }
 }
 
+function BondRow({
+  bond,
+  isConnected,
+  onWithdraw,
+  onConnect,
+}: {
+  bond: MockBond
+  isConnected: boolean
+  onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
+  onConnect: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const breakdown = computeWithdrawBreakdown(bond)
+  const hasPenalty = getPenaltyRate(bond.status) > 0
+  const panelId = `bond-penalty-panel-${bond.id}`
+
+  return (
+    <li className="bond__row">
+      <div className="bond__rowInfo">
+        <span className="bond__rowAmount">{formatUsdc(bond.amountUsdc)}</span>
+        <span className={`bond__rowStatus bond__rowStatus--${bond.status}`}>
+          {bond.status === 'locked'
+            ? 'Locked'
+            : bond.status === 'grace-period'
+              ? 'Grace Period'
+              : 'Active'}
+        </span>
+      </div>
+      <div className="bond__rowActions">
+        {hasPenalty ? (
+          <>
+            <Button
+              type="button"
+              onClick={() => setOpen(!open)}
+              aria-expanded={open}
+              aria-controls={panelId}
+            >
+              {open ? 'Hide penalty' : 'Show penalty'}
+            </Button>
+            {open && (
+              <div id={panelId} className="bond__penaltyPanel">
+                <p>
+                  Penalty ({breakdown.penaltyPercent}%)
+                </p>
+                <p>
+                  <span className="bond__penaltyAmount">
+                    −{breakdown.penaltyAmount}
+                  </span>
+                </p>
+                <p>
+                  You would receive:{' '}
+                  <span>{breakdown.resultingBalance}</span>
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          <span className="bond__noPenalty">No early-withdrawal penalty</span>
+        )}
+        <Button
+          type="button"
+          onClick={isConnected ? (e) => onWithdraw(bond, e) : onConnect}
+          disabled={!isConnected}
+        >
+          {isConnected ? 'Withdraw' : 'Connect to withdraw'}
+        </Button>
+      </div>
+    </li>
+  )
+}
+
+const initialBonds: MockBond[] = [
+  { id: 1, amountUsdc: 1000, status: 'locked' },
+  { id: 2, amountUsdc: 500, status: 'grace-period' },
+  { id: 3, amountUsdc: 750, status: 'active' },
+]
+
 export default function Bond() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
   const { addToast } = useToast()
+  const { isConnected, connect, isConnecting, network: walletNetwork } = useWallet()
+  const networkMismatch = useNetworkMismatch()
+
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
 
-  const mockedBalance = 10000
-  const [amount, setAmount] = useState('')
-  const overBalance = parseFloat(amount) > mockedBalance
-  const balanceLabel = mockedBalance.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  const [bondAmount, setBondAmount] = useState('')
+  const [bondAmountError, setBondAmountError] = useState('')
+  const [isPendingCreate, setIsPendingCreate] = useState(false)
+  const [isPendingWithdraw, setIsPendingWithdraw] = useState(false)
+  const [txStatus, setTxStatus] = useState('')
 
   // Persistent error state for create/withdraw failures (wallet rejected, network down, etc.)
   // These surface as dismissible critical Banners rather than transient Toasts.
@@ -95,15 +186,23 @@ export default function Bond() {
   const [withdrawError, setWithdrawError] = useState<{ type: ReturnType<typeof bondErrorType>; message: string } | null>(null)
   const createErrorBannerId = 'bond-create-error'
   const withdrawErrorBannerId = 'bond-withdraw-error'
+  const mismatchBannerId = 'bond-network-mismatch'
 
   // Simulated bonds-fetch error state — replace with real data-fetch hook error when available.
   // When the bond list fails to load, surface an inline ErrorState inside the Active Bonds card.
-  const [bondsError] = useState<{ type: ReturnType<typeof bondErrorType>; message: string } | null>(null)
-
   // TODO: replace with real loading state when bond list is fetched from the API
   const isLoadingBonds = false
 
   const bonds = initialBonds
+
+  // ── Live-region announcer for transaction progress ──
+  const txStatusAnnouncer = txStatus ? (
+    <span className="sr-only" role="status" aria-live="polite">
+      {txStatus}
+    </span>
+  ) : (
+    <span className="sr-only" role="status" aria-live="polite" />
+  )
 
   const handleCreateBond = useCallback(async () => {
     if (!isConnected) {
@@ -139,7 +238,7 @@ export default function Bond() {
     } finally {
       setIsPendingCreate(false)
     }
-  }, [isConnected, connect, navigate, isPendingCreate, bondAmount])
+  }, [isConnected, connect, navigate, isPendingCreate, bondAmount, setIsPendingCreate, setTxStatus, setCreateError])
 
   const withdrawBreakdown = useMemo(
     () => (withdrawTarget ? computeWithdrawBreakdown(withdrawTarget) : null),
@@ -158,7 +257,7 @@ export default function Bond() {
     setWithdrawTarget(null)
   }, [])
 
-  const confirmWithdraw = useCallback(() => {
+  const confirmWithdraw = useCallback(async () => {
     if (!withdrawTarget || !withdrawBreakdown) return
     if (isPendingWithdraw) return
 
@@ -195,9 +294,9 @@ export default function Bond() {
       setWithdrawError({ type: errType, message: errMessage })
     } finally {
       setIsPendingWithdraw(false)
+      setWithdrawTarget(null)
     }
-    setWithdrawTarget(null)
-  }, [withdrawTarget, withdrawBreakdown, addToast])
+  }, [withdrawTarget, withdrawBreakdown, addToast, walletNetwork, isPendingWithdraw, setIsPendingWithdraw, setTxStatus, setWithdrawError])
 
   const slashExposureBond = useMemo(() => bonds.find((b) => getPenaltyRate(b.status) > 0), [bonds])
 
@@ -286,7 +385,7 @@ export default function Bond() {
             >
               <AmountInput
                 value={bondAmount}
-                onChange={(next) => {
+                onChange={(next: string) => {
                   setBondAmount(next)
                   if (bondAmountError) setBondAmountError('')
                 }}
@@ -354,7 +453,7 @@ export default function Bond() {
                     bond={bond}
                     isConnected={isConnected}
                     onWithdraw={requestWithdraw}
-                    onConnect={() => setConnectModalOpen(true)}
+                    onConnect={connect}
                   />
                 ))}
               </ul>
@@ -379,6 +478,8 @@ export default function Bond() {
         context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
         termsHref="#"
       />
+
+      {txStatusAnnouncer}
     </div>
   )
 }

@@ -54,6 +54,24 @@
   align-items: flex-start;
 }
 
+.activity-row--selectable {
+  cursor: pointer;
+  padding: var(--credence-space-2) var(--credence-space-3);
+  margin: calc(var(--credence-space-2) * -1) calc(var(--credence-space-3) * -1);
+  border-radius: var(--credence-radius-lg);
+  transition:
+    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.activity-row--selectable:hover {
+  background: var(--credence-surface-hover, var(--credence-color-slate-100));
+}
+
+.activity-row--selectable:focus-within {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
 .activity-row__rail {
   position: relative;
   min-height: 100%;
@@ -141,8 +159,9 @@
 .activity-row__detail-panel {
   margin-top: var(--credence-space-3);
   padding: var(--credence-space-3);
-  background: var(--credence-surface-hover);
+  background: var(--credence-surface-page);
   border-radius: var(--credence-radius-md);
+  color: var(--credence-text-primary);
 }
 
 .activity-row__detail-panel[hidden] {
@@ -154,6 +173,10 @@
   font-size: var(--credence-font-size-xs);
   line-height: var(--credence-line-height-base);
   color: var(--credence-text-secondary);
+}
+
+.activity-row__actor {
+  margin-bottom: var(--credence-space-1);
 }
 
 .activity-row__meta {
@@ -220,19 +243,37 @@
 }
 
 @keyframes activity-pulse-success {
-  0% { box-shadow: 0 0 0 0 var(--credence-color-success-surface); }
-  70% { box-shadow: 0 0 0 6px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
+  0% {
+    box-shadow: 0 0 0 0 var(--credence-color-success-surface);
+  }
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 @keyframes activity-pulse-warning {
-  0% { box-shadow: 0 0 0 0 var(--credence-color-warning-surface); }
-  70% { box-shadow: 0 0 0 6px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
+  0% {
+    box-shadow: 0 0 0 0 var(--credence-color-warning-surface);
+  }
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 @keyframes activity-pulse-info {
-  0% { box-shadow: 0 0 0 0 var(--credence-color-info-surface); }
-  70% { box-shadow: 0 0 0 6px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
+  0% {
+    box-shadow: 0 0 0 0 var(--credence-color-info-surface);
+  }
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
 }

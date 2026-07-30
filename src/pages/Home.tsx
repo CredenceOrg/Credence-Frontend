@@ -1,29 +1,7 @@
 import { Link } from 'react-router-dom'
-import { useSeo } from '../hooks/useSeo'
-import { useWallet } from '../context/WalletContext'
-import ActivityTimeline from '../components/ActivityTimeline'
-import Badge from '../components/Badge'
-import { LoadingSkeleton } from '../components/states'
-import { formatUsdc } from '../lib/format'
 import './Home.css'
 
-// ---------------------------------------------------------------------------
-// Mock summary data – replace with real API hooks when the backend is wired up
-// ---------------------------------------------------------------------------
-
-const MOCK_TRUST_SCORE = 684
-const MOCK_TRUST_TIER = 'gold' as const
-
-const MOCK_BONDS = [
-  { id: 'bond-001', amountUsdc: 2500, status: 'grace-period' as const, unlockLabel: 'May 12, 2026' },
-  { id: 'bond-002', amountUsdc: 1750, status: 'locked' as const, unlockLabel: 'Jun 14, 2026' },
-]
-
-// ---------------------------------------------------------------------------
-// Hero — shown to disconnected visitors
-// ---------------------------------------------------------------------------
-
-function Hero() {
+export default function Home() {
   return (
     <div className="home">
       <div>

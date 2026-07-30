@@ -17,15 +17,20 @@ describe('ErrorBoundary', () => {
     const FailChild = () => {
       throw new Error('Something went wrong in component render')
     }
-    
+
     render(
       <ErrorBoundary>
         <FailChild />
       </ErrorBoundary>
     )
-    
+
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      // Use data-attributes on the ErrorState panel to make the assertion
+      // resilient to copy edits (per #810 standardisation).
+      const panel = screen.getByRole('alert')
+      expect(panel).toHaveAttribute('data-error-kind', 'generic')
+      expect(panel).toHaveAttribute('data-error-severity', 'danger')
+      expect(panel).toHaveTextContent(/something went wrong/i)
     })
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
@@ -34,21 +39,24 @@ describe('ErrorBoundary', () => {
     const LazyFailComponent = () => {
       throw new Error('Component render failure')
     }
-    
+
     render(
       <ErrorBoundary>
         <LazyFailComponent />
       </ErrorBoundary>
     )
-    
+
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      const panel = screen.getByRole('alert')
+      expect(panel).toHaveAttribute('data-error-kind', 'generic')
+      expect(panel).toHaveAttribute('data-error-severity', 'danger')
+      expect(panel).toHaveTextContent(/something went wrong/i)
     })
   })
 
   it('ErrorBoundary allows retry after component succeeds on reset', async () => {
     let shouldThrow = true
-    
+
     const FlakyComponent = () => {
       if (shouldThrow) {
         Promise.resolve().then(() => {
@@ -58,19 +66,21 @@ describe('ErrorBoundary', () => {
       }
       return <div>Recovered content</div>
     }
-    
+
     render(
       <ErrorBoundary>
         <FlakyComponent />
       </ErrorBoundary>
     )
-    
+
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      const panel = screen.getByRole('alert')
+      expect(panel).toHaveAttribute('data-error-kind', 'generic')
+      expect(panel).toHaveTextContent(/something went wrong/i)
     })
-    
+
     fireEvent.click(screen.getByRole('button', { name: /try again/i }))
-    
+
     await waitFor(() => {
       expect(screen.getByText('Recovered content')).toBeInTheDocument()
     })
@@ -92,7 +102,12 @@ describe('ErrorBoundary', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /connection issue/i })).toBeInTheDocument()
+      const panel = screen.getByRole('alert')
+      expect(panel).toHaveAttribute('data-error-kind', 'network')
+      expect(panel).toHaveAttribute('data-error-severity', 'danger')
+      // Chunk-load failures fall through to the title override "Something
+      // went wrong" so the whole-app-crash tone is preserved.
+      expect(panel).toHaveTextContent(/something went wrong/i)
     })
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })

@@ -14,7 +14,7 @@
   text-decoration: none;
   font-size: var(--credence-font-size-sm);
   font-weight: var(--credence-font-weight-semibold);
-  transition: color 0.2s ease;
+  transition: color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
   display: inline-flex;
   align-items: center;
 }
@@ -56,7 +56,7 @@
 
 .bond-detail__card--warning {
   border-color: var(--credence-color-danger-surface-strong, var(--credence-border-default));
-  background: var(--credence-color-danger-surface, #fef2f2);
+  background: var(--credence-color-danger-surface);
 }
 
 .bond-detail__card-title {
@@ -69,7 +69,7 @@
 }
 
 .bond-detail__card--warning .bond-detail__card-title {
-  color: var(--credence-color-danger-text, #991b1b);
+  color: var(--credence-color-danger-text);
 }
 
 .bond-detail__info-list {
@@ -144,7 +144,7 @@
 }
 
 .bond-detail__slash-row .bond-detail__penalty-percent {
-  color: var(--credence-color-danger-text, #b91c1c);
+  color: var(--credence-color-danger-text);
   font-weight: var(--credence-font-weight-semibold);
 }
 

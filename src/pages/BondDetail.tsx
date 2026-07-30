@@ -9,12 +9,8 @@ import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatUsdc } from '../lib/format'
 import ConfirmDialog from '../components/ConfirmDialog'
-import ConnectWalletModal from '../components/ConnectWalletModal'
-import {
-  computeWithdrawBreakdown,
-  calcUnlockDate,
-  type MockBond,
-} from '../lib/bondPenalty'
+import ConnectWalletDialog from '../components/ConnectWalletDialog'
+import { computeWithdrawBreakdown, calcUnlockDate, type MockBond } from '../lib/bondPenalty'
 import './BondDetail.css'
 
 const mockBonds: MockBond[] = [
@@ -34,6 +30,7 @@ export default function BondDetail() {
 
   const bondId = Number(id)
   useDocumentTitle(`Bond #${bondId || 'Detail'}`)
+  const connectBannerId = `bond-detail-connect-required-${bondId || 'detail'}`
 
   const initialBond = useMemo(() => {
     return mockBonds.find((b) => b.id === bondId)
@@ -118,25 +115,30 @@ export default function BondDetail() {
       </div>
 
       {!isConnected && (
-        <Banner
-          severity="warning"
-          title="Connect wallet required"
-          action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
-        >
-          Withdrawal and lock extensions require a connected Stellar wallet.
-        </Banner>
+        <div id={connectBannerId}>
+          <Banner
+            severity="warn"
+            title="Connect wallet required"
+            action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
+          >
+            Withdrawal and lock extensions require a connected Stellar wallet.
+          </Banner>
+        </div>
       )}
 
       {initialBond.status !== 'active' && breakdown.penaltyUsdc > 0 && (
-        <Banner severity="warning" title="Early Withdrawal Penalty Active">
-          This bond is currently locked. Withdrawing early will slash {breakdown.penaltyAmount} ({breakdown.penaltyPercent}% penalty).
+        <Banner severity="warn" title="Early Withdrawal Penalty Active">
+          This bond is currently locked. Withdrawing early will slash {breakdown.penaltyAmount} (
+          {breakdown.penaltyPercent}% penalty).
         </Banner>
       )}
 
       <div className="bond-detail__content">
         {/* Core details card */}
         <section className="bond-detail__card" aria-labelledby="bond-info-title">
-          <h2 id="bond-info-title" className="bond-detail__card-title">Bond Specification</h2>
+          <h2 id="bond-info-title" className="bond-detail__card-title">
+            Bond Specification
+          </h2>
           <dl className="bond-detail__info-list">
             <div className="bond-detail__info-row">
               <dt>Bonded Amount</dt>
@@ -161,6 +163,10 @@ export default function BondDetail() {
                   variant="secondary"
                   onClick={() => extendLock(30)}
                   disabled={!isConnected}
+                  title={
+                    !isConnected ? 'Connect your wallet to extend the lock duration' : undefined
+                  }
+                  aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   +30 Days
                 </Button>
@@ -169,6 +175,10 @@ export default function BondDetail() {
                   variant="secondary"
                   onClick={() => extendLock(90)}
                   disabled={!isConnected}
+                  title={
+                    !isConnected ? 'Connect your wallet to extend the lock duration' : undefined
+                  }
+                  aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   +90 Days
                 </Button>
@@ -191,8 +201,13 @@ export default function BondDetail() {
         </section>
 
         {/* Slash-risk panel */}
-        <section className="bond-detail__card bond-detail__card--warning" aria-labelledby="slash-panel-title">
-          <h2 id="slash-panel-title" className="bond-detail__card-title">Slash-Risk Panel</h2>
+        <section
+          className="bond-detail__card bond-detail__card--warning"
+          aria-labelledby="slash-panel-title"
+        >
+          <h2 id="slash-panel-title" className="bond-detail__card-title">
+            Slash-Risk Panel
+          </h2>
           <div className="bond-detail__slash-breakdown">
             <div className="bond-detail__slash-row">
               <span>Current Early-Withdrawal Penalty</span>
@@ -209,7 +224,8 @@ export default function BondDetail() {
             </div>
           </div>
           <p className="bond-detail__slash-disclaimer">
-            All penalty calculations are dynamic and subject to protocol slashing rules. Once initiated, withdrawal is irreversible.
+            All penalty calculations are dynamic and subject to protocol slashing rules. Once
+            initiated, withdrawal is irreversible.
           </p>
         </section>
       </div>
@@ -226,7 +242,7 @@ export default function BondDetail() {
         />
       )}
 
-      <ConnectWalletModal
+      <ConnectWalletDialog
         open={connectModalOpen}
         onClose={() => setConnectModalOpen(false)}
         returnFocusRef={connectTriggerRef}

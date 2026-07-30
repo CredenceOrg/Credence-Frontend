@@ -12,32 +12,17 @@
   gap: var(--credence-space-8);
 }
 
-/* Header section */
-.bond__headerSection {
-  display: grid;
-  gap: var(--credence-space-3);
-}
-
-.bond__title {
-  margin: 0;
-  color: var(--credence-text-primary);
-  font-size: var(--credence-font-size-xl);
-  font-weight: var(--credence-font-weight-bold);
-}
-
-.bond__description {
-  margin: 0;
-  color: var(--credence-text-secondary);
-  max-width: 42rem;
-  line-height: var(--credence-line-height-relaxed);
-}
-
 /* Action card grid */
 .bond__cardGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   gap: var(--credence-space-6);
   align-items: start;
+}
+
+.bond__cardDescription {
+  margin: 0;
+  color: var(--credence-text-secondary);
 }
 
 /* Bond list container */
@@ -149,4 +134,3 @@
   color: var(--credence-color-danger-action);
   font-weight: var(--credence-font-weight-semibold);
 }
-

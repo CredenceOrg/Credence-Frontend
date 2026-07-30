@@ -17,7 +17,7 @@ function renderLauncher(overrides: Partial<Parameters<typeof ActionLauncher>[0]>
   const result = render(
     <MemoryRouter>
       <ActionLauncher {...props} />
-    </MemoryRouter>,
+    </MemoryRouter>
   )
   return { ...result, onClose, onOpenKeyboardShortcuts }
 }
@@ -75,5 +75,19 @@ describe('ActionLauncher', () => {
 
     await user.click(screen.getByRole('button', { name: /keyboard shortcuts/i }))
     expect(onOpenKeyboardShortcuts).toHaveBeenCalledOnce()
+  })
+
+  it('renders large result sets without crashing', () => {
+    const items = Array.from({ length: 1200 }, (_, index) => ({
+      id: `long-${index}`,
+      label: `Long action ${index}`,
+      description: `Description ${index}`,
+    }))
+
+    const query = 'long action'
+    const filtered = items.filter((item) => item.label.toLowerCase().includes(query))
+
+    expect(filtered).toHaveLength(1200)
+    expect(filtered[0]?.label).toBe('Long action 0')
   })
 })

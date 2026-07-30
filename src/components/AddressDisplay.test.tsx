@@ -56,7 +56,10 @@ describe('AddressDisplay', () => {
     it('renders the full address when it is short enough not to truncate', () => {
       render(<AddressDisplay address={SHORT_ADDR} />)
 
-      expect(screen.getByText(SHORT_ADDR)).toBeInTheDocument()
+      const code = screen
+        .getByRole('tooltip', { hidden: true })
+        .parentElement?.querySelector('code')
+      expect(code).toHaveTextContent(SHORT_ADDR)
     })
 
     it('sets the title attribute to the full address for native tooltips', () => {
@@ -81,7 +84,7 @@ describe('AddressDisplay', () => {
     it('applies a custom className', () => {
       render(<AddressDisplay address={SHORT_ADDR} className="my-custom-class" />)
 
-      const container = screen.getByText(SHORT_ADDR).closest('.address-display')
+      const container = document.querySelector('.address-display')
       expect(container).toHaveClass('my-custom-class')
     })
 

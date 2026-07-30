@@ -247,3 +247,20 @@
     align-items: flex-start;
   }
 }
+
+/* ── Pagination ────────────────────────────────────────────────── */
+
+.transactions__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--credence-space-3);
+  margin-top: var(--credence-space-6);
+  padding: var(--credence-space-3) 0;
+}
+
+.transactions__pagination-info {
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+  white-space: nowrap;
+}

@@ -27,7 +27,7 @@ function isAbortError(error: unknown): boolean {
  * Expects {@link TrustScore} from `src/api/types.ts`:
  * `{ address, score, tier, attestations, updatedAt }`.
  *
- * Does not fetch automatically — call {@link UseTrustScoreResult.refetch} after the
+ * Does not fetch automatically â€” call {@link UseTrustScoreResult.refetch} after the
  * user submits a lookup. Invalid or empty addresses are ignored.
  *
  * In-flight requests are cancelled when `refetch` is called again or the hook unmounts.
@@ -59,7 +59,10 @@ export function useTrustScore(address: string): UseTrustScoreResult {
 
     setIsLoading(true)
     setError(null)
-    setData(null)
+    
+    // Clear data only if we are fetching a new address. 
+    // This prevents flickering on refetch for the same address.
+    setData((currentData) => currentData?.address !== targetAddress ? null : currentData)
 
     try {
       const result = await apiFetch<TrustScore>(

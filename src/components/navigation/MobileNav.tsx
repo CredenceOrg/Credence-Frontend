@@ -3,24 +3,47 @@ import { useLocation } from 'react-router-dom'
 import { PrefetchNavLink } from '../PrefetchNavLink'
 import { PRELOADS_BY_PATH } from '../../config/routes'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useScrollPreserver } from '../../hooks/useScrollPreserver'
 import './MobileNav.css'
 import { useTranslation } from 'react-i18next'
 import { SECONDARY_NAV_LINKS } from '../../config/navLinks'
+import { DOM_EVENTS } from '../../events'
 
 export default function MobileNav() {
   const { t } = useTranslation()
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(() => {
+    try {
+      return sessionStorage.getItem('mobileNavOpen') === 'true'
+    } catch {
+      return false
+    }
+  })
   const drawerRef = useRef<HTMLElement>(null)
   const hamburgerRef = useRef<HTMLButtonElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const location = useLocation()
 
-  // Close on route change
+  useScrollPreserver({ isActive: isOpen })
+
+  // Close on route change (SPA navigation) — but state survives full page reloads via sessionStorage
   const prevPath = useRef(location.pathname)
   if (prevPath.current !== location.pathname) {
     prevPath.current = location.pathname
     if (isOpen) setIsOpen(false)
   }
+
+  // Persist collapse state across full page reloads
+  useEffect(() => {
+    try {
+      if (isOpen) {
+        sessionStorage.setItem('mobileNavOpen', 'true')
+      } else {
+        sessionStorage.removeItem('mobileNavOpen')
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) return
@@ -32,8 +55,8 @@ export default function MobileNav() {
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+    return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
   }, [isOpen])
 
   useFocusTrap({
@@ -117,7 +140,7 @@ export default function MobileNav() {
                 onClick={close}
               >
                 {t(labelKey)}
-              </NavLink>
+              </PrefetchNavLink>
             </li>
           ))}
         </ul>

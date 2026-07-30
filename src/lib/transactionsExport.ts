@@ -87,7 +87,11 @@ export function buildExportFilename(now: Date = new Date()): string {
 export function downloadCsv(
   csv: string,
   filename: string,
-  options: { document?: Document; createObjectURL?: typeof URL.createObjectURL; revokeObjectURL?: typeof URL.revokeObjectURL } = {}
+  options: {
+    document?: Document
+    createObjectURL?: typeof URL.createObjectURL
+    revokeObjectURL?: typeof URL.revokeObjectURL
+  } = {}
 ): void {
   if (typeof document === 'undefined' && !options.document) return
   const doc = options.document ?? document

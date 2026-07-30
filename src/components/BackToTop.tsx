@@ -22,12 +22,7 @@ export default function BackToTop() {
   }
 
   return (
-    <button
-      type="button"
-      className="back-to-top"
-      aria-label="Back to top"
-      onClick={handleClick}
-    >
+    <button type="button" className="back-to-top" aria-label="Back to top" onClick={handleClick}>
       <svg
         className="back-to-top__icon"
         aria-hidden="true"

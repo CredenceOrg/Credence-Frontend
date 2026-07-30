@@ -1,3 +1,5 @@
+import { QUIET_HOURS_TIME_PATTERN } from '../config/notifications'
+
 export type ThemeMode = 'light' | 'dark' | 'system'
 
 export interface SettingsBlob {
@@ -6,15 +8,18 @@ export interface SettingsBlob {
   addressDisplay: string
   toastsEnabled: boolean
   autoDismiss: string
-  reauthThresholdMinutes: number
+  /** When true, non-critical toasts are silenced during the configured window. */
+  quietHoursEnabled: boolean
+  /** Inclusive `HH:mm` start of the quiet window. */
+  quietHoursStart: string
+  /** Inclusive `HH:mm` end of the quiet window. */
+  quietHoursEnd: string
 }
 
 const VALID_THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system']
 const VALID_NETWORKS = ['public', 'test'] as const
 const VALID_ADDRESS_DISPLAYS = ['full', 'short', 'friendly'] as const
 const VALID_AUTO_DISMISS = ['off', '3s', '5s', '8s'] as const
-const MIN_REAUTH_THRESHOLD = 1
-const MAX_REAUTH_THRESHOLD = 1440
 
 const DEFAULT_SETTINGS: SettingsBlob = {
   themeMode: 'system',
@@ -22,7 +27,9 @@ const DEFAULT_SETTINGS: SettingsBlob = {
   addressDisplay: 'short',
   toastsEnabled: true,
   autoDismiss: '5s',
-  reauthThresholdMinutes: 15,
+  quietHoursEnabled: false,
+  quietHoursStart: '22:00',
+  quietHoursEnd: '07:00',
 }
 
 export function defaultSettings(): SettingsBlob {
@@ -59,7 +66,10 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   }
 
   if (input.network !== undefined) {
-    if (typeof input.network === 'string' && (VALID_NETWORKS as readonly string[]).includes(input.network)) {
+    if (
+      typeof input.network === 'string' &&
+      (VALID_NETWORKS as readonly string[]).includes(input.network)
+    ) {
       result.network = input.network
     } else {
       errors.push(`network must be one of: ${VALID_NETWORKS.join(', ')}`)
@@ -67,7 +77,10 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   }
 
   if (input.addressDisplay !== undefined) {
-    if (typeof input.addressDisplay === 'string' && (VALID_ADDRESS_DISPLAYS as readonly string[]).includes(input.addressDisplay)) {
+    if (
+      typeof input.addressDisplay === 'string' &&
+      (VALID_ADDRESS_DISPLAYS as readonly string[]).includes(input.addressDisplay)
+    ) {
       result.addressDisplay = input.addressDisplay
     } else {
       errors.push(`addressDisplay must be one of: ${VALID_ADDRESS_DISPLAYS.join(', ')}`)
@@ -79,18 +92,40 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   }
 
   if (input.autoDismiss !== undefined) {
-    if (typeof input.autoDismiss === 'string' && (VALID_AUTO_DISMISS as readonly string[]).includes(input.autoDismiss)) {
+    if (
+      typeof input.autoDismiss === 'string' &&
+      (VALID_AUTO_DISMISS as readonly string[]).includes(input.autoDismiss)
+    ) {
       result.autoDismiss = input.autoDismiss
     } else {
       errors.push(`autoDismiss must be one of: ${VALID_AUTO_DISMISS.join(', ')}`)
     }
   }
 
-  if (input.reauthThresholdMinutes !== undefined) {
-    if (typeof input.reauthThresholdMinutes === 'number' && !isNaN(input.reauthThresholdMinutes) && input.reauthThresholdMinutes >= MIN_REAUTH_THRESHOLD && input.reauthThresholdMinutes <= MAX_REAUTH_THRESHOLD) {
-      result.reauthThresholdMinutes = input.reauthThresholdMinutes
+  // Quiet hours fields are OPTIONAL on import so older exports keep working.
+  if (input.quietHoursEnabled !== undefined) {
+    result.quietHoursEnabled = Boolean(input.quietHoursEnabled)
+  }
+
+  if (input.quietHoursStart !== undefined) {
+    if (
+      typeof input.quietHoursStart === 'string' &&
+      QUIET_HOURS_TIME_PATTERN.test(input.quietHoursStart)
+    ) {
+      result.quietHoursStart = input.quietHoursStart
     } else {
-      errors.push(`reauthThresholdMinutes must be a number between ${MIN_REAUTH_THRESHOLD} and ${MAX_REAUTH_THRESHOLD}`)
+      errors.push('quietHoursStart must match HH:mm (24-hour)')
+    }
+  }
+
+  if (input.quietHoursEnd !== undefined) {
+    if (
+      typeof input.quietHoursEnd === 'string' &&
+      QUIET_HOURS_TIME_PATTERN.test(input.quietHoursEnd)
+    ) {
+      result.quietHoursEnd = input.quietHoursEnd
+    } else {
+      errors.push('quietHoursEnd must match HH:mm (24-hour)')
     }
   }
 

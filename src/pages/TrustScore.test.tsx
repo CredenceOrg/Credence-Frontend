@@ -61,7 +61,7 @@ vi.mock('@/lib/stellar', () => ({
     if (!addr) return ''
     if (addr.length <= 20) return addr
     return `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`
-  }
+  },
 }))
 
 vi.mock('../hooks/useTrustScore', () => ({
@@ -79,7 +79,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
   }
 })
 
-const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
+const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
 
 describe('TrustScore', () => {
   beforeEach(() => {
@@ -112,9 +112,7 @@ describe('TrustScore', () => {
     expect(screen.getByRole('button', { name: /how trust is earned/i })).toBeInTheDocument()
     // ActivityTimeline renders its own empty state (below the fold, lazy loaded but tests render synchronously)
     expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
-    expect(
-      screen.getByText(/Attestations and events/i)
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Attestations and events/i)).toBeInTheDocument()
   })
 
   it('keeps lookup disabled until the address input reports valid input', () => {
@@ -148,7 +146,9 @@ describe('TrustScore', () => {
       'aria-describedby',
       'trust-score-network-mismatch'
     )
-    expect(screen.getByRole('button', { name: /switch app to test \(testnet\)/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /switch app to test \(testnet\)/i })
+    ).toBeInTheDocument()
   })
 
   it('switches the app network to the connected wallet network from the mismatch banner', async () => {
@@ -163,6 +163,66 @@ describe('TrustScore', () => {
 
     await user.click(screen.getByRole('button', { name: /switch app to test \(testnet\)/i }))
     expect(mockSetNetwork).toHaveBeenCalledWith('test')
+  })
+
+  it('does not flicker the chart (skeleton) on refetch if data is already present', async () => {
+    const user = userEvent.setup()
+    mockConnected = true
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    
+    // Initial state: data is loaded
+    mockTrustScoreState = {
+      data: {
+        address: VALID_ADDRESS,
+        score: 85,
+        tier: 'gold',
+        attestations: 1,
+        updatedAt: '2026-06-29T10:00:00Z',
+      },
+      isLoading: false,
+      error: null,
+    }
+    const { rerender } = render(<TrustScore />)
+
+    // Wait for the button to be enabled based on valid URL param and click it
+    const lookupButton = await screen.findByRole('button', { name: /look up score/i })
+    expect(lookupButton).not.toBeDisabled()
+    await user.click(lookupButton)
+
+    // The data should be displayed
+    expect(await screen.findByRole('region', { name: /Trust score result/i })).toBeInTheDocument()
+
+    // Now simulate a refetch starting
+    mockTrustScoreState = {
+      ...mockTrustScoreState,
+      isLoading: true,
+    }
+    rerender(<TrustScore />)
+
+    // The data should STILL be displayed, and the loading skeleton should NOT be present.
+    expect(screen.getByRole('region', { name: /Trust score result/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Loading trust score/i)).not.toBeInTheDocument()
+  })
+
+  it('displays the error state and clears data on a failed lookup/refetch', async () => {
+    const user = userEvent.setup()
+    mockConnected = true
+    mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
+    
+    // Simulate failed state
+    mockTrustScoreState = {
+      data: null,
+      isLoading: false,
+      error: { message: 'Simulated failure mode', status: 500 },
+    }
+    render(<TrustScore />)
+
+    const lookupButton = await screen.findByRole('button', { name: /look up score/i })
+    expect(lookupButton).not.toBeDisabled()
+    await user.click(lookupButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Simulated failure mode/i)
+    expect(screen.queryByRole('region', { name: /Trust score result/i })).not.toBeInTheDocument()
   })
 })
 
@@ -260,7 +320,7 @@ describe('TrustScore URL sync', () => {
     expect(options).toEqual({ replace: true })
   })
 
-  it('does not write to the URL on partial keystrokes — only on clear or lookup', () => {
+  it('does not write to the URL on partial keystrokes â€” only on clear or lookup', () => {
     render(<TrustScore />)
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'GAAZI4' } })
@@ -295,7 +355,13 @@ describe('TrustScore URL sync', () => {
 
       // Mock success for ADDR1 lookup
       mockTrustScoreState = {
-        data: { address: ADDR1, score: 85, tier: 'gold', attestations: 1, updatedAt: '2026-06-29T10:00:00Z' },
+        data: {
+          address: ADDR1,
+          score: 85,
+          tier: 'gold',
+          attestations: 1,
+          updatedAt: '2026-06-29T10:00:00Z',
+        },
         isLoading: false,
         error: null,
       }
@@ -315,12 +381,20 @@ describe('TrustScore URL sync', () => {
 
       // The label of the button (short address display format is default)
       // "GAAZI4TCR3TY...VKOCCWNA" -> GAAZI4TCR3TY...VKOCCWNA
-      const item1 = screen.getByRole('button', { name: /look up address GAAZI4TCR3TY\.\.\.VKOCCWNA/i })
+      const item1 = screen.getByRole('button', {
+        name: /look up address GAAZI4TCR3TY\.\.\.VKOCCWNA/i,
+      })
       expect(item1).toBeInTheDocument()
 
       // Now lookup ADDR2
       mockTrustScoreState = {
-        data: { address: ADDR2, score: 90, tier: 'platinum', attestations: 2, updatedAt: '2026-06-29T10:00:00Z' },
+        data: {
+          address: ADDR2,
+          score: 90,
+          tier: 'platinum',
+          attestations: 2,
+          updatedAt: '2026-06-29T10:00:00Z',
+        },
         isLoading: false,
         error: null,
       }
@@ -341,7 +415,13 @@ describe('TrustScore URL sync', () => {
 
       // Look up ADDR1 again (duplicate). It should move to the top rather than duplicate.
       mockTrustScoreState = {
-        data: { address: ADDR1, score: 85, tier: 'gold', attestations: 1, updatedAt: '2026-06-29T10:00:00Z' },
+        data: {
+          address: ADDR1,
+          score: 85,
+          tier: 'gold',
+          attestations: 1,
+          updatedAt: '2026-06-29T10:00:00Z',
+        },
         isLoading: false,
         error: null,
       }
@@ -362,7 +442,13 @@ describe('TrustScore URL sync', () => {
       const newAddresses = [ADDR3, ADDR4, ADDR5, ADDR6]
       for (const addr of newAddresses) {
         mockTrustScoreState = {
-          data: { address: addr, score: 50, tier: 'bronze', attestations: 0, updatedAt: '2026-06-29T10:00:00Z' },
+          data: {
+            address: addr,
+            score: 50,
+            tier: 'bronze',
+            attestations: 0,
+            updatedAt: '2026-06-29T10:00:00Z',
+          },
           isLoading: false,
           error: null,
         }
@@ -410,7 +496,9 @@ describe('TrustScore URL sync', () => {
       )
 
       render(<TrustScore />)
-      const recentBtn = screen.getByRole('button', { name: /look up address GAAZI4TCR3TY\.\.\.VKOCCWNA/i })
+      const recentBtn = screen.getByRole('button', {
+        name: /look up address GAAZI4TCR3TY\.\.\.VKOCCWNA/i,
+      })
 
       mockSetSearchParams.mockClear()
       mockRefetch.mockClear()
@@ -427,7 +515,7 @@ describe('TrustScore URL sync', () => {
       expect(mockSetSearchParams).toHaveBeenCalledOnce()
       const [updater] = mockSetSearchParams.mock.calls[0] as [
         (prev: URLSearchParams) => URLSearchParams,
-        unknown
+        unknown,
       ]
       const result = updater(new URLSearchParams())
       expect(result.get('address')).toBe(ADDR1)
@@ -443,12 +531,16 @@ describe('TrustScore URL sync', () => {
       // Test full address format
       mocks.addressDisplay = 'full'
       const { rerender } = render(<TrustScore />)
-      expect(screen.getByRole('button', { name: new RegExp(`look up address ${ADDR1}`, 'i') })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: new RegExp(`look up address ${ADDR1}`, 'i') })
+      ).toBeInTheDocument()
 
       // Test friendly address format (when not self address)
       mocks.addressDisplay = 'friendly'
       rerender(<TrustScore />)
-      expect(screen.getByRole('button', { name: /look up address GAAZI4TCR3TY\.\.\.VKOCCWNA/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /look up address GAAZI4TCR3TY\.\.\.VKOCCWNA/i })
+      ).toBeInTheDocument()
 
       // Test friendly address format (when it is self address)
       // Connected wallet address in our mock is 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'

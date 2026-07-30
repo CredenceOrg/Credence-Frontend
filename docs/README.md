@@ -121,7 +121,12 @@ This directory contains comprehensive design specifications and implementation g
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling
 
-16. **[Security Checklist](./SECURITY_CHECKLIST_FRONTEND.md)**
+16. [Authentication Flows](./AUTH_FLOWS.md) ⭐ NEW
+    - Sequence diagrams for login (connect wallet), logout (disconnect), and session refresh (re-authentication)
+    - Session timeout (inactivity logout) flow
+    - Key code paths and cross-references
+
+17. **[Security Checklist](./SECURITY_CHECKLIST_FRONTEND.md)**
     - CSP policy, browser storage rules, third-party script posture, and dependency audit workflow
     - Concrete review checklist for each security area
       **[Settings Auto-Save Indicator](./auto-save.md)** ⭐ NEW (closes #564)
@@ -130,30 +135,30 @@ This directory contains comprehensive design specifications and implementation g
 - `<AutoSaveIndicator />` token-driven pill showing `Saving…` / `Saved just now` / "Couldn't save" with retry.
 - In-flight cancellation via `AbortController` so stale PATCHes can't overwrite newer state.
 
-16. **[Widget Cache & Per-Widget Refresh](./widget-cache.md)** ⭐ NEW (closes #561)
+18. **[Widget Cache & Per-Widget Refresh](./widget-cache.md)** ⭐ NEW (closes #561)
     - Shared in-app cache for dashboard widgets so a refresh button on one card only invalidates that card's key — others keep their state.
     - `useWidgetCache` hook + `<WidgetRefreshButton />` + token-driven styling.
     - Coverage includes mount, key isolation, error surfacing, and reduced-motion.
 
-17. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
+19. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
     - Interceptors, retry policy, and error taxonomy for the API client
     - `ApiError` structure and usage examples
 
-18. **[Bundle Size Baseline](./BUNDLE.md)** ⭐ NEW
+20. **[Bundle Size Baseline](./BUNDLE.md)** ⭐ NEW
     - Current production bundle size estimates and per-route breakdowns
     - Top 10 heaviest dependencies ranked by gzipped size
     - How to profile and compare bundle sizes with Vite, rollup-plugin-visualizer, and size-limit
     - Contributor guidelines for keeping the bundle lean
 
-19. **[Telemetry & Analytics](./telemetry.md)**
+21. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 
-20. **[Offline Strategy](./PWA.md)**
+22. **[Offline Strategy](./PWA.md)**
     - What's cached (localStorage keys, in-memory widget cache), what's queued (pending transactions, auto-save retry), and what happens on cache miss
     - Offline-aware hooks (`useQuery`, `useWidgetCache`), offline banner, install prompt behaviour
 
-21. **[First Bond Coach Marks](./uiux/onboarding-coachmarks-first-bond.md)**
+23. **[First Bond Coach Marks](./uiux/onboarding-coachmarks-first-bond.md)**
     - First-run onboarding concept for creating a bond
     - Coach mark placement, copy, sequencing, and dismissal behavior
     - Accessibility, responsive behavior, and visual QA checklist

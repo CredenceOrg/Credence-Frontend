@@ -10,7 +10,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatUsdc } from '../lib/format'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ConnectWalletDialog from '../components/ConnectWalletDialog'
-import { computeWithdrawBreakdown, calcUnlockDate, type MockBond } from '../lib/bondPenalty'
+import { computeWithdrawBreakdown, calcUnlockDate, calcTimeRemaining, calcLockStartDate, type MockBond } from '../lib/bondPenalty'
 import './BondDetail.css'
 
 const mockBonds: MockBond[] = [
@@ -145,8 +145,16 @@ export default function BondDetail() {
               <dd className="bond-detail__amount">{formatUsdc(initialBond.amountUsdc)}</dd>
             </div>
             <div className="bond-detail__info-row">
+              <dt>Time Remaining</dt>
+              <dd className="bond-detail__timeRemaining">{calcTimeRemaining(duration)}</dd>
+            </div>
+            <div className="bond-detail__info-row">
               <dt>Lock Duration</dt>
               <dd>{duration} Days</dd>
+            </div>
+            <div className="bond-detail__info-row">
+              <dt>Lock Start Date</dt>
+              <dd>{calcLockStartDate()}</dd>
             </div>
             <div className="bond-detail__info-row">
               <dt>Estimated Unlock Date</dt>
@@ -183,6 +191,21 @@ export default function BondDetail() {
                   +90 Days
                 </Button>
               </div>
+            </div>
+
+            <div className="bond-detail__action-section">
+              <span className="bond-detail__action-label">Top-Up Bond</span>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!isConnected}
+                title={
+                  !isConnected ? 'Connect your wallet to top up this bond' : undefined
+                }
+                aria-describedby={!isConnected ? connectBannerId : undefined}
+              >
+                Add USDC
+              </Button>
             </div>
 
             <div className="bond-detail__action-section bond-detail__action-section--withdraw">

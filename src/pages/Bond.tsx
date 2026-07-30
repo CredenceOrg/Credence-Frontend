@@ -15,6 +15,7 @@ import { FormField } from '../components/forms/FormField'
 import { useWallet } from '../context/WalletContext'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
+import { calcTimeRemaining } from '../lib/bondPenalty'
 
 /**
  * Error-channel decision table for Bond actions
@@ -55,6 +56,7 @@ interface MockBond {
   id: number
   amountUsdc: number
   status: BondStatus
+  durationDays?: number
 }
 
 // formatUsdc is imported from src/lib/format.ts — do not redeclare here.
@@ -92,19 +94,37 @@ function BondRow({
   isConnected,
   onWithdraw,
   onConnect,
+  onSelect,
 }: {
   bond: MockBond
   isConnected: boolean
   onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
   onConnect: () => void
+  onSelect: () => void
 }) {
   const [open, setOpen] = useState(false)
   const breakdown = computeWithdrawBreakdown(bond)
   const hasPenalty = getPenaltyRate(bond.status) > 0
   const panelId = `bond-penalty-panel-${bond.id}`
+  const rowId = `bond-row-${bond.id}`
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onSelect()
+    }
+  }
 
   return (
-    <li className="bond__row">
+    <li
+      className="bond__row bond__row--clickable"
+      tabIndex={0}
+      role="link"
+      aria-label={`View bond #${bond.id}: ${formatUsdc(bond.amountUsdc)}, ${bond.status}${bond.durationDays ? `, ${calcTimeRemaining(bond.durationDays)}` : ''}`}
+      id={rowId}
+      onClick={onSelect}
+      onKeyDown={handleKeyDown}
+    >
       <div className="bond__rowInfo">
         <span className="bond__rowAmount">{formatUsdc(bond.amountUsdc)}</span>
         <span className={`bond__rowStatus bond__rowStatus--${bond.status}`}>
@@ -115,12 +135,20 @@ function BondRow({
               : 'Active'}
         </span>
       </div>
+      <div className="bond__rowMeta">
+        {bond.durationDays && (
+          <span className="bond__rowTimeRemaining">{calcTimeRemaining(bond.durationDays)}</span>
+        )}
+      </div>
       <div className="bond__rowActions">
         {hasPenalty ? (
           <>
             <Button
               type="button"
-              onClick={() => setOpen(!open)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setOpen(!open)
+              }}
               aria-expanded={open}
               aria-controls={panelId}
             >
@@ -148,7 +176,14 @@ function BondRow({
         )}
         <Button
           type="button"
-          onClick={isConnected ? (e) => onWithdraw(bond, e) : onConnect}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (isConnected) {
+              onWithdraw(bond, e)
+            } else {
+              onConnect()
+            }
+          }}
           disabled={!isConnected}
         >
           {isConnected ? 'Withdraw' : 'Connect to withdraw'}
@@ -159,9 +194,9 @@ function BondRow({
 }
 
 const initialBonds: MockBond[] = [
-  { id: 1, amountUsdc: 1000, status: 'locked' },
-  { id: 2, amountUsdc: 500, status: 'grace-period' },
-  { id: 3, amountUsdc: 750, status: 'active' },
+  { id: 1, amountUsdc: 1000, status: 'locked', durationDays: 30 },
+  { id: 2, amountUsdc: 500, status: 'grace-period', durationDays: 90 },
+  { id: 3, amountUsdc: 750, status: 'active', durationDays: 180 },
 ]
 
 export default function Bond() {
@@ -298,11 +333,12 @@ export default function Bond() {
     }
   }, [withdrawTarget, withdrawBreakdown, addToast, walletNetwork, isPendingWithdraw, setIsPendingWithdraw, setTxStatus, setWithdrawError])
 
-  const slashExposureBond = useMemo(() => bonds.find((b) => getPenaltyRate(b.status) > 0), [bonds])
-
-  const slashBannerBreakdown = slashExposureBond
-    ? computeWithdrawBreakdown(slashExposureBond)
-    : null
+  const navigateRow = useCallback(
+    (bondId: number) => {
+      navigate(`/bond/${bondId}`)
+    },
+    [navigate]
+  )
 
   return (
     <div style={{ display: 'grid', gap: 'var(--credence-space-8)' }}>
@@ -316,16 +352,6 @@ export default function Bond() {
       <Banner severity="info">
         Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
       </Banner>
-
-      {slashBannerBreakdown && slashExposureBond && (
-        <Banner severity="warning" title="Slash exposure on early withdrawal">
-          Withdrawing {formatUsdc(slashExposureBond.amountUsdc)} while{' '}
-          <strong>{slashExposureBond.status === 'locked' ? 'locked' : 'in grace period'}</strong>{' '}
-          may slash up to {slashBannerBreakdown.penaltyAmount} (
-          {slashBannerBreakdown.penaltyPercent}% penalty). You would receive approximately{' '}
-          {slashBannerBreakdown.resultingBalance}.
-        </Banner>
-      )}
 
       {/* Persistent error banner for bond-create failures (wallet rejected, network down).
           Dismissed by the user or cleared automatically on the next successful attempt. */}
@@ -454,6 +480,7 @@ export default function Bond() {
                     isConnected={isConnected}
                     onWithdraw={requestWithdraw}
                     onConnect={connect}
+                    onSelect={() => navigateRow(bond.id)}
                   />
                 ))}
               </ul>

@@ -12,7 +12,18 @@
   gap: var(--credence-space-8);
 }
 
-/* Action card grid */
+/* Action card grid ───────────────────────────────────────────────────────
+ * Responsive two-column grid shared with TrustScore page
+ * (see src/pages/TrustScore.css).
+ * Uses `min(100%, 22rem)` so cards never overflow on narrow viewports yet
+ * settle into a comfortable minimum width (22rem ≈ 352px) once the viewport
+ * can accommodate two columns. Remaining space distributes evenly via 1fr.
+ *
+ * Breakpoint stack order (mobile-first):
+ *   • <  640px — single column, primary-action card first, gap: space-6
+ *   • ≥  640px — auto-fit two columns, gap: space-6
+ *   • ≥ 1280px — auto-fit two columns, gap: space-8
+ */
 .bond__cardGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
@@ -162,4 +173,28 @@
 .bond__penaltyAmount {
   color: var(--credence-color-danger-action);
   font-weight: var(--credence-font-weight-semibold);
+}
+
+/* ─── Responsive ────────────────────────────────────────────────────────── */
+
+/* Narrow mobile: single column, tighter spacing */
+@media (max-width: 639px) {
+  .bond__cardGrid {
+    grid-template-columns: 1fr;
+    gap: var(--credence-space-6);
+  }
+}
+
+/* Tablet: 768px — two columns when space allows, comfortable gap */
+@media (min-width: 640px) and (max-width: 1279px) {
+  .bond__cardGrid {
+    gap: var(--credence-space-6);
+  }
+}
+
+/* Desktop: 1280px (XL) — two columns with generous gap */
+@media (min-width: 1280px) {
+  .bond__cardGrid {
+    gap: var(--credence-space-8);
+  }
 }

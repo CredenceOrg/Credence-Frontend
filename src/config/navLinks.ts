@@ -20,9 +20,9 @@ export interface NavLink {
  * Order determines left-to-right tab order.
  */
 export const PRIMARY_NAV_LINKS: readonly NavLink[] = [
-  { to: '/dashboard',    labelKey: 'nav.dashboard',    ariaLabel: 'Dashboard'    },
-  { to: '/bond',         labelKey: 'nav.bond',         ariaLabel: 'Bond'         },
-  { to: '/trust',        labelKey: 'nav.trustScore',   ariaLabel: 'Trust Score'  },
+  { to: '/dashboard', labelKey: 'nav.dashboard', ariaLabel: 'Dashboard' },
+  { to: '/bond', labelKey: 'nav.bond', ariaLabel: 'Bond' },
+  { to: '/trust', labelKey: 'nav.trustScore', ariaLabel: 'Trust Score' },
   { to: '/attestations', labelKey: 'nav.attestations', ariaLabel: 'Attestations' },
   { to: '/transactions', labelKey: 'nav.transactions', ariaLabel: 'Transactions' },
 ] as const
@@ -32,6 +32,6 @@ export const PRIMARY_NAV_LINKS: readonly NavLink[] = [
  * These are NOT shown in the bottom bar.
  */
 export const SECONDARY_NAV_LINKS: readonly NavLink[] = [
-  { to: '/',         labelKey: 'nav.home',     ariaLabel: 'Home'     },
+  { to: '/', labelKey: 'nav.home', ariaLabel: 'Home' },
   { to: '/settings', labelKey: 'nav.settings', ariaLabel: 'Settings' },
 ] as const

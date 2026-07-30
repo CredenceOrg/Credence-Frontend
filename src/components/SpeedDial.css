@@ -28,7 +28,7 @@
   border-radius: var(--credence-radius-full);
   border: none;
   background: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  color: var(--credence-color-on-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -142,7 +142,7 @@
 
 .speedDial__action:hover {
   background: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  color: var(--credence-color-on-primary);
   border-color: var(--credence-color-primary);
   transform: scale(1.08);
 }
@@ -174,7 +174,7 @@
 [data-theme='dark'] .speedDial__action:hover {
   background: var(--credence-color-primary);
   border-color: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  color: var(--credence-color-on-primary);
 }
 
 [data-theme='dark'] .speedDial__label {

@@ -10,3 +10,10 @@ coverage
 *storybook.log
 storybook-static
 .opencode
+
+test-results
+playwright-report
+blob-report
+
+# Lighthouse CI reports
+lhci-reports

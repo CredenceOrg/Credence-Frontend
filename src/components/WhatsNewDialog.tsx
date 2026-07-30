@@ -5,6 +5,7 @@ import { useProductUpdates } from '../hooks/useProductUpdates'
 import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import type { ProductUpdate } from '../data/productUpdates'
 import Button from './Button'
+import WindowedList from './WindowedList'
 import './WhatsNewDialog.css'
 
 export interface WhatsNewDialogProps {
@@ -42,11 +43,7 @@ function formatDate(isoDate: string): string {
  * - Escape and backdrop click close the drawer.
  * - Marks all updates as read on open, clearing the notification badge and persisting state.
  */
-export default function WhatsNewDialog({
-  open,
-  onClose,
-  returnFocusRef,
-}: WhatsNewDialogProps) {
+export default function WhatsNewDialog({ open, onClose, returnFocusRef }: WhatsNewDialogProps) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -76,11 +73,7 @@ export default function WhatsNewDialog({
   if (!open) return null
 
   return createPortal(
-    <div
-      className="whats-new-dialog__backdrop"
-      onClick={handleBackdropClick}
-      aria-hidden={false}
-    >
+    <div className="whats-new-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -95,9 +88,7 @@ export default function WhatsNewDialog({
               What&rsquo;s New
             </h2>
             {unreadCount > 0 && (
-              <span className="whats-new-dialog__unread-badge">
-                {unreadCount} unread
-              </span>
+              <span className="whats-new-dialog__unread-badge">{unreadCount} unread</span>
             )}
           </div>
           <Button
@@ -125,13 +116,16 @@ export default function WhatsNewDialog({
             </Button>
           </div>
         ) : (
-          <ul
+          <WindowedList
             className="whats-new-dialog__list"
             role="list"
-            aria-label="Recent product updates"
-          >
-            {updates.map((update) => (
-              <li key={update.id} className="whats-new-dialog__item">
+            ariaLabel="Recent product updates"
+            items={updates}
+            itemHeight={118}
+            containerHeight={420}
+            getItemKey={(update) => update.id}
+            renderItem={(update) => (
+              <li className="whats-new-dialog__item">
                 <div className="whats-new-dialog__item-meta">
                   <span
                     className={`whats-new-dialog__tag whats-new-dialog__tag--${update.tag}`}
@@ -146,8 +140,8 @@ export default function WhatsNewDialog({
                 <p className="whats-new-dialog__item-title">{update.title}</p>
                 <p className="whats-new-dialog__item-description">{update.description}</p>
               </li>
-            ))}
-          </ul>
+            )}
+          />
         )}
 
         <footer className="whats-new-dialog__footer">

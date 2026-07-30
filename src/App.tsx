@@ -6,6 +6,7 @@ import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
 import BreakpointOverlay from './components/dev/BreakpointOverlay'
+import DebugOverlay from './components/dev/DebugOverlay'
 import { WidgetCacheProvider } from './widgetCache'
 
 const Home = lazy(() => import('./pages/Home'))
@@ -14,13 +15,13 @@ const Bond = lazy(() => import('./pages/Bond'))
 const CreateBondPage = lazy(() => import('./pages/CreateBondPage'))
 const BondDetail = lazy(() => import('./pages/BondDetail'))
 const TrustScore = lazy(() => import('./pages/TrustScore'))
+const TrustSummary = lazy(() => import('./pages/TrustSummary'))
 const Attestations = lazy(() => import('./pages/Attestations'))
 const Transactions = lazy(() => import('./pages/Transactions'))
 const Settings = lazy(() => import('./pages/Settings'))
 const AmountInputTestPage = lazy(() => import('./pages/AmountInputTestPage'))
 const SignIn = lazy(() => import('./pages/SignIn'))
 const NotFound = lazy(() => import('./pages/NotFound'))
-const RouteErrorPage = lazy(() => import('./pages/RouteErrorPage'))
 
 const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
 
@@ -69,6 +70,7 @@ function App() {
                   </Routes>
                 </Suspense>
                 <BreakpointOverlay />
+                <DebugOverlay />
               </ErrorBoundary>
             </WalletProvider>
           </ToastProvider>

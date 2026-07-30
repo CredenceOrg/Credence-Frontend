@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSettings } from './SettingsContext'
 import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWallet'
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useToast } from '../components/ToastProvider'
-import SessionTimeoutModal from '../components/SessionTimeoutModal'
-import { SessionReauthRequiredError } from '../lib/sessionErrors'
+import SessionTimeoutDialog from '../components/SessionTimeoutDialog'
+import { clearAppLocalStorage } from '../lib/clearAppLocalStorage'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean
@@ -51,11 +51,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [showWarning, setShowWarning] = useState(false)
   const [lastReauthTime, setLastReauthTime] = useState<number | null>(null)
 
-  const lastReauthRef = useRef<number | null>(lastReauthTime)
-  useEffect(() => {
-    lastReauthRef.current = lastReauthTime
-  }, [lastReauthTime])
-
   // Set last reauth time when wallet connects
   useEffect(() => {
     if (wallet.isConnected && lastReauthTime === null) {
@@ -67,6 +62,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [wallet.isConnected, lastReauthTime])
 
   const handleLogout = useCallback(() => {
+    clearAppLocalStorage()
     wallet.disconnect()
     setShowWarning(false)
     setLastReauthTime(null)
@@ -85,13 +81,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [wallet])
 
   const isReauthRequired = useCallback(() => {
-    if (!wallet.isConnected || lastReauthRef.current === null) {
+    if (!wallet.isConnected || lastReauthTime === null) {
       return true
     }
-    const elapsedMs = Date.now() - lastReauthRef.current
+    const elapsedMs = Date.now() - lastReauthTime
     const thresholdMs = reauthThresholdMinutes * 60 * 1000
     return elapsedMs >= thresholdMs
-  }, [wallet.isConnected, reauthThresholdMinutes])
+  }, [wallet.isConnected, lastReauthTime, reauthThresholdMinutes])
 
   useIdleTimeout({
     timeoutMs: wallet.isConnected ? IDLE_TIMEOUT_MS - WARNING_THRESHOLD_MS : 0,
@@ -124,7 +120,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   return (
     <WalletContext.Provider value={value}>
       {children}
-      <SessionTimeoutModal
+      <SessionTimeoutDialog
         open={showWarning}
         timeLeftSeconds={60}
         onStayLoggedIn={handleStayLoggedIn}

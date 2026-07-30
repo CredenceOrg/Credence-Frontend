@@ -12,11 +12,15 @@ import {
 const mocks = vi.hoisted(() => ({
   mockIsConnected: vi.fn<() => Promise<{ isConnected: boolean; error?: Error | null }>>(),
   mockIsAllowed: vi.fn<() => Promise<{ isAllowed: boolean; error?: Error | null }>>(),
-  mockRequestAccess: vi.fn<() => Promise<{ address: string; error?: { message?: string } | null }>>(),
+  mockRequestAccess:
+    vi.fn<() => Promise<{ address: string; error?: { message?: string } | null }>>(),
   mockGetAddress: vi.fn<() => Promise<{ address: string; error?: Error | null }>>(),
   mockGetNetwork: vi.fn<() => Promise<{ network: string; error?: Error | null }>>(),
   mockSignTransaction: vi.fn<
-    (xdr: string, opts?: { networkPassphrase?: string; address?: string }) => Promise<{
+    (
+      xdr: string,
+      opts?: { networkPassphrase?: string; address?: string }
+    ) => Promise<{
       signedTxXdr: string
       signerAddress?: string
       error?: string | null
@@ -234,7 +238,10 @@ describe('freighterClient', () => {
     })
 
     it('passes options through to the provider', async () => {
-      const opts = { networkPassphrase: 'Public Global Stellar Network ; September 2015', address: TEST_ADDRESS }
+      const opts = {
+        networkPassphrase: 'Public Global Stellar Network ; September 2015',
+        address: TEST_ADDRESS,
+      }
       await signFreighterTransaction(TEST_XDR, opts)
 
       expect(mocks.mockSignTransaction).toHaveBeenCalledWith(TEST_XDR, opts)

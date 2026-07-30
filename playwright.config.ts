@@ -21,6 +21,11 @@ export default defineConfig({
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
+    env: {
+      // See tests/mocks/freighter-api.mock.ts — lets specs drive wallet-gated
+      // flows without a real Freighter extension installed.
+      E2E_MOCK_WALLET: 'true',
+    },
   },
   projects: [
     {

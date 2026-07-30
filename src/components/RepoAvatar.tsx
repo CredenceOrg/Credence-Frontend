@@ -81,12 +81,7 @@ export default function RepoAvatar({
   const showImage = Boolean(src) && !hasError
 
   return (
-    <span
-      role="img"
-      aria-label={accessibleLabel}
-      className={containerClasses}
-      {...props}
-    >
+    <span role="img" aria-label={accessibleLabel} className={containerClasses} {...props}>
       {showImage ? (
         <img
           src={src}

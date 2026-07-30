@@ -73,11 +73,7 @@ export function parseHHmm(value: unknown): ParsedTime {
  * - Invalid inputs short-circuit to `false` rather than throwing so the
  *   toast provider stays robust against malformed persisted state.
  */
-export function isWithinQuietHours(
-  start: string,
-  end: string,
-  referenceMinutes: number,
-): boolean {
+export function isWithinQuietHours(start: string, end: string, referenceMinutes: number): boolean {
   if (!Number.isFinite(referenceMinutes)) return false
   const parsedStart = parseHHmm(start)
   const parsedEnd = parseHHmm(end)
@@ -86,17 +82,13 @@ export function isWithinQuietHours(
 
   if (parsedStart.totalMinutes < parsedEnd.totalMinutes) {
     return (
-      referenceMinutes >= parsedStart.totalMinutes &&
-      referenceMinutes <= parsedEnd.totalMinutes
+      referenceMinutes >= parsedStart.totalMinutes && referenceMinutes <= parsedEnd.totalMinutes
     )
   }
 
   // Cross-midnight: quiet hours covers from `start` through end-of-day, AND
   // from start-of-day through `end`.
-  return (
-    referenceMinutes >= parsedStart.totalMinutes ||
-    referenceMinutes <= parsedEnd.totalMinutes
-  )
+  return referenceMinutes >= parsedStart.totalMinutes || referenceMinutes <= parsedEnd.totalMinutes
 }
 
 /**
@@ -117,7 +109,7 @@ export function nowMinutesSinceMidnight(reference: Date = new Date()): number {
  */
 export function isQuietHoursActive(
   window: QuietHoursWindow,
-  reference: Date = new Date(),
+  reference: Date = new Date()
 ): boolean {
   if (!window.enabled) return false
   return isWithinQuietHours(window.start, window.end, nowMinutesSinceMidnight(reference))

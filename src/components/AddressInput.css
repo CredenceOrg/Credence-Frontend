@@ -320,9 +320,7 @@
   text-align: right;
 }
 
-/**
- * Form field wrapper styles (if not already defined)
- */
+/** Form field wrapper styles. */
 .form-field {
   display: flex;
   flex-direction: column;
@@ -339,15 +337,6 @@
   font-size: var(--credence-font-size-sm);
   color: var(--credence-text-secondary);
   margin-top: -var(--credence-space-1);
-}
-
-.form-error {
-  font-size: var(--credence-font-size-sm);
-  color: var(--credence-color-danger-text);
-  margin-top: -var(--credence-space-1);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--credence-space-1);
 }
 
 /**

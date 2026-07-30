@@ -1,10 +1,10 @@
-import './PinWidgetButton.css';
-import type { FC } from 'react';
+import './PinWidgetButton.css'
+import type { FC } from 'react'
 
 interface PinWidgetButtonProps {
-  slug: string;
-  isPinned: boolean;
-  onToggle: (slug: string) => void;
+  slug: string
+  isPinned: boolean
+  onToggle: (slug: string) => void
 }
 
 export const PinWidgetButton: FC<PinWidgetButtonProps> = ({ slug, isPinned, onToggle }) => (
@@ -17,4 +17,4 @@ export const PinWidgetButton: FC<PinWidgetButtonProps> = ({ slug, isPinned, onTo
   >
     {isPinned ? '📌' : '📍'}
   </button>
-);
+)

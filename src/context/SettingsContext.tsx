@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -82,6 +83,9 @@ const defaultState: SettingsState = {
   setAddressDisplay: () => {},
   setToastsEnabled: () => {},
   setAutoDismiss: () => {},
+  setQuietHoursEnabled: () => {},
+  setQuietHoursStart: () => {},
+  setQuietHoursEnd: () => {},
   saveSettings: (_payload?: SettingsPayload) => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
@@ -119,7 +123,7 @@ function useMigrateLegacyTheme(): void {
     // Bootstrap credence:settings so useLocalStorage reads the migrated theme.
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ ...defaultPersistedSettings, themeMode: legacyTheme as ThemeMode }),
+      JSON.stringify({ ...defaultPersistedSettings, themeMode: legacyTheme as ThemeMode })
     )
 
     return null
@@ -137,7 +141,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   // Single localStorage read — replaces five individual JSON.parse calls on every mount.
   const [persistedSettingsRaw, setPersistedSettings] = useLocalStorage<PersistedSettings>(
     STORAGE_KEY,
-    defaultPersistedSettings,
+    defaultPersistedSettings
   )
 
   // Validation helpers for persisted values
@@ -146,11 +150,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const VALID_AUTO_DISMISSES: AutoDismissOption[] = ['off', '3s', '5s', '8s']
 
   const coerceNetwork = (v: string): NetworkOption =>
-    (VALID_NETWORKS.includes(v as NetworkOption) ? v : defaultPersistedSettings.network) as NetworkOption
+    (VALID_NETWORKS.includes(v as NetworkOption)
+      ? v
+      : defaultPersistedSettings.network) as NetworkOption
   const coerceAddressDisplay = (v: string): AddressDisplayOption =>
-    (VALID_ADDRESS_DISPLAYS.includes(v as AddressDisplayOption) ? v : defaultPersistedSettings.addressDisplay) as AddressDisplayOption
+    (VALID_ADDRESS_DISPLAYS.includes(v as AddressDisplayOption)
+      ? v
+      : defaultPersistedSettings.addressDisplay) as AddressDisplayOption
   const coerceAutoDismiss = (v: string): AutoDismissOption =>
-    (VALID_AUTO_DISMISSES.includes(v as AutoDismissOption) ? v : defaultPersistedSettings.autoDismiss) as AutoDismissOption
+    (VALID_AUTO_DISMISSES.includes(v as AutoDismissOption)
+      ? v
+      : defaultPersistedSettings.autoDismiss) as AutoDismissOption
   /**
    * Coerce an `HH:mm` value from storage back to a canonical string. Falls back
    * to the configured default when the persisted value is missing, malformed, or
@@ -169,21 +179,23 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     autoDismiss: coerceAutoDismiss(persistedSettingsRaw.autoDismiss as unknown as string),
     quietHoursStart: coerceHHmm(
       persistedSettingsRaw.quietHoursStart,
-      defaultPersistedSettings.quietHoursStart,
+      defaultPersistedSettings.quietHoursStart
     ),
     quietHoursEnd: coerceHHmm(
       persistedSettingsRaw.quietHoursEnd,
-      defaultPersistedSettings.quietHoursEnd,
+      defaultPersistedSettings.quietHoursEnd
     ),
   }
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
   const [network, setNetwork] = useState<NetworkOption>(persistedSettings.network)
-  const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(persistedSettings.addressDisplay)
+  const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(
+    persistedSettings.addressDisplay
+  )
   const [toastsEnabled, setToastsEnabled] = useState<boolean>(persistedSettings.toastsEnabled)
   const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(persistedSettings.autoDismiss)
   const [quietHoursEnabled, setQuietHoursEnabled] = useState<boolean>(
-    persistedSettings.quietHoursEnabled,
+    persistedSettings.quietHoursEnabled
   )
   const [quietHoursStart, setQuietHoursStart] = useState<string>(persistedSettings.quietHoursStart)
   const [quietHoursEnd, setQuietHoursEnd] = useState<string>(persistedSettings.quietHoursEnd)
@@ -229,6 +241,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, payload))
+    }
   }
 
   const cancelSettings = () => {
@@ -280,6 +295,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setAddressDisplay,
     setToastsEnabled,
     setAutoDismiss,
+    setQuietHoursEnabled,
+    setQuietHoursStart,
+    setQuietHoursEnd,
     saveSettings,
     cancelSettings,
     hasUnsavedChanges,

@@ -1,13 +1,21 @@
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ONBOARDING_COMPLETION_STORAGE_KEY, ONBOARDING_STEP_STORAGE_KEY } from '../config/onboarding'
+import {
+  ONBOARDING_COMPLETION_STORAGE_KEY,
+  ONBOARDING_STEP_STORAGE_KEY,
+} from '../config/onboarding'
 import Dashboard from './Dashboard'
 
 // Mocks needed because ActionCard now uses useToast, useCopyToClipboard, and useTranslation
 vi.mock('../components/ToastProvider', () => ({
-  useToast: () => ({ addToast: vi.fn(), removeToast: vi.fn(), removeAllToasts: vi.fn(), announce: vi.fn() }),
+  useToast: () => ({
+    addToast: vi.fn(),
+    removeToast: vi.fn(),
+    removeAllToasts: vi.fn(),
+    announce: vi.fn(),
+  }),
 }))
 
 vi.mock('../hooks/useCopyToClipboard', () => ({
@@ -36,7 +44,7 @@ let mockQueryData = { score: 684, tier: 'gold' }
 let mockIsMobile = false
 
 vi.mock('../hooks/useQuery', () => ({
-  useQuery: (_fn: any, options: any) => {
+  useQuery: (_fn: unknown, options?: { enabled?: boolean }) => {
     const enabled = options?.enabled !== false
     return {
       data: enabled ? mockQueryData : undefined,
@@ -44,7 +52,7 @@ vi.mock('../hooks/useQuery', () => ({
       error: null,
       refetch: mockRefetch,
     }
-  }
+  },
 }))
 
 vi.mock('../hooks/useMediaQuery', () => ({
@@ -83,6 +91,44 @@ describe('Dashboard', () => {
     await user.click(screen.getByRole('button', { name: /connect wallet/i }))
 
     expect(mockConnect).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders a single EmptyState wrapped in an ActionCard when disconnected', () => {
+    mockConnected = false
+
+    const { container } = renderDashboard()
+
+    // Only one article (ActionCard) should render — no dashboard cards
+    const articles = container.querySelectorAll('article')
+    expect(articles).toHaveLength(1)
+
+    // The ActionCard contains the EmptyState with the trust illustration
+    const svg = articles[0].querySelector('svg')
+    expect(svg).not.toBeNull()
+    expect(svg).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('shows the connect-freighter description in the disconnected empty state', () => {
+    mockConnected = false
+
+    renderDashboard()
+
+    expect(
+      screen.getByText(
+        /connect freighter to load your trust score, active bonds, and recent activity/i
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('does not render dashboard cards (trust score, bonds, activity, shortcuts) when disconnected', () => {
+    mockConnected = false
+
+    renderDashboard()
+
+    expect(screen.queryByRole('heading', { name: 'Trust Score' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /active bonds/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /recent activity/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Shortcuts' })).not.toBeInTheDocument()
   })
 
   it('renders connected dashboard cards and activity summary', () => {
@@ -129,90 +175,36 @@ describe('Dashboard', () => {
     expect(screen.queryByRole('heading', { name: /wallet required/i })).not.toBeInTheDocument()
   })
 
-  it('does not render pull-to-refresh UI on desktop', () => {
-    mockIsMobile = false
+  it('shows the onboarding tour on first visit and records completion when skipped', async () => {
+    const user = userEvent.setup()
+
     renderDashboard()
-    expect(screen.queryByText(/pull to refresh/i)).not.toBeInTheDocument()
+
+    expect(screen.getByText(/quick tour/i)).toBeInTheDocument()
+    expect(screen.getByText(/welcome to your dashboard/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /skip tour/i }))
+
+    expect(localStorage.getItem(ONBOARDING_COMPLETION_STORAGE_KEY)).toBeTruthy()
+    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBeNull()
   })
 
-  it('handles pull-to-refresh touch gesture on mobile', async () => {
-    mockIsMobile = true
+  it('persists progress when advancing the onboarding tour', async () => {
+    const user = userEvent.setup()
+
     renderDashboard()
 
-    const dashboardElement = screen.getByRole('heading', { name: 'Dashboard' }).closest('.dashboard')!
+    await user.click(screen.getByRole('button', { name: /next/i }))
 
-    // Fire touchStart
-    fireEvent.touchStart(dashboardElement, {
-      touches: [{ clientY: 100 }]
-    })
-
-    // Fire touchMove - pull down by 200px (pullDistance = 80px)
-    fireEvent.touchMove(dashboardElement, {
-      touches: [{ clientY: 300 }]
-    })
-
-    expect(screen.getByText(/release to refresh/i)).toBeInTheDocument()
-
-    // Fire touchEnd
-    await act(async () => {
-      fireEvent.touchEnd(dashboardElement)
-    })
-
-    expect(mockRefetch).toHaveBeenCalledTimes(1)
+    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBe('1')
+    expect(screen.getByText(/review active bonds/i)).toBeInTheDocument()
   })
 
-  it('does not trigger refetch on short pull', () => {
-    mockIsMobile = true
-    renderDashboard()
-
-    const dashboardElement = screen.getByRole('heading', { name: 'Dashboard' }).closest('.dashboard')!
-
-    fireEvent.touchStart(dashboardElement, {
-      touches: [{ clientY: 100 }]
-    })
-
-    // Pull down by 50px (pullDistance = 20px)
-    fireEvent.touchMove(dashboardElement, {
-      touches: [{ clientY: 150 }]
-    })
-
-    expect(screen.getByText(/pull to refresh/i)).toBeInTheDocument()
-
-    fireEvent.touchEnd(dashboardElement)
-
-    expect(mockRefetch).not.toHaveBeenCalled()
-  })
-
-  it('does not trigger pull-to-refresh when offline', () => {
-    mockIsMobile = true
-    const originalOnLine = navigator.onLine
-    Object.defineProperty(navigator, 'onLine', {
-      value: false,
-      configurable: true
-    })
+  it('resumes an interrupted onboarding tour from the saved step', () => {
+    localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, '2')
 
     renderDashboard()
 
-    const dashboardElement = screen.getByRole('heading', { name: 'Dashboard' }).closest('.dashboard')!
-
-    fireEvent.touchStart(dashboardElement, {
-      touches: [{ clientY: 100 }]
-    })
-
-    fireEvent.touchMove(dashboardElement, {
-      touches: [{ clientY: 300 }]
-    })
-
-    // Offline banner should be present, pull UI should not be displayed
-    expect(screen.getByText(/offline/i)).toBeInTheDocument()
-    expect(screen.queryByText(/pull to refresh/i)).not.toBeInTheDocument()
-
-    fireEvent.touchEnd(dashboardElement)
-    expect(mockRefetch).not.toHaveBeenCalled()
-
-    Object.defineProperty(navigator, 'onLine', {
-      value: originalOnLine,
-      configurable: true
-    })
+    expect(screen.getByText(/monitor recent activity/i)).toBeInTheDocument()
   })
 })

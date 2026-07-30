@@ -8,7 +8,12 @@ const mockAddToast = vi.fn()
 const mockCopy = vi.fn()
 
 vi.mock('./ToastProvider', () => ({
-  useToast: () => ({ addToast: mockAddToast, removeToast: vi.fn(), removeAllToasts: vi.fn(), announce: vi.fn() }),
+  useToast: () => ({
+    addToast: mockAddToast,
+    removeToast: vi.fn(),
+    removeAllToasts: vi.fn(),
+    announce: vi.fn(),
+  }),
 }))
 
 vi.mock('../hooks/useCopyToClipboard', () => ({
@@ -71,7 +76,11 @@ describe('ActionCard', () => {
     const user = userEvent.setup()
     mockCopy.mockResolvedValue(true)
 
-    render(<ActionCard title="Test Title" shareableLink="https://example.com/dashboard?widget=test">Content</ActionCard>)
+    render(
+      <ActionCard title="Test Title" shareableLink="https://example.com/dashboard?widget=test">
+        Content
+      </ActionCard>
+    )
 
     const copyButton = screen.getByRole('button', { name: 'Copy link to this card' })
     expect(copyButton).toBeInTheDocument()
@@ -92,7 +101,11 @@ describe('ActionCard', () => {
     const user = userEvent.setup()
     mockCopy.mockResolvedValue(false)
 
-    render(<ActionCard title="Test Title" shareableLink="https://example.com/dashboard?widget=test">Content</ActionCard>)
+    render(
+      <ActionCard title="Test Title" shareableLink="https://example.com/dashboard?widget=test">
+        Content
+      </ActionCard>
+    )
 
     await user.click(screen.getByRole('button', { name: 'Copy link to this card' }))
 
@@ -104,7 +117,7 @@ describe('ActionCard', () => {
     render(
       <ActionCard title="Beta Feature" isEarlyAccess>
         Content
-      </ActionCard>,
+      </ActionCard>
     )
     expect(screen.getByText('BETA')).toBeInTheDocument()
   })
@@ -119,7 +132,7 @@ describe('ActionCard', () => {
     )
     const closeBtn = screen.getByRole('button', { name: 'Close card' })
     expect(closeBtn).toBeInTheDocument()
-    
+
     await user.click(closeBtn)
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })

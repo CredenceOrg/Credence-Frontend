@@ -56,7 +56,8 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--credence-space-4);
-  transition: grid-template-columns var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+  transition: grid-template-columns var(--credence-motion-duration-base)
+    var(--credence-motion-easing-standard);
 }
 
 /* When comparison is active, render two equal-width columns side by side. */

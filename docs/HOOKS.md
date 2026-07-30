@@ -23,8 +23,13 @@ behavior notes, and a minimal usage example linking to source.
 - [Hooks (`src/hooks/`)](#hooks-srchooks)
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
+  - [`useForwardRef`](#useforwardref)
+  - [`useDebouncedValue`](#usedebouncedvalue)
+  - [`useOnceMounted`](#useoncemounted)
   - [`useMediaQuery`](#usemediaquery)
+  - [`useApiQuery`](#useapiquery)
   - [`useQuery`](#usequery)
+  - [`useApiMutation`](#useapimutation)
   - [`useReducedMotion`](#usereducedmotion)
   - [`useReducedTransparency`](#usereducedtransparency)
   - [`useScrollPreserver`](#usescrollpreserver)
@@ -34,6 +39,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useWallet`](#usewallet)
   - [`useProductUpdates`](#useproductupdates)
   - [`useSmartBack`](#usesmartback)
+  - [`useKeyboardShortcut`](#usekeyboardshortcut)
 - [Utilities (`src/lib/`)](#utilities-srclib)
   - [`format`](#format--usdc-formatting)
   - [`stellar`](#stellar--address-validation)
@@ -162,13 +168,204 @@ function Bond() {
 
 ---
 
+### `useForwardRef`
+
+Source: [`src/hooks/useForwardRef.ts`](../src/hooks/useForwardRef.ts)
+
+```ts
+function useForwardRef<T>(
+  ref?: NestedRef<T>,
+  initialValue: T | null = null
+): MutableRefObject<T | null>
+
+// Also exported:
+setRef<T>(ref: NestedRef<T>, value: T | null): void
+
+type ReactRef<T> = ForwardedRef<T> | MutableRefObject<T | null> | null | undefined
+type NestedRef<T> = ReactRef<T> | NestedRef<T>[]
+```
+
+A custom hook that merges a local ref with external forwarded refs, solving the common
+wrapper-component pattern where a component needs both internal access to a DOM node and
+the ability to forward that node to a parent via `ref`, `React.forwardRef`, or a callback
+ref. Supports deeply nested arrays of refs and cleans up on unmount.
+
+**Parameters**
+
+| Parameter      | Required | Description                                                                   |
+| -------------- | :------: | ----------------------------------------------------------------------------- |
+| `ref`          |          | A single ref, callback ref, or nested array of refs to synchronise. Optional. |
+| `initialValue` |          | Initial value for the internal ref. Defaults to `null`.                       |
+
+**Returns** a `MutableRefObject<T | null>` that the component attaches to its DOM node via JSX `ref`.
+
+**Behavior notes**
+
+- **Ref merging:** any time the internal ref changes (inside a `useIsomorphicLayoutEffect`),
+  the value is propagated to every ref in the `ref` argument — object refs via `.current`,
+  callback refs via invocation, and arrays recursively.
+- **Cleanup:** on unmount, `null` is propagated to all provided refs, ensuring parent
+  components do not hold stale node references.
+- **Failing callbacks:** if a callback ref throws, the error is silently caught so that
+  other refs in the same array are still updated.
+- **Frozen/read-only objects:** assignments to read-only or frozen ref objects are
+  silently skipped.
+- **SSR-safe / cleanup:** uses `useLayoutEffect` in the browser and falls back to
+  `useEffect` during SSR; the cleanup function propagates `null` on unmount.
+
+```tsx
+import { forwardRef, type ReactNode } from 'react'
+import { useForwardRef } from '../hooks/useForwardRef'
+
+interface FancyInputProps {
+  label: string
+  children?: ReactNode
+}
+
+const FancyInput = forwardRef<HTMLInputElement, FancyInputProps>(function FancyInput(
+  { label, children },
+  forwardedRef
+) {
+  const internalRef = useForwardRef<HTMLInputElement>(forwardedRef)
+
+  return (
+    <label>
+      {label}
+      <input ref={internalRef} />
+      {children}
+    </label>
+  )
+})
+```
+
+---
+
+### `useDebouncedValue`
+
+Source: [`src/hooks/useDebouncedValue.ts`](../src/hooks/useDebouncedValue.ts)
+
+```ts
+function useDebouncedValue<T>(value: T, delayMs: number, options?: UseDebouncedValueOptions): T
+
+interface UseDebouncedValueOptions {
+  setTimeoutImpl?: typeof setTimeout // default: global setTimeout (for tests / fake timers)
+  clearTimeoutImpl?: typeof clearTimeout // default: global clearTimeout
+}
+```
+
+Returns a debounced copy of `value` that only updates after the input has remained stable
+for `delayMs` milliseconds. The single source of truth for search-input and filter debouncing
+across the app — components should never call `setTimeout` directly for this purpose. Pairs
+with `useDebouncedAutoSave` when a debounced _side effect_ is needed instead of a debounced
+_value_.
+
+**Parameters**
+
+| Parameter | Required | Description                                                                                  |
+| --------- | :------: | -------------------------------------------------------------------------------------------- |
+| `value`   |    ✓     | The source value to debounce. Generics preserve reference identity when the value is stable. |
+| `delayMs` |    ✓     | Debounce window in milliseconds. `<= 0` short-circuits to a synchronous pass-through.        |
+| `options` |          | Optional `setTimeoutImpl` / `clearTimeoutImpl` injection for tests or alternate runtimes.    |
+
+**Behavior notes**
+
+- **Restart on change:** every change to `value` (or `delayMs`) cancels the prior timer and
+  starts a fresh `delayMs` window, collapsing rapid bursts into the final value.
+- **`delayMs <= 0` short-circuit:** when non-positive, the hook returns the raw `value`
+  synchronously on every render — useful for tests and for consumer-controllable debounce
+  windows (e.g. "Search immediately").
+- **No unmount warnings:** the pending timer is always cleared on unmount, so a later
+  `setState` on an unmounted component is impossible.
+- **Referential stability:** when the input `value` reference is unchanged, the returned
+  value is the same reference as the previous render — safe as a `useEffect` dependency.
+- **Testable without mocking the import:** the optional `setTimeoutImpl` / `clearTimeoutImpl`
+  injection lets individual tests assert that timers are scheduled and cleared without
+  `vi.mock('@/hooks/useDebouncedValue')`. Errors from `clearTimeoutImpl` are swallowed so a
+  broken test double cannot crash the render path.
+- **SSR-safe / cleanup:** all timer work happens inside `useEffect`; the effect cleanup
+  always clears the pending timer.
+
+```tsx
+import { useEffect, useState } from 'react'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+
+function TrustLookupSearch() {
+  const [query, setQuery] = useState('')
+  // Settle for 300ms before triggering an API call so we don't slam the backend
+  // on every keystroke.
+  const debouncedQuery = useDebouncedValue(query, 300)
+
+  useEffect(() => {
+    if (debouncedQuery) searchAPI(debouncedQuery)
+  }, [debouncedQuery])
+
+  return <input value={query} onChange={(e) => setQuery(e.target.value)} />
+}
+```
+
+---
+
+### `useOnceMounted`
+
+Source: [`src/hooks/useOnceMounted.ts`](../src/hooks/useOnceMounted.ts)
+
+```ts
+function useOnceMounted(callback: () => void | (() => void)): void
+```
+
+Runs the provided callback exactly once per component mount, even under React 18 StrictMode
+where effects are intentionally double-invoked in development. Use this for actions that should
+fire **once and only once** when a component becomes alive — analytics page views, one-shot
+feature flags, telemetry, single-run side effects.
+
+**Parameters**
+
+| Parameter  | Required | Description                                                                                                                     |
+| ---------- | :------: | ------------------------------------------------------------------------------------------------------------------------------- |
+| `callback` |    ✓     | Function invoked on mount. May return a cleanup function, which will be invoked on unmount (or StrictMode's simulated unmount). |
+
+**Behavior notes**
+
+- **StrictMode-safe:** React 18 StrictMode in development intentionally mounts → unmounts →
+  remounts every component to surface lifecycle bugs. A `calledRef` guard persists across
+  that simulated unmount, so the callback only fires **once** despite the double-invoke.
+- **True remount rebinds:** a true unmount followed by a remount (different component
+  instance) starts fresh and fires the callback again — the right semantics for "run once
+  per lifetime of _this_ instance".
+- **Latest callback wins:** the `callback` is captured via a ref that is refreshed every
+  render, so callers do not need to wrap it in `useCallback` or include it in dependency
+  arrays.
+- **Optional cleanup:** if the callback returns a function, it is stored and invoked on
+  unmount. Under StrictMode, cleanup also runs on the simulated unmount, but the callback
+  itself still only fires once.
+- **Synchronous errors propagate** out of the mount effect — wrap your callback in a
+  `try/catch` if swallowing is desired.
+- **SSR-safe / cleanup:** runs inside `useEffect`; the cleanup function returned by the
+  callback is invoked on unmount.
+
+```tsx
+import { useOnceMounted } from '../hooks/useOnceMounted'
+
+function BondPage() {
+  // Fires exactly once when BondPage mounts, even under StrictMode's
+  // double-invoke, and never again while the page stays mounted.
+  useOnceMounted(() => {
+    analytics.track('route_view', { route: 'bond' })
+  })
+
+  return <main>…</main>
+}
+```
+
+---
+
 ### `useMediaQuery`
 
 Source: [`src/hooks/useMediaQuery.ts`](../src/hooks/useMediaQuery.ts)
 
 ```ts
 function useMediaQuery(query: string): boolean
-function useIsMobile(): boolean  // shorthand: (max-width: 767px)
+function useIsMobile(): boolean // shorthand: (max-width: 767px)
 ```
 
 Subscribes to a CSS media query and returns whether it currently matches. The exported
@@ -176,8 +373,8 @@ breakpoint helper `useIsMobile` wraps the 768 px mobile threshold used throughou
 
 **Parameters**
 
-| Parameter | Required | Description                                         |
-| --------- | :------: | --------------------------------------------------- |
+| Parameter | Required | Description                                                  |
+| --------- | :------: | ------------------------------------------------------------ |
 | `query`   |    ✓     | A valid CSS media query string, e.g. `'(max-width: 767px)'`. |
 
 **Behavior notes**
@@ -205,15 +402,85 @@ function ActivityCard() {
 
 ---
 
+### `useApiQuery`
+
+Source: [`src/hooks/useApiQuery.ts`](../src/hooks/useApiQuery.ts) · Built on [`apiFetch`](../src/api/client.ts)
+
+```ts
+function useApiQuery<T>(path: string, options?: UseApiQueryOptions): UseApiQueryResult<T>
+
+interface UseApiQueryOptions {
+  enabled?: boolean // default: true
+  staleTimeMs?: number // default: WIDGET_CACHE_DEFAULTS.STALE_TIME_MS (30 000)
+}
+
+interface UseApiQueryResult<T> {
+  data: T | undefined
+  isLoading: boolean
+  error: ApiError | null
+  isStale: boolean
+  refetch: () => Promise<void>
+}
+
+// Also exported: invalidateApiQuery(path), clearApiQueryCache()
+```
+
+Type-safe, cache-aware wrapper around `apiFetch` for GET requests. Caches responses keyed by API path and serves cached data within the configured `staleTime`. Abolishes the repetitive abort-controller / mounted-ref boilerplate that domain hooks (`useTrustScore`, `useTransactions`) currently manage by hand.
+
+**Parameters**
+
+| Option        | Required | Description                                                          |
+| ------------- | :------: | -------------------------------------------------------------------- |
+| `path`        |    ✓     | API path passed to `apiFetch` (e.g. `'/trust-score/GABC…'`).         |
+| `enabled`     |          | Set `false` to skip the initial fetch. Default `true`.               |
+| `staleTimeMs` |          | Time in ms before cached data is considered stale. Default `30 000`. |
+
+**Behavior notes**
+
+- **Cache:** in-memory `Map` keyed by `path`. Cached data is served synchronously on mount (no loading flash). Cache entries are shared across all hook instances — mounting a second component with the same path reuses the cached result.
+- **Stale-while-revalidate:** when data is within `staleTimeMs`, the hook returns it directly and skips the network call. `refetch()` always bypasses stale-time checks and hits the network.
+- **`isStale`:** set to `true` when the current `data` is older than `staleTimeMs`. Useful for showing a subtle "refreshing" indicator without a full loading spinner.
+- **Abort safety:** in-flight requests are aborted when the component unmounts or when `refetch()` is called again (superseded). Stale responses and `AbortError`s are silently discarded.
+- **Offline-safe:** when `navigator.onLine` is `false`, the hook skips the fetch and sets `isLoading: false`.
+- **Race-condition protection:** run IDs guarantee only the latest triggered fetch updates component state.
+- **Manual invalidation:** call `invalidateApiQuery(path)` to evict a single entry (the next mount/refetch will re-fetch). Call `clearApiQueryCache()` to wipe everything (useful in tests).
+- **SSR-safe / cleanup:** all DOM/navigator checks are guarded; the active `AbortController` is aborted on unmount.
+
+```tsx
+import { useApiQuery } from '../hooks/useApiQuery'
+import type { TrustScore } from '../api/types'
+
+function TrustScoreCard({ address }: { address: string }) {
+  const { data, isLoading, error, isStale, refetch } = useApiQuery<TrustScore>(
+    `/trust-score/${address}`
+  )
+
+  if (isLoading) return <p>Loading…</p>
+  if (error) {
+    return (
+      <p role="alert">
+        {error.message} <button onClick={refetch}>Retry</button>
+      </p>
+    )
+  }
+
+  return (
+    <div>
+      {isStale && <span className="stale-badge">Refreshing…</span>}
+      <p>Score: {data?.score}</p>
+    </div>
+  )
+}
+```
+
+---
+
 ### `useQuery`
 
 Source: [`src/hooks/useQuery.ts`](../src/hooks/useQuery.ts)
 
 ```ts
-function useQuery<T>(
-  queryFn: () => Promise<T>,
-  options?: UseQueryOptions,
-): UseQueryResult<T>
+function useQuery<T>(queryFn: () => Promise<T>, options?: UseQueryOptions): UseQueryResult<T>
 
 interface UseQueryOptions {
   enabled?: boolean // default: true
@@ -231,9 +498,9 @@ A custom hook that wraps an asynchronous query function to fetch and manage data
 
 **Parameters**
 
-| Option    | Required | Description                                                  |
-| --------- | :------: | ------------------------------------------------------------ |
-| `queryFn` |    ✓     | An asynchronous function returning a Promise.               |
+| Option    | Required | Description                                                    |
+| --------- | :------: | -------------------------------------------------------------- |
+| `queryFn` |    ✓     | An asynchronous function returning a Promise.                  |
 | `enabled` |          | Set to `false` to prevent the initial request. Default `true`. |
 
 **Behavior notes**
@@ -252,10 +519,59 @@ function MyComponent() {
 
   return (
     <div>
-      <button onClick={refetch} disabled={isLoading}>Refresh</button>
+      <button onClick={refetch} disabled={isLoading}>
+        Refresh
+      </button>
       {isLoading ? <p>Loading...</p> : <p>Data: {JSON.stringify(data)}</p>}
     </div>
   )
+}
+```
+
+---
+
+### `useApiMutation`
+
+Source: [`src/hooks/useApiMutation.ts`](../src/hooks/useApiMutation.ts)
+
+```ts
+function useApiMutation<TData, TVariables, TContext = unknown>(
+  options: UseApiMutationOptions<TData, TVariables, TContext>
+): UseApiMutationResult<TData, TVariables, TContext>
+```
+
+A lightweight mutation wrapper for API calls that supports optimistic updates and rollback helpers.
+
+**Parameters**
+
+| Option        | Required | Description                                                                            |
+| ------------- | :------: | -------------------------------------------------------------------------------------- |
+| `mutationFn`  |    ✓     | The async mutation function to execute.                                                |
+| `onMutate`    |          | Runs before the request and can apply optimistic local state via the supplied helpers. |
+| `onSuccess`   |          | Runs after a successful mutation.                                                      |
+| `onError`     |          | Runs after a failed mutation.                                                          |
+| `onSettled`   |          | Runs after either outcome.                                                             |
+| `initialData` |          | Initial value for `data`.                                                              |
+
+**Behavior notes**
+
+- `onMutate` receives `setData` and `rollback` helpers so callers can immediately update local state and revert it if the request fails.
+- `mutateAsync` returns the server result or throws the mutation error after rollback.
+- The hook exposes `status`, `isPending`, `isError`, `isSuccess`, and `reset` for simple UI state handling.
+
+```tsx
+import { useApiMutation } from '../hooks/useApiMutation'
+
+function SaveProfile() {
+  const mutation = useApiMutation({
+    mutationFn: (nextName: string) =>
+      apiFetch('/profile', { method: 'PATCH', body: { name: nextName } }),
+    onMutate: (name, { setData }) => {
+      setData((current) => ({ ...(current ?? {}), name }))
+    },
+  })
+
+  return <button onClick={() => void mutation.mutateAsync('Ada')}>Save</button>
 }
 ```
 
@@ -591,9 +907,7 @@ import { useProductUpdates } from '../hooks/useProductUpdates'
 function NotificationBadge() {
   const { unreadCount, markAllRead } = useProductUpdates()
   return (
-    <button onClick={markAllRead}>
-      Updates {unreadCount > 0 && <span>({unreadCount})</span>}
-    </button>
+    <button onClick={markAllRead}>Updates {unreadCount > 0 && <span>({unreadCount})</span>}</button>
   )
 }
 ```
@@ -642,6 +956,66 @@ function BackButton() {
 
 ---
 
+### `useKeyboardShortcut`
+
+Source: [`src/hooks/useKeyboardShortcut.ts`](../src/hooks/useKeyboardShortcut.ts)
+
+```ts
+function useKeyboardShortcut(
+  keysOrConfig: ShortcutKeys | UseKeyboardShortcutConfig,
+  callback?: ShortcutCallback,
+  options?: UseKeyboardShortcutOptions
+): void
+
+type ShortcutKeys = string | string[] | (string | string[])[]
+
+interface UseKeyboardShortcutOptions {
+  enabled?: boolean // default: true
+  preventDefault?: boolean // default: true
+  stopPropagation?: boolean // default: false
+  ignoreInputElements?: boolean // default: true
+  target?: React.RefObject<HTMLElement | null> | Window | Document | null
+  userAgent?: string
+}
+```
+
+Platform-aware keyboard shortcut primitive that abstracts OS modifier differences (`Mod` / `Ctrl` vs `Cmd`, `Alt` vs `Option`) and enforces WCAG 2.1 AA accessibility guidelines by ignoring global keybindings when focused on editable form controls (`<input>`, `<textarea>`, `<select>`, `[contenteditable]`).
+
+**Parameters & Options**
+
+| Option                    | Required |        Default        | Description                                                                                                  |
+| ------------------------- | :------: | :-------------------: | ------------------------------------------------------------------------------------------------------------ |
+| `keys`                    |    ✓     |                       | Key combination(s) e.g. `['Mod', 'K']`, `['Alt', 'S']`, `'Ctrl+Shift+P'`, or `[['Mod', 'K'], ['Alt', 'K']]`. |
+| `onShortcut` / `callback` |    ✓     |                       | Handler function invoked when a matching shortcut is pressed.                                                |
+| `enabled`                 |          |        `true`         | Engage (`true`) / disengage (`false`) the event listener.                                                    |
+| `preventDefault`          |          |        `true`         | Invokes `event.preventDefault()` when shortcut matches.                                                      |
+| `stopPropagation`         |          |        `false`        | Invokes `event.stopPropagation()` when shortcut matches.                                                     |
+| `ignoreInputElements`     |          |        `true`         | Excludes key events originating inside editable input controls for accessibility compliance.                 |
+| `target`                  |          |       `window`        | Custom DOM element or ref to attach the listener to.                                                         |
+| `userAgent`               |          | `navigator.userAgent` | User agent override for platform detection testing or SSR.                                                   |
+
+**Behavior notes**
+
+- **Platform key abstraction:** `Mod`, `CmdOrCtrl`, or `CtrlOrCmd` automatically maps to `Meta` (⌘) on macOS/iOS and `Ctrl` on Windows/Linux.
+- **Alt/Option normalization:** `Option` and `Alt` tokens both match `event.altKey`.
+- **WCAG compliance:** suppresses global shortcuts inside text inputs unless `ignoreInputElements: false` is explicitly set.
+- **SSR-safe / cleanup:** event listeners attach inside `useEffect` and tear down automatically on unmount or deactivation.
+
+```tsx
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+
+function CommandLauncher() {
+  const [open, setOpen] = useState(false)
+
+  // Opens launcher on Cmd+K (Mac) or Ctrl+K (Windows/Linux)
+  useKeyboardShortcut(['Mod', 'K'], () => setOpen(true))
+
+  return <LauncherModal open={open} onClose={() => setOpen(false)} />
+}
+```
+
+---
+
 ## Utilities (`src/lib/`)
 
 Framework-free helpers — pure functions and a wallet SDK wrapper. No React required.
@@ -672,9 +1046,9 @@ can correct it. SSR-safe (pure functions, no globals).
 import { formatUsdc, sanitizeUSDCInput } from '@/lib/format'
 
 // ✅ Correct — always use formatUsdc for display
-formatUsdc(1000)          // "1,000 USDC"
-formatUsdc(1234.5)        // "1,234.5 USDC"
-formatUsdc(Number(str))   // when amount comes from a string state value
+formatUsdc(1000) // "1,000 USDC"
+formatUsdc(1234.5) // "1,234.5 USDC"
+formatUsdc(Number(str)) // when amount comes from a string state value
 
 // ❌ Avoid — do not use ad-hoc patterns
 // `${amount.toLocaleString('en-US')} USDC`
@@ -683,24 +1057,38 @@ formatUsdc(Number(str))   // when amount comes from a string state value
 sanitizeUSDCInput('12.345') // "12.34"
 ```
 
-### `stellar` — address validation
+### `stellar` — address validation & middle truncation
 
 Source: [`src/lib/stellar.ts`](../src/lib/stellar.ts) · Single source of truth for address handling.
 
 ```ts
 isValidStellarAddress(address: string | undefined | null): boolean
 truncateAddress(address: string | undefined | null): string
+formatAddressForDisplay(address: string | undefined | null, mode: AddressDisplayMode | string | undefined): string
+type AddressDisplayMode = 'full' | 'short' | 'friendly'
 ```
 
 **Behavior notes:** validation requires exactly 56 uppercase-alphanumeric characters starting
-with `G`. `truncateAddress` shows `first 12 … last 8` for long addresses, leaves anything
-≤ 20 chars untouched, trims whitespace, and returns `""` for nullish/empty input. SSR-safe.
+with `G`.
+
+`truncateAddress` performs **middle truncation**: for strings longer than 20 characters, it
+preserves both the start (first 12 characters) and the end (last 8 characters), separated by
+`...`. Strings ≤ 20 characters are returned unchanged. Whitespace is trimmed, and nullish/
+empty input returns `""`.
+
+`formatAddressForDisplay` renders an address in one of three modes:
+- `'full'` — the complete address unchanged
+- `'short'` — middle-truncated via `truncateAddress` (first 12 + `...` + last 8)
+- `'friendly'` — a compact form (first 6 + `…` + last 4)
+
+SSR-safe (pure functions, no DOM access).
 
 ```ts
-import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
+import { isValidStellarAddress, truncateAddress, formatAddressForDisplay } from '@/lib/stellar'
 
 isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA') // true
 truncateAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA') // "GAAZI4TCR3TY...CCWNA"
+formatAddressForDisplay('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', 'friendly') // "GAAZI4…CCWNA"
 ```
 
 ### `tier` — trust tiers

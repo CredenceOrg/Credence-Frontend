@@ -108,10 +108,9 @@ describe('useScrollPreserver', () => {
 
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
 
-    const { rerender } = renderHook(
-      ({ active }) => useScrollPreserver({ isActive: active }),
-      { initialProps: { active: true } }
-    )
+    const { rerender } = renderHook(({ active }) => useScrollPreserver({ isActive: active }), {
+      initialProps: { active: true },
+    })
 
     rerender({ active: false })
 
@@ -138,10 +137,9 @@ describe('useScrollPreserver', () => {
 
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
 
-    const { rerender } = renderHook(
-      ({ active }) => useScrollPreserver({ isActive: active }),
-      { initialProps: { active: true } }
-    )
+    const { rerender } = renderHook(({ active }) => useScrollPreserver({ isActive: active }), {
+      initialProps: { active: true },
+    })
 
     rerender({ active: false })
 

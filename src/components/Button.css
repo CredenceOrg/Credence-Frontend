@@ -1,7 +1,11 @@
 /*
- * Button System: primary/secondary/ghost variants + disabled/loading states
- * Follows Credence design tokens and accessibility requirements
+ * Button System: primary / secondary / ghost / danger / link variants
+ * Size variants: sm / md (default) / lg
+ * Interactive states: hover, active, focus-visible, disabled, loading
+ * Follows Credence design tokens and WCAG 2.1 focus-ring requirements.
  */
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
 
 .credence-button {
   position: relative;
@@ -9,39 +13,94 @@
   align-items: center;
   justify-content: center;
   gap: var(--credence-space-2);
-  padding: var(--credence-space-3) var(--credence-space-6);
   font-family: var(--credence-font-family-base);
-  font-size: var(--credence-font-size-base);
   font-weight: var(--credence-font-weight-semibold);
   line-height: var(--credence-line-height-tight);
   border-radius: var(--credence-radius-lg);
   border: 2px solid transparent;
   cursor: pointer;
+  text-decoration: none;
   transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.1s ease;
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    transform var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
   white-space: nowrap;
+  /* Ensure the focus ring is never clipped by overflow:hidden parents */
+  isolation: isolate;
 }
 
 .credence-button:active:not(:disabled) {
   transform: translateY(1px);
 }
 
+/* ─── Focus styles ────────────────────────────────────────────────────────── */
+/*
+ * Two-layer ring technique: a thin offset outline + a contrasting shadow ring.
+ * This is visible against both light and dark backgrounds without needing
+ * separate media queries. The outer ring uses the page background colour so it
+ * always creates a visible gap regardless of the button's own colour.
+ *
+ * WCAG 2.1 SC 2.4.7 (Level AA) — focus indicator visible.
+ * WCAG 2.2 SC 2.4.11 (Level AA) — enhanced focus appearance.
+ */
 .credence-button:focus-visible {
-  outline: var(--credence-focus-ring);
-  outline-offset: 2px;
+  outline: 3px solid var(--credence-color-focus-ring);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px var(--credence-surface-page);
 }
+
+/* Dark mode: invert the halo so the white gap still separates ring from button */
+[data-theme='dark'] .credence-button:focus-visible {
+  outline-color: var(--credence-color-primary);
+  box-shadow:
+    0 0 0 5px var(--credence-surface-page),
+    0 0 0 7px var(--credence-color-primary);
+}
+
+/* High-contrast media query: draw an extra opaque border so the ring is
+   visible even when forced-colour overrides remove box-shadow. */
+@media (forced-colors: active) {
+  .credence-button:focus-visible {
+    outline: 3px solid ButtonText;
+    outline-offset: 3px;
+    box-shadow: none;
+  }
+}
+
+/* ─── Sizes ───────────────────────────────────────────────────────────────── */
+
+.credence-button--sm {
+  padding: var(--credence-space-1) var(--credence-space-3);
+  font-size: var(--credence-font-size-sm);
+  border-radius: var(--credence-radius-md);
+}
+
+.credence-button--md {
+  padding: var(--credence-space-3) var(--credence-space-6);
+  font-size: var(--credence-font-size-base);
+}
+
+.credence-button--lg {
+  padding: var(--credence-space-4) var(--credence-space-8);
+  font-size: var(--credence-font-size-lg);
+  border-radius: var(--credence-radius-xl);
+}
+
+/* ─── Full width ──────────────────────────────────────────────────────────── */
 
 .credence-button--full-width {
   width: 100%;
 }
 
-/* Primary variant - main CTAs */
+/* ─── Primary variant — main CTAs ────────────────────────────────────────── */
+
 .credence-button--primary {
   background: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  /* Flips with the theme — primary is a light tint in dark mode, where a white
+   * label would render at 1.67:1. */
+  color: var(--credence-color-on-primary);
   border-color: var(--credence-color-primary);
 }
 
@@ -54,33 +113,40 @@
   background: var(--credence-color-primary-strong);
 }
 
-/* Secondary variant - alternative actions */
+/* ─── Secondary variant — alternative actions ────────────────────────────── */
+
+/*
+ * The secondary button's fill matches the card it sits on, so its border is the
+ * only thing that identifies it as a control. That makes the border subject to
+ * the 3:1 non-text floor (SC 1.4.11) — --credence-border-default managed 1.23:1.
+ */
 .credence-button--secondary {
   background: var(--credence-surface-card);
   color: var(--credence-text-primary);
-  border-color: var(--credence-border-default);
+  border-color: var(--credence-color-border-interactive);
 }
 
 .credence-button--secondary:hover:not(:disabled) {
   background: var(--credence-color-slate-100);
-  border-color: var(--credence-color-slate-400);
+  border-color: var(--credence-color-border-interactive-hover);
 }
 
 .credence-button--secondary:active:not(:disabled) {
   background: var(--credence-color-slate-200);
 }
 
+/* Only the fill changes in dark mode; the border comes from
+ * --credence-color-border-interactive, which already flips lighter. */
 [data-theme='dark'] .credence-button--secondary {
   background: var(--credence-color-slate-700);
-  border-color: var(--credence-color-slate-600);
 }
 
 [data-theme='dark'] .credence-button--secondary:hover:not(:disabled) {
   background: var(--credence-color-slate-600);
-  border-color: var(--credence-color-slate-500);
 }
 
-/* Ghost variant - subtle actions */
+/* ─── Ghost variant — subtle actions ─────────────────────────────────────── */
+
 .credence-button--ghost {
   background: transparent;
   color: var(--credence-color-primary);
@@ -104,21 +170,31 @@
   background: rgba(56, 189, 248, 0.15);
 }
 
-/* Danger variant - destructive confirmations */
+/* ─── Danger variant — destructive confirmations ─────────────────────────── */
+
+/*
+ * Hover and active darken the fill rather than lightening it. The previous
+ * hover moved to --credence-color-danger-border (#ef4444), which dropped the
+ * white label to 3.76:1; in dark mode the base fill did the same.
+ *
+ * Because the fill darkens, the border is pinned to --credence-color-danger-
+ * border for hover/active so the button's outer edge keeps 3:1 against the page
+ * in dark mode, where a darkened red would otherwise sink into the background.
+ */
 .credence-button--danger {
-  background: var(--credence-color-danger-action);
+  background: var(--credence-color-danger-fill);
   color: var(--credence-color-white);
-  border-color: var(--credence-color-danger-action);
+  border-color: var(--credence-color-danger-fill);
 }
 
 .credence-button--danger:hover:not(:disabled) {
-  background: var(--credence-color-danger-border);
+  background: var(--credence-color-danger-fill-hover);
   border-color: var(--credence-color-danger-border);
 }
 
 .credence-button--danger:active:not(:disabled) {
-  background: var(--credence-color-danger-text);
-  border-color: var(--credence-color-danger-text);
+  background: var(--credence-color-danger-fill-active);
+  border-color: var(--credence-color-danger-border);
 }
 
 .credence-button--danger:disabled {
@@ -128,7 +204,67 @@
   opacity: 1;
 }
 
-/* Disabled state - all variants */
+/* Danger focus ring uses a red tint for extra context */
+.credence-button--danger:focus-visible {
+  outline-color: var(--credence-color-danger-border);
+}
+
+/* ─── Link variant — inline text actions ─────────────────────────────────── */
+/*
+ * Looks like a hyperlink but fires a button action. Useful for "Cancel",
+ * "Dismiss", or secondary text-level actions inside forms.
+ */
+
+.credence-button--link {
+  background: transparent;
+  color: var(--credence-color-primary);
+  border-color: transparent;
+  border-radius: var(--credence-radius-sm);
+  padding-inline: var(--credence-space-1);
+  padding-block: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: var(--credence-font-weight-regular);
+}
+
+.credence-button--link:hover:not(:disabled) {
+  color: var(--credence-color-primary-strong);
+  text-decoration-thickness: 2px;
+}
+
+.credence-button--link:active:not(:disabled) {
+  color: var(--credence-color-primary-strong);
+  transform: none; /* link buttons don't press-down */
+}
+
+.credence-button--link:disabled {
+  color: var(--credence-color-slate-400);
+  text-decoration: none;
+  opacity: 1; /* override base :disabled opacity to avoid double-fading */
+}
+
+/* Link buttons use underline-based focus so it's clear it is inline text */
+.credence-button--link:focus-visible {
+  outline: 2px solid var(--credence-color-focus-ring);
+  outline-offset: 2px;
+  box-shadow: none;
+  border-radius: var(--credence-radius-sm);
+}
+
+[data-theme='dark'] .credence-button--link {
+  color: var(--credence-color-primary);
+}
+
+[data-theme='dark'] .credence-button--link:hover:not(:disabled) {
+  color: var(--credence-color-primary-strong);
+}
+
+[data-theme='dark'] .credence-button--link:disabled {
+  color: var(--credence-color-slate-500);
+}
+
+/* ─── Disabled state — all variants ──────────────────────────────────────── */
+
 .credence-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -155,7 +291,8 @@
   color: var(--credence-color-slate-400);
 }
 
-/* Loading state */
+/* ─── Loading state ───────────────────────────────────────────────────────── */
+
 .credence-button__spinner {
   position: absolute;
   left: 50%;
@@ -192,6 +329,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -203,17 +341,24 @@
   }
 }
 
-/* Responsive adjustments */
+/* ─── Responsive adjustments ─────────────────────────────────────────────── */
+
 @media (max-width: 768px) {
-  .credence-button {
+  .credence-button--md {
     padding: var(--credence-space-3) var(--credence-space-4);
     font-size: var(--credence-font-size-sm);
+  }
+
+  .credence-button--lg {
+    padding: var(--credence-space-3) var(--credence-space-6);
+    font-size: var(--credence-font-size-base);
   }
 }
 
 /* Very small screens (360px): further reduce button padding */
 @media (max-width: 360px) {
-  .credence-button {
+  .credence-button--md,
+  .credence-button--lg {
     padding: var(--credence-space-2) var(--credence-space-3);
     font-size: var(--credence-font-size-xs);
   }

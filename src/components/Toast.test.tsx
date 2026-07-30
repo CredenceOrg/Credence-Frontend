@@ -110,6 +110,26 @@ describe('Toast', () => {
 
   it('has the correct aria-label accessible name', () => {
     renderToast('info')
-    expect(screen.getByRole('button', { name: 'Dismiss info notification' })).toHaveAccessibleName('Dismiss info notification')
+    expect(screen.getByRole('button', { name: 'Dismiss info notification' })).toHaveAccessibleName(
+      'Dismiss info notification'
+    )
+  })
+
+  it('countdown matches configured duration', () => {
+    vi.useFakeTimers()
+    try {
+      const { onDismiss, toast } = renderToast('info', 'Timeout toast', 3000)
+
+      // Advance by 2999ms, should not dismiss
+      vi.advanceTimersByTime(2999)
+      expect(onDismiss).not.toHaveBeenCalled()
+
+      // Advance 1 more ms, should dismiss
+      vi.advanceTimersByTime(1)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+      expect(onDismiss).toHaveBeenCalledWith(toast.id)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

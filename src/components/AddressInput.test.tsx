@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
@@ -19,10 +19,18 @@ vi.mock('@/hooks/useDebouncedValue', () => ({
   useDebouncedValue: mockDebouncedValue,
 }))
 
-// --- QRScannerModal mocking ---
+// --- QRScannerDialog mocking ---
 
-vi.mock('./QRScannerModal', () => ({
-  default: ({ open, onScan, onClose }: { open: boolean; onScan: (value: string) => void; onClose: () => void }) =>
+vi.mock('./QRScannerDialog', () => ({
+  default: ({
+    open,
+    onScan,
+    onClose,
+  }: {
+    open: boolean
+    onScan: (value: string) => void
+    onClose: () => void
+  }) =>
     open ? (
       <div data-testid="qr-scanner-modal">
         <button data-testid="mock-scan" onClick={() => onScan(VALID_KEY)}>
@@ -34,6 +42,22 @@ vi.mock('./QRScannerModal', () => ({
       </div>
     ) : null,
 }))
+
+// --- useSettings mocking ---
+// Default mock: returns 'short' (matches previous hard-coded behaviour).
+// Individual tests can override addressDisplay via mockReturnValue.
+
+import type { AddressDisplayOption } from '@/context/SettingsContext'
+
+let mockAddressDisplay: AddressDisplayOption = 'short'
+
+vi.mock('@/context/SettingsContext', () => ({
+  useSettings: () => ({ addressDisplay: mockAddressDisplay }),
+}))
+
+beforeEach(() => {
+  mockAddressDisplay = 'short'
+})
 
 // --- Clipboard mocking helper ---
 
@@ -79,12 +103,7 @@ describe('isValidStellarAddress', () => {
   it('rejects a key one char longer than VALID_KEY (57 chars)', () => {
     const onV = vi.fn()
     render(
-      <AddressInput
-        id="addr"
-        value={VALID_KEY + 'A'}
-        onChange={vi.fn()}
-        onValidationChange={onV}
-      />
+      <AddressInput id="addr" value={VALID_KEY + 'A'} onChange={vi.fn()} onValidationChange={onV} />
     )
     expect(onV).toHaveBeenCalledWith(false)
   })
@@ -187,7 +206,9 @@ describe('conditional rendering', () => {
     expect(screen.getByText('Recognized:')).toBeInTheDocument()
     // truncateAddress: first 12 + ... + last 8 chars
     const code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
-    expect(code?.textContent).toBe(`${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`)
+    expect(code?.textContent).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
   })
 
   it('shows character count while there is input', () => {
@@ -218,6 +239,20 @@ describe('accessibility', () => {
     const errorId = error.getAttribute('id')
     expect(input.getAttribute('aria-describedby')).toContain(errorId)
     expect(input.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('associates success confirmation via aria-describedby without aria-invalid', async () => {
+    const user = userEvent.setup()
+    render(<AddressInput id="test-addr" value={VALID_KEY} onChange={vi.fn()} />)
+    const input = screen.getByRole('textbox')
+
+    await user.click(input)
+    await user.tab()
+
+    const success = screen.getByRole('status')
+    expect(success).toHaveTextContent('Valid Stellar address')
+    expect(input.getAttribute('aria-describedby')).toContain('test-addr-success')
+    expect(input).not.toHaveAttribute('aria-invalid')
   })
 
   it('ensures no duplicate IDs', () => {
@@ -258,25 +293,83 @@ describe('paste button', () => {
 
   it('strips stellar: prefix and warns on suspicious characters', async () => {
     const user = userEvent.setup()
-    
+
     function TestComponent() {
       const [val, setVal] = useState('')
       return <AddressInput id="addr" value={val} onChange={setVal} />
     }
-    
+
     render(<TestComponent />)
     const input = screen.getByRole('textbox')
-    
+
     await user.click(input)
     // Paste with stellar: prefix and a suspicious non-ASCII character
     await user.paste('stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
-    
+
     // The value should be updated without "stellar:"
     expect(input).toHaveValue('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
-    
+
     // And it should show a warning
     const alert = screen.getByRole('alert')
     expect(alert).toBeInTheDocument()
     expect(alert).toHaveTextContent(/suspicious characters/i)
+  })
+})
+
+// --- Echo display format (addressDisplay setting) ---
+describe('echo display respects addressDisplay setting', () => {
+  async function renderAndTriggerEcho(addressDisplay: AddressDisplayOption) {
+    mockAddressDisplay = addressDisplay
+    const user = userEvent.setup()
+    render(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+    // Trigger attempted=true via blur so the echo appears
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+    expect(screen.getByText('Recognized:')).toBeInTheDocument()
+    const code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
+    return code?.textContent ?? ''
+  }
+
+  it('shows full address when addressDisplay is "full"', async () => {
+    const text = await renderAndTriggerEcho('full')
+    expect(text).toBe(VALID_KEY)
+  })
+
+  it('shows truncated address when addressDisplay is "short"', async () => {
+    const text = await renderAndTriggerEcho('short')
+    // truncateAddress: first 12 + "..." + last 8
+    expect(text).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
+  })
+
+  it('shows friendly address when addressDisplay is "friendly"', async () => {
+    const text = await renderAndTriggerEcho('friendly')
+    // formatAddressForDisplay friendly: first 6 + "…" + last 4
+    expect(text).toBe(
+      `${VALID_KEY.substring(0, 6)}\u2026${VALID_KEY.substring(VALID_KEY.length - 4)}`
+    )
+  })
+
+  it('re-renders echo when addressDisplay setting changes', async () => {
+    const user = userEvent.setup()
+    mockAddressDisplay = 'full'
+
+    const { rerender } = render(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+
+    // Full mode: shows entire key
+    let code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
+    expect(code?.textContent).toBe(VALID_KEY)
+
+    // Switch setting to 'short' and re-render
+    mockAddressDisplay = 'short'
+    rerender(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+
+    code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
+    expect(code?.textContent).toBe(
+      `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
+    )
   })
 })

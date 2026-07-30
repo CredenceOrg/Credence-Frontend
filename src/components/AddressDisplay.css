@@ -5,13 +5,13 @@
 }
 
 .address-display__address {
-  font-family: var(--credence-font-mono);
+  font-family: var(--credence-font-family-mono);
   font-size: var(--credence-font-size-sm);
   padding: var(--credence-space-1) var(--credence-space-2);
   border-radius: var(--credence-radius-sm);
   background-color: var(--credence-color-surface-hover);
   color: var(--credence-text-primary);
-  transition: background-color 0.2s ease;
+  transition: background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
   outline: none;
 }
 
@@ -30,7 +30,7 @@
   background: transparent;
   color: var(--credence-text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 
 .address-display__copy-btn:hover {

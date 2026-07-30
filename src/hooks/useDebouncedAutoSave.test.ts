@@ -64,9 +64,7 @@ describe('useDebouncedAutoSave', () => {
 
   it('surfaces errors via status=error and the error field', async () => {
     const save = vi.fn().mockRejectedValue(new Error('boom'))
-    const { result } = renderHook(() =>
-      useDebouncedAutoSave({ value: 'x', save, delayMs: 100 })
-    )
+    const { result } = renderHook(() => useDebouncedAutoSave({ value: 'x', save, delayMs: 100 }))
     await act(async () => {
       vi.advanceTimersByTime(100)
     })
@@ -114,8 +112,7 @@ describe('useDebouncedAutoSave', () => {
     const onError = vi.fn()
 
     const { result, rerender } = renderHook(
-      ({ value }) =>
-        useDebouncedAutoSave({ value, save, delayMs: 100, onError }),
+      ({ value }) => useDebouncedAutoSave({ value, save, delayMs: 100, onError }),
       { initialProps: { value: 'first' } }
     )
     await act(async () => {
@@ -144,9 +141,7 @@ describe('useDebouncedAutoSave', () => {
 
   it('cancel() drops the pending timer without calling save', async () => {
     const save = vi.fn().mockResolvedValue(undefined)
-    const { result } = renderHook(() =>
-      useDebouncedAutoSave({ value: 'x', save, delayMs: 200 })
-    )
+    const { result } = renderHook(() => useDebouncedAutoSave({ value: 'x', save, delayMs: 200 }))
     expect(result.current.status).toBe('pending')
     act(() => {
       result.current.cancel()
@@ -325,9 +320,7 @@ describe('useDebouncedAutoSave', () => {
 
   it('unmount aborts any in-flight save instead of leaking a post-unmount state update', async () => {
     const save = vi.fn().mockResolvedValue(undefined)
-    const { unmount } = renderHook(() =>
-      useDebouncedAutoSave({ value: 'x', save, delayMs: 100 })
-    )
+    const { unmount } = renderHook(() => useDebouncedAutoSave({ value: 'x', save, delayMs: 100 }))
     // Let the debounce settle so the save is in-flight…
     await act(async () => {
       vi.advanceTimersByTime(100)

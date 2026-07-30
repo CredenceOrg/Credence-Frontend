@@ -11,7 +11,7 @@ import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
 import { isQuietHoursActive, parseHHmm } from '../lib/quietHours'
 import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
 import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
-import { apiFetch } from '../api/client'
+import { updateSettings } from '../api/settings'
 import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
 import { DOM_EVENTS } from '../config/domEvents'
 import type { AutoDismissOption } from '../context/SettingsContext'
@@ -165,7 +165,7 @@ export default function Settings() {
   // available offline.
   const autoSave = useDebouncedAutoSave({
     value: draft,
-    save: (next, signal) => apiFetch<void>('/settings', { method: 'PATCH', body: next, signal }),
+    save: updateSettings,
     delayMs: AUTO_SAVE_DEFAULTS.DEBOUNCE_MS,
     isEqual: draftIsEqual,
   })

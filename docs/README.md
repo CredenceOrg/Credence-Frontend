@@ -110,21 +110,26 @@ This directory contains comprehensive design specifications and implementation g
     - Connection state machine and UX contract for connection/network states
     - Usage guide and network mismatch handling
 
+16. [Authentication Flows](./AUTH_FLOWS.md) ⭐ NEW
+    - Sequence diagrams for login (connect wallet), logout (disconnect), and session refresh (re-authentication)
+    - Session timeout (inactivity logout) flow
+    - Key code paths and cross-references
+
 **[Settings Auto-Save Indicator](./auto-save.md)** ⭐ NEW (closes #564)
 - Debounced `PATCH /settings` flow with `useDebouncedAutoSave` hook.
 - `<AutoSaveIndicator />` token-driven pill showing `Saving…` / `Saved just now` / "Couldn't save" with retry.
 - In-flight cancellation via `AbortController` so stale PATCHes can't overwrite newer state.
 
-16. **[Widget Cache & Per-Widget Refresh](./widget-cache.md)** ⭐ NEW (closes #561)
+17. **[Widget Cache & Per-Widget Refresh](./widget-cache.md)** ⭐ NEW (closes #561)
     - Shared in-app cache for dashboard widgets so a refresh button on one card only invalidates that card's key — others keep their state.
     - `useWidgetCache` hook + `<WidgetRefreshButton />` + token-driven styling.
     - Coverage includes mount, key isolation, error surfacing, and reduced-motion.
 
-17. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
+18. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
     - Interceptors, retry policy, and error taxonomy for the API client
     - `ApiError` structure and usage examples
 
-18. **[Telemetry & Analytics](./telemetry.md)**
+19. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 

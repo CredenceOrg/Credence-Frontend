@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import ConnectWalletModal from './ConnectWalletModal'
+import ConnectWalletDialog from './ConnectWalletDialog'
 
 // ---------------------------------------------------------------------------
 // Wallet context mock — mutated per test
@@ -29,12 +29,10 @@ vi.mock('../context/WalletContext', () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-function renderModal(
-  overrides: Partial<Parameters<typeof ConnectWalletModal>[0]> = {}
-) {
+function renderModal(overrides: Partial<Parameters<typeof ConnectWalletDialog>[0]> = {}) {
   const onClose = vi.fn()
   const props = { open: true, onClose, ...overrides }
-  const result = render(<ConnectWalletModal {...props} />)
+  const result = render(<ConnectWalletDialog {...props} />)
   return { ...result, onClose }
 }
 
@@ -63,7 +61,7 @@ afterEach(() => {
 // Rendering
 // ---------------------------------------------------------------------------
 
-describe('ConnectWalletModal — rendering', () => {
+describe('ConnectWalletDialog — rendering', () => {
   it('renders nothing when open is false', () => {
     renderModal({ open: false })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -113,11 +111,15 @@ describe('ConnectWalletModal — rendering', () => {
 // Error states
 // ---------------------------------------------------------------------------
 
-describe('ConnectWalletModal — error display', () => {
+describe('ConnectWalletDialog — error display', () => {
   it('renders a not-installed error message', () => {
     mockError = { code: 'not_installed', message: 'Not installed' }
     renderModal()
     expect(screen.getByRole('alert')).toHaveTextContent(/Freighter is not installed/i)
+    expect(screen.getByRole('link', { name: /install freighter/i })).toHaveAttribute(
+      'href',
+      'https://www.freighter.app/'
+    )
   })
 
   it('renders a rejected error message', () => {
@@ -137,7 +139,7 @@ describe('ConnectWalletModal — error display', () => {
 // Connecting state
 // ---------------------------------------------------------------------------
 
-describe('ConnectWalletModal — connecting state', () => {
+describe('ConnectWalletDialog — connecting state', () => {
   it('disables Cancel while connecting', () => {
     mockIsConnecting = true
     renderModal()
@@ -156,7 +158,7 @@ describe('ConnectWalletModal — connecting state', () => {
 // Closing
 // ---------------------------------------------------------------------------
 
-describe('ConnectWalletModal — closing', () => {
+describe('ConnectWalletDialog — closing', () => {
   it('calls onClose when Cancel is clicked', async () => {
     const user = userEvent.setup()
     const { onClose } = renderModal()
@@ -191,7 +193,7 @@ describe('ConnectWalletModal — closing', () => {
 // Connect action
 // ---------------------------------------------------------------------------
 
-describe('ConnectWalletModal — connect action', () => {
+describe('ConnectWalletDialog — connect action', () => {
   it('calls connect() when Connect button is clicked', async () => {
     const user = userEvent.setup()
     renderModal()
@@ -204,16 +206,16 @@ describe('ConnectWalletModal — connect action', () => {
 // Auto-close on wallet connect
 // ---------------------------------------------------------------------------
 
-describe('ConnectWalletModal — auto-close on wallet connect', () => {
+describe('ConnectWalletDialog — auto-close on wallet connect', () => {
   it('calls onClose when isConnected becomes true while open', () => {
     const onClose = vi.fn()
     mockIsConnected = false
-    const { rerender } = render(<ConnectWalletModal open={true} onClose={onClose} />)
+    const { rerender } = render(<ConnectWalletDialog open={true} onClose={onClose} />)
 
     expect(onClose).not.toHaveBeenCalled()
 
     mockIsConnected = true
-    rerender(<ConnectWalletModal open={true} onClose={onClose} />)
+    rerender(<ConnectWalletDialog open={true} onClose={onClose} />)
 
     expect(onClose).toHaveBeenCalledOnce()
   })
@@ -221,7 +223,7 @@ describe('ConnectWalletModal — auto-close on wallet connect', () => {
   it('does NOT call onClose when already closed', () => {
     const onClose = vi.fn()
     mockIsConnected = true
-    render(<ConnectWalletModal open={false} onClose={onClose} />)
+    render(<ConnectWalletDialog open={false} onClose={onClose} />)
     expect(onClose).not.toHaveBeenCalled()
   })
 })
@@ -230,7 +232,7 @@ describe('ConnectWalletModal — auto-close on wallet connect', () => {
 // Body scroll lock
 // ---------------------------------------------------------------------------
 
-describe('ConnectWalletModal — body scroll lock', () => {
+describe('ConnectWalletDialog — body scroll lock', () => {
   it('sets overflow to hidden when open', () => {
     renderModal({ open: true })
     expect(document.body.style.overflow).toBe('hidden')
@@ -254,12 +256,10 @@ describe('ConnectWalletModal — body scroll lock', () => {
 // Focus management
 // ---------------------------------------------------------------------------
 
-describe('ConnectWalletModal — focus management', () => {
+describe('ConnectWalletDialog — focus management', () => {
   it('initially focuses the Cancel button when opened', () => {
     renderModal()
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: /^cancel$/i })
-    )
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^cancel$/i }))
   })
 
   it('returns focus to returnFocusRef element on close', () => {
@@ -277,15 +277,12 @@ describe('ConnectWalletModal — focus management', () => {
 
     const onClose = vi.fn()
     const { rerender } = render(
-      <ConnectWalletModal open={true} onClose={onClose} returnFocusRef={returnFocusRef} />
+      <ConnectWalletDialog open={true} onClose={onClose} returnFocusRef={returnFocusRef} />
     )
 
-    rerender(
-      <ConnectWalletModal open={false} onClose={onClose} returnFocusRef={returnFocusRef} />
-    )
+    rerender(<ConnectWalletDialog open={false} onClose={onClose} returnFocusRef={returnFocusRef} />)
 
     expect(document.activeElement).toBe(triggerEl)
     document.body.removeChild(triggerEl)
   })
 })
-

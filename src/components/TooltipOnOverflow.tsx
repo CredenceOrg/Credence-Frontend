@@ -129,7 +129,7 @@ export default function TooltipOnOverflow({
         hide()
       }
     },
-    [visible, hide],
+    [visible, hide]
   )
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -148,9 +148,7 @@ export default function TooltipOnOverflow({
       if (typeof originalRef === 'function') {
         ;(originalRef as (node: HTMLElement | null) => void)(node)
       } else if (originalRef && 'current' in originalRef) {
-        ;(
-          originalRef as React.MutableRefObject<HTMLElement | null>
-        ).current = node
+        ;(originalRef as React.MutableRefObject<HTMLElement | null>).current = node
       }
     },
     onMouseEnter: (e: React.MouseEvent) => {

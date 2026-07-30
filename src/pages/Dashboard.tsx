@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
 import AddressDisplay from '../components/AddressDisplay'
@@ -15,36 +15,36 @@ import {
   ONBOARDING_STEP_STORAGE_KEY,
 } from '../config/onboarding'
 import { useWallet } from '../context/WalletContext'
+import { useIsMobile } from '../hooks/useMediaQuery'
+import { useQuery } from '../hooks/useQuery'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
-import { useQuery } from '../hooks/useQuery'
-import { useIsMobile } from '../hooks/useMediaQuery'
-import { apiFetch } from '../api/client'
-import type { TrustScore, TrustTier } from '../api/types'
 import './Dashboard.css'
-
-const TRUST_SCORE = 684
-const TRUST_TIER = 'gold'
 
 const onboardingSteps = [
   {
     title: 'Welcome to your dashboard',
-    description: 'Start with the trust score overview to see how your on-chain reputation is trending.',
+    description:
+      'Start with the trust score overview to see how your on-chain reputation is trending.',
     target: 'trust-score',
   },
   {
     title: 'Review active bonds',
-    description: 'Track the bonds you already have on the books and the next unlocks from the summary card.',
+    description:
+      'Track the bonds you already have on the books and the next unlocks from the summary card.',
     target: 'active-bonds',
   },
   {
     title: 'Monitor recent activity',
-    description: 'Follow the latest attestations and protocol updates to stay current with your account.',
+    description:
+      'Follow the latest attestations and protocol updates to stay current with your account.',
     target: 'recent-activity',
   },
   {
     title: 'Jump to key workflows',
-    description: 'Use the shortcuts section to move quickly into bond creation, trust review, or attestations.',
+    description:
+      'Use the shortcuts section to move quickly into bond creation, trust review, or attestations.',
     target: 'shortcuts',
   },
 ] as const
@@ -80,10 +80,47 @@ export default function Dashboard() {
       'Monitor your trust score tier, outstanding bonds, pending grace periods, and recent identity attestations.',
   })
 
-  const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
+  const reducedMotion = useReducedMotion()
+  const isMobile = useIsMobile()
   const location = useLocation()
   const [searchParams] = useSearchParams()
+  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const [pullDistance, setPullDistance] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  useEffect(() => {
+    const handleOnline = () => setOnline(true)
+    const handleOffline = () => setOnline(false)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  const fetchScore = useCallback(async () => {
+    // Placeholder: will be replaced with actual API call
+    return { score: 684, tier: 'gold' as const }
+  }, [])
+
+  const { data: queryData } = useQuery(fetchScore, { enabled: connected })
+
+  const displayScore = queryData ? queryData.score : 0
+  const displayTier = queryData ? queryData.tier : 'bronze'
+
+  const handleTouchStart = useCallback(() => {
+    // Pull-to-refresh will be implemented in a follow-up
+  }, [])
+
+  const handleTouchMove = useCallback(() => {
+    // Pull-to-refresh will be implemented in a follow-up
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    // Pull-to-refresh will be implemented in a follow-up
+  }, [])
 
   const buildWidgetUrl = (widget: string): string => {
     return `${window.location.origin}${location.pathname}?widget=${widget}`
@@ -162,8 +199,8 @@ export default function Dashboard() {
         isMobile && pullDistance > 0
           ? { transform: `translateY(${pullDistance}px)`, transition: 'none' }
           : isMobile
-          ? { transform: 'translateY(0)', transition: 'transform 0.3s ease-out' }
-          : undefined
+            ? { transform: 'translateY(0)', transition: reducedMotion ? 'none' : 'transform 0.3s ease-out' }
+            : undefined
       }
     >
       {isMobile && (pullDistance > 0 || isRefreshing) && (
@@ -195,14 +232,14 @@ export default function Dashboard() {
             {isRefreshing
               ? t('dashboard.refreshing', 'Refreshing...')
               : pullDistance >= 60
-              ? t('dashboard.releaseToRefresh', 'Release to refresh')
-              : t('dashboard.pullToRefresh', 'Pull to refresh')}
+                ? t('dashboard.releaseToRefresh', 'Release to refresh')
+                : t('dashboard.pullToRefresh', 'Pull to refresh')}
           </span>
         </div>
       )}
 
       {!online && (
-        <Banner severity="warning">
+        <Banner severity="warn">
           {t('dashboard.offlineBanner', 'You are currently offline. Pull-to-refresh is disabled.')}
         </Banner>
       )}
@@ -210,9 +247,7 @@ export default function Dashboard() {
       <header className="dashboard__header">
         <div>
           <h1 className="dashboard__title">{t('dashboard.title')}</h1>
-          <p className="dashboard__description">
-            {t('dashboard.description')}
-          </p>
+          <p className="dashboard__description">{t('dashboard.description')}</p>
         </div>
         {connected && address && (
           <div className="dashboard__wallet" aria-label="Connected wallet">
@@ -263,7 +298,9 @@ export default function Dashboard() {
                   {onboardingStep + 1}/{onboardingSteps.length}
                 </span>
               </div>
-              <p className="dashboard__onboardingDescription">{currentOnboardingStep.description}</p>
+              <p className="dashboard__onboardingDescription">
+                {currentOnboardingStep.description}
+              </p>
               <div className="dashboard__onboardingActions">
                 <Button type="button" variant="ghost" onClick={skipOnboarding}>
                   Skip tour
@@ -293,7 +330,10 @@ export default function Dashboard() {
                     <p className="dashboard__metric">{displayScore}</p>
                     <p className="dashboard__metricLabel">Current score</p>
                   </div>
-                  <Badge variant={displayTier} label={`${displayTier.charAt(0).toUpperCase()}${displayTier.slice(1)} Tier`} />
+                  <Badge
+                    variant={displayTier}
+                    label={`${displayTier.charAt(0).toUpperCase()}${displayTier.slice(1)} Tier`}
+                  />
                 </div>
                 <TrustGauge
                   score={displayScore}
@@ -345,7 +385,11 @@ export default function Dashboard() {
                     </Link>
                   ))}
                 </div>
-                <Button type="button" variant="secondary" onClick={() => window.scrollTo({ top: 0 })}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => window.scrollTo({ top: 0 })}
+                >
                   Back to summary
                 </Button>
               </ActionCard>
@@ -354,11 +398,7 @@ export default function Dashboard() {
         </>
       )}
 
-      {connected && (
-        <Banner severity="info">
-          {t('dashboard.mockDataBanner')}
-        </Banner>
-      )}
+      {connected && <Banner severity="info">{t('dashboard.mockDataBanner')}</Banner>}
     </div>
   )
 }

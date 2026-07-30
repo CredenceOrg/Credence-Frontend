@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import jsQR from 'jsqr'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import './QRScannerModal.css'
+import './QRScannerDialog.css'
 
-interface QRScannerModalProps {
+interface QRScannerDialogProps {
   open: boolean
   onScan: (value: string) => void
   onClose: () => void
@@ -11,7 +11,7 @@ interface QRScannerModalProps {
 
 type ScannerState = 'requesting' | 'scanning' | 'error' | 'success'
 
-export default function QRScannerModal({ open, onScan, onClose }: QRScannerModalProps) {
+export default function QRScannerDialog({ open, onScan, onClose }: QRScannerModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -143,7 +143,12 @@ export default function QRScannerModal({ open, onScan, onClose }: QRScannerModal
             onClick={handleClose}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M4 4l12 12M16 4L4 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path
+                d="M4 4l12 12M16 4L4 16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
         </div>
@@ -153,8 +158,23 @@ export default function QRScannerModal({ open, onScan, onClose }: QRScannerModal
             <div className="qr-scanner-placeholder">
               <div className="qr-scanner-spinner" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="30 60" />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    opacity="0.2"
+                  />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="30 60"
+                  />
                 </svg>
               </div>
               <p>Requesting camera access...</p>
@@ -179,7 +199,12 @@ export default function QRScannerModal({ open, onScan, onClose }: QRScannerModal
             <div className="qr-scanner-error" role="alert">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path
+                  d="M12 8v4M12 16h.01"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               </svg>
               <p>{errorMessage}</p>
             </div>

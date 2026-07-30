@@ -18,7 +18,13 @@ This directory contains comprehensive design specifications and implementation g
    - Render helpers, router wrapper, and mock patterns for matchMedia / localStorage / clipboard
    - File naming conventions and coverage thresholds
 
-3. **Per-route document titles (`useDocumentTitle`)**
+3. **[QA Release-Gate Checklist](./QA_CHECKLIST.md)** ⭐ NEW
+   - Contributor-focused checklist of every gate a PR must pass before ship
+   - Automated gates (format, lint, build, test), functionality smoke tests, and manual checks
+   - Sections: code quality, accessibility, responsive layout, theme parity, API types, formatting utilities, security, widget cache
+   - PR evidence block to paste into every pull request description
+
+4. **Per-route document titles (`useDocumentTitle`)**
    - `src/hooks/useDocumentTitle.ts` keeps `document.title` in sync with the active route
    - Each page sets a distinct, branded title (e.g. `Bond · Credence`); the 404 page uses `Page Not Found · Credence`
    - Why it matters: screen readers announce the title on navigation, and tabs, history, and bookmarks become distinguishable per page
@@ -33,51 +39,51 @@ This directory contains comprehensive design specifications and implementation g
    }
    ```
 
-4. **[Shared Components Catalog](./COMPONENTS.md)**
+5. **[Shared Components Catalog](./COMPONENTS.md)**
    - Consolidated props, Storybook story paths and variants, accessibility notes, usage snippets, styling ownership, and `--credence-*` token references for all public shared UI components
    - Documents severity/variant vocabularies and cross-links focused component docs
 
-5. **[Component API Conventions](./COMPONENT_API.md)** ⭐ NEW
+6. **[Component API Conventions](./COMPONENT_API.md)** ⭐ NEW
    - Single-source for props conventions (naming rules, ordering rules, boolean-prop rules, and TypeScript interface contracts)
    - Code examples and review checklist for consistent component APIs
 
-6. **[UI States Guide](./UI_STATES_GUIDE.md)**
+7. **[UI States Guide](./UI_STATES_GUIDE.md)**
    - Complete guide for empty states, error states, and loading patterns
    - Microcopy guidelines and tone recommendations
    - When and how to use each state type
    - Validation checklist
 
-6. **[Error UI Pattern Guide](./ERROR_UI.md)** ⭐ NEW
+8. **[Error UI Pattern Guide](./ERROR_UI.md)** ⭐ NEW
    - Standardized guide for inline form errors, banners, toasts, and section/page error states
    - Surface decision matrix, component contracts, accessibility guidelines, and concrete code snippets
 
-7. **[Copy Tone Guide](./COPY_TONE.md)** ⭐ NEW
+9. **[Copy Tone Guide](./COPY_TONE.md)** ⭐ NEW
    - How we phrase success, error, empty, and loading UI copy
    - Voice principles (friendly, clear, concise, helpful)
    - State-by-state dos and don'ts with real codebase examples
    - Capitalization, punctuation, and i18n conventions
    - PR review checklist for user-facing strings
 
-7. **[Form Validation Timing](./FORM_VALIDATION_TIMING.md)** ⭐ NEW
-   - Practical guidance for when to use `onChange`, `onBlur`, and `onSubmit`
-   - Concrete examples for controlled input state, field-level validation, and final submission checks
-   - Recommended pattern for Credence forms and common mistakes to avoid
+10. **[Form Validation Timing](./FORM_VALIDATION_TIMING.md)** ⭐ NEW
+    - Practical guidance for when to use `onChange`, `onBlur`, and `onSubmit`
+    - Concrete examples for controlled input state, field-level validation, and final submission checks
+    - Recommended pattern for Credence forms and common mistakes to avoid
 
-8. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
-   - Standardized states (Default, Error, Disabled, Loading) for all input components
-   - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
+11. **[Form Inputs & Variants](./FORMS_AND_INPUTS.md)** ⭐ NEW
+    - Standardized states (Default, Error, Disabled, Loading) for all input components
+    - Usage guidelines and accessibility contracts for `AddressInput`, `AmountInput`, and controls
 
-9. **[Design Tokens](./DESIGN_TOKENS.md)**
-   - Canonical `--credence-*` CSS variable reference
-   - Color, spacing, radius, typography, and motion scales
-   - Guidance for replacing one-off hex values in components
+12. **[Design Tokens](./DESIGN_TOKENS.md)**
+    - Canonical `--credence-*` CSS variable reference
+    - Color, spacing, radius, typography, and motion scales
+    - Guidance for replacing one-off hex values in components
 
-10. **[Motion Guidelines](./motion-guidelines.md)**
+13. **[Motion Guidelines](./motion-guidelines.md)**
     - Motion token strategy and reduced-motion defaults
     - Best practices for animation and transitions
     - Implementation examples for UI micro-interactions
 
-11. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
+14. **[Figma Design Specs](./FIGMA_DESIGN_SPECS.md)**
 
 - Visual design specifications
 - Color palette and design tokens
@@ -120,30 +126,42 @@ This directory contains comprehensive design specifications and implementation g
     - Session timeout (inactivity logout) flow
     - Key code paths and cross-references
 
-14. **[Security Checklist](./SECURITY_CHECKLIST_FRONTEND.md)**
+17. **[Security Checklist](./SECURITY_CHECKLIST_FRONTEND.md)**
     - CSP policy, browser storage rules, third-party script posture, and dependency audit workflow
     - Concrete review checklist for each security area
-**[Settings Auto-Save Indicator](./auto-save.md)** ⭐ NEW (closes #564)
+      **[Settings Auto-Save Indicator](./auto-save.md)** ⭐ NEW (closes #564)
+
 - Debounced `PATCH /settings` flow with `useDebouncedAutoSave` hook.
 - `<AutoSaveIndicator />` token-driven pill showing `Saving…` / `Saved just now` / "Couldn't save" with retry.
 - In-flight cancellation via `AbortController` so stale PATCHes can't overwrite newer state.
 
-17. **[Widget Cache & Per-Widget Refresh](./widget-cache.md)** ⭐ NEW (closes #561)
+18. **[Widget Cache & Per-Widget Refresh](./widget-cache.md)** ⭐ NEW (closes #561)
     - Shared in-app cache for dashboard widgets so a refresh button on one card only invalidates that card's key — others keep their state.
     - `useWidgetCache` hook + `<WidgetRefreshButton />` + token-driven styling.
     - Coverage includes mount, key isolation, error surfacing, and reduced-motion.
 
-18. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
+19. **[API Client Policies](./API_CLIENT_POLICIES.md)** ⭐ NEW
     - Interceptors, retry policy, and error taxonomy for the API client
     - `ApiError` structure and usage examples
 
-19. **[Telemetry & Analytics](./telemetry.md)**
+20. **[Bundle Size Baseline](./BUNDLE.md)** ⭐ NEW
+    - Current production bundle size estimates and per-route breakdowns
+    - Top 10 heaviest dependencies ranked by gzipped size
+    - How to profile and compare bundle sizes with Vite, rollup-plugin-visualizer, and size-limit
+    - Contributor guidelines for keeping the bundle lean
+
+21. **[Telemetry & Analytics](./telemetry.md)**
     - Privacy-first approach (no telemetry collected)
     - No PII handling or third-party analytics
 
-19. **[Offline Strategy](./PWA.md)**
+22. **[Offline Strategy](./PWA.md)**
     - What's cached (localStorage keys, in-memory widget cache), what's queued (pending transactions, auto-save retry), and what happens on cache miss
     - Offline-aware hooks (`useQuery`, `useWidgetCache`), offline banner, install prompt behaviour
+
+23. **[First Bond Coach Marks](./uiux/onboarding-coachmarks-first-bond.md)**
+    - First-run onboarding concept for creating a bond
+    - Coach mark placement, copy, sequencing, and dismissal behavior
+    - Accessibility, responsive behavior, and visual QA checklist
 
 ### Quick Start
 
@@ -293,21 +311,36 @@ This module is the single source of truth for all Stellar address validation and
 // Validate Stellar public key format (56 chars, starts with 'G')
 isValidStellarAddress(address: string | undefined | null): boolean
 
-// Truncate address for display (first 12 + ... + last 8 chars)
+// Middle-truncate address for display: preserves both start and end
 truncateAddress(address: string | undefined | null): string
+
+// Format address according to display mode ('full' | 'short' | 'friendly')
+formatAddressForDisplay(address: string | undefined | null, mode: AddressDisplayMode | string | undefined): string
 ```
+
+**Middle Truncation Behavior:**
+
+`truncateAddress` performs middle truncation — instead of only showing the beginning of a
+long string, it preserves both the start (first 12 characters) and the end (last 8 characters),
+separated by `...`. Strings shorter than 20 characters are returned unchanged.
 
 **Usage Examples:**
 
 ```typescript
-import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
+import { isValidStellarAddress, truncateAddress, formatAddressForDisplay } from '@/lib/stellar'
 
 // Address validation
 isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA') // → true
 
-// Address truncation
+// Address truncation (middle truncation: start...end)
 truncateAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')
 // → "GAAZI4TCR3TY...CCWNA"
+
+// Format for display in different modes
+formatAddressForDisplay('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', 'short')
+// → "GAAZI4TCR3TY...CCWNA"
+formatAddressForDisplay('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', 'friendly')
+// → "GAAZI4…CCWNA"
 ```
 
 **Behavior Preservation:**
@@ -315,7 +348,8 @@ truncateAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA')
 - Exact 56-character validation
 - 'G' prefix requirement
 - Uppercase alphanumeric characters only
-- Short addresses (<20 chars) displayed unchanged
+- Middle truncation for long strings: first 12 + `...` + last 8
+- Short addresses (≤20 chars) displayed unchanged
 - Whitespace trimmed automatically
 - Null/undefined values handled gracefully
 

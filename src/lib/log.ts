@@ -10,7 +10,7 @@
  * only when the caller cannot proceed.
  */
 
-export type LogLevel = 'info' | 'warn' | 'error'
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 export type LogFields = Record<string, string | number | boolean | null | undefined>
 
@@ -45,9 +45,14 @@ const emit = (level: LogLevel, event: string, fields: LogFields): void => {
     safeFields.push([escape(key), renderValue(value)])
   }
   const ts = new Date().toISOString()
-  const parts = [`ts=${ts}`, `level=${level}`, `event=${escape(event)}`, ...safeFields.map(([k, v]) => `${k}=${v}`)]
+  const parts = [
+    `ts=${ts}`,
+    `level=${level}`,
+    `event=${escape(event)}`,
+    ...safeFields.map(([k, v]) => `${k}=${v}`),
+  ]
   const line = parts.join(' ')
-  const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : console.info
+  const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : level === 'debug' ? console.debug : console.info
   try {
     sink(line)
   } catch {
@@ -57,4 +62,7 @@ const emit = (level: LogLevel, event: string, fields: LogFields): void => {
 
 export const logInfo = (event: string, fields: LogFields = {}): void => emit('info', event, fields)
 export const logWarn = (event: string, fields: LogFields = {}): void => emit('warn', event, fields)
-export const logError = (event: string, fields: LogFields = {}): void => emit('error', event, fields)
+export const logError = (event: string, fields: LogFields = {}): void =>
+  emit('error', event, fields)
+export const logDebug = (event: string, fields: LogFields = {}): void =>
+  emit('debug', event, fields)

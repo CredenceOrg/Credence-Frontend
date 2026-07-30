@@ -189,6 +189,14 @@
   }
 }
 
+/* ─── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .shortcuts-dialog__backdrop {
+    animation: none !important;
+  }
+}
+
 /* ─── Mobile: bottom sheet ─────────────────────────────────────────────────── */
 
 @media (max-width: 767px) {

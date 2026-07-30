@@ -1,13 +1,21 @@
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ONBOARDING_COMPLETION_STORAGE_KEY, ONBOARDING_STEP_STORAGE_KEY } from '../config/onboarding'
+import {
+  ONBOARDING_COMPLETION_STORAGE_KEY,
+  ONBOARDING_STEP_STORAGE_KEY,
+} from '../config/onboarding'
 import Dashboard from './Dashboard'
 
 // Mocks needed because ActionCard now uses useToast, useCopyToClipboard, and useTranslation
 vi.mock('../components/ToastProvider', () => ({
-  useToast: () => ({ addToast: vi.fn(), removeToast: vi.fn(), removeAllToasts: vi.fn(), announce: vi.fn() }),
+  useToast: () => ({
+    addToast: vi.fn(),
+    removeToast: vi.fn(),
+    removeAllToasts: vi.fn(),
+    announce: vi.fn(),
+  }),
 }))
 
 vi.mock('../hooks/useCopyToClipboard', () => ({
@@ -44,7 +52,7 @@ vi.mock('../hooks/useQuery', () => ({
       error: null,
       refetch: mockRefetch,
     }
-  }
+  },
 }))
 
 vi.mock('../hooks/useMediaQuery', () => ({
@@ -83,6 +91,44 @@ describe('Dashboard', () => {
     await user.click(screen.getByRole('button', { name: /connect wallet/i }))
 
     expect(mockConnect).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders a single EmptyState wrapped in an ActionCard when disconnected', () => {
+    mockConnected = false
+
+    const { container } = renderDashboard()
+
+    // Only one article (ActionCard) should render — no dashboard cards
+    const articles = container.querySelectorAll('article')
+    expect(articles).toHaveLength(1)
+
+    // The ActionCard contains the EmptyState with the trust illustration
+    const svg = articles[0].querySelector('svg')
+    expect(svg).not.toBeNull()
+    expect(svg).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('shows the connect-freighter description in the disconnected empty state', () => {
+    mockConnected = false
+
+    renderDashboard()
+
+    expect(
+      screen.getByText(
+        /connect freighter to load your trust score, active bonds, and recent activity/i
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('does not render dashboard cards (trust score, bonds, activity, shortcuts) when disconnected', () => {
+    mockConnected = false
+
+    renderDashboard()
+
+    expect(screen.queryByRole('heading', { name: 'Trust Score' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /active bonds/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /recent activity/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Shortcuts' })).not.toBeInTheDocument()
   })
 
   it('renders connected dashboard cards and activity summary', () => {

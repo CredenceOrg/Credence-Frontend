@@ -13,8 +13,7 @@ const meta: Meta<typeof Kbd> = {
     size: {
       control: 'select',
       options: ['sm', 'md', 'lg'],
-      description:
-        'Visual size of the key chip. `md` matches the KeyboardShortcutsDialog size.',
+      description: 'Visual size of the key chip. `md` matches the KeyboardShortcutsDialog size.',
     },
     ariaLabel: {
       control: 'text',
@@ -104,7 +103,15 @@ export const CompositeShortcut: Story = {
   render: () => (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
       <Kbd>Ctrl</Kbd>
-      <span aria-hidden="true" style={{ color: 'var(--credence-text-secondary)', fontSize: 'var(--credence-font-size-xs)' }}>+</span>
+      <span
+        aria-hidden="true"
+        style={{
+          color: 'var(--credence-text-secondary)',
+          fontSize: 'var(--credence-font-size-xs)',
+        }}
+      >
+        +
+      </span>
       <Kbd>K</Kbd>
     </span>
   ),
@@ -127,9 +134,25 @@ export const ThreeKeyShortcut: Story = {
   render: () => (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
       <Kbd>Ctrl</Kbd>
-      <span aria-hidden="true" style={{ color: 'var(--credence-text-secondary)', fontSize: 'var(--credence-font-size-xs)' }}>+</span>
+      <span
+        aria-hidden="true"
+        style={{
+          color: 'var(--credence-text-secondary)',
+          fontSize: 'var(--credence-font-size-xs)',
+        }}
+      >
+        +
+      </span>
       <Kbd>Shift</Kbd>
-      <span aria-hidden="true" style={{ color: 'var(--credence-text-secondary)', fontSize: 'var(--credence-font-size-xs)' }}>+</span>
+      <span
+        aria-hidden="true"
+        style={{
+          color: 'var(--credence-text-secondary)',
+          fontSize: 'var(--credence-font-size-xs)',
+        }}
+      >
+        +
+      </span>
       <Kbd>P</Kbd>
     </span>
   ),
@@ -138,7 +161,12 @@ export const ThreeKeyShortcut: Story = {
 /** Inline usage inside a sentence of prose. */
 export const InlineProse: Story = {
   render: () => (
-    <p style={{ fontFamily: 'var(--credence-font-family-base)', color: 'var(--credence-text-primary)' }}>
+    <p
+      style={{
+        fontFamily: 'var(--credence-font-family-base)',
+        color: 'var(--credence-text-primary)',
+      }}
+    >
       Press <Kbd>Shift</Kbd> + <Kbd>?</Kbd> to open the keyboard shortcuts help dialog.
     </p>
   ),

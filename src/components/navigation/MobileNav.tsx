@@ -7,10 +7,17 @@ import { useScrollPreserver } from '../../hooks/useScrollPreserver'
 import './MobileNav.css'
 import { useTranslation } from 'react-i18next'
 import { SECONDARY_NAV_LINKS } from '../../config/navLinks'
+import { DOM_EVENTS } from '../../events'
 
 export default function MobileNav() {
   const { t } = useTranslation()
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(() => {
+    try {
+      return sessionStorage.getItem('mobileNavOpen') === 'true'
+    } catch {
+      return false
+    }
+  })
   const drawerRef = useRef<HTMLElement>(null)
   const hamburgerRef = useRef<HTMLButtonElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -18,12 +25,25 @@ export default function MobileNav() {
 
   useScrollPreserver({ isActive: isOpen })
 
-  // Close on route change
+  // Close on route change (SPA navigation) — but state survives full page reloads via sessionStorage
   const prevPath = useRef(location.pathname)
   if (prevPath.current !== location.pathname) {
     prevPath.current = location.pathname
     if (isOpen) setIsOpen(false)
   }
+
+  // Persist collapse state across full page reloads
+  useEffect(() => {
+    try {
+      if (isOpen) {
+        sessionStorage.setItem('mobileNavOpen', 'true')
+      } else {
+        sessionStorage.removeItem('mobileNavOpen')
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) return

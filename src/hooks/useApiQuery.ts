@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import { WIDGET_CACHE_DEFAULTS } from '../config/widgetCache'
+import { scrubPII } from '../lib/piiScrub'
 
 // ── Cache ───────────────────────────────────────────────────────────────────
 
@@ -64,10 +65,9 @@ export interface UseApiQueryResult<T> {
  */
 export function useApiQuery<T>(
   path: string,
-  options: UseApiQueryOptions = {},
+  options: UseApiQueryOptions = {}
 ): UseApiQueryResult<T> {
-  const { enabled = true, staleTimeMs = WIDGET_CACHE_DEFAULTS.STALE_TIME_MS } =
-    options
+  const { enabled = true, staleTimeMs = WIDGET_CACHE_DEFAULTS.STALE_TIME_MS } = options
 
   const [data, setData] = useState<T | undefined>(() => {
     const cached = getCacheEntry<T>(path)
@@ -131,10 +131,14 @@ export function useApiQuery<T>(
         const result = await apiFetch<T>(currentPath, {
           signal: controller.signal,
         })
+        // Keep the cache as a safe boundary: callers receive the same
+        // sanitized value that is stored, so PII cannot leak through the
+        // query hook before it reaches the cache.
+        const sanitized = scrubPII(result)
 
         if (mountedRef.current && currentRunId === runIdRef.current) {
-          setData(result)
-          setCacheEntry(currentPath, result)
+          setData(sanitized)
+          setCacheEntry(currentPath, sanitized)
           setIsStale(false)
           setError(null)
         }
@@ -150,7 +154,7 @@ export function useApiQuery<T>(
         }
       }
     },
-    [staleTimeMs],
+    [staleTimeMs]
   )
 
   // Initial fetch

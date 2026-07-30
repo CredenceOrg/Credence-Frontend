@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import { PrefetchNavLink } from './PrefetchNavLink'
+import { PRELOADS_BY_PATH } from '../config/routes'
 import { useTranslation } from 'react-i18next'
+import ThemeToggle from './ThemeToggle'
+import NetworkIndicator from './NetworkIndicator'
+import WalletConnect from './WalletConnect'
 import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
+import Banner from './Banner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
@@ -13,10 +18,26 @@ import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { isExternalUrl } from '../lib/isExternalUrl'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+import { DOM_EVENTS } from '../events'
 import './Layout.css'
 
 function FooterLink({ label, href }: { label: string; href: string }) {
+  const isPlaceholder = !href || href === '#'
   const isExternal = isExternalUrl(href)
+
+  if (isPlaceholder) {
+    return (
+      <span
+        className="footer-link footer-link--disabled"
+        aria-disabled="true"
+        title="Coming soon"
+        tabIndex={-1}
+      >
+        {label}
+      </span>
+    )
+  }
+
   return (
     <a
       href={href}
@@ -31,6 +52,7 @@ function FooterLink({ label, href }: { label: string; href: string }) {
 export default function Layout() {
   const { t } = useTranslation()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
@@ -47,7 +69,9 @@ export default function Layout() {
     { to: '/settings', label: t('nav.settings') },
   ]
 
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
+  const closeLauncher = useCallback(() => setLauncherOpen(false), [])
   const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
 
   const dismissInstallPrompt = useCallback(() => {
@@ -67,18 +91,23 @@ export default function Layout() {
       setShowInstallPrompt(true)
     }
 
-    window.addEventListener(DOM_EVENTS.BEFORE_INSTALL_PROMPT, handleBeforeInstallPrompt as EventListener)
+    window.addEventListener(
+      DOM_EVENTS.BEFORE_INSTALL_PROMPT,
+      handleBeforeInstallPrompt as EventListener
+    )
     return () => {
-      window.removeEventListener(DOM_EVENTS.BEFORE_INSTALL_PROMPT, handleBeforeInstallPrompt as EventListener)
+      window.removeEventListener(
+        DOM_EVENTS.BEFORE_INSTALL_PROMPT,
+        handleBeforeInstallPrompt as EventListener
+      )
     }
   }, [installPromptDismissed])
 
-  // Global action launcher or shortcuts dialog shortcut (Ctrl+K / Cmd+K)
-  useKeyboardShortcut(['Mod', 'K'], () => setShortcutsOpen(true))
+  // Global action launcher (Ctrl+K / Cmd+K)
+  useKeyboardShortcut(['Mod', 'K'], () => setLauncherOpen(true))
 
-  // Global keyboard shortcuts help dialog shortcut (Shift+?)
+  // Global keyboard shortcuts help dialog (Shift+?)
   useKeyboardShortcut(['Shift', '?'], () => setShortcutsOpen(true))
-
 
   return (
     <div className="appShell">
@@ -90,44 +119,47 @@ export default function Layout() {
       <RouteAnnouncer />
 
       <header className="appHeader">
-        {/* Mobile: hamburger toggle (hidden ≥640px via CSS) */}
-        <MobileNav />
+        <div className="container appHeader-inner">
+          {/* Mobile: hamburger toggle (hidden ≥640px via CSS) */}
+          <MobileNav />
 
-        <NavLink to="/" className="appBrand">
-          {t('layout.brand')}
-        </NavLink>
+          <NavLink to="/" className="appBrand">
+            {t('layout.brand')}
+          </NavLink>
 
-        {/* Desktop: inline nav (hidden <640px via CSS) */}
-        <nav aria-label="Main navigation" className="appNav">
-          {NAV_LINKS.map(({ to, label }) => (
-            <PrefetchNavLink
-              key={to}
-              to={to}
-              end
-              preload={PRELOADS_BY_PATH[to]}
-              className={({ isActive }) =>
-                isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
-              }
-            >
-              {label}
-            </PrefetchNavLink>
-          ))}
-        </nav>
+          {/* Desktop: inline nav (hidden <640px via CSS) */}
+          <nav aria-label="Main navigation" className="appNav">
+            {NAV_LINKS.map(({ to, label }) => (
+              <PrefetchNavLink
+                key={to}
+                to={to}
+                end
+                preload={PRELOADS_BY_PATH[to]}
+                className={({ isActive }) =>
+                  isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
+                }
+              >
+                {label}
+              </PrefetchNavLink>
+            ))}
+          </nav>
 
-        <ThemeToggle />
-        <NetworkIndicator />
+          <WalletConnect />
+          <ThemeToggle />
+          <NetworkIndicator />
 
-        {/* Keyboard shortcuts help button */}
-        <button
-          ref={shortcutsButtonRef}
-          type="button"
-          className="appHeader-shortcuts-btn"
-          aria-label={t('layout.keyboardShortcuts')}
-          onClick={openShortcuts}
-        >
-          <span aria-hidden="true">?</span>
-          <span className="sr-only">{t('layout.keyboardShortcuts')}</span>
-        </button>
+          {/* Keyboard shortcuts help button */}
+          <button
+            ref={shortcutsButtonRef}
+            type="button"
+            className="appHeader-shortcuts-btn"
+            aria-label={t('layout.keyboardShortcuts')}
+            onClick={openShortcuts}
+          >
+            <span aria-hidden="true">?</span>
+            <span className="sr-only">{t('layout.keyboardShortcuts')}</span>
+          </button>
+        </div>
       </header>
 
       {showInstallPrompt && (

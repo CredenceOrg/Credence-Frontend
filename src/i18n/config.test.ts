@@ -3,13 +3,7 @@ import i18n from './config'
 import { getPreviousLng, setPreviousLng } from './localeBreadcrumb'
 
 const loadTranslation = (): void => {
-  i18n.addResourceBundle(
-    'fr-FR',
-    'translation',
-    { hello: 'Bonjour' },
-    true,
-    true,
-  )
+  i18n.addResourceBundle('fr-FR', 'translation', { hello: 'Bonjour' }, true, true)
 }
 
 afterEach(async () => {

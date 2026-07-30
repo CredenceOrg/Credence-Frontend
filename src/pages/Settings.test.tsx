@@ -51,9 +51,7 @@ const BASE_SETTINGS = {
 }
 
 /** Build a complete useSettings return value with the given overrides. */
-function settingsFixture(
-  overrides: Partial<ReturnType<typeof mockUseSettings>> = {},
-) {
+function settingsFixture(overrides: Partial<ReturnType<typeof mockUseSettings>> = {}) {
   return {
     ...BASE_SETTINGS,
     setThemeMode: vi.fn(),
@@ -119,7 +117,7 @@ describe('Settings — unsaved-changes guard', () => {
 
       expect(confirmSpy).toHaveBeenCalledTimes(1)
       expect(confirmSpy).toHaveBeenCalledWith(
-        'You have unsaved changes. Are you sure you want to discard them?',
+        'You have unsaved changes. Are you sure you want to discard them?'
       )
     })
 
@@ -135,10 +133,7 @@ describe('Settings — unsaved-changes guard', () => {
       await clickCancel()
 
       expect(screen.getByRole('button', { name: 'Saved' })).toBeInTheDocument()
-      expect(addToastMock).toHaveBeenCalledWith(
-        'info',
-        'Settings reverted to last saved state',
-      )
+      expect(addToastMock).toHaveBeenCalledWith('info', 'Settings reverted to last saved state')
     })
 
     it('keeps changes when confirm returns false (user cancels the navigation)', async () => {
@@ -160,14 +155,14 @@ describe('Settings — unsaved-changes guard', () => {
       const addListenerSpy = vi.spyOn(window, 'addEventListener')
 
       render(<Settings />)
-      expect(
-        addListenerSpy.mock.calls.filter(([event]) => event === 'beforeunload'),
-      ).toHaveLength(0)
+      expect(addListenerSpy.mock.calls.filter(([event]) => event === 'beforeunload')).toHaveLength(
+        0
+      )
 
       await selectTheme('Dark')
 
       const beforeunloadCalls = addListenerSpy.mock.calls.filter(
-        ([event]) => event === 'beforeunload',
+        ([event]) => event === 'beforeunload'
       )
       expect(beforeunloadCalls).toHaveLength(1)
       expect(beforeunloadCalls[0][0]).toBe('beforeunload')
@@ -180,7 +175,7 @@ describe('Settings — unsaved-changes guard', () => {
       render(<Settings />)
 
       const beforeunloadCalls = addListenerSpy.mock.calls.filter(
-        ([event]) => event === 'beforeunload',
+        ([event]) => event === 'beforeunload'
       )
       expect(beforeunloadCalls).toHaveLength(0)
     })
@@ -194,7 +189,7 @@ describe('Settings — unsaved-changes guard', () => {
       await selectTheme('Dark')
 
       const registeredHandlers = addListenerSpy.mock.calls.filter(
-        ([event]) => event === 'beforeunload',
+        ([event]) => event === 'beforeunload'
       )
       expect(registeredHandlers).toHaveLength(1)
       const handler = registeredHandlers[0][1]
@@ -203,7 +198,7 @@ describe('Settings — unsaved-changes guard', () => {
       await clickCancel()
 
       const removedCalls = removeListenerSpy.mock.calls.filter(
-        ([event]) => event === 'beforeunload',
+        ([event]) => event === 'beforeunload'
       )
       expect(removedCalls).toHaveLength(1)
       expect(removedCalls[0][1]).toBe(handler)
@@ -217,7 +212,7 @@ describe('Settings — unsaved-changes guard', () => {
       await selectTheme('Dark')
 
       const registeredHandlers = addListenerSpy.mock.calls.filter(
-        ([event]) => event === 'beforeunload',
+        ([event]) => event === 'beforeunload'
       )
       expect(registeredHandlers).toHaveLength(1)
       const handler = registeredHandlers[0][1]
@@ -228,7 +223,7 @@ describe('Settings — unsaved-changes guard', () => {
       rerender(<Settings />)
 
       const removedCalls = removeListenerSpy.mock.calls.filter(
-        ([event]) => event === 'beforeunload',
+        ([event]) => event === 'beforeunload'
       )
       expect(removedCalls).toHaveLength(1)
       expect(removedCalls[0][1]).toBe(handler)
@@ -242,16 +237,12 @@ describe('Settings — unsaved-changes guard', () => {
 
       // Cycle 1: dirty → register.
       await selectTheme('Dark')
-      expect(
-        addListenerSpy.mock.calls.filter(([e]) => e === 'beforeunload'),
-      ).toHaveLength(1)
+      expect(addListenerSpy.mock.calls.filter(([e]) => e === 'beforeunload')).toHaveLength(1)
 
       // Cycle 1: save → clean → deregister.
       setContext({ themeMode: 'dark' })
       rerender(<Settings />)
-      expect(
-        removeListenerSpy.mock.calls.filter(([e]) => e === 'beforeunload'),
-      ).toHaveLength(1)
+      expect(removeListenerSpy.mock.calls.filter(([e]) => e === 'beforeunload')).toHaveLength(1)
 
       // Cycle 2: dirty again → re-register.
       // Move context to a third value so isDirty re-computes as true when
@@ -259,9 +250,7 @@ describe('Settings — unsaved-changes guard', () => {
       setContext({ themeMode: 'system' })
       rerender(<Settings />)
       await selectTheme('Light')
-      expect(
-        addListenerSpy.mock.calls.filter(([e]) => e === 'beforeunload'),
-      ).toHaveLength(2)
+      expect(addListenerSpy.mock.calls.filter(([e]) => e === 'beforeunload')).toHaveLength(2)
     })
 
     it('Save button is disabled when there are no unsaved changes', () => {
@@ -279,9 +268,9 @@ describe('Settings — unsaved-changes guard', () => {
       await selectTheme('Dark')
       await act(async () => {})
 
-      const handler = addListenerSpy.mock.calls.find(
-        ([event]) => event === 'beforeunload',
-      )?.[1] as ((e: Event) => void) | undefined
+      const handler = addListenerSpy.mock.calls.find(([event]) => event === 'beforeunload')?.[1] as
+        | ((e: Event) => void)
+        | undefined
       expect(handler).toBeDefined()
 
       const event = new Event('beforeunload', { cancelable: true })

@@ -56,7 +56,9 @@ describe('AddressDisplay', () => {
     it('renders the full address when it is short enough not to truncate', () => {
       render(<AddressDisplay address={SHORT_ADDR} />)
 
-      const code = screen.getByRole('tooltip', { hidden: true }).parentElement?.querySelector('code')
+      const code = screen
+        .getByRole('tooltip', { hidden: true })
+        .parentElement?.querySelector('code')
       expect(code).toHaveTextContent(SHORT_ADDR)
     })
 

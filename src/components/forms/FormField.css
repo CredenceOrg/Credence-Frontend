@@ -8,15 +8,32 @@
   color: var(--credence-text-secondary);
 }
 
+.form-required {
+  color: var(--credence-color-danger-text);
+  font-weight: var(--credence-font-weight-semibold);
+}
+
 .form-hint {
   color: var(--credence-text-secondary);
   font-size: var(--credence-font-size-sm);
 }
 
-.form-error {
+.form-success {
   display: inline-flex;
   align-items: center;
   gap: var(--credence-space-2);
-  color: var(--credence-color-danger-text);
+  color: var(--credence-color-success-text);
   font-size: var(--credence-font-size-sm);
+}
+
+.form-field[data-state='error'] :is(input, select, textarea):not([type='checkbox']):not(
+    [type='radio']
+  ) {
+  border-color: var(--credence-color-danger-border, var(--credence-color-danger-text));
+}
+
+.form-field[data-state='success'] :is(input, select, textarea):not([type='checkbox']):not(
+    [type='radio']
+  ) {
+  border-color: var(--credence-color-success-border);
 }

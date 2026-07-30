@@ -6,6 +6,7 @@ import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
 import BreakpointOverlay from './components/dev/BreakpointOverlay'
+import DebugOverlay from './components/dev/DebugOverlay'
 import { WidgetCacheProvider } from './widgetCache'
 
 const Home = lazy(() => import('./pages/Home'))
@@ -69,6 +70,7 @@ function App() {
                   </Routes>
                 </Suspense>
                 <BreakpointOverlay />
+                <DebugOverlay />
               </ErrorBoundary>
             </WalletProvider>
           </ToastProvider>

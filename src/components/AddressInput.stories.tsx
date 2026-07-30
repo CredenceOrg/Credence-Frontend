@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import AddressInput from './AddressInput';
+import type { Meta, StoryObj } from '@storybook/react'
+import AddressInput from './AddressInput'
 
 const meta: Meta<typeof AddressInput> = {
   title: 'Components/Forms/AddressInput',
@@ -14,29 +14,29 @@ const meta: Meta<typeof AddressInput> = {
     label: 'Stellar Address',
     value: '',
   },
-};
+}
 
-export default meta;
-type Story = StoryObj<typeof AddressInput>;
+export default meta
+type Story = StoryObj<typeof AddressInput>
 
 export const Default: Story = {
   args: {
     value: '',
   },
-};
+}
 
 export const Filled: Story = {
   args: {
     value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
   },
-};
+}
 
 export const Invalid: Story = {
   args: {
     value: 'invalid-address',
     error: 'Invalid address. Stellar public keys are 56 characters starting with G.',
   },
-};
+}
 
 export const ChecksumError: Story = {
   args: {
@@ -44,20 +44,20 @@ export const ChecksumError: Story = {
     value: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA',
     error: 'Invalid address checksum. Please verify the address.',
   },
-};
+}
 
 export const Disabled: Story = {
   args: {
     value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
     disabled: true,
   },
-};
+}
 
 export const Loading: Story = {
   args: {
     isLoading: true,
   },
-};
+}
 
 /**
  * The "Recognized:" echo uses the `addressDisplay` setting from SettingsContext.
@@ -73,18 +73,18 @@ export const EchoFull: Story = {
   args: {
     value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
   },
-};
+}
 
 export const EchoShort: Story = {
   name: 'Echo – short address (default)',
   args: {
     value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
   },
-};
+}
 
 export const EchoFriendly: Story = {
   name: 'Echo – friendly address',
   args: {
     value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
   },
-};
+}

@@ -23,12 +23,15 @@ const mockFeedItems = [
 describe('useProductUpdates', () => {
   beforeEach(() => {
     window.localStorage.clear()
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockFeedItems),
-      })
-    ))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockFeedItems),
+        })
+      )
+    )
   })
 
   afterEach(() => {
@@ -47,9 +50,10 @@ describe('useProductUpdates', () => {
   })
 
   it('falls back to default PRODUCT_UPDATES when fetch fails', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
-      Promise.reject(new Error('Network error'))
-    ))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => Promise.reject(new Error('Network error')))
+    )
 
     const { result } = renderHook(() => useProductUpdates())
     await waitFor(() => {

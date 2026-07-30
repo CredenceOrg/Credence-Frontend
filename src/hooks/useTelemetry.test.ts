@@ -15,7 +15,8 @@ function createFixedNow(): () => string {
     '2026-07-25T00:00:00.004Z',
   ]
   let callCount = 0
-  return () => timestamps[callCount++] ?? `2026-07-25T00:00:00.${String(callCount).padStart(3, '0')}Z`
+  return () =>
+    timestamps[callCount++] ?? `2026-07-25T00:00:00.${String(callCount).padStart(3, '0')}Z`
 }
 
 describe('useTelemetry', () => {

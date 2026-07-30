@@ -44,11 +44,24 @@ describe('CSP string', () => {
   it('contains default-src', () => {
     expect(CSP).toContain('default-src')
   })
+
+  it("contains font-src 'self' with no third-party font-CDN host", () => {
+    // Fonts must stay self-hosted (see src/lib/fontCdnCheck.ts): if this ever
+    // grows a host like fonts.googleapis.com, every visitor's IP and
+    // User-Agent would leak to that host on every page load.
+    const fontSrcMatch = CSP.match(/font-src([^;]*)/)
+    expect(fontSrcMatch).not.toBeNull()
+    expect(fontSrcMatch![1].trim()).toBe("'self'")
+  })
 })
 
 describe('CSP_DIRECTIVES object', () => {
   it("scriptSrc contains only 'self'", () => {
     expect(CSP_DIRECTIVES.scriptSrc).toEqual(["'self'"])
+  })
+
+  it("fontSrc contains only 'self' (fonts must be self-hosted, not CDN-served)", () => {
+    expect(CSP_DIRECTIVES.fontSrc).toEqual(["'self'"])
   })
 
   it("frameAncestors is 'none'", () => {

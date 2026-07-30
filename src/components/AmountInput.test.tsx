@@ -199,6 +199,16 @@ describe('AmountInput', () => {
       expect(screen.getByRole('button', { name: /set max amount/i })).toBeDisabled()
       expect(screen.getByRole('alert')).toHaveTextContent('Amount exceeds available balance.')
     })
+
+    it('hides the inline error message when hideErrorMessage is true', () => {
+      renderInput({ value: '200.00', balance: 100, hideErrorMessage: true })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByRole('textbox').closest('.amountInput')).toHaveAttribute(
+        'data-invalid',
+        'true'
+      )
+    })
   })
 
   describe('onValidityChange callback', () => {
@@ -258,7 +268,9 @@ describe('AmountInput', () => {
       const input = screen.getByRole('textbox')
       const errorId = input.getAttribute('aria-describedby')
       expect(errorId).toBeTruthy()
-      expect(document.getElementById(errorId!)).toHaveTextContent('Amount must be at least 10 USDC.')
+      expect(document.getElementById(errorId!)).toHaveTextContent(
+        'Amount must be at least 10 USDC.'
+      )
     })
 
     it('explicit error prop overrides the below-min error', () => {

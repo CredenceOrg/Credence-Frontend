@@ -1,5 +1,5 @@
 /**
- * Tests for ErrorBoundary catching thrown async renders — issue #742
+ * Tests for ErrorBoundary catching thrown async renders — issue #988
  *
  * A React error boundary catches render-phase throws regardless of whether the
  * throw was triggered synchronously or by a resolved async operation.  These
@@ -48,7 +48,7 @@ function makeLazyThrowingComponent(message: string) {
 // suite
 // ---------------------------------------------------------------------------
 
-describe('ErrorBoundary – async render throws (#742)', () => {
+describe('ErrorBoundary – async render throws (#988)', () => {
   beforeEach(() => {
     // React's own error logging is noisy in test output; silence it.
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -77,7 +77,10 @@ describe('ErrorBoundary – async render throws (#742)', () => {
 
     // After the async import resolves the component tries to render and throws.
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
     // The Suspense fallback must no longer be visible.
@@ -123,7 +126,10 @@ describe('ErrorBoundary – async render throws (#742)', () => {
 
     // After the micro-task resolves the component re-renders and throws.
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
@@ -244,7 +250,10 @@ describe('ErrorBoundary – async render throws (#742)', () => {
 
     // ── First failure ────────────────────────────────────────────────────────
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
 
     // ── Reset (second mount will also throw) ─────────────────────────────────
@@ -254,7 +263,10 @@ describe('ErrorBoundary – async render throws (#742)', () => {
 
     // ── Second failure ───────────────────────────────────────────────────────
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
 
     // componentDidCatch was invoked at least twice (once per caught cycle).
@@ -305,7 +317,10 @@ describe('ErrorBoundary – async render throws (#742)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument()
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
 
     // The boundary's componentDidCatch calls console.error with the error message.

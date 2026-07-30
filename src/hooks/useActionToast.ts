@@ -10,10 +10,7 @@ export function useActionToast() {
   const { addToast } = useToast()
 
   const withToast = useCallback(
-    async <T>(
-      action: ToastAction,
-      promise: Promise<T> | (() => Promise<T>)
-    ): Promise<T> => {
+    async <T>(action: ToastAction, promise: Promise<T> | (() => Promise<T>)): Promise<T> => {
       try {
         const result = typeof promise === 'function' ? await promise() : await promise
         addToast('success', ACTION_TOASTS[action].success)

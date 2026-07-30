@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import { useWallet } from '../context/WalletContext'
+import { FREIGHTER_INSTALL_URL } from '../lib/freighterClient'
 import Button from './Button'
-import './ConnectWalletModal.css'
+import './ConnectWalletDialog.css'
 
-export interface ConnectWalletModalProps {
+export interface ConnectWalletDialogProps {
   open: boolean
   onClose: () => void
   /**
@@ -27,11 +28,11 @@ export interface ConnectWalletModalProps {
  * - Entrance animation is suppressed when prefers-reduced-motion: reduce is set.
  * - Auto-closes when the wallet connects successfully.
  */
-export default function ConnectWalletModal({
+export default function ConnectWalletDialog({
   open,
   onClose,
   returnFocusRef,
-}: ConnectWalletModalProps) {
+}: ConnectWalletDialogProps) {
   const { connect, isConnecting, error, isConnected } = useWallet()
 
   const titleId = useId()
@@ -81,40 +82,46 @@ export default function ConnectWalletModal({
   }
 
   return createPortal(
-    <div
-      className="connect-wallet-modal__backdrop"
-      onClick={handleBackdropClick}
-    >
+    <div className="connect-wallet-dialog__backdrop" onClick={handleBackdropClick}>
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        className="connect-wallet-modal"
+        className="connect-wallet-dialog"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="connect-wallet-modal__header">
-          <h2 id={titleId} className="connect-wallet-modal__title">
+        <header className="connect-wallet-dialog__header">
+          <h2 id={titleId} className="connect-wallet-dialog__title">
             Connect Freighter Wallet
           </h2>
         </header>
 
-        <div className="connect-wallet-modal__body">
-          <p id={descId} className="connect-wallet-modal__description">
-            Freighter is a Stellar wallet browser extension. Clicking{' '}
-            <strong>Connect</strong> will open the Freighter extension and ask
-            you to approve access for this session.
+        <div className="connect-wallet-dialog__body">
+          <p id={descId} className="connect-wallet-dialog__description">
+            Freighter is a Stellar wallet browser extension. Clicking <strong>Connect</strong> will
+            open the Freighter extension and ask you to approve access for this session.
           </p>
 
           {errorMessage && (
-            <div role="alert" className="connect-wallet-modal__error">
-              {errorMessage}
+            <div role="alert" className="connect-wallet-dialog__error">
+              <span>{errorMessage}</span>
+              {error?.code === 'not_installed' && (
+                <a
+                  href={FREIGHTER_INSTALL_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="connect-wallet-dialog__install-link"
+                >
+                  Install Freighter
+                </a>
+              )}
             </div>
           )}
         </div>
 
-        <footer className="connect-wallet-modal__footer">
+        <footer className="connect-wallet-dialog__footer">
           <Button
             ref={cancelRef}
             type="button"
@@ -124,12 +131,7 @@ export default function ConnectWalletModal({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleConnect}
-            isLoading={isConnecting}
-          >
+          <Button type="button" variant="primary" onClick={handleConnect} isLoading={isConnecting}>
             Connect
           </Button>
         </footer>

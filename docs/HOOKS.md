@@ -24,6 +24,8 @@ behavior notes, and a minimal usage example linking to source.
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useForwardRef`](#useforwardref)
+  - [`useDebouncedValue`](#usedebouncedvalue)
+  - [`useOnceMounted`](#useoncemounted)
   - [`useMediaQuery`](#usemediaquery)
   - [`useApiQuery`](#useapiquery)
   - [`useQuery`](#usequery)
@@ -190,10 +192,10 @@ ref. Supports deeply nested arrays of refs and cleans up on unmount.
 
 **Parameters**
 
-| Parameter    | Required | Description                                                                  |
-| ------------ | :------: | ---------------------------------------------------------------------------- |
-| `ref`        |          | A single ref, callback ref, or nested array of refs to synchronise. Optional. |
-| `initialValue` |        | Initial value for the internal ref. Defaults to `null`.                      |
+| Parameter      | Required | Description                                                                   |
+| -------------- | :------: | ----------------------------------------------------------------------------- |
+| `ref`          |          | A single ref, callback ref, or nested array of refs to synchronise. Optional. |
+| `initialValue` |          | Initial value for the internal ref. Defaults to `null`.                       |
 
 **Returns** a `MutableRefObject<T | null>` that the component attaches to its DOM node via JSX `ref`.
 
@@ -220,19 +222,139 @@ interface FancyInputProps {
   children?: ReactNode
 }
 
-const FancyInput = forwardRef<HTMLInputElement, FancyInputProps>(
-  function FancyInput({ label, children }, forwardedRef) {
-    const internalRef = useForwardRef<HTMLInputElement>(forwardedRef)
+const FancyInput = forwardRef<HTMLInputElement, FancyInputProps>(function FancyInput(
+  { label, children },
+  forwardedRef
+) {
+  const internalRef = useForwardRef<HTMLInputElement>(forwardedRef)
 
-    return (
-      <label>
-        {label}
-        <input ref={internalRef} />
-        {children}
-      </label>
-    )
-  }
-)
+  return (
+    <label>
+      {label}
+      <input ref={internalRef} />
+      {children}
+    </label>
+  )
+})
+```
+
+---
+
+### `useDebouncedValue`
+
+Source: [`src/hooks/useDebouncedValue.ts`](../src/hooks/useDebouncedValue.ts)
+
+```ts
+function useDebouncedValue<T>(value: T, delayMs: number, options?: UseDebouncedValueOptions): T
+
+interface UseDebouncedValueOptions {
+  setTimeoutImpl?: typeof setTimeout // default: global setTimeout (for tests / fake timers)
+  clearTimeoutImpl?: typeof clearTimeout // default: global clearTimeout
+}
+```
+
+Returns a debounced copy of `value` that only updates after the input has remained stable
+for `delayMs` milliseconds. The single source of truth for search-input and filter debouncing
+across the app — components should never call `setTimeout` directly for this purpose. Pairs
+with `useDebouncedAutoSave` when a debounced _side effect_ is needed instead of a debounced
+_value_.
+
+**Parameters**
+
+| Parameter | Required | Description                                                                                  |
+| --------- | :------: | -------------------------------------------------------------------------------------------- |
+| `value`   |    ✓     | The source value to debounce. Generics preserve reference identity when the value is stable. |
+| `delayMs` |    ✓     | Debounce window in milliseconds. `<= 0` short-circuits to a synchronous pass-through.        |
+| `options` |          | Optional `setTimeoutImpl` / `clearTimeoutImpl` injection for tests or alternate runtimes.    |
+
+**Behavior notes**
+
+- **Restart on change:** every change to `value` (or `delayMs`) cancels the prior timer and
+  starts a fresh `delayMs` window, collapsing rapid bursts into the final value.
+- **`delayMs <= 0` short-circuit:** when non-positive, the hook returns the raw `value`
+  synchronously on every render — useful for tests and for consumer-controllable debounce
+  windows (e.g. "Search immediately").
+- **No unmount warnings:** the pending timer is always cleared on unmount, so a later
+  `setState` on an unmounted component is impossible.
+- **Referential stability:** when the input `value` reference is unchanged, the returned
+  value is the same reference as the previous render — safe as a `useEffect` dependency.
+- **Testable without mocking the import:** the optional `setTimeoutImpl` / `clearTimeoutImpl`
+  injection lets individual tests assert that timers are scheduled and cleared without
+  `vi.mock('@/hooks/useDebouncedValue')`. Errors from `clearTimeoutImpl` are swallowed so a
+  broken test double cannot crash the render path.
+- **SSR-safe / cleanup:** all timer work happens inside `useEffect`; the effect cleanup
+  always clears the pending timer.
+
+```tsx
+import { useEffect, useState } from 'react'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+
+function TrustLookupSearch() {
+  const [query, setQuery] = useState('')
+  // Settle for 300ms before triggering an API call so we don't slam the backend
+  // on every keystroke.
+  const debouncedQuery = useDebouncedValue(query, 300)
+
+  useEffect(() => {
+    if (debouncedQuery) searchAPI(debouncedQuery)
+  }, [debouncedQuery])
+
+  return <input value={query} onChange={(e) => setQuery(e.target.value)} />
+}
+```
+
+---
+
+### `useOnceMounted`
+
+Source: [`src/hooks/useOnceMounted.ts`](../src/hooks/useOnceMounted.ts)
+
+```ts
+function useOnceMounted(callback: () => void | (() => void)): void
+```
+
+Runs the provided callback exactly once per component mount, even under React 18 StrictMode
+where effects are intentionally double-invoked in development. Use this for actions that should
+fire **once and only once** when a component becomes alive — analytics page views, one-shot
+feature flags, telemetry, single-run side effects.
+
+**Parameters**
+
+| Parameter  | Required | Description                                                                                                                     |
+| ---------- | :------: | ------------------------------------------------------------------------------------------------------------------------------- |
+| `callback` |    ✓     | Function invoked on mount. May return a cleanup function, which will be invoked on unmount (or StrictMode's simulated unmount). |
+
+**Behavior notes**
+
+- **StrictMode-safe:** React 18 StrictMode in development intentionally mounts → unmounts →
+  remounts every component to surface lifecycle bugs. A `calledRef` guard persists across
+  that simulated unmount, so the callback only fires **once** despite the double-invoke.
+- **True remount rebinds:** a true unmount followed by a remount (different component
+  instance) starts fresh and fires the callback again — the right semantics for "run once
+  per lifetime of _this_ instance".
+- **Latest callback wins:** the `callback` is captured via a ref that is refreshed every
+  render, so callers do not need to wrap it in `useCallback` or include it in dependency
+  arrays.
+- **Optional cleanup:** if the callback returns a function, it is stored and invoked on
+  unmount. Under StrictMode, cleanup also runs on the simulated unmount, but the callback
+  itself still only fires once.
+- **Synchronous errors propagate** out of the mount effect — wrap your callback in a
+  `try/catch` if swallowing is desired.
+- **SSR-safe / cleanup:** runs inside `useEffect`; the cleanup function returned by the
+  callback is invoked on unmount.
+
+```tsx
+import { useOnceMounted } from '../hooks/useOnceMounted'
+
+function BondPage() {
+  // Fires exactly once when BondPage mounts, even under StrictMode's
+  // double-invoke, and never again while the page stays mounted.
+  useOnceMounted(() => {
+    analytics.track('route_view', { route: 'bond' })
+  })
+
+  return <main>…</main>
+}
 ```
 
 ---
@@ -243,7 +365,7 @@ Source: [`src/hooks/useMediaQuery.ts`](../src/hooks/useMediaQuery.ts)
 
 ```ts
 function useMediaQuery(query: string): boolean
-function useIsMobile(): boolean  // shorthand: (max-width: 767px)
+function useIsMobile(): boolean // shorthand: (max-width: 767px)
 ```
 
 Subscribes to a CSS media query and returns whether it currently matches. The exported
@@ -251,8 +373,8 @@ breakpoint helper `useIsMobile` wraps the 768 px mobile threshold used throughou
 
 **Parameters**
 
-| Parameter | Required | Description                                         |
-| --------- | :------: | --------------------------------------------------- |
+| Parameter | Required | Description                                                  |
+| --------- | :------: | ------------------------------------------------------------ |
 | `query`   |    ✓     | A valid CSS media query string, e.g. `'(max-width: 767px)'`. |
 
 **Behavior notes**
@@ -285,14 +407,11 @@ function ActivityCard() {
 Source: [`src/hooks/useApiQuery.ts`](../src/hooks/useApiQuery.ts) · Built on [`apiFetch`](../src/api/client.ts)
 
 ```ts
-function useApiQuery<T>(
-  path: string,
-  options?: UseApiQueryOptions,
-): UseApiQueryResult<T>
+function useApiQuery<T>(path: string, options?: UseApiQueryOptions): UseApiQueryResult<T>
 
 interface UseApiQueryOptions {
-  enabled?: boolean     // default: true
-  staleTimeMs?: number  // default: WIDGET_CACHE_DEFAULTS.STALE_TIME_MS (30 000)
+  enabled?: boolean // default: true
+  staleTimeMs?: number // default: WIDGET_CACHE_DEFAULTS.STALE_TIME_MS (30 000)
 }
 
 interface UseApiQueryResult<T> {
@@ -310,11 +429,11 @@ Type-safe, cache-aware wrapper around `apiFetch` for GET requests. Caches respon
 
 **Parameters**
 
-| Option        | Required | Description                                                                  |
-| ------------- | :------: | ---------------------------------------------------------------------------- |
-| `path`        |    ✓     | API path passed to `apiFetch` (e.g. `'/trust-score/GABC…'`).               |
-| `enabled`     |          | Set `false` to skip the initial fetch. Default `true`.                      |
-| `staleTimeMs` |          | Time in ms before cached data is considered stale. Default `30 000`.        |
+| Option        | Required | Description                                                          |
+| ------------- | :------: | -------------------------------------------------------------------- |
+| `path`        |    ✓     | API path passed to `apiFetch` (e.g. `'/trust-score/GABC…'`).         |
+| `enabled`     |          | Set `false` to skip the initial fetch. Default `true`.               |
+| `staleTimeMs` |          | Time in ms before cached data is considered stale. Default `30 000`. |
 
 **Behavior notes**
 
@@ -333,7 +452,7 @@ import type { TrustScore } from '../api/types'
 
 function TrustScoreCard({ address }: { address: string }) {
   const { data, isLoading, error, isStale, refetch } = useApiQuery<TrustScore>(
-    `/trust-score/${address}`,
+    `/trust-score/${address}`
   )
 
   if (isLoading) return <p>Loading…</p>
@@ -361,10 +480,7 @@ function TrustScoreCard({ address }: { address: string }) {
 Source: [`src/hooks/useQuery.ts`](../src/hooks/useQuery.ts)
 
 ```ts
-function useQuery<T>(
-  queryFn: () => Promise<T>,
-  options?: UseQueryOptions,
-): UseQueryResult<T>
+function useQuery<T>(queryFn: () => Promise<T>, options?: UseQueryOptions): UseQueryResult<T>
 
 interface UseQueryOptions {
   enabled?: boolean // default: true
@@ -382,9 +498,9 @@ A custom hook that wraps an asynchronous query function to fetch and manage data
 
 **Parameters**
 
-| Option    | Required | Description                                                  |
-| --------- | :------: | ------------------------------------------------------------ |
-| `queryFn` |    ✓     | An asynchronous function returning a Promise.               |
+| Option    | Required | Description                                                    |
+| --------- | :------: | -------------------------------------------------------------- |
+| `queryFn` |    ✓     | An asynchronous function returning a Promise.                  |
 | `enabled` |          | Set to `false` to prevent the initial request. Default `true`. |
 
 **Behavior notes**
@@ -403,7 +519,9 @@ function MyComponent() {
 
   return (
     <div>
-      <button onClick={refetch} disabled={isLoading}>Refresh</button>
+      <button onClick={refetch} disabled={isLoading}>
+        Refresh
+      </button>
       {isLoading ? <p>Loading...</p> : <p>Data: {JSON.stringify(data)}</p>}
     </div>
   )
@@ -418,7 +536,7 @@ Source: [`src/hooks/useApiMutation.ts`](../src/hooks/useApiMutation.ts)
 
 ```ts
 function useApiMutation<TData, TVariables, TContext = unknown>(
-  options: UseApiMutationOptions<TData, TVariables, TContext>,
+  options: UseApiMutationOptions<TData, TVariables, TContext>
 ): UseApiMutationResult<TData, TVariables, TContext>
 ```
 
@@ -426,14 +544,14 @@ A lightweight mutation wrapper for API calls that supports optimistic updates an
 
 **Parameters**
 
-| Option | Required | Description |
-| --- | :---: | --- |
-| `mutationFn` | ✓ | The async mutation function to execute. |
-| `onMutate` | | Runs before the request and can apply optimistic local state via the supplied helpers. |
-| `onSuccess` | | Runs after a successful mutation. |
-| `onError` | | Runs after a failed mutation. |
-| `onSettled` | | Runs after either outcome. |
-| `initialData` | | Initial value for `data`. |
+| Option        | Required | Description                                                                            |
+| ------------- | :------: | -------------------------------------------------------------------------------------- |
+| `mutationFn`  |    ✓     | The async mutation function to execute.                                                |
+| `onMutate`    |          | Runs before the request and can apply optimistic local state via the supplied helpers. |
+| `onSuccess`   |          | Runs after a successful mutation.                                                      |
+| `onError`     |          | Runs after a failed mutation.                                                          |
+| `onSettled`   |          | Runs after either outcome.                                                             |
+| `initialData` |          | Initial value for `data`.                                                              |
 
 **Behavior notes**
 
@@ -446,7 +564,8 @@ import { useApiMutation } from '../hooks/useApiMutation'
 
 function SaveProfile() {
   const mutation = useApiMutation({
-    mutationFn: (nextName: string) => apiFetch('/profile', { method: 'PATCH', body: { name: nextName } }),
+    mutationFn: (nextName: string) =>
+      apiFetch('/profile', { method: 'PATCH', body: { name: nextName } }),
     onMutate: (name, { setData }) => {
       setData((current) => ({ ...(current ?? {}), name }))
     },
@@ -788,9 +907,7 @@ import { useProductUpdates } from '../hooks/useProductUpdates'
 function NotificationBadge() {
   const { unreadCount, markAllRead } = useProductUpdates()
   return (
-    <button onClick={markAllRead}>
-      Updates {unreadCount > 0 && <span>({unreadCount})</span>}
-    </button>
+    <button onClick={markAllRead}>Updates {unreadCount > 0 && <span>({unreadCount})</span>}</button>
   )
 }
 ```
@@ -866,16 +983,16 @@ Platform-aware keyboard shortcut primitive that abstracts OS modifier difference
 
 **Parameters & Options**
 
-| Option | Required | Default | Description |
-| --- | :---: | :---: | --- |
-| `keys` | ✓ | | Key combination(s) e.g. `['Mod', 'K']`, `['Alt', 'S']`, `'Ctrl+Shift+P'`, or `[['Mod', 'K'], ['Alt', 'K']]`. |
-| `onShortcut` / `callback` | ✓ | | Handler function invoked when a matching shortcut is pressed. |
-| `enabled` | | `true` | Engage (`true`) / disengage (`false`) the event listener. |
-| `preventDefault` | | `true` | Invokes `event.preventDefault()` when shortcut matches. |
-| `stopPropagation` | | `false` | Invokes `event.stopPropagation()` when shortcut matches. |
-| `ignoreInputElements` | | `true` | Excludes key events originating inside editable input controls for accessibility compliance. |
-| `target` | | `window` | Custom DOM element or ref to attach the listener to. |
-| `userAgent` | | `navigator.userAgent` | User agent override for platform detection testing or SSR. |
+| Option                    | Required |        Default        | Description                                                                                                  |
+| ------------------------- | :------: | :-------------------: | ------------------------------------------------------------------------------------------------------------ |
+| `keys`                    |    ✓     |                       | Key combination(s) e.g. `['Mod', 'K']`, `['Alt', 'S']`, `'Ctrl+Shift+P'`, or `[['Mod', 'K'], ['Alt', 'K']]`. |
+| `onShortcut` / `callback` |    ✓     |                       | Handler function invoked when a matching shortcut is pressed.                                                |
+| `enabled`                 |          |        `true`         | Engage (`true`) / disengage (`false`) the event listener.                                                    |
+| `preventDefault`          |          |        `true`         | Invokes `event.preventDefault()` when shortcut matches.                                                      |
+| `stopPropagation`         |          |        `false`        | Invokes `event.stopPropagation()` when shortcut matches.                                                     |
+| `ignoreInputElements`     |          |        `true`         | Excludes key events originating inside editable input controls for accessibility compliance.                 |
+| `target`                  |          |       `window`        | Custom DOM element or ref to attach the listener to.                                                         |
+| `userAgent`               |          | `navigator.userAgent` | User agent override for platform detection testing or SSR.                                                   |
 
 **Behavior notes**
 
@@ -929,9 +1046,9 @@ can correct it. SSR-safe (pure functions, no globals).
 import { formatUsdc, sanitizeUSDCInput } from '@/lib/format'
 
 // ✅ Correct — always use formatUsdc for display
-formatUsdc(1000)          // "1,000 USDC"
-formatUsdc(1234.5)        // "1,234.5 USDC"
-formatUsdc(Number(str))   // when amount comes from a string state value
+formatUsdc(1000) // "1,000 USDC"
+formatUsdc(1234.5) // "1,234.5 USDC"
+formatUsdc(Number(str)) // when amount comes from a string state value
 
 // ❌ Avoid — do not use ad-hoc patterns
 // `${amount.toLocaleString('en-US')} USDC`
@@ -940,24 +1057,38 @@ formatUsdc(Number(str))   // when amount comes from a string state value
 sanitizeUSDCInput('12.345') // "12.34"
 ```
 
-### `stellar` — address validation
+### `stellar` — address validation & middle truncation
 
 Source: [`src/lib/stellar.ts`](../src/lib/stellar.ts) · Single source of truth for address handling.
 
 ```ts
 isValidStellarAddress(address: string | undefined | null): boolean
 truncateAddress(address: string | undefined | null): string
+formatAddressForDisplay(address: string | undefined | null, mode: AddressDisplayMode | string | undefined): string
+type AddressDisplayMode = 'full' | 'short' | 'friendly'
 ```
 
 **Behavior notes:** validation requires exactly 56 uppercase-alphanumeric characters starting
-with `G`. `truncateAddress` shows `first 12 … last 8` for long addresses, leaves anything
-≤ 20 chars untouched, trims whitespace, and returns `""` for nullish/empty input. SSR-safe.
+with `G`.
+
+`truncateAddress` performs **middle truncation**: for strings longer than 20 characters, it
+preserves both the start (first 12 characters) and the end (last 8 characters), separated by
+`...`. Strings ≤ 20 characters are returned unchanged. Whitespace is trimmed, and nullish/
+empty input returns `""`.
+
+`formatAddressForDisplay` renders an address in one of three modes:
+- `'full'` — the complete address unchanged
+- `'short'` — middle-truncated via `truncateAddress` (first 12 + `...` + last 8)
+- `'friendly'` — a compact form (first 6 + `…` + last 4)
+
+SSR-safe (pure functions, no DOM access).
 
 ```ts
-import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
+import { isValidStellarAddress, truncateAddress, formatAddressForDisplay } from '@/lib/stellar'
 
 isValidStellarAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA') // true
 truncateAddress('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA') // "GAAZI4TCR3TY...CCWNA"
+formatAddressForDisplay('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA', 'friendly') // "GAAZI4…CCWNA"
 ```
 
 ### `tier` — trust tiers

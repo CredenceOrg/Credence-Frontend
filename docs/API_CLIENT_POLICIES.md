@@ -1,12 +1,12 @@
 # API Client Policies
 
-This document outlines the core behaviors of our internal API client (`src/api/client.ts`), specifically regarding interceptors, retry policies, and error taxonomy. 
+This document outlines the core behaviors of our internal API client (`src/api/client.ts`), specifically regarding interceptors, retry policies, and error taxonomy.
 
 **Audience:** Contributors
 
 ## Interceptors
 
-Currently, the `apiFetch` utility does not implement a global interceptor registry (like Axios). Instead, cross-cutting concerns (like default headers, base URLs) are handled directly within the `apiFetch` execution flow. 
+Currently, the `apiFetch` utility does not implement a global interceptor registry (like Axios). Instead, cross-cutting concerns (like default headers, base URLs) are handled directly within the `apiFetch` execution flow.
 
 For instance, the `Accept` and `Content-Type` headers are automatically injected for JSON payloads:
 
@@ -54,10 +54,10 @@ export class ApiError extends Error {
 
 ### Error Scenarios
 
-1. **Network Failures / CORS:** 
+1. **Network Failures / CORS:**
    Throws an `ApiError` with `status: 0`. The message falls back to the native error message or `"Network request failed"`.
 2. **Abort / Cancellation:**
-   If the fetch is aborted via an `AbortSignal`, the native `AbortError` is re-thrown. It is *not* wrapped in an `ApiError`.
+   If the fetch is aborted via an `AbortSignal`, the native `AbortError` is re-thrown. It is _not_ wrapped in an `ApiError`.
 3. **HTTP Status Errors (4xx, 5xx):**
    Throws an `ApiError` with the actual HTTP status code (e.g., `status: 404`). The `payload` will contain the parsed JSON response (if available).
 
@@ -70,7 +70,7 @@ async function submitData() {
   try {
     await apiFetch('/users', {
       method: 'POST',
-      body: { name: 'Alice' }
+      body: { name: 'Alice' },
     })
   } catch (error) {
     if (error instanceof ApiError) {

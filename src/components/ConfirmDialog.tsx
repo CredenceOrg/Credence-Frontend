@@ -175,7 +175,9 @@ export default function ConfirmDialog({
                 <dd>{breakdown.bondAmount}</dd>
               </div>
               <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--penalty">
-                <dt>{t('confirmDialog.breakdown.slashPenalty', { percent: breakdown.penaltyPercent })}</dt>
+                <dt>
+                  {t('confirmDialog.breakdown.slashPenalty', { percent: breakdown.penaltyPercent })}
+                </dt>
                 <dd>−{breakdown.penaltyAmount}</dd>
               </div>
               <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--total">
@@ -196,7 +198,8 @@ export default function ConfirmDialog({
                   i18nKey="confirmDialog.typeToConfirm"
                   values={{
                     phrase: confirmPhrase,
-                    action: confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal',
+                    action:
+                      confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal',
                   }}
                   components={{ strong: <strong /> }}
                 />
@@ -212,9 +215,7 @@ export default function ConfirmDialog({
               aria-required="true"
               placeholder={confirmPhrase}
             />
-            <p className="confirm-dialog__confirm-hint">
-              {confirmInputHint || confirmHint}
-            </p>
+            <p className="confirm-dialog__confirm-hint">{confirmInputHint || confirmHint}</p>
           </div>
         </div>
 

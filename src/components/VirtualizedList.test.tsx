@@ -14,7 +14,7 @@ describe('VirtualizedList', () => {
         virtualizeThreshold={1000}
         getKey={(item) => item}
         renderItem={(item) => <div>{item}</div>}
-      />,
+      />
     )
 
     expect(screen.getByText('item-0')).toBeInTheDocument()

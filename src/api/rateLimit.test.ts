@@ -54,10 +54,7 @@ describe('ApiRateLimiter', () => {
 
     it('reports retryAfterMs as the time until the oldest slot frees', () => {
       let nowMs = 1_000
-      const limiter = makeLimiter(
-        { maxRequests: 1, windowMs: 1_000 },
-        () => nowMs
-      )
+      const limiter = makeLimiter({ maxRequests: 1, windowMs: 1_000 }, () => nowMs)
 
       limiter.acquire() // t=1000
       nowMs = 1_400
@@ -71,10 +68,7 @@ describe('ApiRateLimiter', () => {
   describe('sliding window', () => {
     it('frees capacity once timestamps fall outside the window', () => {
       let nowMs = 0
-      const limiter = makeLimiter(
-        { maxRequests: 2, windowMs: 1_000 },
-        () => nowMs
-      )
+      const limiter = makeLimiter({ maxRequests: 2, windowMs: 1_000 }, () => nowMs)
 
       limiter.acquire() // t=0
       nowMs = 100
@@ -239,29 +233,15 @@ describe('readApiRateLimitOverrides', () => {
   })
 
   it('parses booleans from common truthy / falsy strings', () => {
-    expect(
-      readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_ENABLED: 'true' }).enabled
-    ).toBe(true)
-    expect(
-      readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_ENABLED: '1' }).enabled
-    ).toBe(true)
-    expect(
-      readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_ENABLED: 'false' }).enabled
-    ).toBe(false)
-    expect(
-      readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_ENABLED: '0' }).enabled
-    ).toBe(false)
+    expect(readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_ENABLED: 'true' }).enabled).toBe(true)
+    expect(readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_ENABLED: '1' }).enabled).toBe(true)
+    expect(readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_ENABLED: 'false' }).enabled).toBe(false)
+    expect(readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_ENABLED: '0' }).enabled).toBe(false)
   })
 
   it('returns null for malformed values instead of throwing', () => {
-    expect(
-      readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_MAX: 'abc' }).maxRequests
-    ).toBeNull()
-    expect(
-      readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_MAX: '-3' }).maxRequests
-    ).toBeNull()
-    expect(
-      readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_WINDOW_MS: '' }).windowMs
-    ).toBeNull()
+    expect(readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_MAX: 'abc' }).maxRequests).toBeNull()
+    expect(readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_MAX: '-3' }).maxRequests).toBeNull()
+    expect(readApiRateLimitOverrides({ VITE_API_RATE_LIMIT_WINDOW_MS: '' }).windowMs).toBeNull()
   })
 })

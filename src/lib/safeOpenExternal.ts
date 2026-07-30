@@ -99,9 +99,7 @@ export function safeOpenExternal(url: string, features?: string): SafeOpenResult
   const baseFeatures = features ? features.split(',').map((f) => f.trim()) : []
   const securityTokens = ['noopener', 'noreferrer']
   const mergedFeatures = [
-    ...baseFeatures.filter(
-      (f) => !securityTokens.includes(f.toLowerCase()),
-    ),
+    ...baseFeatures.filter((f) => !securityTokens.includes(f.toLowerCase())),
     ...securityTokens,
   ].join(',')
 

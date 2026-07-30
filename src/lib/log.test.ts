@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { logError, logInfo, logWarn } from './log'
+import { logDebug, logError, logInfo, logWarn } from './log'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -41,6 +41,15 @@ describe('structured logger', () => {
     expect(err).toHaveBeenCalledTimes(1)
     expect(warn.mock.calls[0]?.[0]).toMatch(/event=cache_stale/)
     expect(err.mock.calls[0]?.[0]).toMatch(/event=fatal code=7/)
+  })
+
+  it('routes debug to console.debug', () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {})
+
+    logDebug('route_prefetch', { path: '/dashboard' })
+
+    expect(debug).toHaveBeenCalledTimes(1)
+    expect(debug.mock.calls[0]?.[0]).toMatch(/event=route_prefetch path=\/dashboard/)
   })
 
   it('drops fields whose key looks like a secret', () => {

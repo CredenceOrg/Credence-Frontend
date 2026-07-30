@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTransactions } from './useTransactions'
-import { apiFetch, ApiError } from '../api/client'
+import { apiFetch } from '../api/client'
 import type { Transaction } from '../api/types'
 
 vi.mock('../api/client', async (importOriginal) => {
@@ -26,8 +26,8 @@ describe('useTransactions', () => {
 
   it('optimistic update reverts on error', async () => {
     // Setup a successful initial fetch to clear isLoading
-    let resolveInitial: (value: any) => void
-    const initialPromise = new Promise((resolve) => {
+    let resolveInitial: (value: { items: Transaction[] }) => void
+    const initialPromise = new Promise<{ items: Transaction[] }>((resolve) => {
       resolveInitial = resolve
     })
     apiFetchMock.mockReturnValueOnce(initialPromise)
@@ -60,7 +60,7 @@ describe('useTransactions', () => {
     // Transaction should appear immediately
     expect(result.current.data).toHaveLength(1)
     expect(result.current.data[0].id).toBe('tx-123')
-    
+
     act(() => {
       result.current.removePendingTransaction(tx.hash)
     })

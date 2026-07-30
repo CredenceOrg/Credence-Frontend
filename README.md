@@ -159,6 +159,7 @@ landed, so the per-page wiring ships in follow-up PRs. The cache primitives
 
 See the [docs/](docs/) directory for detailed project documentation, including:
 
+- [QA Release-Gate Checklist](docs/QA_CHECKLIST.md) — Contributor checklist covering automated gates, smoke tests, accessibility, responsive layout, theme parity, and more. Copy the PR evidence block into every PR description.
 - [Accessibility Checklist](docs/ACCESSIBILITY.md) - Required axe, screen reader, keyboard, and contrast checks before merging UI changes.
 - [Design QA Checklist](docs/DESIGN_QA.md) - Design-side review checks before shipping.
 - [Copy Tone Guide](docs/COPY_TONE.md) — How we phrase success, error, empty, and loading UI copy with dos and don'ts.
@@ -173,6 +174,7 @@ See the [docs/](docs/) directory for detailed project documentation, including:
 - [Authentication Flows](docs/AUTH_FLOWS.md) — Sequence diagrams for login, logout, and session refresh flows.
 - [Hooks & Utilities Reference](docs/HOOKS.md) — Catalog of reusable hooks (`src/hooks/`) and helpers (`src/lib/`) with signatures and usage.
 - [Offline Strategy](docs/PWA.md) — What's cached, what's queued, and what happens on cache miss.
+- [Bundle Size Baseline](docs/BUNDLE.md) — Current production bundle sizes, per-route breakdowns, and profiling guide.
 
 ## Project layout
 

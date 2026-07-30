@@ -110,7 +110,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
       expect(screen.getByRole('switch', { name: /compare/i })).toBeInTheDocument()
     })
@@ -121,7 +121,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
       expect(screen.getByText('Compare periods')).toBeInTheDocument()
     })
@@ -132,7 +132,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
       expect(screen.getByRole('switch')).not.toBeChecked()
     })
@@ -143,7 +143,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
       expect(screen.queryByText('Jun 2026')).toBeNull()
     })
@@ -154,7 +154,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
       expect(screen.getByText('Jul 2026')).toBeInTheDocument()
     })
@@ -170,7 +170,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
 
       await user.click(screen.getByRole('switch'))
@@ -187,7 +187,7 @@ describe('AnalyticsWidget', () => {
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
           defaultCompare
-        />,
+        />
       )
 
       // Start with comparison on — previous period should be visible
@@ -205,7 +205,7 @@ describe('AnalyticsWidget', () => {
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
           defaultCompare
-        />,
+        />
       )
       expect(screen.getByText('Jun 2026')).toBeInTheDocument()
       expect(screen.getByText('Jul 2026')).toBeInTheDocument()
@@ -218,7 +218,7 @@ describe('AnalyticsWidget', () => {
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
           defaultCompare
-        />,
+        />
       )
       expect(screen.getByRole('switch')).toBeChecked()
     })
@@ -230,7 +230,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
 
       await user.click(screen.getByRole('switch'))
@@ -250,7 +250,7 @@ describe('AnalyticsWidget', () => {
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
           onCompareChange={handleChange}
-        />,
+        />
       )
 
       await user.click(screen.getByRole('switch'))
@@ -269,7 +269,7 @@ describe('AnalyticsWidget', () => {
           previousPeriod={previousPeriod}
           defaultCompare
           onCompareChange={handleChange}
-        />,
+        />
       )
 
       await user.click(screen.getByRole('switch'))
@@ -290,7 +290,7 @@ describe('AnalyticsWidget', () => {
           previousPeriod={previousPeriod}
           compareEnabled
           onCompareChange={vi.fn()}
-        />,
+        />
       )
       expect(screen.getByText('Jun 2026')).toBeInTheDocument()
     })
@@ -303,7 +303,7 @@ describe('AnalyticsWidget', () => {
           previousPeriod={previousPeriod}
           compareEnabled={false}
           onCompareChange={vi.fn()}
-        />,
+        />
       )
       expect(screen.queryByText('Jun 2026')).toBeNull()
     })
@@ -316,7 +316,7 @@ describe('AnalyticsWidget', () => {
           previousPeriod={previousPeriod}
           compareEnabled
           onCompareChange={vi.fn()}
-        />,
+        />
       )
       expect(screen.getByRole('switch')).toBeChecked()
     })
@@ -331,7 +331,7 @@ describe('AnalyticsWidget', () => {
           previousPeriod={previousPeriod}
           compareEnabled
           onCompareChange={handleChange}
-        />,
+        />
       )
 
       await user.click(screen.getByRole('switch'))
@@ -350,7 +350,7 @@ describe('AnalyticsWidget', () => {
           previousPeriod={previousPeriod}
           compareEnabled={false}
           onCompareChange={vi.fn()}
-        />,
+        />
       )
 
       await user.click(screen.getByRole('switch'))
@@ -365,11 +365,7 @@ describe('AnalyticsWidget', () => {
   describe('className prop', () => {
     it('appends extra class names to the root element', () => {
       render(
-        <AnalyticsWidget
-          title="Test"
-          currentPeriod={currentPeriod}
-          className="my-custom-class"
-        />,
+        <AnalyticsWidget title="Test" currentPeriod={currentPeriod} className="my-custom-class" />
       )
       expect(document.querySelector('.analytics-widget')).toHaveClass('my-custom-class')
     })
@@ -390,7 +386,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
       const toggle = screen.getByRole('switch')
       expect(toggle).toHaveAttribute('aria-label')
@@ -403,7 +399,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
       const label = screen.getByText('Compare periods').closest('label')
       const toggle = screen.getByRole('switch')
@@ -418,7 +414,7 @@ describe('AnalyticsWidget', () => {
           title="Test"
           currentPeriod={currentPeriod}
           previousPeriod={previousPeriod}
-        />,
+        />
       )
 
       await user.click(screen.getByRole('switch'))
@@ -468,7 +464,7 @@ describe('AnalyticsWidget', () => {
         <AnalyticsWidget
           title="Single"
           currentPeriod={{ label: 'Jul', metrics: [{ label: 'Score', value: 100 }] }}
-        />,
+        />
       )
       expect(screen.getByText('Score')).toBeInTheDocument()
       expect(screen.getByText('100')).toBeInTheDocument()
@@ -479,7 +475,7 @@ describe('AnalyticsWidget', () => {
         <AnalyticsWidget
           title="Zero"
           currentPeriod={{ label: 'Jul', metrics: [{ label: 'Bonds', value: 0 }] }}
-        />,
+        />
       )
       expect(screen.getByText('0')).toBeInTheDocument()
     })
@@ -498,7 +494,7 @@ describe('AnalyticsWidget', () => {
               },
             ],
           }}
-        />,
+        />
       )
       expect(screen.getByText('1,000,000')).toBeInTheDocument()
     })

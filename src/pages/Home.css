@@ -195,3 +195,161 @@
     min-width: 200px;
   }
 }
+
+/* ─── Dashboard-preview variant (connected users) ──────────────────────── */
+
+.home--dashboard {
+  gap: var(--credence-space-10);
+}
+
+.home--loading {
+  padding-block: var(--credence-space-8);
+}
+
+/* Header with wallet chip */
+
+.home__dashHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--credence-space-6);
+  flex-wrap: wrap;
+}
+
+.home__walletChip {
+  display: grid;
+  gap: var(--credence-space-1);
+  padding: var(--credence-space-3) var(--credence-space-4);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  background: var(--credence-surface-card);
+  min-width: 12rem;
+}
+
+.home__walletChipLabel {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+}
+
+.home__walletChipAddress {
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-sm);
+}
+
+/* Section headings */
+
+.home__sectionTitle {
+  margin: 0 0 var(--credence-space-4);
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Stat card grid */
+
+.home__statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--credence-space-4);
+  align-items: start;
+}
+
+.home__statCard {
+  padding: var(--credence-space-5) var(--credence-space-6);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  background: var(--credence-surface-card);
+  display: grid;
+  gap: var(--credence-space-2);
+}
+
+.home__statLabel {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+}
+
+.home__statNumber {
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-2xl);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+}
+
+.home__statValue--tier {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-3);
+  flex-wrap: wrap;
+}
+
+/* Bond mini-list inside the Active Bonds stat card */
+
+.home__bondList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0;
+}
+
+.home__bondRow {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-3);
+  padding-block: var(--credence-space-2);
+  border-top: 1px solid var(--credence-border-default);
+  font-size: var(--credence-font-size-sm);
+  flex-wrap: wrap;
+}
+
+.home__bondAmount {
+  color: var(--credence-text-primary);
+  font-weight: var(--credence-font-weight-semibold);
+  min-width: 6rem;
+}
+
+.home__bondUnlock {
+  color: var(--credence-text-secondary);
+  flex: 1;
+}
+
+/* Activity footer link */
+
+.home__activityFooter {
+  margin-top: var(--credence-space-4);
+}
+
+.home__activityLink {
+  color: var(--credence-color-primary);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  text-decoration: none;
+}
+
+.home__activityLink:hover {
+  text-decoration: underline;
+}
+
+.home__activityLink:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--credence-radius-sm);
+}
+
+/* Responsive adjustments */
+
+@media (max-width: 768px) {
+  .home__dashHeader {
+    display: grid;
+  }
+
+  .home__walletChip {
+    width: 100%;
+  }
+
+  .home__statGrid {
+    grid-template-columns: 1fr;
+  }
+}

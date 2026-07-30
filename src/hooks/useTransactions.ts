@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
-import type { Transaction, ApiListResponse } from '../api/types'
+import type { ApiResponse, operations, Transaction } from '../api/types'
 
 const PENDING_TXS_KEY = 'credence:pendingTransactions'
 const PAGE_SIZE = 20
+
+type TransactionsResponse = ApiResponse<operations['listTransactions']>
 
 function getPendingTransactions(): Transaction[] {
   try {
@@ -80,7 +82,7 @@ export function useTransactions(): UseTransactionsResult {
       params.set('cursor', cursor)
     }
 
-    const result = await apiFetch<ApiListResponse<Transaction>>(
+    const result = await apiFetch<TransactionsResponse>(
       `/transactions?${params.toString()}`,
       { signal }
     )

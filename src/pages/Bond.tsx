@@ -17,6 +17,7 @@ import { useSettings } from '../context/SettingsContext'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
 import { EmptyState, LoadingSkeleton } from '../components/states'
+import { calcTimeRemaining } from '../lib/bondPenalty'
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -24,6 +25,7 @@ interface MockBond {
   id: number
   amountUsdc: number
   status: BondStatus
+  durationDays?: number
 }
 
 /**
@@ -60,9 +62,9 @@ function bondErrorType(err: unknown): 'network' | 'backend' | 'validation' | 'ge
 const MIN_BOND_AMOUNT = 100
 
 const initialBonds: MockBond[] = [
-  { id: 1, amountUsdc: 1000, status: 'locked' },
-  { id: 2, amountUsdc: 500, status: 'grace-period' },
-  { id: 3, amountUsdc: 750, status: 'active' },
+  { id: 1, amountUsdc: 1000, status: 'locked', durationDays: 30 },
+  { id: 2, amountUsdc: 500, status: 'grace-period', durationDays: 90 },
+  { id: 3, amountUsdc: 750, status: 'active', durationDays: 180 },
 ]
 
 function getPenaltyRate(status: BondStatus): number {
@@ -98,19 +100,37 @@ function BondRow({
   isConnected,
   onWithdraw,
   onConnect,
+  onSelect,
 }: {
   bond: MockBond
   isConnected: boolean
   onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
   onConnect: () => void
+  onSelect: () => void
 }) {
   const [open, setOpen] = useState(false)
   const breakdown = computeWithdrawBreakdown(bond)
   const hasPenalty = getPenaltyRate(bond.status) > 0
   const panelId = `bond-penalty-panel-${bond.id}`
+  const rowId = `bond-row-${bond.id}`
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onSelect()
+    }
+  }
 
   return (
-    <li className="bond__row">
+    <li
+      className="bond__row bond__row--clickable"
+      tabIndex={0}
+      role="link"
+      aria-label={`View bond #${bond.id}: ${formatUsdc(bond.amountUsdc)}, ${bond.status}${bond.durationDays ? `, ${calcTimeRemaining(bond.durationDays)}` : ''}`}
+      id={rowId}
+      onClick={onSelect}
+      onKeyDown={handleKeyDown}
+    >
       <div className="bond__rowInfo">
         <span className="bond__rowAmount">{formatUsdc(bond.amountUsdc)}</span>
         <span className={`bond__rowStatus bond__rowStatus--${bond.status}`}>
@@ -121,12 +141,20 @@ function BondRow({
               : 'Active'}
         </span>
       </div>
+      <div className="bond__rowMeta">
+        {bond.durationDays && (
+          <span className="bond__rowTimeRemaining">{calcTimeRemaining(bond.durationDays)}</span>
+        )}
+      </div>
       <div className="bond__rowActions">
         {hasPenalty ? (
           <>
             <Button
               type="button"
-              onClick={() => setOpen(!open)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setOpen(!open)
+              }}
               aria-expanded={open}
               aria-controls={panelId}
             >
@@ -154,7 +182,14 @@ function BondRow({
         )}
         <Button
           type="button"
-          onClick={isConnected ? (e) => onWithdraw(bond, e) : onConnect}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (isConnected) {
+              onWithdraw(bond, e)
+            } else {
+              onConnect()
+            }
+          }}
           disabled={!isConnected}
         >
           {isConnected ? 'Withdraw' : 'Connect to withdraw'}
@@ -304,6 +339,13 @@ export default function Bond() {
     ? computeWithdrawBreakdown(slashExposureBond)
     : null
 
+  const navigateRow = useCallback(
+    (bondId: number) => {
+      navigate(`/bond/${bondId}`)
+    },
+    [navigate]
+  )
+
   return (
     <div className="bond__container">
       <div style={{ display: 'grid', gap: 'var(--credence-space-3)' }}>
@@ -348,7 +390,8 @@ export default function Bond() {
         </div>
       )}
 
-      {/* Persistent error banner for bond-create failures */}
+      {/* Persistent error banner for bond-create failures (wallet rejected, network down).
+          Dismissed by the user or cleared automatically on the next successful attempt. */}
       {createError && (
         <div role="alert" id={createErrorBannerId}>
           <Banner
@@ -477,6 +520,7 @@ export default function Bond() {
                     isConnected={isConnected}
                     onWithdraw={requestWithdraw}
                     onConnect={connect}
+                    onSelect={() => navigateRow(bond.id)}
                   />
                 ))}
               </ul>

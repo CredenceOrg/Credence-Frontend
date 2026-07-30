@@ -226,6 +226,47 @@ describe('Bond Page', () => {
     expect(mockSetNetwork).toHaveBeenCalledWith('test')
   })
 
+  describe('bond row navigation to detail page', () => {
+    it('renders bond rows with role="link"', () => {
+      render(<Bond />)
+      const rows = screen.getAllByRole('link')
+      expect(rows.length).toBeGreaterThanOrEqual(3)
+    })
+
+    it('clicking a bond row navigates to /bond/:id', () => {
+      render(<Bond />)
+      const rows = screen.getAllByRole('link')
+      fireEvent.click(rows[0])
+      expect(mockNavigate).toHaveBeenCalledWith('/bond/1')
+    })
+
+    it('clicking the second bond row navigates to /bond/2', () => {
+      render(<Bond />)
+      const rows = screen.getAllByRole('link')
+      fireEvent.click(rows[1])
+      expect(mockNavigate).toHaveBeenCalledWith('/bond/2')
+    })
+
+    it('Enter key on a bond row navigates to /bond/:id', () => {
+      render(<Bond />)
+      const rows = screen.getAllByRole('link')
+      fireEvent.keyDown(rows[0], { key: 'Enter' })
+      expect(mockNavigate).toHaveBeenCalledWith('/bond/1')
+    })
+
+    it('Space key on a bond row navigates to /bond/:id', () => {
+      render(<Bond />)
+      const rows = screen.getAllByRole('link')
+      fireEvent.keyDown(rows[0], { key: ' ' })
+      expect(mockNavigate).toHaveBeenCalledWith('/bond/1')
+    })
+
+    it('shows time remaining text for bonds with durationDays', () => {
+      render(<Bond />)
+      expect(screen.getAllByText(/days remaining/i).length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
   describe('transaction pending states', () => {
     beforeEach(() => {
       vi.useFakeTimers()

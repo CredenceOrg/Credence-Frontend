@@ -56,6 +56,23 @@
   border-bottom: none;
 }
 
+.bond__row--clickable {
+  cursor: pointer;
+  border-radius: var(--credence-radius-sm);
+  transition: background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  padding-inline: var(--credence-space-2);
+  margin-inline: calc(-1 * var(--credence-space-2));
+}
+
+.bond__row--clickable:hover {
+  background: var(--credence-surface-page);
+}
+
+.bond__row--clickable:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
 /* Bond row header (amount + status + actions) */
 .bond__rowHeader {
   display: flex;
@@ -75,6 +92,18 @@
 .bond__amount {
   font-weight: var(--credence-font-weight-semibold);
   color: var(--credence-text-primary);
+}
+
+.bond__rowMeta {
+  display: flex;
+  gap: var(--credence-space-2);
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+}
+
+.bond__rowTimeRemaining {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
 }
 
 /* Bond action buttons row */

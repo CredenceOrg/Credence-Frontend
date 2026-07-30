@@ -130,7 +130,7 @@ describe('BondDetail Page', () => {
     expect(screen.getByText('Active')).toBeInTheDocument()
   })
 
-  it('renders the bond specifications (amount, lock duration, unlock date)', () => {
+  it('renders the bond specifications (amount, time remaining, lock duration, start date, unlock date)', () => {
     render(
       <MemoryRouter>
         <BondDetail />
@@ -139,9 +139,23 @@ describe('BondDetail Page', () => {
 
     expect(screen.getByText('Bonded Amount')).toBeInTheDocument()
     expect(screen.getByText('1,000 USDC')).toBeInTheDocument()
+    expect(screen.getByText('Time Remaining')).toBeInTheDocument()
+    expect(screen.getByText('30 days remaining')).toBeInTheDocument()
     expect(screen.getByText('Lock Duration')).toBeInTheDocument()
     expect(screen.getByText('30 Days')).toBeInTheDocument()
+    expect(screen.getByText('Lock Start Date')).toBeInTheDocument()
     expect(screen.getByText('Estimated Unlock Date')).toBeInTheDocument()
+  })
+
+  it('shows top-up bond button with Add USDC label', () => {
+    render(
+      <MemoryRouter>
+        <BondDetail />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByRole('button', { name: /Add USDC/i })).toBeInTheDocument()
+    expect(screen.getByText('Top-Up Bond')).toBeInTheDocument()
   })
 
   it('renders the slash-risk panel with the live penalty breakdown', () => {

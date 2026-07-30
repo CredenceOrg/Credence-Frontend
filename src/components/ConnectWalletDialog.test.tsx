@@ -116,6 +116,10 @@ describe('ConnectWalletDialog — error display', () => {
     mockError = { code: 'not_installed', message: 'Not installed' }
     renderModal()
     expect(screen.getByRole('alert')).toHaveTextContent(/Freighter is not installed/i)
+    expect(screen.getByRole('link', { name: /install freighter/i })).toHaveAttribute(
+      'href',
+      'https://www.freighter.app/'
+    )
   })
 
   it('renders a rejected error message', () => {

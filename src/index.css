@@ -95,6 +95,7 @@
   --credence-color-slate-50: #f8fafc;
   --credence-color-slate-100: #f1f5f9;
   --credence-color-slate-200: #e2e8f0;
+  --credence-color-slate-300: #cbd5e1;
   --credence-color-slate-400: #94a3b8;
   --credence-color-slate-500: #64748b;
   --credence-color-slate-600: #475569;
@@ -105,6 +106,36 @@
   --credence-color-primary: #075985;
   --credence-color-primary-strong: #0c4a6e;
   --credence-color-primary-soft: #0284c7;
+
+  /* Text/icon colour that sits on top of a primary fill.
+   *
+   * --credence-color-primary flips to a light tint in dark mode, so anything
+   * layered on it must flip too. Hard-coding white here is what put a white
+   * label on a light-blue button at 1.67:1. Consume this token instead of
+   * --credence-color-white whenever the background is the primary fill. */
+  --credence-color-on-primary: var(--credence-color-white);
+
+  /* Destructive button fill.
+   *
+   * Deliberately separate from --credence-color-danger-action, which is used as
+   * *text* for penalty amounts (ConfirmDialog, BondDetail, Bond). Splitting the
+   * two lets the fill darken far enough for a white label to clear 4.5:1
+   * without dragging that text darker at the same time. */
+  --credence-color-danger-fill: #dc2626;
+  --credence-color-danger-fill-hover: #b91c1c;
+  /* The active fill previously reused --credence-color-danger-text, which the
+   * dark theme redefines to a light pink (#fca5a5) — a white label on it landed
+   * at 1.9:1. Fills and text colours are not interchangeable. */
+  --credence-color-danger-fill-active: #991b1b;
+
+  /* Boundary colour for interactive controls.
+   *
+   * A control whose only visual boundary is its border must clear 3:1 against
+   * the surface behind it (WCAG 2.1 SC 1.4.11). --credence-border-default is
+   * decorative — it separates cards and rows, where no such floor applies —
+   * so interactive borders get their own, darker token. */
+  --credence-color-border-interactive: var(--credence-color-slate-500);
+  --credence-color-border-interactive-hover: var(--credence-color-slate-600);
   --credence-color-info-surface: #eff6ff;
   --credence-color-info-border: #3b82f6;
   --credence-color-info-text: #1e40af;
@@ -209,6 +240,13 @@
 [data-theme='dark'] {
   --credence-color-primary: #7dd3fc;
   --credence-color-primary-strong: #bae6fd;
+  /* Primary is a light tint here, so labels on it must be dark: 10.71:1 on the
+   * base fill and 13.45:1 on the hover fill. */
+  --credence-color-on-primary: var(--credence-color-slate-900);
+  /* Interactive borders sit on slate-700/600 button fills in dark mode, so they
+   * need to be lighter than the surface rather than darker. */
+  --credence-color-border-interactive: var(--credence-color-slate-400);
+  --credence-color-border-interactive-hover: var(--credence-color-slate-300);
   --credence-color-info-surface: rgba(59, 130, 246, 0.15);
   --credence-color-info-border: #3b82f6;
   --credence-color-info-text: #93c5fd;

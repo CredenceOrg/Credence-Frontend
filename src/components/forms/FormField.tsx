@@ -1,4 +1,5 @@
 import React from 'react'
+import { FormError } from './FormError'
 import './FormField.css'
 
 export type FormFieldState = 'default' | 'error' | 'success'
@@ -68,11 +69,7 @@ export function FormField({
         'aria-required': required ? 'true' : children.props['aria-required'],
       })}
 
-      {error && (
-        <span id={errorId} className="form-error" role="alert">
-          ⚠ {error}
-        </span>
-      )}
+      {error && <FormError id={errorId}>{error}</FormError>}
 
       {successMessage && (
         <span id={successId} className="form-success" role="status">

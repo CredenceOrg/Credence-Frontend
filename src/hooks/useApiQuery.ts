@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import { WIDGET_CACHE_DEFAULTS } from '../config/widgetCache'
+import { scrubPII } from '../lib/piiScrub'
 
 // ── Cache ───────────────────────────────────────────────────────────────────
 
@@ -130,10 +131,14 @@ export function useApiQuery<T>(
         const result = await apiFetch<T>(currentPath, {
           signal: controller.signal,
         })
+        // Keep the cache as a safe boundary: callers receive the same
+        // sanitized value that is stored, so PII cannot leak through the
+        // query hook before it reaches the cache.
+        const sanitized = scrubPII(result)
 
         if (mountedRef.current && currentRunId === runIdRef.current) {
-          setData(result)
-          setCacheEntry(currentPath, result)
+          setData(sanitized)
+          setCacheEntry(currentPath, sanitized)
           setIsStale(false)
           setError(null)
         }

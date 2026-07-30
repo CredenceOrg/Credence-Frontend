@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import { useWallet } from '../context/WalletContext'
+import { FREIGHTER_INSTALL_URL } from '../lib/freighterClient'
 import Button from './Button'
 import './ConnectWalletDialog.css'
 
@@ -105,7 +106,17 @@ export default function ConnectWalletDialog({
 
           {errorMessage && (
             <div role="alert" className="connect-wallet-dialog__error">
-              {errorMessage}
+              <span>{errorMessage}</span>
+              {error?.code === 'not_installed' && (
+                <a
+                  href={FREIGHTER_INSTALL_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="connect-wallet-dialog__install-link"
+                >
+                  Install Freighter
+                </a>
+              )}
             </div>
           )}
         </div>

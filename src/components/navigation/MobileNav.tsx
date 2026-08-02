@@ -25,13 +25,6 @@ export default function MobileNav() {
 
   useScrollPreserver({ isActive: isOpen })
 
-  // Close on route change (SPA navigation) — but state survives full page reloads via sessionStorage
-  const prevPath = useRef(location.pathname)
-  if (prevPath.current !== location.pathname) {
-    prevPath.current = location.pathname
-    if (isOpen) setIsOpen(false)
-  }
-
   // Persist collapse state across full page reloads
   useEffect(() => {
     try {

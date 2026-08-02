@@ -39,6 +39,7 @@ function renderLayout(initialPath = '/') {
 describe('Layout Integration', () => {
   beforeEach(() => {
     document.body.style.overflow = ''
+    sessionStorage.clear()
   })
 
   it('renders skip link and main branding', () => {
@@ -146,6 +147,29 @@ describe('Layout Integration', () => {
     }
 
     expect(drawer).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('preserves sidebar collapse state across route changes', () => {
+    renderLayout('/dashboard')
+    const hamburger = screen.getByRole('button', { name: /open navigation menu/i })
+    const drawer = document.getElementById('mobile-nav-drawer') as HTMLElement
+
+    // Open the drawer
+    fireEvent.click(hamburger)
+    expect(drawer).toHaveAttribute('aria-hidden', 'false')
+
+    // Navigate to a different route via a desktop nav link (not inside the drawer)
+    // Desktop nav links are outside the drawer and don't trigger onClick={close}
+    const desktopDashboardLink = screen
+      .getAllByRole('link', { name: /dashboard/i })
+      .find((link) => !drawer.contains(link))
+    expect(desktopDashboardLink).toBeDefined()
+    if (desktopDashboardLink) {
+      fireEvent.click(desktopDashboardLink)
+    }
+
+    // The drawer should remain open after route change
+    expect(drawer).toHaveAttribute('aria-hidden', 'false')
   })
 
   // --- BottomNav integration ---

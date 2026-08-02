@@ -19,6 +19,7 @@ function getDrawer() {
 describe('MobileNav', () => {
   beforeEach(() => {
     document.body.style.overflow = ''
+    sessionStorage.clear()
   })
 
   // --- render ---

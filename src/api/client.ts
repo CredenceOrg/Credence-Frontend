@@ -1,3 +1,4 @@
+import { logError } from '../lib/log'
 import { ApiRateLimiter, DEFAULT_API_RATE_LIMIT, readApiRateLimitOverrides } from './rateLimit'
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
@@ -191,12 +192,18 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       throw error
     }
     const message = error instanceof Error ? error.message : 'Network request failed'
+    logError('api_fetch_failed', { path, status: '0', error: message })
     throw new ApiError(0, message, error)
   }
 
   const payload = await parseResponse(response)
 
   if (!response.ok) {
+    logError('api_fetch_failed', {
+      path,
+      status: String(response.status),
+      error: errorMessage(response.status, payload),
+    })
     throw new ApiError(response.status, errorMessage(response.status, payload), payload)
   }
 

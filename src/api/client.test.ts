@@ -324,3 +324,54 @@ describe('apiFetch rate limiting (defence-in-depth)', () => {
     })
   })
 })
+
+describe('apiFetch logging', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs an error with path and status when a fetch fails with a non-2xx response', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/bonds/missing').catch(() => {})
+
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+    const line = errorSpy.mock.calls[0]?.[0] ?? ''
+    expect(line).toMatch(/event=api_fetch_failed/)
+    expect(line).toContain('path=/bonds/missing')
+    expect(line).toMatch(/status=404/)
+    expect(line).toMatch(/error=Not found/)
+  })
+
+  it('logs an error with status 0 when a network error occurs', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/bonds').catch(() => {})
+
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+    const line = errorSpy.mock.calls[0]?.[0] ?? ''
+    expect(line).toMatch(/event=api_fetch_failed/)
+    expect(line).toContain('path=/bonds')
+    expect(line).toMatch(/status=0/)
+    expect(line).toMatch(/error=Failed to fetch/)
+  })
+
+  it('does not log when a fetch succeeds', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/health')
+
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+})

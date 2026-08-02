@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useThemeDetector, type ThemeMode } from '../hooks/useThemeDetector'
 import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
-
-type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
 export type NetworkOption = 'public' | 'test'
 /** Address display option literal union */
@@ -258,28 +257,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Apply theme to document and keep it in sync with the system preference.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const root = window.document.documentElement
-
-    const apply = () => {
-      if (themeMode === 'system') {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        root.setAttribute('data-theme', isDark ? 'dark' : 'light')
-      } else {
-        root.setAttribute('data-theme', themeMode)
-      }
-    }
-
-    apply()
-
-    if (themeMode !== 'system') return
-
-    const mql = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = () => apply()
-    mql.addEventListener?.('change', handler)
-    return () => mql.removeEventListener?.('change', handler)
-  }, [themeMode])
+  useThemeDetector(themeMode)
 
   const value: SettingsState = {
     themeMode,

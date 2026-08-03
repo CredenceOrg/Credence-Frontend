@@ -77,6 +77,31 @@ export default function Transactions() {
     [visibleTransactions, filter]
   )
 
+  /**
+   * Memoized data transformer: pre-computes formatted display values for
+   * every visible row so that expensive operations (toLocaleString, Date
+   * arithmetic, i18n lookups, string truncation) run only when the source
+   * data or filter changes, not on every render.
+   */
+  interface TableRow extends Transaction {
+    formattedAmount: string
+    formattedTime: string
+    statusBadgeVariant: string
+    formattedHash: string
+  }
+
+  const tableRows: TableRow[] = useMemo(
+    () =>
+      filtered.map((tx) => ({
+        ...tx,
+        formattedAmount: tx.amountUsdc != null ? formatUsdc(tx.amountUsdc) : '\u2014',
+        formattedTime: relativeTime(tx.timestamp),
+        statusBadgeVariant: STATUS_BADGE_MAP[tx.status],
+        formattedHash: truncateAddress(tx.hash),
+      })),
+    [filtered]
+  )
+
   // Reset transient overlays when the underlying dataset changes (refetch
   // or unmount between fetches). Stale IDs would otherwise leak selection
   // into the new list.
@@ -329,11 +354,11 @@ export default function Transactions() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((tx) => {
-                  const selected = isRowSelected(tx.id)
+                {tableRows.map((row) => {
+                  const selected = isRowSelected(row.id)
                   return (
                     <tr
-                      key={tx.id}
+                      key={row.id}
                       data-selected={selected ? 'true' : undefined}
                       className={selected ? 'transactions__row--selected' : undefined}
                     >
@@ -341,31 +366,31 @@ export default function Transactions() {
                         <input
                           type="checkbox"
                           checked={selected}
-                          onChange={() => toggleRow(tx.id)}
-                          aria-label={t('transactions.bulk.selectLabel', { id: tx.id })}
+                          onChange={() => toggleRow(row.id)}
+                          aria-label={t('transactions.bulk.selectLabel', { id: row.id })}
                         />
                       </td>
                       <td data-label="Type" className="transactions__type">
-                        {tx.type}
+                        {row.type}
                       </td>
                       <td data-label="Amount">
-                        {tx.amountUsdc != null ? formatUsdc(tx.amountUsdc) : '—'}
+                        {row.formattedAmount}
                       </td>
                       <td data-label="Status">
-                        <Badge variant={STATUS_BADGE_MAP[tx.status]} label={tx.status} />
+                        <Badge variant={row.statusBadgeVariant} label={row.status} />
                       </td>
                       <td data-label="When">
-                        <time dateTime={tx.timestamp}>{relativeTime(tx.timestamp)}</time>
+                        <time dateTime={row.timestamp}>{row.formattedTime}</time>
                       </td>
                       <td data-label="Transaction">
-                        <AddressDisplay address={tx.hash} className="transactions__hash" />{' '}
+                        <AddressDisplay address={row.hash} className="transactions__hash" />{' '}
                         <a
-                          href={explorerUrl(network, tx.hash)}
+                          href={explorerUrl(network, row.hash)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="transactions__explorerLink"
                           aria-label={t('transactions.table.viewOnExplorer', {
-                            hash: truncateAddress(tx.hash),
+                            hash: row.formattedHash,
                           })}
                         >
                           {t('transactions.table.viewLink')}

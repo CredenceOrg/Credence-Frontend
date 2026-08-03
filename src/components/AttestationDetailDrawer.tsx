@@ -43,7 +43,7 @@ export interface AttestationDetailDrawerProps {
  * Right-rail / bottom-sheet drawer showing the full detail of an attestation
  * event: validator, transaction hash, evidence, metadata, and timestamp.
  *
- * Pattern is shared with `WhatsNewDialog` and `ConnectWalletModal`:
+ * Pattern is shared with `WhatsNewDialog` and `ConnectWalletDialog`:
  * - portal‑rendered into `document.body`,
  * - focus is trapped while open and is returned to the originating row on close,
  * - `Escape` and a backdrop click that *started outside* the drawer both close,

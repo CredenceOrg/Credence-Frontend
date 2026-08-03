@@ -1,25 +1,8 @@
-/* ─── Backdrop ─────────────────────────────────────────────────────────────── */
-
-.connect-wallet-dialog__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--credence-space-4);
-  background: var(--credence-backdrop-light);
-  animation: connect-wallet-fade-in var(--credence-motion-duration-fast)
-    var(--credence-motion-easing-decelerate);
-}
-
-[data-theme='dark'] .connect-wallet-dialog__backdrop {
-  background: var(--credence-backdrop-dark);
-}
-
-/* ─── Dialog panel ─────────────────────────────────────────────────────────── */
+/* ─── Native dialog base ────────────────────────────────────────────────────── */
 
 .connect-wallet-dialog {
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -31,6 +14,19 @@
   color: var(--credence-text-primary);
   animation: connect-wallet-slide-up var(--credence-motion-duration-base)
     var(--credence-motion-easing-decelerate);
+  /* Remove default dialog padding */
+  padding: 0;
+}
+
+/* Native dialog backdrop */
+.connect-wallet-dialog::backdrop {
+  background: var(--credence-backdrop-light);
+  animation: connect-wallet-fade-in var(--credence-motion-duration-fast)
+    var(--credence-motion-easing-decelerate);
+}
+
+[data-theme='dark'] .connect-wallet-dialog::backdrop {
+  background: var(--credence-backdrop-dark);
 }
 
 [data-theme='dark'] .connect-wallet-dialog {
@@ -117,8 +113,8 @@
 /* ─── Reduced motion ───────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .connect-wallet-dialog__backdrop,
-  .connect-wallet-dialog {
+  .connect-wallet-dialog,
+  .connect-wallet-dialog::backdrop {
     animation: none;
   }
 }
@@ -126,14 +122,10 @@
 /* ─── Mobile: bottom sheet ─────────────────────────────────────────────────── */
 
 @media (max-width: 767px) {
-  .connect-wallet-dialog__backdrop {
-    align-items: flex-end;
-    padding: 0;
-  }
-
   .connect-wallet-dialog {
     max-width: none;
     border-radius: var(--credence-radius-xl) var(--credence-radius-xl) 0 0;
+    margin-top: auto;
   }
 
   .connect-wallet-dialog__footer {

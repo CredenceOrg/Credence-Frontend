@@ -9,7 +9,7 @@ export interface SessionTimeoutDialogProps {
 }
 
 /**
- * Modal shown when the user's session is about to expire due to inactivity.
+ * Dialog shown when the user's session is about to expire due to inactivity.
  */
 export default function SessionTimeoutDialog({
   open,

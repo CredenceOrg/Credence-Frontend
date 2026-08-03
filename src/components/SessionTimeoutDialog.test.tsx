@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SessionTimeoutDialog, { type SessionTimeoutDialogProps } from './SessionTimeoutDialog'
 
-function renderModal(overrides: Partial<SessionTimeoutDialogProps> = {}) {
+function renderDialog(overrides: Partial<SessionTimeoutDialogProps> = {}) {
   const onStayLoggedIn = vi.fn()
   const onLogout = vi.fn()
 
@@ -40,12 +40,12 @@ describe('SessionTimeoutDialog', () => {
 
   describe('rendering', () => {
     it('renders nothing when closed', () => {
-      renderModal({ open: false })
+      renderDialog({ open: false })
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('shows the initial time left when opened', () => {
-      renderModal({ timeLeftSeconds: 60 })
+      renderDialog({ timeLeftSeconds: 60 })
       expect(subtitleText()).toBe('Your session will expire in 60 seconds due to inactivity.')
     })
   })
@@ -56,7 +56,7 @@ describe('SessionTimeoutDialog', () => {
     })
 
     it('decrements the countdown by exactly one every second', () => {
-      renderModal({ timeLeftSeconds: 5 })
+      renderDialog({ timeLeftSeconds: 5 })
 
       for (const expected of [4, 3, 2, 1, 0]) {
         act(() => {
@@ -69,7 +69,7 @@ describe('SessionTimeoutDialog', () => {
     })
 
     it('does not decrement more than once per second', () => {
-      renderModal({ timeLeftSeconds: 5 })
+      renderDialog({ timeLeftSeconds: 5 })
 
       act(() => {
         vi.advanceTimersByTime(500)
@@ -78,7 +78,7 @@ describe('SessionTimeoutDialog', () => {
     })
 
     it('clamps at zero and never goes negative', () => {
-      renderModal({ timeLeftSeconds: 2 })
+      renderDialog({ timeLeftSeconds: 2 })
 
       act(() => {
         vi.advanceTimersByTime(10_000)
@@ -87,7 +87,7 @@ describe('SessionTimeoutDialog', () => {
     })
 
     it('resets the countdown when timeLeftSeconds changes while open', () => {
-      const { rerender } = renderModal({ timeLeftSeconds: 5 })
+      const { rerender } = renderDialog({ timeLeftSeconds: 5 })
 
       act(() => {
         vi.advanceTimersByTime(3000)
@@ -106,7 +106,7 @@ describe('SessionTimeoutDialog', () => {
     })
 
     it('stops counting down once closed', () => {
-      const { rerender, onStayLoggedIn, onLogout } = renderModal({ timeLeftSeconds: 5 })
+      const { rerender, onStayLoggedIn, onLogout } = renderDialog({ timeLeftSeconds: 5 })
 
       act(() => {
         vi.advanceTimersByTime(2000)
@@ -132,7 +132,7 @@ describe('SessionTimeoutDialog', () => {
   describe('CTA behaviour', () => {
     it('keeps "Stay logged in" disabled until STAY is typed', async () => {
       const user = userEvent.setup()
-      renderModal()
+      renderDialog()
 
       const stayButton = screen.getByRole('button', { name: 'Stay logged in' })
       expect(stayButton).toBeDisabled()
@@ -144,7 +144,7 @@ describe('SessionTimeoutDialog', () => {
 
     it('calls onStayLoggedIn only after typing STAY and clicking the CTA', async () => {
       const user = userEvent.setup()
-      const { onStayLoggedIn, onLogout } = renderModal()
+      const { onStayLoggedIn, onLogout } = renderDialog()
 
       const input = screen.getByRole('textbox', { name: /type.*stay/i })
       await user.type(input, 'STAY')
@@ -156,7 +156,7 @@ describe('SessionTimeoutDialog', () => {
 
     it('does not call onStayLoggedIn for a partial or incorrect phrase', async () => {
       const user = userEvent.setup()
-      const { onStayLoggedIn } = renderModal()
+      const { onStayLoggedIn } = renderDialog()
 
       const input = screen.getByRole('textbox', { name: /type.*stay/i })
       await user.type(input, 'stay')
@@ -167,7 +167,7 @@ describe('SessionTimeoutDialog', () => {
 
     it('calls onLogout when Cancel is clicked', async () => {
       const user = userEvent.setup()
-      const { onStayLoggedIn, onLogout } = renderModal()
+      const { onStayLoggedIn, onLogout } = renderDialog()
 
       await user.click(screen.getByRole('button', { name: 'Cancel' }))
 

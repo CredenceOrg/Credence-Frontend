@@ -29,7 +29,7 @@ vi.mock('../context/WalletContext', () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-function renderModal(overrides: Partial<Parameters<typeof ConnectWalletDialog>[0]> = {}) {
+function renderDialog(overrides: Partial<Parameters<typeof ConnectWalletDialog>[0]> = {}) {
   const onClose = vi.fn()
   const props = { open: true, onClose, ...overrides }
   const result = render(<ConnectWalletDialog {...props} />)
@@ -63,22 +63,17 @@ afterEach(() => {
 
 describe('ConnectWalletDialog — rendering', () => {
   it('renders nothing when open is false', () => {
-    renderModal({ open: false })
+    renderDialog({ open: false })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renders the dialog when open is true', () => {
-    renderModal()
+    renderDialog()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('has aria-modal="true"', () => {
-    renderModal()
-    expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true')
-  })
-
   it('has an accessible title via aria-labelledby', () => {
-    renderModal()
+    renderDialog()
     const dialog = screen.getByRole('dialog')
     const labelId = dialog.getAttribute('aria-labelledby')
     expect(labelId).toBeTruthy()
@@ -87,7 +82,7 @@ describe('ConnectWalletDialog — rendering', () => {
   })
 
   it('has an accessible description via aria-describedby', () => {
-    renderModal()
+    renderDialog()
     const dialog = screen.getByRole('dialog')
     const descId = dialog.getAttribute('aria-describedby')
     expect(descId).toBeTruthy()
@@ -96,13 +91,13 @@ describe('ConnectWalletDialog — rendering', () => {
   })
 
   it('renders Cancel and Connect buttons', () => {
-    renderModal()
+    renderDialog()
     expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^connect$/i })).toBeInTheDocument()
   })
 
   it('does not render an error alert by default', () => {
-    renderModal()
+    renderDialog()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
@@ -114,19 +109,19 @@ describe('ConnectWalletDialog — rendering', () => {
 describe('ConnectWalletDialog — error display', () => {
   it('renders a not-installed error message', () => {
     mockError = { code: 'not_installed', message: 'Not installed' }
-    renderModal()
+    renderDialog()
     expect(screen.getByRole('alert')).toHaveTextContent(/Freighter is not installed/i)
   })
 
   it('renders a rejected error message', () => {
     mockError = { code: 'rejected', message: 'User declined' }
-    renderModal()
+    renderDialog()
     expect(screen.getByRole('alert')).toHaveTextContent(/declined/i)
   })
 
   it('falls back to error.message for unknown error codes', () => {
     mockError = { code: 'unknown', message: 'Something went wrong' }
-    renderModal()
+    renderDialog()
     expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong')
   })
 })
@@ -138,13 +133,13 @@ describe('ConnectWalletDialog — error display', () => {
 describe('ConnectWalletDialog — connecting state', () => {
   it('disables Cancel while connecting', () => {
     mockIsConnecting = true
-    renderModal()
+    renderDialog()
     expect(screen.getByRole('button', { name: /^cancel$/i })).toBeDisabled()
   })
 
   it('shows loading state on Connect button while connecting', () => {
     mockIsConnecting = true
-    renderModal()
+    renderDialog()
     const connectBtn = screen.getByRole('button', { name: /connect/i })
     expect(connectBtn).toHaveAttribute('aria-busy', 'true')
   })
@@ -157,30 +152,33 @@ describe('ConnectWalletDialog — connecting state', () => {
 describe('ConnectWalletDialog — closing', () => {
   it('calls onClose when Cancel is clicked', async () => {
     const user = userEvent.setup()
-    const { onClose } = renderModal()
+    const { onClose } = renderDialog()
     await user.click(screen.getByRole('button', { name: /^cancel$/i }))
     expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('calls onClose when the backdrop is clicked', async () => {
     const user = userEvent.setup()
-    const { onClose } = renderModal()
-    const backdrop = screen.getByRole('dialog').parentElement!
-    await user.click(backdrop)
+    const { onClose } = renderDialog()
+    // With native <dialog>, clicking the dialog element itself simulates a
+    // backdrop click (the ::backdrop pseudo-element is rendered as part of the
+    // dialog's top-layer, so event.target === dialog element).
+    await user.click(screen.getByRole('dialog'))
     expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('calls onClose when Escape is pressed', async () => {
     const user = userEvent.setup()
-    const { onClose } = renderModal()
+    const { onClose } = renderDialog()
     await user.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('does NOT call onClose when clicking inside the dialog panel', async () => {
     const user = userEvent.setup()
-    const { onClose } = renderModal()
-    await user.click(screen.getByRole('dialog'))
+    const { onClose } = renderDialog()
+    // Click a child element inside the dialog (not the dialog itself)
+    await user.click(screen.getByRole('heading', { name: 'Connect Freighter Wallet' }))
     expect(onClose).not.toHaveBeenCalled()
   })
 })
@@ -192,7 +190,7 @@ describe('ConnectWalletDialog — closing', () => {
 describe('ConnectWalletDialog — connect action', () => {
   it('calls connect() when Connect button is clicked', async () => {
     const user = userEvent.setup()
-    renderModal()
+    renderDialog()
     await user.click(screen.getByRole('button', { name: /^connect$/i }))
     expect(mockConnect).toHaveBeenCalledOnce()
   })
@@ -230,20 +228,20 @@ describe('ConnectWalletDialog — auto-close on wallet connect', () => {
 
 describe('ConnectWalletDialog — body scroll lock', () => {
   it('sets overflow to hidden when open', () => {
-    renderModal({ open: true })
+    renderDialog({ open: true })
     expect(document.body.style.overflow).toBe('hidden')
   })
 
   it('restores overflow on unmount', () => {
     document.body.style.overflow = 'auto'
-    const { unmount } = renderModal({ open: true })
+    const { unmount } = renderDialog({ open: true })
     expect(document.body.style.overflow).toBe('hidden')
     unmount()
     expect(document.body.style.overflow).toBe('auto')
   })
 
   it('does not lock scroll when open is false', () => {
-    renderModal({ open: false })
+    renderDialog({ open: false })
     expect(document.body.style.overflow).toBe('')
   })
 })
@@ -254,7 +252,7 @@ describe('ConnectWalletDialog — body scroll lock', () => {
 
 describe('ConnectWalletDialog — focus management', () => {
   it('initially focuses the Cancel button when opened', () => {
-    renderModal()
+    renderDialog()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /^cancel$/i }))
   })
 

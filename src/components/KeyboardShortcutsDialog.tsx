@@ -54,7 +54,7 @@ export function formatModifierKey(
 const GROUPED = groupShortcuts(KEYBOARD_SHORTCUTS)
 
 /**
- * Modal dialog listing all global keyboard shortcuts.
+ * Dialog dialog listing all global keyboard shortcuts.
  *
  * - Renders via a React portal into `document.body`.
  * - Focus is trapped inside while open; restored on close.

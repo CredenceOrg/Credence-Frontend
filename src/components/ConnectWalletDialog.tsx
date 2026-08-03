@@ -10,19 +10,20 @@ export interface ConnectWalletDialogProps {
   open: boolean
   onClose: () => void
   /**
-   * Element to return focus to when the modal closes.
-   * When omitted, focus returns to the element that was active before the modal opened.
+   * Element to return focus to when the dialog closes.
+   * When omitted, focus returns to the element that was active before the dialog opened.
    */
   returnFocusRef?: React.RefObject<HTMLElement | null>
 }
 
 /**
- * Modal dialog that explains the wallet connection step and surfaces
+ * Dialog that explains the wallet connection step and surfaces
  * connection status (connecting, error) without losing the user's focus context.
  *
  * - Portal-rendered into document.body.
+ * - Uses the native <dialog> element with showModal().
  * - Focus is trapped inside while open; returned to returnFocusRef on close.
- * - Escape and backdrop click close the modal.
+ * - Escape and backdrop click close the dialog.
  * - Body scroll is locked while open.
  * - Entrance animation is suppressed when prefers-reduced-motion: reduce is set.
  * - Auto-closes when the wallet connects successfully.
@@ -36,7 +37,7 @@ export default function ConnectWalletDialog({
 
   const titleId = useId()
   const descId = useId()
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
 
   // Auto-close when wallet connects successfully
@@ -46,17 +47,47 @@ export default function ConnectWalletDialog({
     }
   }, [isConnected, open, onClose])
 
+  // Open/close the native dialog element
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    if (open) {
+      try {
+        dialog.showModal()
+      } catch {
+        // dialog is already open
+      }
+    } else {
+      dialog.close()
+    }
+  }, [open])
+
+  // Handle native cancel event (Escape key)
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    const handleNativeCancel = (e: Event) => {
+      e.preventDefault()
+      onClose()
+    }
+
+    dialog.addEventListener('cancel', handleNativeCancel)
+    return () => dialog.removeEventListener('cancel', handleNativeCancel)
+  }, [onClose])
+
   useScrollPreserver({ isActive: open })
 
   useFocusTrap({
-    containerRef: dialogRef,
+    containerRef: dialogRef as React.RefObject<HTMLElement | null>,
     isActive: open,
     initialFocusRef: cancelRef,
     returnFocusRef,
-    onEscape: onClose,
+    onEscape: undefined,
   })
 
-  const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleBackdropClick = (event: React.MouseEvent<HTMLDialogElement>) => {
     if (event.target === event.currentTarget) {
       onClose()
     }
@@ -81,51 +112,47 @@ export default function ConnectWalletDialog({
   }
 
   return createPortal(
-    <div className="connect-wallet-dialog__backdrop" onClick={handleBackdropClick}>
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-        className="connect-wallet-dialog"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="connect-wallet-dialog__header">
-          <h2 id={titleId} className="connect-wallet-dialog__title">
-            Connect Freighter Wallet
-          </h2>
-        </header>
+    <dialog
+      ref={dialogRef}
+      className="connect-wallet-dialog"
+      aria-labelledby={titleId}
+      aria-describedby={descId}
+      onClick={handleBackdropClick}
+    >
+      <header className="connect-wallet-dialog__header">
+        <h2 id={titleId} className="connect-wallet-dialog__title">
+          Connect Freighter Wallet
+        </h2>
+      </header>
 
-        <div className="connect-wallet-dialog__body">
-          <p id={descId} className="connect-wallet-dialog__description">
-            Freighter is a Stellar wallet browser extension. Clicking <strong>Connect</strong> will
-            open the Freighter extension and ask you to approve access for this session.
-          </p>
+      <div className="connect-wallet-dialog__body">
+        <p id={descId} className="connect-wallet-dialog__description">
+          Freighter is a Stellar wallet browser extension. Clicking <strong>Connect</strong> will
+          open the Freighter extension and ask you to approve access for this session.
+        </p>
 
-          {errorMessage && (
-            <div role="alert" className="connect-wallet-dialog__error">
-              {errorMessage}
-            </div>
-          )}
-        </div>
-
-        <footer className="connect-wallet-dialog__footer">
-          <Button
-            ref={cancelRef}
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-            disabled={isConnecting}
-          >
-            Cancel
-          </Button>
-          <Button type="button" variant="primary" onClick={handleConnect} isLoading={isConnecting}>
-            Connect
-          </Button>
-        </footer>
+        {errorMessage && (
+          <div role="alert" className="connect-wallet-dialog__error">
+            {errorMessage}
+          </div>
+        )}
       </div>
-    </div>,
+
+      <footer className="connect-wallet-dialog__footer">
+        <Button
+          ref={cancelRef}
+          type="button"
+          variant="secondary"
+          onClick={onClose}
+          disabled={isConnecting}
+        >
+          Cancel
+        </Button>
+        <Button type="button" variant="primary" onClick={handleConnect} isLoading={isConnecting}>
+          Connect
+        </Button>
+      </footer>
+    </dialog>,
     document.body
   )
 }

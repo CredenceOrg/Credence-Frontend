@@ -1,21 +1,7 @@
-.confirm-dialog__backdrop {
+/* Native dialog base styles */
+.confirm-dialog {
   position: fixed;
   inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--credence-space-4);
-  background: var(--credence-backdrop-light);
-  animation: confirm-dialog-fade-in var(--credence-motion-duration-fast)
-    var(--credence-motion-easing-decelerate);
-}
-
-[data-theme='dark'] .confirm-dialog__backdrop {
-  background: var(--credence-backdrop-dark);
-}
-
-.confirm-dialog {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -27,6 +13,19 @@
   background: var(--credence-color-danger-surface);
   box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
   color: var(--credence-color-danger-text);
+  /* Remove the default dialog padding */
+  padding: 0;
+}
+
+/* Native dialog backdrop */
+.confirm-dialog::backdrop {
+  background: var(--credence-backdrop-light);
+  animation: confirm-dialog-fade-in var(--credence-motion-duration-fast)
+    var(--credence-motion-easing-decelerate);
+}
+
+[data-theme='dark'] .confirm-dialog::backdrop {
+  background: var(--credence-backdrop-dark);
 }
 
 [data-theme='dark'] .confirm-dialog {
@@ -214,15 +213,12 @@
 }
 
 @media (max-width: 768px) {
-  .confirm-dialog__backdrop {
-    align-items: flex-end;
-    padding: 0;
-  }
-
   .confirm-dialog {
     max-width: none;
     max-height: 92vh;
     border-radius: var(--credence-radius-xl) var(--credence-radius-xl) 0 0;
+    /* Position at bottom on mobile */
+    margin-top: auto;
   }
 
   .confirm-dialog__footer {
@@ -237,10 +233,6 @@
 
 /* Very small screens (360px): ensure dialog fits without overflow */
 @media (max-width: 360px) {
-  .confirm-dialog__backdrop {
-    padding: var(--credence-space-2);
-  }
-
   .confirm-dialog {
     max-height: 95vh;
     border-radius: var(--credence-radius-lg) var(--credence-radius-lg) 0 0;

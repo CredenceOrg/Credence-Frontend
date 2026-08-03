@@ -80,11 +80,6 @@ describe('ConfirmDialog', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
-    it('has aria-modal="true"', () => {
-      renderDialog()
-      expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true')
-    })
-
     it('renders the title', () => {
       renderDialog({ title: 'Withdraw Bond' })
       expect(screen.getByRole('heading', { name: 'Withdraw Bond' })).toBeInTheDocument()
@@ -210,16 +205,18 @@ describe('ConfirmDialog', () => {
     it('calls onCancel when backdrop is clicked', async () => {
       const user = userEvent.setup()
       const { onCancel } = renderDialog()
-      // The backdrop is the direct parent of the dialog element
-      const backdrop = screen.getByRole('dialog').parentElement!
-      await user.click(backdrop)
+      // With native <dialog>, clicking the dialog element itself simulates a
+      // backdrop click (the ::backdrop pseudo-element is rendered as part of the
+      // dialog's top-layer, so event.target === dialog element).
+      await user.click(screen.getByRole('dialog'))
       expect(onCancel).toHaveBeenCalledOnce()
     })
 
     it('does not call onCancel when clicking inside the dialog', async () => {
       const user = userEvent.setup()
       const { onCancel } = renderDialog()
-      await user.click(screen.getByRole('dialog'))
+      // Click a child element inside the dialog (not the dialog itself)
+      await user.click(screen.getByRole('heading', { name: 'Withdraw Bond' }))
       expect(onCancel).not.toHaveBeenCalled()
     })
   })

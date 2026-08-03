@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
@@ -36,7 +36,7 @@ export interface ConfirmDialogProps {
   children?: React.ReactNode
   onConfirm: () => void
   onCancel: () => void
-  returnFocusRef?: RefObject<HTMLElement | null>
+  returnFocusRef?: React.RefObject<HTMLElement | null>
   confirmLabel?: string
   confirmInputLabel?: React.ReactNode
   confirmInputHint?: React.ReactNode
@@ -81,7 +81,7 @@ export default function ConfirmDialog({
   const titleId = useId()
   const descId = useId()
   const announcementId = useId()
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
   const [confirmText, setConfirmText] = useState('')
@@ -92,15 +92,49 @@ export default function ConfirmDialog({
     onCancel()
   }, [onCancel])
 
-  useScrollPreserver({ isActive: open })
+  // Open/close the native dialog element with showModal()/close()
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
 
+    if (open) {
+      // showModal() is idempotent — calling it on an already-open dialog is a no-op
+      try {
+        dialog.showModal()
+      } catch {
+        // dialog is already open
+      }
+    } else {
+      dialog.close()
+    }
+  }, [open])
+
+  // Handle native cancel event (Escape key)
+  // Prevent the default close behavior and call onCancel instead
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    const handleNativeCancel = (e: Event) => {
+      e.preventDefault()
+      onCancel()
+    }
+
+    dialog.addEventListener('cancel', handleNativeCancel)
+    return () => dialog.removeEventListener('cancel', handleNativeCancel)
+  }, [onCancel])
+
+  // Focus trap for custom focus management (initialFocusRef, returnFocusRef)
   useFocusTrap({
-    containerRef: dialogRef,
+    containerRef: dialogRef as React.RefObject<HTMLElement | null>,
     isActive: open,
     initialFocusRef: cancelRef,
     returnFocusRef,
-    onEscape: handleCancel,
+    // Don't handle Escape via focus trap — the native dialog's cancel event handles it
+    onEscape: undefined,
   })
+
+  useScrollPreserver({ isActive: open })
 
   useEffect(() => {
     if (!open) {
@@ -136,113 +170,109 @@ export default function ConfirmDialog({
     onConfirm()
   }
 
-  const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleBackdropClick = (event: React.MouseEvent<HTMLDialogElement>) => {
     if (isSubmitting) return
+    // In native <dialog>, clicking the ::backdrop fires a click event on the dialog element
+    // with event.target === dialog (backdrop is not a child element)
     if (event.target === event.currentTarget) {
       handleCancel()
     }
   }
 
-  if (!open) return null
-
   return createPortal(
-    <div className="confirm-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-        className={`confirm-dialog confirm-dialog--${variant}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div id={announcementId} className="sr-only" aria-live="assertive" aria-atomic="true">
-          {announcement}
-        </div>
-
-        <header className="confirm-dialog__header">
-          <h2 id={titleId} className="confirm-dialog__title">
-            {title}
-          </h2>
-          {subtitle && <p className="confirm-dialog__subtitle">{subtitle}</p>}
-        </header>
-
-        <div id={descId} className="confirm-dialog__body">
-          {breakdown ? (
-            <dl className="confirm-dialog__breakdown">
-              <div className="confirm-dialog__breakdown-row">
-                <dt>{t('confirmDialog.breakdown.bondAmount')}</dt>
-                <dd>{breakdown.bondAmount}</dd>
-              </div>
-              <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--penalty">
-                <dt>
-                  {t('confirmDialog.breakdown.slashPenalty', { percent: breakdown.penaltyPercent })}
-                </dt>
-                <dd>−{breakdown.penaltyAmount}</dd>
-              </div>
-              <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--total">
-                <dt>{t('confirmDialog.breakdown.youReceive')}</dt>
-                <dd>{breakdown.resultingBalance}</dd>
-              </div>
-            </dl>
-          ) : description ? (
-            <div className="confirm-dialog__description">{description}</div>
-          ) : null}
-
-          {children}
-
-          <div className="confirm-dialog__confirm-field">
-            <label htmlFor={`${titleId}-confirm-input`}>
-              {confirmInputLabel || (
-                <Trans
-                  i18nKey="confirmDialog.typeToConfirm"
-                  values={{
-                    phrase: confirmPhrase,
-                    action:
-                      confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal',
-                  }}
-                  components={{ strong: <strong /> }}
-                />
-              )}
-            </label>
-            <input
-              id={`${titleId}-confirm-input`}
-              type="text"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-              aria-required="true"
-              placeholder={confirmPhrase}
-            />
-            <p className="confirm-dialog__confirm-hint">{confirmInputHint || confirmHint}</p>
-          </div>
-        </div>
-
-        <footer className="confirm-dialog__footer">
-          <Button
-            ref={cancelRef}
-            type="button"
-            variant="secondary"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            ref={confirmRef}
-            type="button"
-            variant={variant === 'danger' ? 'danger' : 'primary'}
-            disabled={!isConfirmEnabled || isSubmitting}
-            isLoading={isSubmitting}
-            onClick={handleConfirm}
-            aria-disabled={!isConfirmEnabled || isSubmitting}
-          >
-            {confirmLabel}
-          </Button>
-        </footer>
+    <dialog
+      ref={dialogRef}
+      className={`confirm-dialog confirm-dialog--${variant}`}
+      aria-labelledby={titleId}
+      aria-describedby={descId}
+      onClick={handleBackdropClick}
+    >
+      <div id={announcementId} className="sr-only" aria-live="assertive" aria-atomic="true">
+        {announcement}
       </div>
-    </div>,
+
+      <header className="confirm-dialog__header">
+        <h2 id={titleId} className="confirm-dialog__title">
+          {title}
+        </h2>
+        {subtitle && <p className="confirm-dialog__subtitle">{subtitle}</p>}
+      </header>
+
+      <div id={descId} className="confirm-dialog__body">
+        {breakdown ? (
+          <dl className="confirm-dialog__breakdown">
+            <div className="confirm-dialog__breakdown-row">
+              <dt>{t('confirmDialog.breakdown.bondAmount')}</dt>
+              <dd>{breakdown.bondAmount}</dd>
+            </div>
+            <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--penalty">
+              <dt>
+                {t('confirmDialog.breakdown.slashPenalty', { percent: breakdown.penaltyPercent })}
+              </dt>
+              <dd>−{breakdown.penaltyAmount}</dd>
+            </div>
+            <div className="confirm-dialog__breakdown-row confirm-dialog__breakdown-row--total">
+              <dt>{t('confirmDialog.breakdown.youReceive')}</dt>
+              <dd>{breakdown.resultingBalance}</dd>
+            </div>
+          </dl>
+        ) : description ? (
+          <div className="confirm-dialog__description">{description}</div>
+        ) : null}
+
+        {children}
+
+        <div className="confirm-dialog__confirm-field">
+          <label htmlFor={`${titleId}-confirm-input`}>
+            {confirmInputLabel || (
+              <Trans
+                i18nKey="confirmDialog.typeToConfirm"
+                values={{
+                  phrase: confirmPhrase,
+                  action:
+                    confirmLabel !== 'Withdraw bond' ? confirmLabel.toLowerCase() : 'withdrawal',
+                }}
+                components={{ strong: <strong /> }}
+              />
+            )}
+          </label>
+          <input
+            id={`${titleId}-confirm-input`}
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            aria-required="true"
+            placeholder={confirmPhrase}
+          />
+          <p className="confirm-dialog__confirm-hint">{confirmInputHint || confirmHint}</p>
+        </div>
+      </div>
+
+      <footer className="confirm-dialog__footer">
+        <Button
+          ref={cancelRef}
+          type="button"
+          variant="secondary"
+          onClick={handleCancel}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          ref={confirmRef}
+          type="button"
+          variant={variant === 'danger' ? 'danger' : 'primary'}
+          disabled={!isConfirmEnabled || isSubmitting}
+          isLoading={isSubmitting}
+          onClick={handleConfirm}
+          aria-disabled={!isConfirmEnabled || isSubmitting}
+        >
+          {confirmLabel}
+        </Button>
+      </footer>
+    </dialog>,
     document.body
   )
 }

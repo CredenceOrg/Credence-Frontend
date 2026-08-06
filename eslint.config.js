@@ -39,6 +39,12 @@ export default tseslint.config({
         allow: [],
       },
     ],
+    'no-console': [
+      'warn',
+      {
+        allow: ['warn', 'error'],
+      },
+    ],
   },
 }, {
   files: ['**/*.mjs'],

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateIban, IbanErrorCode } from './iban'
+import { validateIban, IbanErrorCode, validateIbanRequest, IbanValidationError } from './iban'
 
 describe('validateIban', () => {
   it('returns valid for a correct IBAN', () => {
@@ -37,5 +37,58 @@ describe('validateIban', () => {
     const result = validateIban('DE99370400440532013000')
     expect(result.valid).toBe(false)
     expect(result.error).toBe(IbanErrorCode.INVALID_CHECKSUM)
+  })
+})
+
+describe('IbanValidationError', () => {
+  it('carries the typed error code and name', () => {
+    const err = new IbanValidationError(IbanErrorCode.INVALID_LENGTH, 'too short')
+    expect(err.code).toBe(IbanErrorCode.INVALID_LENGTH)
+    expect(err.message).toBe('too short')
+    expect(err.name).toBe('IbanValidationError')
+  })
+})
+
+describe('validateIbanRequest', () => {
+  it('returns the sanitized IBAN for valid input', () => {
+    const result = validateIbanRequest('DE89 3704 0044 0532 0130 00')
+    expect(result).toBe('DE89370400440532013000')
+  })
+
+  it('throws IbanValidationError for an invalid length', () => {
+    expect(() => validateIbanRequest('DE89')).toThrow(IbanValidationError)
+    try {
+      validateIbanRequest('DE89')
+    } catch (err) {
+      expect(err).toBeInstanceOf(IbanValidationError)
+      expect((err as IbanValidationError).code).toBe(IbanErrorCode.INVALID_LENGTH)
+    }
+  })
+
+  it('throws IbanValidationError for an invalid country code', () => {
+    expect(() => validateIbanRequest('1289370400440532013000')).toThrow(IbanValidationError)
+    try {
+      validateIbanRequest('1289370400440532013000')
+    } catch (err) {
+      expect((err as IbanValidationError).code).toBe(IbanErrorCode.INVALID_COUNTRY_CODE)
+    }
+  })
+
+  it('throws IbanValidationError for invalid characters', () => {
+    expect(() => validateIbanRequest('DE893704004405320130!@')).toThrow(IbanValidationError)
+    try {
+      validateIbanRequest('DE893704004405320130!@')
+    } catch (err) {
+      expect((err as IbanValidationError).code).toBe(IbanErrorCode.INVALID_FORMAT)
+    }
+  })
+
+  it('throws IbanValidationError for an incorrect checksum', () => {
+    expect(() => validateIbanRequest('DE99370400440532013000')).toThrow(IbanValidationError)
+    try {
+      validateIbanRequest('DE99370400440532013000')
+    } catch (err) {
+      expect((err as IbanValidationError).code).toBe(IbanErrorCode.INVALID_CHECKSUM)
+    }
   })
 })

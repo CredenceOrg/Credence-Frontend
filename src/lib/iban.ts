@@ -59,3 +59,46 @@ export function validateIban(iban: string): IbanValidationResult {
 
   return { valid: true }
 }
+
+/**
+ * Structured error thrown by {@link validateIbanRequest} when the IBAN fails
+ * validation at the API boundary. Carries a typed {@link code} that callers
+ * can narrow on instead of parsing a stringly-typed message.
+ */
+export class IbanValidationError extends Error {
+  readonly code: IbanErrorCode
+
+  constructor(code: IbanErrorCode, message: string) {
+    super(message)
+    this.name = 'IbanValidationError'
+    this.code = code
+  }
+}
+
+/**
+ * Boundary-safe IBAN validation.
+ *
+ * Sanitizes the input (strips separators, uppercases), runs the full
+ * validation chain, and returns the sanitized IBAN when valid. When the
+ * IBAN is invalid, throws a structured {@link IbanValidationError} with a
+ * typed {@link IbanErrorCode} so callers can handle each failure mode
+ * explicitly.
+ *
+ * Use this at the API boundary / form-submission point — never deep inside
+ * the call graph — to reject bad input early with a structured error.
+ *
+ * @param iban - Raw IBAN string (may contain spaces, dashes, mixed case).
+ * @returns The sanitized, uppercase, separator-free IBAN.
+ * @throws {IbanValidationError} If the IBAN fails any validation check.
+ */
+export function validateIbanRequest(iban: string): string {
+  const result = validateIban(iban)
+  if (!result.valid && result.error) {
+    throw new IbanValidationError(
+      result.error,
+      `Invalid IBAN: ${result.error}`,
+    )
+  }
+  // Return the sanitized value so callers don't have to re-sanitize
+  return iban.replace(/[\s-]+/g, '').toUpperCase()
+}

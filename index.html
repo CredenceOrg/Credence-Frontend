@@ -6,6 +6,12 @@
     <meta name="description" content="Credence — on-chain economic identity on Stellar. Stake USDC as a programmable reputation bond." />
     <title>Credence — Economic Trust</title>
     <script>
+      // Runtime config — injected by the server at deployment time.
+      // Overrides Vite build-time env vars without needing a rebuild.
+      // Example: window.__RUNTIME_CONFIG__ = { VITE_SENTRY_DSN: "https://..." }
+      window.__RUNTIME_CONFIG__ = window.__RUNTIME_CONFIG__ || {};
+    </script>
+    <script>
       (function() {
         try {
           var saved = JSON.parse(localStorage.getItem('credence:settings'));

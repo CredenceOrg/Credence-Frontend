@@ -1,5 +1,7 @@
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | unknown[] | null
+  /** Stable key for retrying one state-changing operation safely. */
+  idempotencyKey?: string
 }
 
 export class ApiError extends Error {
@@ -17,6 +19,13 @@ export class ApiError extends Error {
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
 
 export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
+
+type ReplayEntry = {
+  fingerprint: string
+  promise: Promise<unknown>
+}
+
+const replayEntries = new Map<string, ReplayEntry>()
 
 function normalizeBaseUrl(value: string): string {
   const trimmed = value.trim()
@@ -86,16 +95,86 @@ function errorMessage(status: number, payload: unknown): string {
   return `Request failed with status ${status}`
 }
 
-export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, ...init } = options
-  const hasJsonBody = isJsonBody(body)
+function requestFingerprint(
+  url: string,
+  init: RequestInit,
+  serializedBody: BodyInit | undefined,
+  headers: Headers
+): string {
+  const comparableHeaders: string[] = []
+  headers.forEach((value, name) => {
+    if (name !== 'idempotency-key') comparableHeaders.push(`${name}:${value}`)
+  })
 
+  return JSON.stringify([
+    url,
+    init.method || 'GET',
+    comparableHeaders.join('\n'),
+    serializedBody ?? null,
+  ])
+}
+
+function replayConflict(key: string): ApiError {
+  return new ApiError(
+    409,
+    `Idempotency key has already been used for a different operation: ${key}`,
+    {
+      code: 'idempotency_key_conflict',
+    }
+  )
+}
+
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { body, headers, idempotencyKey, ...init } = options
+  const hasJsonBody = isJsonBody(body)
+  const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
+  const requestHeaders = buildHeaders(headers, hasJsonBody)
+
+  if (idempotencyKey !== undefined) {
+    const normalizedKey = idempotencyKey.trim()
+    if (!normalizedKey) {
+      throw new ApiError(400, 'Idempotency key must not be empty', {
+        code: 'invalid_idempotency_key',
+      })
+    }
+
+    const existing = replayEntries.get(normalizedKey)
+    const url = buildUrl(path)
+    const fingerprint = requestFingerprint(url, init, serializedBody, requestHeaders)
+
+    if (existing) {
+      if (existing.fingerprint !== fingerprint) {
+        throw replayConflict(normalizedKey)
+      }
+      return existing.promise as Promise<T>
+    }
+
+    requestHeaders.set('Idempotency-Key', normalizedKey)
+    const requestPromise = apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody)
+    replayEntries.set(normalizedKey, { fingerprint, promise: requestPromise })
+    requestPromise.catch(() => {
+      if (replayEntries.get(normalizedKey)?.promise === requestPromise) {
+        replayEntries.delete(normalizedKey)
+      }
+    })
+    return requestPromise
+  }
+
+  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody)
+}
+
+async function apiFetchWithoutReplay<T>(
+  url: string,
+  init: RequestInit,
+  headers: Headers,
+  serializedBody: BodyInit | undefined
+): Promise<T> {
   let response: Response
   try {
-    response = await fetch(buildUrl(path), {
+    response = await fetch(url, {
       ...init,
-      headers: buildHeaders(headers, hasJsonBody),
-      body: hasJsonBody ? JSON.stringify(body) : body,
+      headers,
+      body: serializedBody,
     })
   } catch (error) {
     if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {

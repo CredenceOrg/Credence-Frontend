@@ -14,7 +14,7 @@ vi.stubGlobal(
   vi.fn((cb: FrameRequestCallback) => {
     cb(0)
     return 1
-  }),
+  })
 )
 vi.stubGlobal('cancelAnimationFrame', vi.fn())
 
@@ -32,7 +32,7 @@ function stubCreateElement(scroll: number, offset: number) {
         offsetWidth: { configurable: true, get: () => offset },
       })
       return el
-    },
+    }
   )
 }
 
@@ -54,7 +54,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full tooltip content">
         <span data-testid="child">Short</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
     expect(screen.getByTestId('child')).toBeInTheDocument()
   })
@@ -64,7 +64,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full tooltip content">
         <span>Hello World</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
     expect(screen.getByText('Hello World')).toBeInTheDocument()
   })
@@ -75,7 +75,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Not needed">
         <span>Short text</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
     await waitFor(() => {
       expect(screen.queryByRole('tooltip', { hidden: true })).not.toBeInTheDocument()
@@ -87,7 +87,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="This is the full long text that overflows">
         <span>Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -103,7 +103,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full text here">
         <span data-testid="child">Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -122,7 +122,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full text here">
         <span data-testid="child">Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -146,7 +146,7 @@ describe('TooltipOnOverflow', () => {
         <span data-testid="child" tabIndex={0}>
           Truncated...
         </span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -167,7 +167,7 @@ describe('TooltipOnOverflow', () => {
         <span data-testid="child" tabIndex={0}>
           Truncated...
         </span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -192,7 +192,7 @@ describe('TooltipOnOverflow', () => {
         <span data-testid="child" tabIndex={0}>
           Truncated...
         </span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -216,7 +216,7 @@ describe('TooltipOnOverflow', () => {
         <span data-testid="child" tabIndex={0}>
           Truncated...
         </span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -239,7 +239,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full text here">
         <span data-testid="child">Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -252,7 +252,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Not needed">
         <span data-testid="child">Short</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -265,7 +265,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full text here">
         <span>Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -280,14 +280,14 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full text here">
         <span>Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
       const tooltip = screen.getByRole('tooltip', { hidden: true })
       expect(
         tooltip.className.includes('tooltip-on-overflow__tooltip--top') ||
-          tooltip.className.includes('tooltip-on-overflow__tooltip--bottom'),
+          tooltip.className.includes('tooltip-on-overflow__tooltip--bottom')
       ).toBe(true)
     })
   })
@@ -298,7 +298,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full text" className="my-custom-tooltip">
         <span>Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -313,7 +313,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full text">
         <span>Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
@@ -328,12 +328,129 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="">
         <span>Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     await waitFor(() => {
       const tooltip = screen.getByRole('tooltip', { hidden: true })
       expect(tooltip).toHaveTextContent('')
+    })
+  })
+
+  // ── forceShow prop ────────────────────────────────────────────────────
+  describe('forceShow prop', () => {
+    it('renders the tooltip when forceShow is true even if content does not overflow', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full text" forceShow>
+          <span>Short</span>
+        </TooltipOnOverflow>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+    })
+
+    it('shows the tooltip on hover when forceShow is true and content does not overflow', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full tooltip content" forceShow>
+          <span data-testid="child">Short text</span>
+        </TooltipOnOverflow>
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+
+      const child = screen.getByTestId('child')
+      const tooltip = screen.getByRole('tooltip', { hidden: true })
+
+      fireEvent.mouseEnter(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false')
+    })
+
+    it('shows the tooltip on focus when forceShow is true', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full tooltip content" forceShow>
+          <span data-testid="child" tabIndex={0}>
+            Short text
+          </span>
+        </TooltipOnOverflow>
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+
+      const child = screen.getByTestId('child')
+      const tooltip = screen.getByRole('tooltip', { hidden: true })
+
+      fireEvent.focus(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false')
+    })
+
+    it('sets aria-describedby when forceShow is true', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full text" forceShow>
+          <span data-testid="child">Short</span>
+        </TooltipOnOverflow>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('child')).toHaveAttribute('aria-describedby')
+      })
+    })
+
+    it('dismisses tooltip on Escape when forceShow is true', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full tooltip content" forceShow>
+          <span data-testid="child" tabIndex={0}>
+            Short text
+          </span>
+        </TooltipOnOverflow>
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+
+      const child = screen.getByTestId('child')
+      const tooltip = screen.getByRole('tooltip', { hidden: true })
+
+      fireEvent.focus(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false')
+
+      fireEvent.keyDown(child, { key: 'Escape' })
+      expect(tooltip).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    it('hides tooltip on blur when forceShow is true', async () => {
+      stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
+      render(
+        <TooltipOnOverflow content="Full tooltip content" forceShow>
+          <span data-testid="child" tabIndex={0}>
+            Short text
+          </span>
+        </TooltipOnOverflow>
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip', { hidden: true })).toBeInTheDocument()
+      })
+
+      const child = screen.getByTestId('child')
+      const tooltip = screen.getByRole('tooltip', { hidden: true })
+
+      fireEvent.focus(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'false')
+
+      fireEvent.blur(child)
+      expect(tooltip).toHaveAttribute('aria-hidden', 'true')
     })
   })
 
@@ -343,7 +460,7 @@ describe('TooltipOnOverflow', () => {
     render(
       <TooltipOnOverflow content="Full text">
         <span data-testid="child">Truncated...</span>
-      </TooltipOnOverflow>,
+      </TooltipOnOverflow>
     )
 
     const wrapper = screen.getByTestId('child').parentElement

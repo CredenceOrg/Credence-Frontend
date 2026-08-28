@@ -21,10 +21,14 @@ export interface UseCopyOptions {
  * - Auto-resets `copied` after `timeoutMs` and cleans up timers on unmount.
  */
 export default function useCopyToClipboard(options?: UseCopyOptions) {
-  const { timeoutMs = 2000, setTimeoutImpl = setTimeout, clearTimeoutImpl = clearTimeout } = options || {}
+  const {
+    timeoutMs = 2000,
+    setTimeoutImpl = setTimeout,
+    clearTimeoutImpl = clearTimeout,
+  } = options || {}
 
   const [copied, setCopied] = useState(false)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeoutImpl> | null>(null)
 
   useEffect(() => {
     return () => {
@@ -76,7 +80,11 @@ export default function useCopyToClipboard(options?: UseCopyOptions) {
   const triggerCopied = () => {
     setCopied(true)
     if (timeoutRef.current != null) {
-      try { clearTimeoutImpl(timeoutRef.current) } catch { /* ignore */ }
+      try {
+        clearTimeoutImpl(timeoutRef.current)
+      } catch {
+        /* ignore */
+      }
     }
     timeoutRef.current = setTimeoutImpl(() => {
       setCopied(false)

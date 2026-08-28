@@ -1,3 +1,5 @@
+export const DEFAULT_FALLBACK_ROUTE = '/dashboard'
+
 export interface NavigationLink {
   to: string
   label: string

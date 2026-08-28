@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWallet } from '../context/WalletContext'
 import { useSettings } from '../context/SettingsContext'
 import { fetchUsdcBalance, HorizonError } from '../lib/horizon'
+import { SessionReauthRequiredError } from '../lib/sessionErrors'
 import type { CredenceNetwork } from '../lib/networkLabels'
 
 export type UseUsdcBalanceStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -31,6 +32,8 @@ export interface UseUsdcBalanceResult {
   error: Error | null
   /** Manually re-fetch the balance. No-op when disconnected. */
   refetch: () => void
+  /** Whether re-authentication is required before fetching balance. */
+  isReauthRequired: boolean
 }
 
 function isAbortError(error: unknown): boolean {
@@ -53,7 +56,7 @@ function isAbortError(error: unknown): boolean {
  * SSR-safe: no DOM access during render; Horizon calls are guarded by browser checks.
  */
 export function useUsdcBalance(): UseUsdcBalanceResult {
-  const { address, isConnected } = useWallet()
+  const { address, isConnected, isReauthRequired: checkIsReauthRequired } = useWallet()
   const { network } = useSettings()
 
   const [balance, setBalance] = useState(0)
@@ -64,11 +67,21 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
   const fetchIdRef = useRef(0)
   const mountedRef = useRef(true)
 
+  const isReauthRequired =
+    isConnected && typeof checkIsReauthRequired === 'function' && checkIsReauthRequired()
+
   const fetchBalance = useCallback(async () => {
     if (!isConnected || !address || !network) {
       setBalance(0)
       setStatus('idle')
       setError(null)
+      return
+    }
+
+    if (typeof checkIsReauthRequired === 'function' && checkIsReauthRequired()) {
+      setBalance(0)
+      setStatus('error')
+      setError(new SessionReauthRequiredError())
       return
     }
 
@@ -82,11 +95,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
     setError(null)
 
     try {
-      const result = await fetchUsdcBalance(
-        address,
-        network as CredenceNetwork,
-        controller.signal
-      )
+      const result = await fetchUsdcBalance(address, network as CredenceNetwork, controller.signal)
 
       if (!mountedRef.current || fetchId !== fetchIdRef.current) return
 
@@ -98,7 +107,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
       setBalance(0)
       setStatus('error')
       setError(
-        err instanceof HorizonError
+        err instanceof HorizonError || err instanceof SessionReauthRequiredError
           ? err
           : new Error('Unexpected error while fetching USDC balance')
       )
@@ -107,7 +116,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
         setStatus((prev) => (prev === 'loading' ? 'error' : prev))
       }
     }
-  }, [address, isConnected, network])
+  }, [address, isConnected, network, checkIsReauthRequired])
 
   const refetch = useCallback(() => {
     void fetchBalance()
@@ -130,5 +139,6 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
     status,
     error,
     refetch,
+    isReauthRequired,
   }
 }

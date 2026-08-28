@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
+import KeyboardShortcutsDialog, { formatModifierKey } from './KeyboardShortcutsDialog'
 import { KEYBOARD_SHORTCUTS } from '../data/keyboardShortcuts'
 
 // ---------------------------------------------------------------------------
@@ -20,10 +20,26 @@ function renderDialog(overrides: Partial<Parameters<typeof KeyboardShortcutsDial
 // Setup / teardown
 // ---------------------------------------------------------------------------
 
+let scrollY = 0
+
 beforeEach(() => {
+  scrollY = 0
   vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
     cb(0)
     return 0
+  })
+  vi.spyOn(window, 'scrollTo').mockImplementation(((options?: ScrollToOptions) => {
+    if (options?.top !== undefined) scrollY = options.top
+  }) as typeof window.scrollTo)
+  Object.defineProperty(window, 'scrollY', {
+    get: () => scrollY,
+    configurable: true,
+  })
+  Object.defineProperty(HTMLElement.prototype, 'offsetParent', {
+    get() {
+      return this.parentNode
+    },
+    configurable: true,
   })
 })
 
@@ -75,9 +91,7 @@ describe('KeyboardShortcutsDialog — rendering', () => {
 
   it('renders a close button with an accessible label', () => {
     renderDialog()
-    expect(
-      screen.getByRole('button', { name: /close keyboard shortcuts/i })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /close keyboard shortcuts/i })).toBeInTheDocument()
   })
 })
 
@@ -145,6 +159,40 @@ describe('KeyboardShortcutsDialog — body scroll lock', () => {
     document.body.style.overflow = ''
     renderDialog({ open: false })
     expect(document.body.style.overflow).toBe('')
+  })
+
+  it('preserves window scroll position when dialog opens', () => {
+    window.scrollTo({ top: 500 })
+    renderDialog({ open: true })
+    expect(window.scrollY).toBe(500)
+  })
+
+  it('preserves window scroll position when dialog closes via prop change', () => {
+    window.scrollTo({ top: 350 })
+    const { rerender, onClose } = renderDialog({ open: true })
+    rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
+    expect(window.scrollY).toBe(350)
+  })
+
+  it('preserves scrolled content position through open-close-open cycle', () => {
+    window.scrollTo({ top: 800 })
+    const { rerender, onClose } = renderDialog({ open: true })
+    // close
+    rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
+    expect(window.scrollY).toBe(800)
+    // reopen
+    rerender(<KeyboardShortcutsDialog open={true} onClose={onClose} />)
+    expect(window.scrollY).toBe(800)
+  })
+
+  it('restores previous overflow value even when body overflow is changed externally while open', () => {
+    document.body.style.overflow = 'scroll'
+    const { rerender, onClose } = renderDialog({ open: true })
+    expect(document.body.style.overflow).toBe('hidden')
+    // External mutation while dialog is open
+    document.body.style.overflow = 'visible'
+    rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
+    expect(document.body.style.overflow).toBe('scroll')
   })
 })
 
@@ -295,11 +343,55 @@ describe('KeyboardShortcutsDialog — global Shift+? shortcut guard', () => {
 
     const div = document.createElement('div')
     div.contentEditable = 'true'
+    Object.defineProperty(div, 'isContentEditable', { value: true })
     document.body.appendChild(div)
     div.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true }))
     expect(setter).not.toHaveBeenCalled()
 
     document.body.removeChild(div)
     window.removeEventListener('keydown', handler)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Backdrop & close (regression guard)
+// ---------------------------------------------------------------------------
+
+describe('KeyboardShortcutsDialog — backdrop & close', () => {
+  it('calls onClose when the backdrop is clicked', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderDialog()
+    const backdrop = screen.getByRole('dialog').parentElement!
+    await user.click(backdrop)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('does NOT call onClose when clicking inside the dialog panel', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderDialog()
+    await user.click(screen.getByRole('dialog'))
+    expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Modifier key formatting
+// ---------------------------------------------------------------------------
+
+describe('KeyboardShortcutsDialog — formatModifierKey', () => {
+  it('translates modifier keys to Mac symbols when userAgent matches Mac', () => {
+    const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'
+    expect(formatModifierKey('Ctrl', userAgent)).toBe('⌘')
+    expect(formatModifierKey('Alt', userAgent)).toBe('⌥')
+    expect(formatModifierKey('Shift', userAgent)).toBe('⇧')
+    expect(formatModifierKey('K', userAgent)).toBe('K') // Unaffected
+  })
+
+  it('leaves modifier keys unchanged on Windows/Linux', () => {
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+    expect(formatModifierKey('Ctrl', userAgent)).toBe('Ctrl')
+    expect(formatModifierKey('Alt', userAgent)).toBe('Alt')
+    expect(formatModifierKey('Shift', userAgent)).toBe('Shift')
+    expect(formatModifierKey('K', userAgent)).toBe('K')
   })
 })

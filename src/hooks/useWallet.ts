@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { DOM_EVENTS } from '../events'
 import {
   checkFreighterInstalled,
   createWalletWatcher,
@@ -223,8 +224,8 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       void syncNetwork()
     }
 
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
+    window.addEventListener(DOM_EVENTS.FOCUS, handleFocus)
+    return () => window.removeEventListener(DOM_EVENTS.FOCUS, handleFocus)
   }, [address, syncNetwork])
 
   return {

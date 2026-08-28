@@ -9,21 +9,27 @@ vi.mock('../context/SettingsContext', () => ({
 
 describe('NetworkIndicator', () => {
   it('renders "Mainnet" pill for public network', () => {
-    vi.mocked(useSettings).mockReturnValue({ network: 'public' } as Partial<SettingsState> as SettingsState)
+    vi.mocked(useSettings).mockReturnValue({
+      network: 'public',
+    } as Partial<SettingsState> as SettingsState)
     render(<NetworkIndicator />)
     expect(screen.getByText('Mainnet')).toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Mainnet')).toBeInTheDocument()
   })
 
   it('renders "Testnet" pill for test network', () => {
-    vi.mocked(useSettings).mockReturnValue({ network: 'test' } as Partial<SettingsState> as SettingsState)
+    vi.mocked(useSettings).mockReturnValue({
+      network: 'test',
+    } as Partial<SettingsState> as SettingsState)
     render(<NetworkIndicator />)
     expect(screen.getByText('Testnet')).toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Testnet')).toBeInTheDocument()
   })
 
   it('renders "Unknown" pill for unknown network', () => {
-    vi.mocked(useSettings).mockReturnValue({ network: 'other' } as Partial<SettingsState> as SettingsState)
+    vi.mocked(useSettings).mockReturnValue({
+      network: 'other' as unknown as 'public',
+    } as Partial<SettingsState> as SettingsState)
     render(<NetworkIndicator />)
     expect(screen.getByText('Unknown')).toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Unknown')).toBeInTheDocument()

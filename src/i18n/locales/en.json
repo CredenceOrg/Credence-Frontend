@@ -13,6 +13,7 @@
     }
   },
   "nav": {
+    "home": "Home",
     "dashboard": "Dashboard",
     "bond": "Bond",
     "trustScore": "Trust Score",
@@ -85,7 +86,18 @@
       "8seconds": "8 seconds",
       "preview": "Preview",
       "showPreview": "Show preview",
-      "previewHint": "Preview respects current toast settings."
+      "previewHint": "Preview respects current toast settings.",
+      "quietHours": {
+        "heading": "Quiet hours",
+        "description": "Silence non-critical toasts between the chosen hours. Critical error toasts are never silenced.",
+        "enable": "Enable quiet hours",
+        "start": "Start time",
+        "end": "End time",
+        "includeCritical": "Danger toasts (critical) are not silenced.",
+        "active": "Quiet hours active now",
+        "inactive": "Quiet hours inactive",
+        "invalidRange": "End time must differ from the start time."
+      }
     },
     "backup": {
       "heading": "Backup & Restore",
@@ -111,6 +123,13 @@
       "confirmHint": "This will overwrite your current settings with the imported values.",
       "confirmLabel": "Import settings"
     },
+    "autoSave": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "savedRelative": "Saved {{when}}",
+      "error": "Couldn't save. Try again.",
+      "retry": "Retry"
+    },
     "toasts": {
       "saved": "Settings saved successfully",
       "reverted": "Settings reverted to last saved state",
@@ -125,6 +144,7 @@
     "infoBanner": "Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.",
     "connectRequired": "Connect wallet required",
     "connectRequiredDescription": "Create bond and withdraw actions require a connected Stellar wallet.",
+    "connectToCreateBond": "Connect your wallet to create and manage bonds.",
     "networkMismatch": "Network mismatch",
     "networkMismatchDescription": "Credence is set to {{expected}}, but Freighter is on {{actual}}. Switch the app to the wallet network before creating or withdrawing a bond.",
     "switchNetwork": "Switch app to {{network}}",
@@ -137,6 +157,8 @@
     "createBond": "Create bond",
     "connectToContinue": "Connect wallet to continue",
     "activeBonds": "Active Bonds",
+    "manageBonds": "Manage bonds",
+    "connectToManageBonds": "Connect your wallet to view and manage your active bonds.",
     "noActiveBonds": "No active bonds",
     "noActiveBondsDescription": "You do not have any active bonds yet. Create your first bond to start building on-chain reputation.",
     "createFirstBond": "Create your first bond",
@@ -158,6 +180,7 @@
     "infoBanner": "Scores update once per epoch. Recent bond changes may not be reflected immediately.",
     "connectRequired": "Connect wallet required",
     "connectRequiredDescription": "Connect a wallet to look up your own trust score. You can still type another Stellar address for review.",
+    "connectToLookup": "Connect your wallet to look up and compare trust scores.",
     "networkMismatch": "Network mismatch",
     "networkMismatchDescription": "Credence is set to {{expected}}, but Freighter is on {{actual}}. Switch the app to the wallet network before looking up a trust score.",
     "switchNetwork": "Switch app to {{network}}",
@@ -178,11 +201,40 @@
     "submitForm": "Submit Attestation Form",
     "timeline": "Activity Timeline",
     "filterLabel": "Filter attestations by status",
+    "emptyTitle": "No attestations yet",
+    "emptyDescription": "Submit your first attestation to start building verifiable trust. Attestations from peers strengthen your on-chain reputation.",
+    "noFilterResults": "No matching attestations",
+    "noFilterResultsDescription": "There are no attestations with the \"{{filter}}\" status. Try a different filter to see more results.",
+    "clearFilter": "Clear filter",
     "filter": {
+      "legend": "Filter by status",
       "all": "All statuses",
+      "accepted": "Accepted",
+      "needsUpdate": "Needs update",
+      "inReview": "In review",
       "success": "Accepted / Submitted",
       "warning": "Needs update",
       "info": "In review"
+    },
+    "filterSummary": "Showing {{filtered}} of {{total}} attestations",
+    "drawer": {
+      "close": "Close attestation details",
+      "validator": "Validator",
+      "transaction": "Transaction hash",
+      "rule": "Rule",
+      "note": "Note",
+      "evidence": "Evidence",
+      "timestamp": "Timestamp",
+      "viewOnExplorer": "View on Stellar Explorer",
+      "title": "Attestation details"
+    },
+    "empty": {
+      "title": "No attestation selected",
+      "noAttestationsTitle": "No attestations yet",
+      "noAttestationsDescription": "Your attestations will appear here once you finish your first attestation submission.",
+      "noMatchingTitle": "No attestations match this status",
+      "noMatchingDescription": "Try viewing all attestations to see recent activity.",
+      "clearFilter": "View all attestations"
     }
   },
   "transactions": {
@@ -216,6 +268,36 @@
       "minutesAgo": "{{count}}m ago",
       "hoursAgo": "{{count}}h ago",
       "daysAgo": "{{count}}d ago"
+    },
+    "pagination": {
+      "label": "Transaction pages",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{page}} of {{total}}"
+    },
+    "bulk": {
+      "selectLabel": "Select transaction {{id}}",
+      "selectAll": "Select all transactions",
+      "selectedOne": "{{count}} selected",
+      "selectedOther": "{{count}} selected",
+      "actionsLabel": "Bulk actions",
+      "export": "Export",
+      "delete": "Delete",
+      "clear": "Clear selection",
+      "deleteConfirm": {
+        "title": "Delete transactions?",
+        "subtitle": "You are about to remove {{count}} transaction from this list.",
+        "subtitle_other": "You are about to remove {{count}} transactions from this list.",
+        "phrase": "DELETE",
+        "hint": "Removing entries from this view does not affect on-chain records.",
+        "confirm": "Delete transactions",
+        "successOne": "1 transaction removed from view",
+        "successOther": "{{count}} transactions removed from view"
+      },
+      "exportToast": {
+        "successOne": "1 transaction exported",
+        "successOther": "{{count}} transactions exported"
+      }
     }
   },
   "common": {

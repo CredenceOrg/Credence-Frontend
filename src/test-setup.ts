@@ -1,6 +1,15 @@
 import '@testing-library/jest-dom'
-import { vi } from 'vitest'
+import { afterEach, vi } from 'vitest'
 import './i18n/config'
+import { resetApiRateLimiter } from './api/client' // not re-exported from src/api/index.ts by design — tests reach into ./client directly
+
+// Reset the process-wide apiFetch rate limiter between tests so a hot test
+// does not starve subsequent tests of capacity or carry stale bucket state
+// across files. Per-test isolation works because Vitest runs each test file
+// in its own worker (pool: forks) so the singleton scope is per-file only.
+afterEach(() => {
+  resetApiRateLimiter()
+})
 
 // Guard against Node-environment test files (e.g. useLocalStorage.node.test.ts)
 // that run without a DOM — they use the same global setup file but don't have window.
@@ -24,7 +33,7 @@ if (typeof window !== 'undefined') {
 
     return {
       getItem(key: string) {
-        return store.has(key) ? store.get(key) ?? null : null
+        return store.has(key) ? (store.get(key) ?? null) : null
       },
       setItem(key: string, value: string) {
         store.set(key, String(value))

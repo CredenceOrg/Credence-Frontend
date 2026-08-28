@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, apiFetch } from './client'
+import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -13,6 +14,7 @@ function jsonResponse(payload: unknown, init: ResponseInit = {}) {
 afterEach(() => {
   fetchMock.mockReset()
   vi.unstubAllGlobals()
+  resetWalletAuditTrail()
 })
 
 describe('apiFetch', () => {
@@ -197,5 +199,36 @@ describe('apiFetch', () => {
       status: 0,
       message: 'Network request failed',
     })
+  })
+
+  it('attaches X-Correlation-ID header and emits attempted/succeeded audit events', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/bonds', { correlationId: 'custom-corr-123' })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('X-Correlation-ID')).toBe('custom-corr-123')
+
+    const auditTrail = getWalletAuditTrail()
+    expect(auditTrail).toHaveLength(2)
+    expect(auditTrail[0].type).toBe('action_attempted')
+    expect(auditTrail[0].correlationId).toBe('custom-corr-123')
+    expect(auditTrail[1].type).toBe('action_succeeded')
+    expect(auditTrail[1].correlationId).toBe('custom-corr-123')
+  })
+
+  it('emits action_failed audit events on non-2xx or aborted requests', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'Not found' }, { status: 404 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiFetch('/bonds/999', { correlationId: 'err-corr-404' })).rejects.toThrow()
+
+    const auditTrail = getWalletAuditTrail()
+    expect(auditTrail).toHaveLength(2)
+    expect(auditTrail[0].type).toBe('action_attempted')
+    expect(auditTrail[1].type).toBe('action_failed')
+    expect(auditTrail[1].correlationId).toBe('err-corr-404')
+    expect(auditTrail[1].metadata?.status).toBe(404)
   })
 })

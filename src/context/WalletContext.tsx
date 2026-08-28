@@ -5,6 +5,7 @@ import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWa
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useToast } from '../components/ToastProvider'
 import SessionTimeoutModal from '../components/SessionTimeoutModal'
+import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean
@@ -28,7 +29,7 @@ export function useWalletContext(): WalletContextValue {
   return useContext(WalletContext)
 }
 
-/** Read shared wallet connection state with the legacy `connected` alias. */
+/** Read shared wallet connection state with the legacy connected alias. */
 export function useWallet(): WalletContextValue {
   return useWalletContext()
 }
@@ -44,8 +45,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [showWarning, setShowWarning] = useState(false)
 
   const handleLogout = useCallback(() => {
+    const prevAddress = wallet.address
+    const prevNetwork = wallet.network
     wallet.disconnect()
     setShowWarning(false)
+
+    emitWalletSessionEvent('session_expired', {
+      address: null,
+      network: null,
+      correlationId: generateCorrelationId('session-idle-expiry'),
+      metadata: {
+        previousAddress: prevAddress || null,
+        previousNetwork: prevNetwork || null,
+        reason: 'inactivity',
+      },
+    })
+
     navigate('/signin')
     addToast('warning', 'Logged out due to inactivity.')
   }, [wallet, navigate, addToast])

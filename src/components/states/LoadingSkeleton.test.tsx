@@ -321,3 +321,219 @@ describe('LoadingSkeleton', () => {
     })
   })
 })
+
+  // ─── stat-widget ──────────────────────────────────────────────────────────
+
+  describe('variant="stat-widget"', () => {
+    it('renders stat-widget wrapper with class skeleton--stat-widget', () => {
+      const { container } = render(<LoadingSkeleton variant="stat-widget" />)
+      expect(container.querySelector('.skeleton--stat-widget')).not.toBeNull()
+    })
+
+    it('contains shimmer block for label', () => {
+      const { container } = render(<LoadingSkeleton variant="stat-widget" />)
+      expect(container.querySelector('.skeleton--stat-label')).not.toBeNull()
+    })
+
+    it('contains shimmer block for value', () => {
+      const { container } = render(<LoadingSkeleton variant="stat-widget" />)
+      expect(container.querySelector('.skeleton--stat-value')).not.toBeNull()
+    })
+
+    it('contains shimmer block for sub-text', () => {
+      const { container } = render(<LoadingSkeleton variant="stat-widget" />)
+      expect(container.querySelector('.skeleton--stat-sub')).not.toBeNull()
+    })
+
+    it('applies width prop to the wrapper', () => {
+      const { container } = render(<LoadingSkeleton variant="stat-widget" width="220px" />)
+      const wrapper = container.querySelector('.skeleton--stat-widget') as HTMLElement
+      expect(wrapper.style.width).toBe('220px')
+    })
+
+    it('shimmer children have class "skeleton" when reduced motion is off', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(false)
+      const { container } = render(<LoadingSkeleton variant="stat-widget" />)
+      const label = container.querySelector('.skeleton--stat-label') as HTMLElement
+      expect(label.classList.contains('skeleton')).toBe(true)
+      expect(label.classList.contains('skeleton--no-animation')).toBe(false)
+    })
+
+    it('shimmer children have class "skeleton--no-animation" when reduced motion is on', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(true)
+      const { container } = render(<LoadingSkeleton variant="stat-widget" />)
+      const label = container.querySelector('.skeleton--stat-label') as HTMLElement
+      expect(label.classList.contains('skeleton--no-animation')).toBe(true)
+    })
+  })
+
+  // ─── list-row ─────────────────────────────────────────────────────────────
+
+  describe('variant="list-row"', () => {
+    it('renders `rows` list-row items', () => {
+      const { container } = render(<LoadingSkeleton variant="list-row" rows={4} />)
+      expect(container.querySelectorAll('.skeleton--list-row')).toHaveLength(4)
+    })
+
+    it('each row contains an avatar circle', () => {
+      const { container } = render(<LoadingSkeleton variant="list-row" rows={2} />)
+      expect(container.querySelectorAll('.skeleton--list-avatar')).toHaveLength(2)
+    })
+
+    it('each row contains a content area with title and sub lines', () => {
+      const { container } = render(<LoadingSkeleton variant="list-row" rows={2} />)
+      expect(container.querySelectorAll('.skeleton--list-content')).toHaveLength(2)
+      expect(container.querySelectorAll('.skeleton--list-title')).toHaveLength(2)
+      expect(container.querySelectorAll('.skeleton--list-sub')).toHaveLength(2)
+    })
+
+    it('each row contains a meta block', () => {
+      const { container } = render(<LoadingSkeleton variant="list-row" rows={2} />)
+      expect(container.querySelectorAll('.skeleton--list-meta')).toHaveLength(2)
+    })
+
+    it('applies reduced motion class to shimmer children when useReducedMotion returns true', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(true)
+      const { container } = render(<LoadingSkeleton variant="list-row" rows={1} />)
+      const avatar = container.querySelector('.skeleton--list-avatar') as HTMLElement
+      expect(avatar.classList.contains('skeleton--no-animation')).toBe(true)
+    })
+
+    it('does not apply reduced motion class when useReducedMotion returns false', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(false)
+      const { container } = render(<LoadingSkeleton variant="list-row" rows={1} />)
+      const avatar = container.querySelector('.skeleton--list-avatar') as HTMLElement
+      expect(avatar.classList.contains('skeleton--no-animation')).toBe(false)
+      expect(avatar.classList.contains('skeleton')).toBe(true)
+    })
+  })
+
+  // ─── bond-row ─────────────────────────────────────────────────────────────
+
+  describe('variant="bond-row"', () => {
+    it('renders `rows` bond-row items (default rows=3)', () => {
+      const { container } = render(<LoadingSkeleton variant="bond-row" />)
+      expect(container.querySelectorAll('.skeleton--bond-row')).toHaveLength(3)
+    })
+
+    it('renders the specified number of bond-row items', () => {
+      const { container } = render(<LoadingSkeleton variant="bond-row" rows={5} />)
+      expect(container.querySelectorAll('.skeleton--bond-row')).toHaveLength(5)
+    })
+
+    it('each row has a left section with amount placeholder', () => {
+      const { container } = render(<LoadingSkeleton variant="bond-row" rows={2} />)
+      expect(container.querySelectorAll('.skeleton--bond-left')).toHaveLength(2)
+      expect(container.querySelectorAll('.skeleton--bond-amount')).toHaveLength(2)
+    })
+
+    it('each row has a left section with status placeholder', () => {
+      const { container } = render(<LoadingSkeleton variant="bond-row" rows={2} />)
+      expect(container.querySelectorAll('.skeleton--bond-status')).toHaveLength(2)
+    })
+
+    it('each row has a right section with button placeholder(s)', () => {
+      const { container } = render(<LoadingSkeleton variant="bond-row" rows={2} />)
+      expect(container.querySelectorAll('.skeleton--bond-right')).toHaveLength(2)
+      // Each right section has 2 button placeholders
+      expect(container.querySelectorAll('.skeleton--bond-btn')).toHaveLength(4)
+    })
+
+    it('applies reduced motion class to shimmer children when useReducedMotion returns true', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(true)
+      const { container } = render(<LoadingSkeleton variant="bond-row" rows={1} />)
+      const amount = container.querySelector('.skeleton--bond-amount') as HTMLElement
+      expect(amount.classList.contains('skeleton--no-animation')).toBe(true)
+    })
+
+    it('does not apply reduced motion class when useReducedMotion returns false', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(false)
+      const { container } = render(<LoadingSkeleton variant="bond-row" rows={1} />)
+      const amount = container.querySelector('.skeleton--bond-amount') as HTMLElement
+      expect(amount.classList.contains('skeleton--no-animation')).toBe(false)
+      expect(amount.classList.contains('skeleton')).toBe(true)
+    })
+  })
+
+  // ─── trust-score ──────────────────────────────────────────────────────────
+
+  describe('variant="trust-score"', () => {
+    it('renders the trust score page skeleton', () => {
+      const { container } = render(<LoadingSkeleton variant="trust-score" />)
+      expect(container.querySelector('.skeleton--trust-score-page')).not.toBeNull()
+    })
+
+    it('contains the gauge circle element with class skeleton--trust-gauge', () => {
+      const { container } = render(<LoadingSkeleton variant="trust-score" />)
+      expect(container.querySelector('.skeleton--trust-gauge')).not.toBeNull()
+    })
+
+    it('contains the stats row container', () => {
+      const { container } = render(<LoadingSkeleton variant="trust-score" />)
+      expect(container.querySelector('.skeleton--trust-stats-row')).not.toBeNull()
+    })
+
+    it('renders `rows` stat cards inside the stats row', () => {
+      const { container } = render(<LoadingSkeleton variant="trust-score" rows={4} />)
+      expect(container.querySelectorAll('.skeleton--trust-stat-card')).toHaveLength(4)
+    })
+
+    it('honors reduced motion — gauge has skeleton--no-animation class when reduce is on', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(true)
+      const { container } = render(<LoadingSkeleton variant="trust-score" />)
+      const gauge = container.querySelector('.skeleton--trust-gauge') as HTMLElement
+      expect(gauge.classList.contains('skeleton--no-animation')).toBe(true)
+    })
+
+    it('gauge has "skeleton" class (not no-animation) when reduce is off', () => {
+      vi.mocked(useReducedMotion).mockReturnValue(false)
+      const { container } = render(<LoadingSkeleton variant="trust-score" />)
+      const gauge = container.querySelector('.skeleton--trust-gauge') as HTMLElement
+      expect(gauge.classList.contains('skeleton')).toBe(true)
+      expect(gauge.classList.contains('skeleton--no-animation')).toBe(false)
+    })
+  })
+
+  // ─── accessibility ────────────────────────────────────────────────────────
+
+  describe('accessibility', () => {
+    const allVariants = [
+      'text',
+      'card',
+      'form',
+      'table',
+      'dashboard',
+      'stat-widget',
+      'list-row',
+      'bond-row',
+      'trust-score',
+    ] as const
+
+    it.each(allVariants)('variant="%s" root element has role="status"', (variant) => {
+      const { container } = render(<LoadingSkeleton variant={variant} />)
+      const statusEl = container.querySelector('[role="status"]')
+      expect(statusEl).not.toBeNull()
+    })
+
+    it.each(allVariants)('variant="%s" root element has aria-label="Loading"', (variant) => {
+      const { container } = render(<LoadingSkeleton variant={variant} />)
+      const labelledEl = container.querySelector('[aria-label="Loading"]')
+      expect(labelledEl).not.toBeNull()
+    })
+
+    it('default fallback block has role="status"', () => {
+      const { container } = render(
+        // @ts-expect-error — intentionally bypassing the variant union
+        <LoadingSkeleton variant="__unknown__" />
+      )
+      expect(container.querySelector('[role="status"]')).not.toBeNull()
+    })
+
+    it('default fallback block has aria-label="Loading"', () => {
+      const { container } = render(
+        // @ts-expect-error — intentionally bypassing the variant union
+        <LoadingSkeleton variant="__unknown__" />
+      )
+      expect(container.querySelector('[aria-label="Loading"]')).not.toBeNull()
+    })
+  })

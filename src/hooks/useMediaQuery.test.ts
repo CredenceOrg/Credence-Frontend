@@ -18,7 +18,8 @@ function makeMql(matches: boolean) {
     }),
     dispatchEvent: vi.fn(),
     /** Test helper: fire a change event */
-    _fire: (nextMatches: boolean) => changeHandler?.({ matches: nextMatches } as MediaQueryListEvent),
+    _fire: (nextMatches: boolean) =>
+      changeHandler?.({ matches: nextMatches } as MediaQueryListEvent),
     _handler: () => changeHandler,
   }
   return mql
@@ -36,6 +37,8 @@ describe('useMediaQuery', () => {
     vi.restoreAllMocks()
   })
 
+  // --- static-render / SSR-style fallback (matchMedia unavailable) ---
+
   it('returns false when window.matchMedia is undefined', () => {
     Object.defineProperty(window, 'matchMedia', {
       value: undefined,
@@ -45,6 +48,30 @@ describe('useMediaQuery', () => {
     const { result } = renderHook(() => useMediaQuery(QUERY))
     expect(result.current).toBe(false)
   })
+
+  it('returns false when window.matchMedia is null (non-function value)', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      value: null,
+      writable: true,
+      configurable: true,
+    })
+    const { result } = renderHook(() => useMediaQuery(QUERY))
+    expect(result.current).toBe(false)
+  })
+
+  it('returns false when window.matchMedia is a non-callable object', () => {
+    // An object that looks like an mql but is not a function must be treated as
+    // absent so callers always get a deterministic boolean rather than throwing.
+    Object.defineProperty(window, 'matchMedia', {
+      value: { matches: true }, // not typeof 'function'
+      writable: true,
+      configurable: true,
+    })
+    const { result } = renderHook(() => useMediaQuery(QUERY))
+    expect(result.current).toBe(false)
+  })
+
+  // --- normal happy-path (matchMedia present and functional) ---
 
   it('returns initial match value (false)', () => {
     const mql = makeMql(false)
@@ -69,10 +96,14 @@ describe('useMediaQuery', () => {
     const { result } = renderHook(() => useMediaQuery(QUERY))
     expect(result.current).toBe(false)
 
-    act(() => { mql._fire(true) })
+    act(() => {
+      mql._fire(true)
+    })
     expect(result.current).toBe(true)
 
-    act(() => { mql._fire(false) })
+    act(() => {
+      mql._fire(false)
+    })
     expect(result.current).toBe(false)
   })
 
@@ -87,14 +118,38 @@ describe('useMediaQuery', () => {
     expect(mql._handler()).toBeNull()
   })
 
+  // --- graceful degradation when addEventListener is missing ---
+
+  it('does not throw when addEventListener is absent on the mql object', () => {
+    // Older environments expose matchMedia but lack addEventListener on the
+    // returned MediaQueryList.  The hook uses optional chaining (`?.`) so it
+    // must not throw; the listener simply never fires.
+    const mql = {
+      matches: true,
+      media: QUERY,
+      onchange: null,
+      addEventListener: undefined,
+      removeEventListener: undefined,
+      dispatchEvent: vi.fn(),
+    }
+    window.matchMedia = vi.fn().mockReturnValue(mql)
+
+    const { result, unmount } = renderHook(() => useMediaQuery(QUERY))
+    expect(result.current).toBe(true)
+    expect(() => unmount()).not.toThrow()
+  })
+
+  // --- query-change re-subscription ---
+
   it('re-subscribes when the query string changes', () => {
     const mql1 = makeMql(false)
     const mql2 = makeMql(true)
-    const matchMediaMock = vi.fn()
-      .mockReturnValueOnce(mql1) // initial render (lazy init) or first effect call
-      .mockReturnValue(mql2)
+    const matchMediaMock = vi.fn((q) => {
+      if (q === QUERY) return mql1
+      return mql2
+    })
 
-    window.matchMedia = matchMediaMock
+    window.matchMedia = matchMediaMock as unknown as (query: string) => MediaQueryList
 
     const { result, rerender } = renderHook(({ q }) => useMediaQuery(q), {
       initialProps: { q: QUERY },
@@ -102,8 +157,39 @@ describe('useMediaQuery', () => {
 
     expect(result.current).toBe(false)
 
-    act(() => { rerender({ q: '(min-width: 1024px)' }) })
+    act(() => {
+      rerender({ q: '(min-width: 1024px)' })
+    })
     expect(result.current).toBe(true)
+  })
+
+  it('removes old listener and attaches new one when query string changes', () => {
+    // Verifies the cleanup path: the previous mql loses its handler and the
+    // new mql receives one, preventing duplicate or stale subscriptions.
+    const mql1 = makeMql(false)
+    const mql2 = makeMql(true)
+    const matchMediaMock = vi
+      .fn()
+      .mockReturnValueOnce(mql1) // lazy-init call on first mount
+      .mockReturnValueOnce(mql1) // useEffect call on first mount
+      .mockReturnValue(mql2) // useEffect call after query changes
+
+    window.matchMedia = matchMediaMock
+
+    const { rerender } = renderHook(({ q }) => useMediaQuery(q), {
+      initialProps: { q: QUERY },
+    })
+
+    // A handler must be attached to the first mql after the initial render.
+    expect(mql1._handler()).not.toBeNull()
+
+    act(() => {
+      rerender({ q: '(min-width: 1024px)' })
+    })
+
+    // Old handler torn down; new handler wired up.
+    expect(mql1._handler()).toBeNull()
+    expect(mql2._handler()).not.toBeNull()
   })
 })
 
@@ -135,5 +221,45 @@ describe('useIsMobile', () => {
     window.matchMedia = vi.fn().mockReturnValue(makeMql(false))
     renderHook(() => useIsMobile())
     expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 767px)')
+  })
+
+  it('returns false when matchMedia is unavailable (simulated static-render fallback)', () => {
+    // Mirrors the SSR / static-export scenario: matchMedia not present, so the
+    // hook must return a safe false rather than throwing.
+    Object.defineProperty(window, 'matchMedia', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    })
+    const { result } = renderHook(() => useIsMobile())
+    expect(result.current).toBe(false)
+  })
+
+  it('transitions from mobile to desktop when the mql fires a change event', () => {
+    // Simulates a viewport expanding beyond the 768 px mobile boundary.
+    const mql = makeMql(true) // starts as mobile (< 768 px)
+    window.matchMedia = vi.fn().mockReturnValue(mql)
+
+    const { result } = renderHook(() => useIsMobile())
+    expect(result.current).toBe(true)
+
+    act(() => {
+      mql._fire(false)
+    }) // viewport grew to ≥768 px
+    expect(result.current).toBe(false)
+  })
+
+  it('transitions from desktop to mobile when the mql fires a change event', () => {
+    // Simulates a viewport shrinking below the 768 px mobile boundary.
+    const mql = makeMql(false) // starts as desktop (≥768 px)
+    window.matchMedia = vi.fn().mockReturnValue(mql)
+
+    const { result } = renderHook(() => useIsMobile())
+    expect(result.current).toBe(false)
+
+    act(() => {
+      mql._fire(true)
+    }) // viewport shrunk to < 768 px
+    expect(result.current).toBe(true)
   })
 })

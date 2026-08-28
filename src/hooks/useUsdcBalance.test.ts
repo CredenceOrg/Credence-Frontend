@@ -18,7 +18,8 @@ const mocks = vi.hoisted(() => {
 
   return {
     MockHorizonError,
-    mockFetchUsdcBalance: vi.fn<(address: string, network: string, signal?: AbortSignal) => Promise<number>>(),
+    mockFetchUsdcBalance:
+      vi.fn<(address: string, network: string, signal?: AbortSignal) => Promise<number>>(),
     mockUseWallet: vi.fn(),
     mockUseSettings: vi.fn(),
   }
@@ -159,7 +160,9 @@ describe('useUsdcBalance', () => {
   })
 
   it('returns error status on Horizon failure', async () => {
-    mocks.mockFetchUsdcBalance.mockRejectedValueOnce(new mocks.MockHorizonError(500, 'Server error'))
+    mocks.mockFetchUsdcBalance.mockRejectedValueOnce(
+      new mocks.MockHorizonError(500, 'Server error')
+    )
 
     const { result } = renderHook(() => useUsdcBalance())
 

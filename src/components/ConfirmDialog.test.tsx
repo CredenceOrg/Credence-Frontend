@@ -46,11 +46,21 @@ function renderGenericDialog(overrides: Partial<Parameters<typeof ConfirmDialog>
   return { ...result, onConfirm, onCancel }
 }
 
+let scrollY = 0
+
 describe('ConfirmDialog', () => {
   beforeEach(() => {
+    scrollY = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       cb(0)
       return 0
+    })
+    vi.spyOn(window, 'scrollTo').mockImplementation(((options?: ScrollToOptions) => {
+      if (options?.top !== undefined) scrollY = options.top
+    }) as typeof window.scrollTo)
+    Object.defineProperty(window, 'scrollY', {
+      get: () => scrollY,
+      configurable: true,
     })
   })
 
@@ -122,7 +132,7 @@ describe('ConfirmDialog', () => {
     it('confirm button remains disabled for partial input', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFI')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
@@ -130,7 +140,7 @@ describe('ConfirmDialog', () => {
     it('confirm button remains disabled for wrong case input', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'confirm')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
@@ -138,7 +148,7 @@ describe('ConfirmDialog', () => {
     it('confirm button becomes enabled when "CONFIRM" is typed exactly', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
     })
@@ -154,7 +164,7 @@ describe('ConfirmDialog', () => {
     it('confirm button has aria-disabled="false" after "CONFIRM" entered', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toHaveAttribute(
         'aria-disabled',
@@ -175,7 +185,7 @@ describe('ConfirmDialog', () => {
     it('calls onConfirm when "CONFIRM" is typed and confirm button is clicked', async () => {
       const user = userEvent.setup()
       const { onConfirm } = renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
       expect(onConfirm).toHaveBeenCalledOnce()
@@ -233,13 +243,83 @@ describe('ConfirmDialog', () => {
       renderDialog({ open: false })
       expect(document.body.style.overflow).toBe('')
     })
+
+    it('preserves window scroll position when dialog opens', () => {
+      window.scrollTo({ top: 500 })
+      renderDialog({ open: true })
+      expect(window.scrollY).toBe(500)
+    })
+
+    it('preserves window scroll position when dialog closes via prop change', () => {
+      window.scrollTo({ top: 350 })
+      const { rerender, onConfirm, onCancel } = renderDialog({ open: true })
+      rerender(
+        <ConfirmDialog
+          open={false}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(window.scrollY).toBe(350)
+    })
+
+    it('preserves scrolled content position through open-close-open cycle', () => {
+      window.scrollTo({ top: 800 })
+      const { rerender, onConfirm, onCancel } = renderDialog({ open: true })
+      // close
+      rerender(
+        <ConfirmDialog
+          open={false}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(window.scrollY).toBe(800)
+      // reopen
+      rerender(
+        <ConfirmDialog
+          open={true}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(window.scrollY).toBe(800)
+    })
+
+    it('restores previous overflow value even when body overflow is changed externally while open', () => {
+      // Simulate a scenario where the page has a custom overflow, dialog opens,
+      // some other code mutates body.style.overflow, then dialog closes.
+      // The cleanup should still restore the value that was present *before* the
+      // dialog opened.
+      document.body.style.overflow = 'scroll'
+      const { rerender, onConfirm, onCancel } = renderDialog({ open: true })
+      expect(document.body.style.overflow).toBe('hidden')
+      // External mutation while dialog is open
+      document.body.style.overflow = 'visible'
+      rerender(
+        <ConfirmDialog
+          open={false}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(document.body.style.overflow).toBe('scroll')
+    })
   })
 
   describe('state reset on close', () => {
     it('resets the confirm input when reopened', async () => {
       const user = userEvent.setup()
       const { rerender, onConfirm, onCancel } = renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
 
       rerender(
@@ -261,7 +341,7 @@ describe('ConfirmDialog', () => {
         />
       )
 
-      expect(screen.getByRole('textbox', { name: /type confirm/i })).toHaveValue('')
+      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toHaveValue('')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
   })
@@ -305,9 +385,17 @@ describe('ConfirmDialog', () => {
 
 describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
   beforeEach(() => {
+    scrollY = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       cb(0)
       return 0
+    })
+    vi.spyOn(window, 'scrollTo').mockImplementation(((options?: ScrollToOptions) => {
+      if (options?.top !== undefined) scrollY = options.top
+    }) as typeof window.scrollTo)
+    Object.defineProperty(window, 'scrollY', {
+      get: () => scrollY,
+      configurable: true,
     })
   })
 
@@ -319,13 +407,13 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
   describe('default phrase behaviour (unchanged)', () => {
     it('default phrase is CONFIRM', () => {
       renderDialog()
-      expect(screen.getByRole('textbox', { name: /type confirm/i })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toBeInTheDocument()
     })
 
     it('confirm button disabled until "CONFIRM" typed with default phrase', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByRole('textbox', { name: /type confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
     })
@@ -340,7 +428,7 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
     it('gates the confirm button on the custom phrase, not CONFIRM', async () => {
       const user = userEvent.setup()
       renderGenericDialog({ confirmPhrase: 'DELETE' })
-      const input = screen.getByRole('textbox', { name: /type delete/i })
+      const input = screen.getByRole('textbox', { name: /type.*delete/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Clear draft' })).toBeDisabled()
     })
@@ -348,7 +436,7 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
     it('enables the confirm button when the custom phrase is typed exactly', async () => {
       const user = userEvent.setup()
       renderGenericDialog({ confirmPhrase: 'DELETE' })
-      const input = screen.getByRole('textbox', { name: /type delete/i })
+      const input = screen.getByRole('textbox', { name: /type.*delete/i })
       await user.type(input, 'DELETE')
       expect(screen.getByRole('button', { name: 'Clear draft' })).toBeEnabled()
     })
@@ -356,7 +444,7 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
     it('comparison remains case-sensitive', async () => {
       const user = userEvent.setup()
       renderGenericDialog({ confirmPhrase: 'DELETE' })
-      const input = screen.getByRole('textbox', { name: /type delete/i })
+      const input = screen.getByRole('textbox', { name: /type.*delete/i })
       await user.type(input, 'delete')
       expect(screen.getByRole('button', { name: 'Clear draft' })).toBeDisabled()
     })
@@ -406,7 +494,7 @@ describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
     it('renders breakdown, default phrase and default hint unchanged', () => {
       renderDialog()
       expect(screen.getByText('Bond amount')).toBeInTheDocument()
-      expect(screen.getByRole('textbox', { name: /type confirm/i })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toBeInTheDocument()
       expect(screen.getByText(/Funds will be sent to your connected wallet/)).toBeInTheDocument()
     })
   })

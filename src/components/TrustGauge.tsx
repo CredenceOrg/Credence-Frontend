@@ -56,10 +56,13 @@ export const TIER_CONFIG = {
 } as const
 
 /** Pre-computed map for O(1) tier index lookups */
-const TIER_INDEX_MAP = TIER_ORDER.reduce((acc, tier, index) => {
-  acc[tier] = index
-  return acc
-}, {} as Record<TrustTier, number>)
+const TIER_INDEX_MAP = TIER_ORDER.reduce(
+  (acc, tier, index) => {
+    acc[tier] = index
+    return acc
+  },
+  {} as Record<TrustTier, number>
+)
 /**
  * Calculate points remaining to reach the next tier
  * @param score Current score
@@ -118,6 +121,9 @@ export default function TrustGauge({
       <div
         className="trust-gauge__container"
         role="progressbar"
+        tabIndex={0}
+        aria-live="polite"
+        aria-atomic="true"
         aria-valuenow={score}
         aria-valuemin={0}
         aria-valuemax={MAX_SCORE}

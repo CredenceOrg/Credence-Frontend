@@ -58,9 +58,7 @@ export function getPenaltyRate(status: BondStatus): number {
  * // → { bondAmount: '1,000 USDC', penaltyPercent: 20, penaltyAmount: '200 USDC',
  * //     resultingBalance: '800 USDC', penaltyUsdc: 200 }
  */
-export function computeWithdrawBreakdown(
-  bond: MockBond
-): {
+export function computeWithdrawBreakdown(bond: MockBond): {
   bondAmount: string
   penaltyAmount: string
   penaltyPercent: number

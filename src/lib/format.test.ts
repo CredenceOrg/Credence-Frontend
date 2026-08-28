@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatUsdc,
+  formatMoney,
   normalizeUSDC,
   formatUSDC,
   formatUSDCDisplay,
@@ -204,9 +205,9 @@ describe('sanitizeUSDCInput', () => {
   })
 
   it('truncates exactly 2 decimal places (boundary: exactly 2 digits)', () => {
-    expect(sanitizeUSDCInput('1.23')).toBe('1.23')   // at limit — unchanged
-    expect(sanitizeUSDCInput('1.2')).toBe('1.2')     // under limit — unchanged
-    expect(sanitizeUSDCInput('1.230')).toBe('1.23')  // over limit — truncated
+    expect(sanitizeUSDCInput('1.23')).toBe('1.23') // at limit — unchanged
+    expect(sanitizeUSDCInput('1.2')).toBe('1.2') // under limit — unchanged
+    expect(sanitizeUSDCInput('1.230')).toBe('1.23') // over limit — truncated
   })
 })
 
@@ -407,7 +408,18 @@ describe('normalizeUSDC — strips en-US thousand commas from input before norma
 // ---------------------------------------------------------------------------
 
 describe('property: formatUSDC output is always re-parseable as a finite number', () => {
-  const validAmounts = ['0', '0.01', '0.99', '1', '100', '999', '1000', '1234.56', '999999.99', '1000000']
+  const validAmounts = [
+    '0',
+    '0.01',
+    '0.99',
+    '1',
+    '100',
+    '999',
+    '1000',
+    '1234.56',
+    '999999.99',
+    '1000000',
+  ]
 
   it.each(validAmounts)(
     'formatUSDC("%s") produces a string whose numeric value matches the input',
@@ -423,16 +435,13 @@ describe('property: formatUSDC output is always re-parseable as a finite number'
 describe('property: normalizeUSDC → formatUSDC round-trip preserves value', () => {
   const inputs = ['0', '1', '100', '1000', '1234.5', '9999.99', '1000000']
 
-  it.each(inputs)(
-    'formatUSDC(normalizeUSDC("%s")) produces a valid formatted string',
-    (input) => {
-      const normalized = normalizeUSDC(input)
-      const formatted = formatUSDC(normalized)
-      const parsed = Number(formatted.replace(/,/g, ''))
-      expect(Number.isFinite(parsed)).toBe(true)
-      expect(parsed).toBeCloseTo(Number(input), 1)
-    }
-  )
+  it.each(inputs)('formatUSDC(normalizeUSDC("%s")) produces a valid formatted string', (input) => {
+    const normalized = normalizeUSDC(input)
+    const formatted = formatUSDC(normalized)
+    const parsed = Number(formatted.replace(/,/g, ''))
+    expect(Number.isFinite(parsed)).toBe(true)
+    expect(parsed).toBeCloseTo(Number(input), 1)
+  })
 })
 
 describe('property: formatUsdc output always ends with " USDC" for finite inputs', () => {
@@ -451,5 +460,61 @@ describe('property: sanitizeUSDCInput output contains only digits, at most one d
     if (result !== '') {
       expect(result).toMatch(/^\d+(\.\d{0,2})?$/)
     }
+  })
+})
+
+describe('formatMoney', () => {
+  describe('happy path — locale-specific formatting', () => {
+    it('formats with en-US comma separators and decimal point', () => {
+      expect(formatMoney(1234.5, 'en-US')).toBe('1,234.5')
+      expect(formatMoney(1_000_000.99, 'en-US')).toBe('1,000,000.99')
+      expect(formatMoney(0, 'en-US')).toBe('0')
+    })
+
+    it('formats with es-ES comma decimal separator; grouping starts at 5+ integer digits', () => {
+      // Modern CLDR sets minimumGroupingDigits=2 for es-ES (group at ≥5 digits).
+      expect(formatMoney(1234.5, 'es-ES')).toBe('1234,5')
+      expect(formatMoney(12345.67, 'es-ES')).toBe('12.345,67')
+      expect(formatMoney(1_000_000.99, 'es-ES')).toBe('1.000.000,99')
+      expect(formatMoney(0, 'es-ES')).toBe('0')
+    })
+
+    it('formats with fr-FR narrow non-breaking space (U+202F) grouping and comma decimal', () => {
+      expect(formatMoney(1234.5, 'fr-FR')).toBe('1\u202f234,5')
+      expect(formatMoney(1_000_000.99, 'fr-FR')).toBe('1\u202f000\u202f000,99')
+      expect(formatMoney(0, 'fr-FR')).toBe('0')
+    })
+
+    it('formats with ja-JP comma separators and decimal point', () => {
+      expect(formatMoney(1234.5, 'ja-JP')).toBe('1,234.5')
+      expect(formatMoney(1_000_000.99, 'ja-JP')).toBe('1,000,000.99')
+      expect(formatMoney(0, 'ja-JP')).toBe('0')
+    })
+
+    it('formats with ar-EG Arabic-Indic digits and Arabic thousand/decimal separators', () => {
+      // ar-EG uses Arabic-Indic digits (١٢٣٤) with ٬ (U+066C) thousand separator and ٫ (U+066B) decimal.
+      expect(formatMoney(1234.5, 'ar-EG')).toBe('١٬٢٣٤٫٥')
+      expect(formatMoney(0, 'ar-EG')).toBe('٠')
+    })
+  })
+
+  describe('sad path — non-finite and edge-case inputs', () => {
+    it('renders NaN as "NaN" across all locales', () => {
+      expect(formatMoney(NaN, 'en-US')).toBe('NaN')
+      expect(formatMoney(NaN, 'es-ES')).toBe('NaN')
+      expect(formatMoney(NaN, 'ar-EG')).toBe('NaN')
+    })
+
+    it('renders Infinity as "∞" across all locales', () => {
+      expect(formatMoney(Infinity, 'en-US')).toBe('∞')
+      expect(formatMoney(-Infinity, 'en-US')).toBe('-∞')
+    })
+  })
+
+  describe('default locale', () => {
+    it('defaults to en-US when no locale is provided', () => {
+      expect(formatMoney(1234.5)).toBe('1,234.5')
+      expect(formatMoney(0)).toBe('0')
+    })
   })
 })

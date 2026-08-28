@@ -2,6 +2,7 @@ import { render, screen, act, fireEvent } from '@testing-library/react'
 import { vi } from 'vitest'
 import ToastProvider, { useToast } from './ToastProvider'
 import * as SettingsContextModule from '../context/SettingsContext'
+import type { SettingsState } from '../context/SettingsContext'
 
 // Mock the settings module to control useSettings
 vi.mock('../context/SettingsContext', async (importOriginal) => {
@@ -11,6 +12,17 @@ vi.mock('../context/SettingsContext', async (importOriginal) => {
     useSettings: vi.fn(),
   }
 })
+
+const baseMockSettings: Pick<
+  SettingsState,
+  'toastsEnabled' | 'autoDismiss' | 'quietHoursEnabled' | 'quietHoursStart' | 'quietHoursEnd'
+> = {
+  toastsEnabled: true,
+  autoDismiss: '5s',
+  quietHoursEnabled: false,
+  quietHoursStart: '22:00',
+  quietHoursEnd: '07:00',
+}
 
 function TestComponent() {
   const { addToast, removeAllToasts } = useToast()
@@ -27,8 +39,7 @@ describe('ToastProvider', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
-      toastsEnabled: true,
-      autoDismiss: '5s',
+      ...baseMockSettings,
     } as ReturnType<typeof SettingsContextModule.useSettings>)
   })
 
@@ -72,8 +83,8 @@ describe('ToastProvider', () => {
 
     // Disable toasts mid-session
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+      ...baseMockSettings,
       toastsEnabled: false,
-      autoDismiss: '5s',
     } as ReturnType<typeof SettingsContextModule.useSettings>)
 
     rerender(
@@ -97,7 +108,7 @@ describe('ToastProvider', () => {
 
     // Change autoDismiss to 3s mid-session
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
-      toastsEnabled: true,
+      ...baseMockSettings,
       autoDismiss: '3s',
     } as ReturnType<typeof SettingsContextModule.useSettings>)
 
@@ -144,7 +155,7 @@ describe('ToastProvider', () => {
 
     // autoDismiss is off for easy testing
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
-      toastsEnabled: true,
+      ...baseMockSettings,
       autoDismiss: 'off',
     } as ReturnType<typeof SettingsContextModule.useSettings>)
 
@@ -200,8 +211,84 @@ describe('ToastProvider', () => {
     )
 
     fireEvent.click(screen.getByText('Add Info'))
-    
+
     const politeRegion = container.querySelector('.sr-only[aria-live="polite"]')
     expect(politeRegion).toHaveTextContent('Info Message')
+  })
+})
+
+describe('ToastProvider quiet hours', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    // Pin the fake clock inside the default quiet hours window
+    // (22:00 – 07:00) so silence assertions are deterministic regardless
+    // of the host machine's local timezone (use the UTC suffix).
+    vi.setSystemTime(new Date('2024-01-01T23:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
+  function renderWithQuietHours(overrides: Partial<typeof baseMockSettings> = {}) {
+    vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+      ...baseMockSettings,
+      quietHoursEnabled: true,
+      ...overrides,
+    } as ReturnType<typeof SettingsContextModule.useSettings>)
+    return render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+  }
+
+  it('silences non-danger toasts while quiet hours are active', () => {
+    const { container } = renderWithQuietHours()
+    fireEvent.click(screen.getByText('Add Info'))
+
+    expect(container.querySelector('.toast')).not.toBeInTheDocument()
+    expect(container.querySelector('.sr-only[aria-live="polite"]')?.textContent).toBe('')
+  })
+
+  it('keeps danger toasts and their assertive announcement during quiet hours', () => {
+    const { container } = renderWithQuietHours()
+    fireEvent.click(screen.getByText('Add Danger'))
+
+    expect(container.querySelector('.toast--danger')).toBeInTheDocument()
+    expect(container.querySelector('.sr-only[aria-live="polite"]')?.textContent).toBe('')
+    expect(container.querySelector('.sr-only[aria-live="assertive"]')).toHaveTextContent(
+      'Danger Message'
+    )
+  })
+
+  it('lets every toast through when quiet hours are disabled', () => {
+    const { container } = renderWithQuietHours({ quietHoursEnabled: false })
+    fireEvent.click(screen.getByText('Add Info'))
+    fireEvent.click(screen.getByText('Add Danger'))
+
+    expect(container.querySelector('.toast--info')).toHaveTextContent('Info Message')
+    expect(container.querySelector('.toast--danger')).toHaveTextContent('Danger Message')
+  })
+
+  it('lets every toast through when quiet hours are active but the clock is outside the window', () => {
+    vi.setSystemTime(new Date('2024-01-01T12:00:00'))
+    const { container } = renderWithQuietHours()
+    fireEvent.click(screen.getByText('Add Info'))
+
+    expect(container.querySelector('.toast--info')).toHaveTextContent('Info Message')
+  })
+
+  it('does not honour quiet hours when feature disabled, even with malformed times', () => {
+    vi.setSystemTime(new Date('2024-01-01T23:00:00'))
+    const { container } = renderWithQuietHours({
+      quietHoursEnabled: false,
+      quietHoursStart: '',
+      quietHoursEnd: 'bad',
+    })
+    fireEvent.click(screen.getByText('Add Info'))
+    expect(container.querySelector('.toast--info')).toBeInTheDocument()
   })
 })

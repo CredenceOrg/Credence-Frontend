@@ -1,47 +1,52 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import './TrustSummary.css';
-import Badge from '../components/Badge';
-import TierLadder from '../components/TierLadder';
-import TrustGauge from '../components/TrustGauge';
-import { useTrustScore } from '../hooks/useTrustScore';
-import { ApiError } from '../api/client';
-import { isValidStellarAddress } from '@/lib/stellar';
-import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
-import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states';
+import { useSearchParams } from 'react-router-dom'
+import './TrustSummary.css'
+import Badge from '../components/Badge'
+import TierLadder from '../components/TierLadder'
+import TrustGauge from '../components/TrustGauge'
+import TooltipOnOverflow from '../components/TooltipOnOverflow'
+import { useTrustScore } from '../hooks/useTrustScore'
+import { ApiError } from '../api/client'
+import { isValidStellarAddress } from '@/lib/stellar'
+import useCopyToClipboard from '../hooks/useCopyToClipboard'
+import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 
 function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {
-  if (error.status === 0) return 'network';
-  if (error.status >= 400 && error.status < 500) return 'validation';
-  if (error.status >= 500) return 'backend';
-  return 'generic';
+  if (error.status === 0) return 'network'
+  if (error.status >= 400 && error.status < 500) return 'validation'
+  if (error.status >= 500) return 'backend'
+  return 'generic'
 }
 
 export default function TrustSummary() {
-  const [searchParams] = useSearchParams();
-  const paramAddress = searchParams.get('address')?.trim() ?? '';
-  const address = isValidStellarAddress(paramAddress) ? paramAddress : '';
+  const [searchParams] = useSearchParams()
+  const paramAddress = searchParams.get('address')?.trim() ?? ''
+  const address = isValidStellarAddress(paramAddress) ? paramAddress : ''
 
-  const [copy, copied] = useCopyToClipboard();
+  const { copy, copied } = useCopyToClipboard()
 
-  const { data, isLoading, error, refetch } = useTrustScore(address);
+  const { data, isLoading, error, refetch } = useTrustScore(address)
 
   if (!address) {
     return (
       <div className="trustSummary">
-        <EmptyState title="No address supplied" message="Provide a valid Stellar address via the ?address= query parameter." />
+        <EmptyState
+          title="No address supplied"
+          description="Provide a valid Stellar address via the ?address= query parameter."
+        />
       </div>
-    );
+    )
   }
 
-  const tierLabel = data ? `${data.tier} Tier` : undefined;
+  const tierLabel = data ? `${data.tier} Tier` : undefined
 
   return (
     <div className="trustSummary">
       <header className="trustSummary__header">
-        <h1>Trust Summary</h1>
+        <h1 className="trustSummary__title">Trust Summary</h1>
         <div className="trustSummary__addressRow">
-          <code className="trustSummary__address" title={address}>{address}</code>
+          <TooltipOnOverflow content={address}>
+            <code className="trustSummary__address">{address}</code>
+          </TooltipOnOverflow>
           <button className="trustSummary__copyBtn" onClick={() => copy(address)} disabled={copied}>
             {copied ? 'Copied' : 'Copy'}
           </button>
@@ -49,12 +54,14 @@ export default function TrustSummary() {
         {data && (
           <Badge variant={data.tier} label={tierLabel} className="trustSummary__tierBadge" />
         )}
-        <button className="trustSummary__printBtn" onClick={() => window.print()}>Print / Save as PDF</button>
+        <button className="trustSummary__printBtn" onClick={() => window.print()}>
+          Print / Save as PDF
+        </button>
       </header>
 
-      {isLoading && <LoadingSkeleton variant="card" />}
+      {isLoading && !data && <LoadingSkeleton variant="card" />}
 
-      {error && (
+      {error && !data && (
         <ErrorState
           type={trustScoreErrorType(error)}
           title="Unable to load trust score"
@@ -70,5 +77,5 @@ export default function TrustSummary() {
         </section>
       )}
     </div>
-  );
+  )
 }

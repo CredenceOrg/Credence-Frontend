@@ -63,6 +63,12 @@ describe('ActivityTimeline', () => {
       expect(screen.getByRole('heading', { name: 'Attestation timeline' })).toBeInTheDocument()
     })
 
+    it('binds operation to a durable request key or nonce when provided', () => {
+      render(<ActivityTimeline nonce="test-nonce-123" />)
+      const section = screen.getByRole('region', { name: /activity and attestations/i })
+      expect(section).toHaveAttribute('data-nonce', 'test-nonce-123')
+    })
+
     it('shows "5 recent events" summary for the sample data', () => {
       render(<ActivityTimeline />)
       expect(screen.getByText('5 recent events')).toBeInTheDocument()

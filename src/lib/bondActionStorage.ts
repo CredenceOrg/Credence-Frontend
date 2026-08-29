@@ -81,7 +81,7 @@ function defaultStore(): BondActionsV1 {
  * operations to the new system. Legacy operations are migrated on first access
  * and linked to their corresponding mutation operations.
  */
-export function readBondActions(): BondActionsV1 {
+export function readBondActions(autoMigrate: boolean = true): BondActionsV1 {
   const res = safeReadJson<BondActionsV1>(BOND_ACTIONS_V1_KEY)
   let bondActions: BondActionsV1
 
@@ -95,6 +95,10 @@ export function readBondActions(): BondActionsV1 {
       withdraw: { ...emptyRecord, ...(res.value.withdraw ?? {}) },
       migrationStatus: res.value.migrationStatus,
     }
+  }
+
+  if (!autoMigrate) {
+    return bondActions
   }
 
   // Check if we need to perform migration for non-idle operations
@@ -229,7 +233,7 @@ export function updateBondAction(
   kind: BondActionKind,
   updater: (current: BondActionRecord) => BondActionRecord
 ): BondActionsV1 {
-  const current = readBondActions()
+  const current = readBondActions(false)
   const record = kind === 'create' ? current.create : current.withdraw
   const updated = updater(record)
 
@@ -324,7 +328,7 @@ export function createEnhancedBondAction(
  * Gets the unified mutation operation for a bond action.
  */
 export function getBondActionMutationOperation(kind: BondActionKind): MutationOperation | null {
-  const bondActions = readBondActions()
+  const bondActions = readBondActions(false)
   const record = kind === 'create' ? bondActions.create : bondActions.withdraw
 
   if (!record.operationId) {
@@ -345,7 +349,7 @@ export function getBondActionMigrationStatus(): {
   withdrawMigrated: boolean
   migrationTimestamp?: string
 } {
-  const bondActions = readBondActions()
+  const bondActions = readBondActions(false)
 
   return {
     createMigrated: !!bondActions.create.migratedToV2,
@@ -363,7 +367,7 @@ export function forceBondActionsMigration(): {
   failed: number
   operations: MutationOperationId[]
 } {
-  const bondActions = readBondActions()
+  const bondActions = readBondActions(false)
   const results = { migrated: 0, failed: 0, operations: [] as MutationOperationId[] }
 
   for (const kind of ['create', 'withdraw'] as const) {

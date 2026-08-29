@@ -164,8 +164,10 @@ function createEmptyStorageV2(): MutationStorageV2 {
   }
 }
 
+let opIdCounter = 0
 function generateOperationId(type: MutationType, requestHash: string): MutationOperationId {
-  return `${type}:${requestHash}:${Date.now()}`
+  opIdCounter = (opIdCounter + 1) % 1000000
+  return `${type}:${requestHash}:${Date.now()}_${opIdCounter}`
 }
 
 function generateAttemptId(): string {
@@ -373,7 +375,7 @@ export function readMutationStorage(): MutationStorageV2 {
     const writeResult = safeWriteJson(MUTATION_STORAGE_V2_KEY, migrated)
     if (!writeResult.ok) {
       logWarn('mutation_storage_write_failed_after_migration', {
-        error: writeResult.error.message,
+        error: writeResult.error?.message ?? String(writeResult.error),
       })
     }
     return migrated
@@ -390,7 +392,9 @@ export function writeMutationStorage(storage: MutationStorageV2): void {
   storage.metadata.updatedAt = new Date().toISOString()
   const writeResult = safeWriteJson(MUTATION_STORAGE_V2_KEY, storage)
   if (!writeResult.ok) {
-    logWarn('mutation_storage_write_failed', { error: writeResult.error.message })
+    logWarn('mutation_storage_write_failed', {
+      error: writeResult.error?.message ?? String(writeResult.error),
+    })
   }
 }
 
@@ -532,6 +536,251 @@ export function getMutationOperations(
 }
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Pagination and Cursor Semantics
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+export const MUTATION_CURSOR_VERSION = 1 as const
+export const DEFAULT_MUTATION_PAGE_LIMIT = 20
+export const MIN_MUTATION_PAGE_LIMIT = 1
+export const MAX_MUTATION_PAGE_LIMIT = 100
+
+export interface MutationCursorPayload {
+  version: typeof MUTATION_CURSOR_VERSION
+  updatedAt: string
+  operationId: string
+  type?: MutationType
+  status?: MutationStatus
+  scope?: string
+  order?: 'desc' | 'asc'
+}
+
+export interface PaginateMutationOptions {
+  type?: MutationType
+  status?: MutationStatus
+  scope?: string
+  limit?: number
+  cursor?: string
+  order?: 'desc' | 'asc'
+}
+
+export interface PaginatedMutationResult {
+  items: MutationOperation[]
+  nextCursor?: string
+  hasNextPage: boolean
+  totalCount: number
+  limit: number
+  appliedScope?: string
+}
+
+export function encodeMutationCursor(
+  payload: Omit<MutationCursorPayload, 'version'> & { version?: typeof MUTATION_CURSOR_VERSION }
+): string {
+  const versionedPayload: MutationCursorPayload = {
+    version: MUTATION_CURSOR_VERSION,
+    ...payload,
+  }
+  const jsonStr = JSON.stringify(versionedPayload)
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(jsonStr, 'utf-8').toString('base64url')
+  }
+  return btoa(jsonStr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+export function decodeMutationCursor(cursor: string): MutationCursorPayload | null {
+  if (!cursor || typeof cursor !== 'string') return null
+  try {
+    let jsonStr: string
+    if (typeof Buffer !== 'undefined') {
+      jsonStr = Buffer.from(cursor, 'base64url').toString('utf-8')
+    } else {
+      const padded =
+        cursor.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((cursor.length + 3) % 4)
+      jsonStr = atob(padded)
+    }
+    const parsed = JSON.parse(jsonStr)
+    if (
+      parsed &&
+      parsed.version === MUTATION_CURSOR_VERSION &&
+      typeof parsed.updatedAt === 'string' &&
+      typeof parsed.operationId === 'string'
+    ) {
+      return parsed as MutationCursorPayload
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function validateMutationCursor(
+  cursor: string,
+  expectedOptions: {
+    type?: MutationType
+    status?: MutationStatus
+    scope?: string
+    order?: 'desc' | 'asc'
+  }
+): { valid: boolean; payload?: MutationCursorPayload; error?: string } {
+  const payload = decodeMutationCursor(cursor)
+  if (!payload) {
+    return { valid: false, error: 'Invalid or malformed cursor format' }
+  }
+  if (expectedOptions.type && payload.type && payload.type !== expectedOptions.type) {
+    return {
+      valid: false,
+      error: `Cursor scope mismatch: expected type ${expectedOptions.type}, got ${payload.type}`,
+    }
+  }
+  if (expectedOptions.status && payload.status && payload.status !== expectedOptions.status) {
+    return {
+      valid: false,
+      error: `Cursor scope mismatch: expected status ${expectedOptions.status}, got ${payload.status}`,
+    }
+  }
+  if (expectedOptions.scope && payload.scope && payload.scope !== expectedOptions.scope) {
+    return {
+      valid: false,
+      error: `Cursor scope mismatch: expected scope ${expectedOptions.scope}, got ${payload.scope}`,
+    }
+  }
+  if (expectedOptions.order && payload.order && payload.order !== expectedOptions.order) {
+    return {
+      valid: false,
+      error: `Cursor order mismatch: expected order ${expectedOptions.order}, got ${payload.order}`,
+    }
+  }
+  return { valid: true, payload }
+}
+
+function compareOperations(
+  a: { updatedAt: string; operationId: string },
+  b: { updatedAt: string; operationId: string },
+  order: 'desc' | 'asc' = 'desc'
+): number {
+  const timeA = new Date(a.updatedAt).getTime()
+  const timeB = new Date(b.updatedAt).getTime()
+  if (timeA !== timeB) {
+    return order === 'desc' ? timeB - timeA : timeA - timeB
+  }
+  return order === 'desc'
+    ? b.operationId.localeCompare(a.operationId)
+    : a.operationId.localeCompare(b.operationId)
+}
+
+function clampLimit(limit?: number): number {
+  if (typeof limit !== 'number' || isNaN(limit) || !isFinite(limit)) {
+    return DEFAULT_MUTATION_PAGE_LIMIT
+  }
+  const intLimit = Math.floor(limit)
+  if (intLimit < MIN_MUTATION_PAGE_LIMIT) return MIN_MUTATION_PAGE_LIMIT
+  if (intLimit > MAX_MUTATION_PAGE_LIMIT) return MAX_MUTATION_PAGE_LIMIT
+  return intLimit
+}
+
+/**
+ * Deterministic, scope-safe cursor pagination for bond and trust-score mutations.
+ */
+export function paginateMutationOperations(
+  options: PaginateMutationOptions = {}
+): PaginatedMutationResult {
+  const { type, status, scope, cursor, order = 'desc' } = options
+  const limit = clampLimit(options.limit)
+
+  const storage = readMutationStorage()
+  let operations = Object.values(storage.operations)
+
+  // Filter by type
+  if (type) {
+    operations = operations.filter((op) => op.type === type)
+  }
+
+  // Filter by status
+  if (status) {
+    operations = operations.filter((op) => op.status === status)
+  }
+
+  // Filter by scope (e.g. address or metadata scope)
+  if (scope) {
+    operations = operations.filter((op) => {
+      const metadata = op.requestMetadata || {}
+      return (
+        metadata.address === scope ||
+        metadata.account === scope ||
+        metadata.scope === scope ||
+        op.operationId.includes(scope)
+      )
+    })
+  }
+
+  const totalCount = operations.length
+
+  // Sort deterministically by (updatedAt, operationId tiebreaker)
+  operations.sort((a, b) => compareOperations(a, b, order))
+
+  // Handle cursor if provided
+  let sliced = operations
+  if (cursor) {
+    const validation = validateMutationCursor(cursor, { type, status, scope, order })
+    if (!validation.valid || !validation.payload) {
+      logWarn('invalid_mutation_cursor_provided', { cursor, error: validation.error })
+      // Safe fallback: return empty page without nextCursor on invalid or scope-mismatched cursor
+      return {
+        items: [],
+        nextCursor: undefined,
+        hasNextPage: false,
+        totalCount,
+        limit,
+        appliedScope: scope,
+      }
+    }
+
+    const { updatedAt: cTs, operationId: cId } = validation.payload
+    sliced = operations.filter((op) => {
+      const opTime = new Date(op.updatedAt).getTime()
+      const cTime = new Date(cTs).getTime()
+      if (order === 'desc') {
+        if (opTime < cTime) return true
+        if (opTime === cTime) return op.operationId.localeCompare(cId) < 0
+        return false
+      } else {
+        if (opTime > cTime) return true
+        if (opTime === cTime) return op.operationId.localeCompare(cId) > 0
+        return false
+      }
+    })
+  }
+
+  // Slice up to limit
+  const items = sliced.slice(0, limit)
+  const hasNextPage = sliced.length > limit
+
+  let nextCursor: string | undefined
+  if (hasNextPage && items.length > 0) {
+    const lastItem = items[items.length - 1]
+    nextCursor = encodeMutationCursor({
+      version: MUTATION_CURSOR_VERSION,
+      updatedAt: lastItem.updatedAt,
+      operationId: lastItem.operationId,
+      type,
+      status,
+      scope,
+      order,
+    })
+  }
+
+  return {
+    items,
+    nextCursor,
+    hasNextPage,
+    totalCount,
+    limit,
+    appliedScope: scope,
+  }
+}
+
+/**
  * Gets a specific operation by ID.
  */
 export function getMutationOperation(operationId: MutationOperationId): MutationOperation | null {
@@ -589,6 +838,8 @@ export const __testing__ = {
   calculateRequestHash,
   mapLegacyStatus,
   cleanupStaleOperations,
+  compareOperations,
+  clampLimit,
   STALE_OPERATION_MS,
   DEFAULT_MAX_ATTEMPTS,
 }

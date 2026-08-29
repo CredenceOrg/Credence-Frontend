@@ -16,7 +16,6 @@ import { isValidStellarAddress } from './stellar'
 import { initiateMutation } from './mutationRecovery'
 import {
   type MutationOperationId,
-  createMutationOperation,
   getMutationOperation,
   updateMutationOperation,
 } from './mutationStorage'

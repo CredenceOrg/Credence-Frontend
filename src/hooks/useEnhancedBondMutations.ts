@@ -15,15 +15,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import {
-  type MutationOperationId,
-  getMutationOperations,
-} from '../lib/mutationStorage'
-import {
-  retryMutation,
-  cancelMutation,
-  mutationRecoveryEngine,
-} from '../lib/mutationRecovery'
+import { type MutationOperationId } from '../lib/mutationStorage'
+import { retryMutation, cancelMutation, mutationRecoveryEngine } from '../lib/mutationRecovery'
 import {
   readBondActions,
   updateBondAction,
@@ -121,9 +114,35 @@ export function useEnhancedBondMutations(): UseEnhancedBondMutationsResult {
     const newState = operation ? operationToState(operation) : initializeBondMutationState(kind)
 
     if (kind === 'create') {
-      setCreateState(newState)
+      setCreateState((prev) => {
+        if (
+          prev.status === newState.status &&
+          prev.attempts === newState.attempts &&
+          prev.txHash === newState.txHash &&
+          prev.error === newState.error &&
+          prev.operationId === newState.operationId &&
+          prev.canRetry === newState.canRetry &&
+          prev.isActive === newState.isActive
+        ) {
+          return prev
+        }
+        return newState
+      })
     } else {
-      setWithdrawState(newState)
+      setWithdrawState((prev) => {
+        if (
+          prev.status === newState.status &&
+          prev.attempts === newState.attempts &&
+          prev.txHash === newState.txHash &&
+          prev.error === newState.error &&
+          prev.operationId === newState.operationId &&
+          prev.canRetry === newState.canRetry &&
+          prev.isActive === newState.isActive
+        ) {
+          return prev
+        }
+        return newState
+      })
     }
   }, [])
 
@@ -167,9 +186,6 @@ export function useEnhancedBondMutations(): UseEnhancedBondMutationsResult {
             recoveredCount: results.recovered,
           })
 
-          // Update states after recovery
-          scheduleStateUpdate(0)
-
           logInfo('bond_mutations_hook_initialized', {
             recoveredOperations: results.recovered,
             failedRecovery: results.failed,
@@ -190,7 +206,7 @@ export function useEnhancedBondMutations(): UseEnhancedBondMutationsResult {
     return () => {
       isMounted = false
     }
-  }, [updateStateFromOperation, scheduleStateUpdate])
+  }, [updateStateFromOperation])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Effect: Polling for Active Operations
@@ -205,7 +221,7 @@ export function useEnhancedBondMutations(): UseEnhancedBondMutationsResult {
           updateStateFromOperation('create')
           updateStateFromOperation('withdraw')
         }
-      }, 1000) // Poll every second for active operations
+      }, 500)
 
       return () => clearInterval(interval)
     }
@@ -217,6 +233,11 @@ export function useEnhancedBondMutations(): UseEnhancedBondMutationsResult {
 
   const createBond = useCallback(
     async (amountUsdc: number): Promise<MutationOperationId> => {
+      if (createState.isActive) {
+        logWarn('bond_create_already_active')
+        return undefined as unknown as MutationOperationId
+      }
+
       try {
         const { operationId } = await createEnhancedBondAction('create', { amountUsdc })
 
@@ -233,11 +254,16 @@ export function useEnhancedBondMutations(): UseEnhancedBondMutationsResult {
         throw error
       }
     },
-    [scheduleStateUpdate]
+    [createState.isActive, scheduleStateUpdate]
   )
 
   const withdrawBond = useCallback(
     async (bondId: number, amountUsdc: number): Promise<MutationOperationId> => {
+      if (withdrawState.isActive) {
+        logWarn('bond_withdraw_already_active')
+        return undefined as unknown as MutationOperationId
+      }
+
       try {
         const { operationId } = await createEnhancedBondAction('withdraw', { bondId, amountUsdc })
 
@@ -255,64 +281,88 @@ export function useEnhancedBondMutations(): UseEnhancedBondMutationsResult {
         throw error
       }
     },
-    [scheduleStateUpdate]
+    [withdrawState.isActive, scheduleStateUpdate]
   )
 
   const retry = useCallback(async (): Promise<boolean> => {
-    const active = activeOperationRef.current
-    if (!active) {
+    const targetOperationId =
+      activeOperationRef.current?.operationId ||
+      (createState.canRetry
+        ? createState.operationId
+        : withdrawState.canRetry
+          ? withdrawState.operationId
+          : null)
+
+    if (!targetOperationId) {
       logWarn('bond_retry_no_active_operation')
       return false
     }
 
     try {
-      const success = await retryMutation(active.operationId)
+      const success = await retryMutation(targetOperationId)
       scheduleStateUpdate(0)
 
       logInfo('bond_retry_attempted', {
-        operationId: active.operationId,
-        kind: active.kind,
+        operationId: targetOperationId,
         success,
       })
 
       return success
     } catch (error) {
       logWarn('bond_retry_failed', {
-        operationId: active.operationId,
+        operationId: targetOperationId,
         error: error instanceof Error ? error.message : String(error),
       })
       return false
     }
-  }, [scheduleStateUpdate])
+  }, [
+    createState.canRetry,
+    createState.operationId,
+    withdrawState.canRetry,
+    withdrawState.operationId,
+    scheduleStateUpdate,
+  ])
 
   const cancel = useCallback((): boolean => {
-    const active = activeOperationRef.current
-    if (!active) {
+    const targetOperationId =
+      activeOperationRef.current?.operationId ||
+      (createState.isActive
+        ? createState.operationId
+        : withdrawState.isActive
+          ? withdrawState.operationId
+          : null)
+
+    if (!targetOperationId) {
       logWarn('bond_cancel_no_active_operation')
       return false
     }
 
     try {
-      const cancelled = cancelMutation(active.operationId)
+      const cancelled = cancelMutation(targetOperationId)
       if (cancelled) {
         activeOperationRef.current = null
         scheduleStateUpdate(0)
 
         logInfo('bond_operation_cancelled', {
-          operationId: active.operationId,
-          kind: active.kind,
+          operationId: targetOperationId,
         })
       }
 
       return cancelled
     } catch (error) {
       logWarn('bond_cancel_failed', {
-        operationId: active.operationId,
+        operationId: targetOperationId,
         error: error instanceof Error ? error.message : String(error),
       })
       return false
     }
-  }, [scheduleStateUpdate])
+  }, [
+    createState.isActive,
+    createState.operationId,
+    withdrawState.isActive,
+    withdrawState.operationId,
+    scheduleStateUpdate,
+  ])
 
   const reset = useCallback((): void => {
     // Reset both legacy and unified storage to idle state
@@ -396,7 +446,22 @@ function initializeBondMutationState(kind: BondActionKind): BondMutationState {
   }
 }
 
-function operationToState(operation: { operationId: string; status: string; attempts: Array<any>; finalTxHash?: string; createdAt: string; updatedAt: string; completedAt?: string; maxAttempts: number }): BondMutationState {
+function operationToState(operation: {
+  operationId: string
+  status: string
+  attempts: Array<{
+    attemptId?: string
+    status?: string
+    timestamp?: string
+    error?: { message?: string; retryable?: boolean }
+    txHash?: string
+  }>
+  finalTxHash?: string
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+  maxAttempts: number
+}): BondMutationState {
   const lastAttempt = operation.attempts[operation.attempts.length - 1]
 
   const normalizeStatus = (status: string): BondMutationState['status'] => {

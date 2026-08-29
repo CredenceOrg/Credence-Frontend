@@ -78,7 +78,7 @@ let shutdownPromise: Promise<void> | null = null
  * This function is idempotent - multiple calls will return the same promise
  * until the system is shut down and reinitialized.
  */
-export async function initializeMutationSystem(
+export function initializeMutationSystem(
   config: MutationSystemConfig = {}
 ): Promise<InitializationResult> {
   // Return existing initialization if in progress or completed
@@ -88,16 +88,16 @@ export async function initializeMutationSystem(
 
   // Create new initialization promise
   initializationPromise = performInitialization({ ...DEFAULT_CONFIG, ...config })
+    .then((result) => {
+      isInitialized = result.success
+      return result
+    })
+    .catch((error) => {
+      initializationPromise = null
+      throw error
+    })
 
-  try {
-    const result = await initializationPromise
-    isInitialized = result.success
-    return result
-  } catch (error) {
-    // Reset promise on failure to allow retry
-    initializationPromise = null
-    throw error
-  }
+  return initializationPromise
 }
 
 async function performInitialization(
@@ -113,9 +113,10 @@ async function performInitialization(
 
   if (config.verboseLogging) {
     logInfo('mutation_system_initialization_started', {
-    autoRecoveryEnabled: config.autoRecoveryEnabled ?? true,
-    cleanupOnStartup: config.cleanupOnStartup ?? true,
-  })
+      enableAutoRecovery: config.enableAutoRecovery,
+      cleanupCompleted: config.cleanupCompleted,
+      forceMigration: config.forceMigration,
+    })
   }
 
   try {
@@ -141,7 +142,7 @@ async function performInitialization(
     await validateSystemState(config, result)
 
     result.success = result.errors.length === 0
-    result.duration = Date.now() - startTime
+    result.duration = Math.max(1, Date.now() - startTime)
 
     if (result.success) {
       logInfo('mutation_system_initialization_completed', {
@@ -258,10 +259,14 @@ async function initializeRecoverySystem(
   try {
     await initializeMutationRecovery()
 
-    if (result.migrationResults) {
-      const recoveryStatus = mutationRecoveryEngine.getRecoveryStatus()
-      result.migrationResults.operationsRecovered = recoveryStatus.pending
+    if (!result.migrationResults) {
+      result.migrationResults = {
+        bondActionsMigrated: 0,
+        operationsRecovered: 0,
+      }
     }
+    const recoveryStatus = mutationRecoveryEngine.getRecoveryStatus()
+    result.migrationResults.operationsRecovered = recoveryStatus.pending
 
     if (config.verboseLogging) {
       const status = mutationRecoveryEngine.getRecoveryStatus()
@@ -405,7 +410,7 @@ export function getMutationSystemStatus(): SystemStatus {
     status.storage = {
       schemaVersion: storage.schemaVersion,
       operationCount: Object.keys(storage.operations).length,
-      lastUpdated: (storage.metadata as any).updatedAt || storage.metadata.createdAt,
+      lastUpdated: storage.metadata.updatedAt || storage.metadata.createdAt,
     }
 
     const recoveryStatus = mutationRecoveryEngine.getRecoveryStatus()

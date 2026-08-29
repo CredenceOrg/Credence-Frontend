@@ -1,10 +1,37 @@
 import React, { useState, useRef } from 'react'
 import AddressInput from './AddressInput'
 import Select from './controls/Select'
-import { FormField } from './forms/FormField'
+import { FormField, Textarea } from './forms'
 import Button from './Button'
 import ConfirmDialog from './ConfirmDialog'
+import useCopyToClipboard from '../hooks/useCopyToClipboard'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useToast } from './ToastProvider'
+import { ATTESTATION_EVENTS, type AttestationPayload } from '../events'
+
+const ATTESTATION_CONFIRMED_EVENT = 'credence:attestation:confirmed'
+const ATTESTATION_EVENT_VERSION = 1
+let attestationEventSequence = 0
+
+function createCorrelationId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
+function emitAttestationConfirmed(payload: AttestationPayload, correlationId: string): void {
+  attestationEventSequence += 1
+  window.dispatchEvent(
+    new CustomEvent(ATTESTATION_CONFIRMED_EVENT, {
+      detail: {
+        version: ATTESTATION_EVENT_VERSION,
+        type: ATTESTATION_CONFIRMED_EVENT,
+        sequence: attestationEventSequence,
+        correlationId,
+        occurredAt: new Date().toISOString(),
+        payload,
+      },
+    }),
+  )
+}
 
 /**
  * Props for the AttestationForm component.
@@ -13,8 +40,9 @@ export interface AttestationFormProps {
   /**
    * Callback triggered when an attestation is successfully confirmed and submitted.
    * Receives the finalized attestation data.
+   * May return the authoritative finalized payload for event emission.
    */
-  onSubmitSuccess?: (payload: { subject: string; type: string; evidence: string }) => void
+  onSubmitSuccess?: (payload: AttestationPayload) => void | Promise<AttestationPayload | void>
   /**
    * Disables form fields and the submit action during submission or external loading.
    */
@@ -25,21 +53,30 @@ export interface AttestationFormProps {
  * AttestationForm handles the input and validation for submitting attestations.
  * Validation Contract:
  * - A valid Stellar subject public key address is required.
- * - Evidence text is required and cannot exceed 500 characters.
+ * - Evidence text is required and cannot exceed 2,000 characters.
  * - Confirms the submission using a customized ConfirmDialog.
  */
-export default function AttestationForm({ onSubmitSuccess, disabled = false }: AttestationFormProps) {
+export default function AttestationForm({
+  onSubmitSuccess,
+  disabled = false,
+}: AttestationFormProps) {
   const { addToast } = useToast()
+  const { copy, copied } = useCopyToClipboard()
+  const reducedMotion = useReducedMotion()
   const [subject, setSubject] = useState('')
   const [isSubjectValid, setIsSubjectValid] = useState(false)
-  const [type, setType] = useState('identity')
+  const [type, setType] = useState<string>(ATTESTATION_EVENTS.TYPES.IDENTITY)
   const [evidence, setEvidence] = useState('')
   const [errors, setErrors] = useState<{ subject?: string; evidence?: string }>({})
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submittingRef = useRef(false)
+  const correlationIdRef = useRef<string | null>(null)
   const submitButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleSubjectChange = (val: string) => {
     setSubject(val)
+    correlationIdRef.current = null
     if (errors.subject) {
       setErrors((prev) => ({ ...prev, subject: undefined }))
     }
@@ -48,13 +85,22 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
   const handleEvidenceChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value
     setEvidence(val)
+    correlationIdRef.current = null
     if (errors.evidence) {
       setErrors((prev) => ({ ...prev, evidence: undefined }))
     }
   }
 
+  const handleTypeChange = (val: string) => {
+    setType(val)
+    correlationIdRef.current = null
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (submittingRef.current) {
+      return
+    }
 
     const newErrors: { subject?: string; evidence?: string } = {}
 
@@ -66,8 +112,8 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
 
     if (!evidence.trim()) {
       newErrors.evidence = 'Evidence is required.'
-    } else if (evidence.length > 500) {
-      newErrors.evidence = 'Evidence cannot exceed 500 characters.'
+    } else if (evidence.length > 2000) {
+      newErrors.evidence = 'Evidence cannot exceed 2,000 characters.'
     }
 
     setErrors(newErrors)
@@ -79,17 +125,39 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
     setConfirmOpen(true)
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (submittingRef.current) {
+      return
+    }
+
+    submittingRef.current = true
+    setIsSubmitting(true)
     setConfirmOpen(false)
-    addToast('success', 'Attestation submitted successfully.')
-    onSubmitSuccess?.({ subject, type, evidence })
-    setSubject('')
-    setEvidence('')
-    setType('identity')
-    setErrors({})
+
+    const correlationId = correlationIdRef.current ?? createCorrelationId()
+    correlationIdRef.current = correlationId
+
+    try {
+      const payload: AttestationPayload = { subject, type, evidence }
+
+      const committedPayload = (await onSubmitSuccess?.(payload)) ?? payload
+      emitAttestationConfirmed(committedPayload, correlationId)
+      addToast('success', 'Attestation submitted successfully.')
+      setSubject('')
+      setEvidence('')
+      setType(ATTESTATION_EVENTS.TYPES.IDENTITY)
+      setErrors({})
+      correlationIdRef.current = null
+    } catch {
+      addToast('error', 'Attestation submission failed. Your changes have been kept for retry.')
+    } finally {
+      submittingRef.current = false
+      setIsSubmitting(false)
+    }
   }
 
   const handleCancel = () => {
+    correlationIdRef.current = null
     setConfirmOpen(false)
   }
 
@@ -113,7 +181,7 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
           value={subject}
           onChange={handleSubjectChange}
           onValidationChange={setIsSubjectValid}
-          disabled={disabled}
+          disabled={disabled || isSubmitting}
           error={errors.subject}
         />
 
@@ -121,11 +189,12 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
           <Select
             id="type-select"
             value={type}
-            onChange={setType}
+            onChange={handleTypeChange}
+            disabled={disabled || isSubmitting}
             options={[
-              { value: 'identity', label: 'Identity Verification' },
-              { value: 'peer-vouch', label: 'Peer Vouch' },
-              { value: 'credential', label: 'Credential / Certification' },
+              { value: ATTESTATION_EVENTS.TYPES.IDENTITY, label: 'Identity Verification' },
+              { value: ATTESTATION_EVENTS.TYPES.PEER_VOUCH, label: 'Peer Vouch' },
+              { value: ATTESTATION_EVENTS.TYPES.CREDENTIAL, label: 'Credential / Certification' },
             ]}
           />
         </FormField>
@@ -134,30 +203,16 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
           <FormField
             id="evidence-input"
             label="Evidence"
-            hint="Add supporting proof or description (max 500 characters)"
+            hint="Add supporting proof or description (max 2,000 chars)"
             error={errors.evidence}
+            required
           >
-            <textarea
-              id="evidence-input"
+            <Textarea
               value={evidence}
               onChange={handleEvidenceChange}
-              disabled={disabled}
+              disabled={disabled || isSubmitting}
               placeholder="Provide proof or verification details..."
               rows={4}
-              maxLength={500}
-              style={{
-                width: '100%',
-                padding: 'var(--credence-space-3)',
-                borderRadius: 'var(--credence-radius-lg)',
-                border: '1px solid var(--credence-border-default)',
-                background: 'var(--credence-surface-card)',
-                color: 'var(--credence-text-primary)',
-                minHeight: '100px',
-                fontFamily: 'var(--credence-font-family-base)',
-                fontSize: 'var(--credence-font-size-base)',
-                resize: 'vertical',
-                boxSizing: 'border-box',
-              }}
             />
           </FormField>
           <div
@@ -169,7 +224,7 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
             }}
             aria-live="polite"
           >
-            {evidence.length} / 500 characters
+            {evidence.length} / 2,000 chars
           </div>
         </div>
 
@@ -177,7 +232,7 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
           ref={submitButtonRef}
           type="submit"
           variant="primary"
-          disabled={disabled}
+          disabled={disabled || isSubmitting}
           fullWidth
         >
           Submit Attestation
@@ -224,9 +279,67 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
               >
                 Subject
               </strong>
-              <code style={{ fontSize: 'var(--credence-font-size-sm)', wordBreak: 'break-all' }}>
-                {subject}
-              </code>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--credence-space-2)' }}
+              >
+                <code
+                  style={{
+                    fontSize: 'var(--credence-font-size-sm)',
+                    wordBreak: 'break-all',
+                    flex: 1,
+                  }}
+                >
+                  {subject}
+                </code>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const success = await copy(subject)
+                    if (success) {
+                      addToast('success', 'Subject address copied to clipboard')
+                    }
+                  }}
+                  aria-label={copied ? 'Copied' : 'Copy subject address'}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 'var(--credence-space-1)',
+                    border: 'none',
+                    borderRadius: 'var(--credence-radius-sm)',
+                    background: 'transparent',
+                    color: 'var(--credence-text-secondary)',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    transition: reducedMotion ? 'none' : 'all 0.2s ease',
+                  }}
+                >
+                  {copied ? (
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             <div>
               <strong
@@ -241,9 +354,9 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
                 Type
               </strong>
               <span style={{ fontSize: 'var(--credence-font-size-sm)' }}>
-                {type === 'identity'
+                {type === ATTESTATION_EVENTS.TYPES.IDENTITY
                   ? 'Identity Verification'
-                  : type === 'peer-vouch'
+                  : type === ATTESTATION_EVENTS.TYPES.PEER_VOUCH
                     ? 'Peer Vouch'
                     : 'Credential / Certification'}
               </span>

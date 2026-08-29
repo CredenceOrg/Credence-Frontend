@@ -1,0 +1,104 @@
+/* TrustSummary.css
+ * All values reference --credence-* tokens from src/index.css.
+ * Hard-coded colors / font stacks removed on uiux/typography-scale-fresh.
+ */
+
+.trustSummary {
+  max-width: 50rem; /* 800px equivalent */
+  margin: 0 auto;
+  padding: var(--credence-space-4);
+  color: var(--credence-text-primary);
+}
+
+.trustSummary__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-2);
+  align-items: flex-start;
+  margin-bottom: var(--credence-space-4);
+}
+
+/* The h1 inherits its size/weight from the global heading reset in index.css.
+ * This class only overrides properties that are specific to this context. */
+.trustSummary__title {
+  /* Already sized by global h1 reset: 3xl / bold / tight line-height */
+  line-height: var(--credence-line-height-tight);
+}
+
+.trustSummary__addressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-2);
+  word-break: break-all;
+}
+
+.trustSummary__address {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--credence-font-size-sm);
+  font-variant-numeric: tabular-nums;
+  background: var(--credence-surface-page);
+  color: var(--credence-text-secondary);
+  padding: var(--credence-space-1) var(--credence-space-2);
+  border-radius: var(--credence-radius-sm);
+  border: 1px solid var(--credence-border-default);
+}
+
+.trustSummary__copyBtn,
+.trustSummary__printBtn {
+  background: var(--credence-color-primary);
+  color: var(--credence-color-white);
+  border: none;
+  border-radius: var(--credence-radius-md);
+  padding: var(--credence-space-2) var(--credence-space-4);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.trustSummary__copyBtn:hover,
+.trustSummary__printBtn:hover {
+  background: var(--credence-color-primary-strong);
+}
+
+.trustSummary__copyBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.trustSummary__tierBadge {
+  margin-top: var(--credence-space-2);
+}
+
+.trustSummary__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-4);
+}
+
+@media print {
+  /* Hide UI chrome */
+  header,
+  nav,
+  .toastProvider,
+  .trustSummary__copyBtn,
+  .trustSummary__printBtn {
+    display: none !important;
+  }
+
+  /* Ensure content fits one page */
+  .trustSummary {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    font-size: 12pt;
+  }
+
+  .trustSummary__address {
+    font-size: 10pt;
+  }
+
+  .trustSummary__content {
+    page-break-inside: avoid;
+  }
+}

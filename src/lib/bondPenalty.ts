@@ -165,6 +165,7 @@ export function computeWithdrawBreakdown(bond: MockBond): {
   penaltyPercent: number
   resultingBalance: string
   penaltyUsdc: number
+  resultingUsdc: number
 } {
   const rate = getPenaltyRate(bond.status)
   const penaltyPercent = Math.round(rate * 100)
@@ -177,6 +178,7 @@ export function computeWithdrawBreakdown(bond: MockBond): {
     penaltyPercent,
     resultingBalance: formatUsdc(resultingUsdc),
     penaltyUsdc,
+    resultingUsdc,
   }
 }
 
@@ -190,4 +192,24 @@ export function calcUnlockDate(days: number): string {
   const today = new Date()
   const unlock = new Date(today.getTime() + days * 24 * 60 * 60 * 1000)
   return unlock.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+/**
+ * Derives the lock start date from today.
+ *
+ * @returns A locale-formatted date string (e.g. "Jun 19, 2026").
+ */
+export function calcLockStartDate(): string {
+  const today = new Date()
+  return today.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+/**
+ * Returns a human-readable string for the time remaining on a lock.
+ *
+ * @param durationDays - Total lock duration in days.
+ * @returns A string like "30 days remaining" or "≥30 days remaining".
+ */
+export function calcTimeRemaining(durationDays: number): string {
+  return `${durationDays} days remaining`
 }

@@ -25,6 +25,12 @@ export interface AmountInputProps extends NativeInputProps {
    */
   error?: string
   /**
+   * When true, skips rendering the inline error message so a parent `FormField`
+   * (or other owner) can surface the message via `aria-describedby` without
+   * duplicating alerts. Visual invalid styling and `aria-invalid` still apply.
+   */
+  hideErrorMessage?: boolean
+  /**
    * Called whenever the internal validity state changes.
    * `isValid` is `false` when the entered amount exceeds balance; `true` otherwise.
    * Callers can use this to gate form submission without duplicating the comparison.
@@ -32,6 +38,8 @@ export interface AmountInputProps extends NativeInputProps {
   onValidityChange?: (isValid: boolean) => void
   /** Loading state - shows skeleton/spinner and disables interaction */
   isLoading?: boolean
+  /** Minimum allowed amount */
+  min?: number
 }
 
 export default function AmountInput({
@@ -41,6 +49,7 @@ export default function AmountInput({
   presets = [100, 500, 1000],
   currencyLabel = 'USDC',
   error,
+  hideErrorMessage = false,
   isLoading = false,
   'aria-invalid': ariaInvalid,
   'aria-describedby': ariaDescribedBy,
@@ -48,6 +57,7 @@ export default function AmountInput({
   onFocus,
   onValidityChange,
   disabled,
+  min,
   ...inputProps
 }: AmountInputProps) {
   const uid = useId()
@@ -63,8 +73,7 @@ export default function AmountInput({
   }, [value])
 
   const isOverBalance = numericValue > 0 && numericValue > balance
-  const isBelowMin =
-    min !== undefined && numericValue > 0 && numericValue < min
+  const isBelowMin = min !== undefined && numericValue > 0 && numericValue < min
 
   // Explicit `error` prop always wins; over-balance takes precedence over below-minimum.
   const activeError =
@@ -75,12 +84,14 @@ export default function AmountInput({
         ? `Amount must be at least ${min} ${currencyLabel}.`
         : undefined)
 
+  const showInlineError = Boolean(activeError) && !hideErrorMessage
   const isInvalid = Boolean(activeError) || ariaInvalid === 'true'
 
   // Notify caller when internal validity changes.
+  // A non-empty value is invalid when it exceeds balance OR falls below min.
   useEffect(() => {
-    onValidityChange?.(!isOverBalance)
-  }, [isOverBalance, onValidityChange])
+    onValidityChange?.(!isOverBalance && !isBelowMin)
+  }, [isOverBalance, isBelowMin, onValidityChange])
 
   const displayValue = useMemo(() => {
     if (isFocused) return value
@@ -110,9 +121,9 @@ export default function AmountInput({
   const isDisabled = disabled || isLoading
   const isMaxDisabled = balance <= 0 || isDisabled
 
-  // Merge any caller-supplied aria-describedby with our internal error id.
+  // Merge any caller-supplied aria-describedby with our internal error id when we own the message.
   const describedBy =
-    [ariaDescribedBy, activeError ? errorId : undefined].filter(Boolean).join(' ') || undefined
+    [ariaDescribedBy, showInlineError ? errorId : undefined].filter(Boolean).join(' ') || undefined
 
   return (
     <div
@@ -136,11 +147,7 @@ export default function AmountInput({
             placeholder={isLoading ? 'Loading...' : inputProps.placeholder}
           />
           <span className="amountInput__adornment" aria-hidden="true">
-            {isLoading ? (
-              <span className="amountInput__spinner" />
-            ) : (
-              currencyLabel
-            )}
+            {isLoading ? <span className="amountInput__spinner" /> : currencyLabel}
           </span>
         </div>
 
@@ -174,7 +181,7 @@ export default function AmountInput({
         })}
       </div>
 
-      {activeError && (
+      {showInlineError && (
         <span id={errorId} className="amountInput__error" role="alert">
           ⚠ {activeError}
         </span>

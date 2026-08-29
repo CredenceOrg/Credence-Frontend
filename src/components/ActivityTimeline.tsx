@@ -1,98 +1,163 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState, type ReactElement } from 'react'
 import './ActivityTimeline.css'
+import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY, ACTIVITY_ITEMS } from '../data/activity'
 import EmptyState from './states/EmptyState'
+import CopyableHash from './CopyableHash'
+import Badge from './Badge'
+import type { BadgeVariant } from './Badge'
 
-export type ActivityTone = 'success' | 'warning' | 'info'
+/**
+ * Maps ActivityTimeline tone values to Badge variants.
+ * Tones represent attestation status severity levels.
+ */
+export function toneToBadgeVariant(tone: ActivityTone): BadgeVariant {
+  const mapping: Record<ActivityTone, BadgeVariant> = {
+    success: 'active',
+    warning: 'grace-period',
+    info: 'locked',
+  }
+  return mapping[tone]
+}
 
-export interface ActivityItem {
-  id: string
-  timestamp: string
-  title: string
-  description: string
-  actor: string
-  statusLabel: string
-  tone: ActivityTone
-  meta: string
+/**
+ * Detects if meta string represents a transaction hash.
+ * Returns true if meta starts with "Tx 0x" pattern.
+ */
+export function isTxHash(meta: string): boolean {
+  return /^Tx\s+0x/i.test(meta)
+}
+
+/**
+ * Resolves the filterable status for an activity item. Prefers the
+ * explicit `status` field and falls back to `toneToStatus(tone)` so
+ * legacy items added before `status` was introduced keep working.
+ */
+export function resolveItemStatus(item: ActivityItem): AttestationStatus | null {
+  if (item.status) return item.status
+  return toneToStatus(item.tone)
 }
 
 export interface ActivityTimelineProps {
   compact?: boolean
-  /** Timeline events to render. Defaults to sample data. Pass empty array for no data. */
   items?: ActivityItem[]
+  /** Override the default empty-state title (defaults to "No activity yet"). */
+  emptyTitle?: string
+  /** Override the default empty-state description. */
+  emptyDescription?: string
+  /** Opts into drawer-based navigation: swaps the disclosure button to "View details" and makes the row clickable. */
+  onSelect?: (item: ActivityItem) => void
+  /** Idempotency nonce for deterministic safe retry and replay protection. */
+  nonce?: string
 }
 
-export const SAMPLE_ACTIVITY: ActivityItem[] = [
-  {
-    id: 'evt-001',
-    timestamp: 'Apr 28, 14:22 UTC',
-    title: 'Attestation submitted',
-    description: 'Identity evidence package uploaded and signed for review.',
-    actor: 'Validator Node 12',
-    statusLabel: 'Accepted',
-    tone: 'success',
-    meta: 'Tx 0x93a1...22f4',
-  },
-  {
-    id: 'evt-002',
-    timestamp: 'Apr 27, 09:48 UTC',
-    title: 'Proof mismatch detected',
-    description: 'Signature payload differed from expected checksum for one field.',
-    actor: 'Automated Verifier',
-    statusLabel: 'Needs update',
-    tone: 'warning',
-    meta: 'Rule AV-17',
-  },
-  {
-    id: 'evt-003',
-    timestamp: 'Apr 26, 20:11 UTC',
-    title: 'Credential refreshed',
-    description: 'Expiration window extended after successful periodic check.',
-    actor: 'System process',
-    statusLabel: 'In review',
-    tone: 'info',
-    meta: 'Window +90d',
-  },
-]
-
-export const ACTIVITY_ITEMS: ActivityItem[] = SAMPLE_ACTIVITY
-
+/**
+ * Attestation timeline surface.
+ *
+ * The original disclosure pattern (Show/Hide details) is the default and
+ * is what the Trust Score surface consumes (via `compact`). The
+ * Attestations route opts in to drawer-based navigation by passing
+ * `onSelect`, which swaps the disclosure button to "View details" and
+ * makes the entire row clickable.
+ *
+ * Implements accessible disclosure pattern (inline path only):
+ * - aria-expanded / aria-controls wiring
+ * - Enter / Space toggle activation
+ * - Escape to collapse + return focus
+ * - Focus management on open / close
+ *
+ * See docs/ATTESTATIONS_VIEW_DESIGN.md, §3 and §4.
+ */
 export default function ActivityTimeline({
   compact = false,
-  items = ACTIVITY_ITEMS,
-}: ActivityTimelineProps) {
+  items = SAMPLE_ACTIVITY,
+  emptyTitle = 'No activity yet',
+  emptyDescription = 'Attestations and events will appear here once activity begins.',
+  onSelect,
+  nonce,
+}: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+
   const count = items.length
   const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
 
-  const toggleExpand = (id: string) => {
+  const toggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
-  }
+  }, [])
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      // Escape handling is meaningful only for the inline disclosure path.
+      // When `onSelect` is provided the drawer owns the focus trap and
+      // its own Escape handler — see AttestationDetailDrawer.
+      if (event.key !== 'Escape' || !expandedId || onSelect) return
+      const openId = expandedId
+      setExpandedId(null)
+      triggerRefs.current.get(openId)?.focus()
+    },
+    [expandedId, onSelect]
+  )
 
   return (
     <section
       className={`activity-surface${compact ? ' activity-surface--compact' : ''}`}
       aria-label="Activity and attestations"
+      onKeyDown={handleKeyDown}
+      data-nonce={nonce}
     >
       <header className="activity-surface__header">
         <div>
           <p className="activity-surface__eyebrow">Activity Surface Concept</p>
           <h2 className="activity-surface__title">Attestation timeline</h2>
         </div>
-        {count > 0 && <p className="activity-surface__summary">{summary}</p>}
+        {count > 0 && (
+          <p className="activity-surface__summary" aria-live="polite" aria-atomic="true">
+            {summary}
+          </p>
+        )}
       </header>
 
       {count === 0 ? (
         <EmptyState
           illustration="activity"
-          title="No activity yet"
-          description="Attestations and events will appear here once activity begins."
+          title={emptyTitle}
+          description={emptyDescription}
         />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">
           {items.map((item) => {
             const isExpanded = expandedId === item.id
+            const panelId = `details-${item.id}`
+            const buttonId = `trigger-${item.id}`
+            const rowClassName = [
+              'activity-row',
+              onSelect ? 'activity-row--selectable' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')
+            const disclosureLabel = onSelect
+              ? 'View details'
+              : isExpanded
+                ? 'Hide details'
+                : 'Show details'
+            const statusPrefix = item.statusLabel ? `${item.statusLabel}. ` : ''
             return (
-              <li className="activity-row" key={item.id}>
+              <li
+                className={rowClassName}
+                key={item.id}
+                onClick={
+                  onSelect
+                    ? (event) => {
+                        // Stop propagation so a click on the disclosure
+                        // button (which also lives in this row) doesn't
+                        // double-fire — the button's onClick owns
+                        // activation in both paths via stopPropagation.
+                        event.stopPropagation()
+                        onSelect(item)
+                      }
+                    : undefined
+                }
+              >
                 <div className="activity-row__rail" aria-hidden="true">
                   <span className={`activity-row__node activity-row__node--${item.tone}`} />
                   <span className="activity-row__line" />
@@ -103,47 +168,64 @@ export default function ActivityTimeline({
                 <div className="activity-row__content">
                   <div className="activity-row__title-wrap">
                     <p className="activity-row__title">{item.title}</p>
-                    <span className={`activity-row__status activity-row__status--${item.tone}`}>
-                      {item.statusLabel}
-                    </span>
+                    <Badge variant={toneToBadgeVariant(item.tone)} label={item.statusLabel} />
                   </div>
                   <p className="activity-row__description">{item.description}</p>
 
+                  {item.amountUsdc != null && (
+                    <p
+                      className="activity-row__amount"
+                      aria-label={`Amount: ${formatAmount(item.amountUsdc)}`}
+                    >
+                      {formatAmount(item.amountUsdc)}
+                    </p>
+                  )}
+
                   <button
+                    id={buttonId}
                     type="button"
-                    aria-expanded={isExpanded}
-                    aria-controls={`details-${item.id}`}
-                    onClick={() => toggleExpand(item.id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      marginTop: 'var(--credence-space-2)',
-                      color: 'var(--credence-text-secondary)',
-                      cursor: 'pointer',
-                      fontSize: 'var(--credence-font-size-sm)',
-                      textDecoration: 'underline',
-                      textAlign: 'left',
+                    className="activity-row__disclosure"
+                    aria-expanded={onSelect ? undefined : isExpanded}
+                    aria-controls={onSelect ? undefined : panelId}
+                    aria-label={`${statusPrefix}${disclosureLabel}`}
+                    onClick={(event) => {
+                      if (onSelect) {
+                        event.stopPropagation()
+                        onSelect(item)
+                        return
+                      }
+                      toggleExpand(item.id)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        if (onSelect) {
+                          onSelect(item)
+                          return
+                        }
+                        toggleExpand(item.id)
+                      }
+                    }}
+                    ref={(el) => {
+                      if (el) triggerRefs.current.set(item.id, el)
+                      else triggerRefs.current.delete(item.id)
                     }}
                   >
-                    {isExpanded ? 'Hide details' : 'Show details'}
+                    <span aria-hidden="true">{disclosureLabel}</span>
                   </button>
 
                   {isExpanded && (
-                    <div
-                      id={`details-${item.id}`}
-                      style={{
-                        marginTop: 'var(--credence-space-3)',
-                        padding: 'var(--credence-space-3)',
-                        background: 'var(--credence-color-surface-hover)',
-                        borderRadius: 'var(--credence-radius-md)',
-                      }}
-                    >
-                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                    <div id={panelId} className="activity-row__detail-panel" role="region" aria-label="Details">
+                      <p className="activity-row__actor">
                         <strong>Actor:</strong> {item.actor}
                       </p>
                       <p className="activity-row__meta">
-                        <strong>Meta:</strong> {item.meta}
+                        <strong>Meta:</strong>{' '}
+                        {isTxHash(item.meta) ? (
+                          <CopyableHash hash={item.meta} kind="tx" />
+                        ) : (
+                          item.meta
+                        )}
                       </p>
                     </div>
                   )}
@@ -156,3 +238,7 @@ export default function ActivityTimeline({
     </section>
   )
 }
+
+/** Re-exported for legacy callers (e.g. Trust Score surface) that
+ *  previously imported `SAMPLE_ACTIVITY` directly from this module. */
+export { SAMPLE_ACTIVITY, ACTIVITY_ITEMS }

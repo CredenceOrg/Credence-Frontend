@@ -57,6 +57,22 @@ For Banners and Toasts in Dark Mode, we will use tinted dark backgrounds instead
 
 The theme has exactly **one** owner: `SettingsContext` (`src/context/SettingsContext.tsx`).
 
+### First-paint FOUC guard
+
+An inline `<script>` in `index.html` reads `credence:settings` from localStorage
+and sets `document.documentElement.setAttribute('data-theme', …)` synchronously
+before React mounts. This prevents a flash-of-unstyled-content (FOUC) when the
+user has a dark or system preference saved.
+
+- The script is self-contained (no dependencies) and runs before any module
+  scripts or stylesheets load.
+- It reads the same `credence:settings` key that `SettingsContext` writes.
+- It resolves `'system'` via `matchMedia('(prefers-color-scheme: dark)')`
+  inline — the same logic `SettingsContext` uses — so the first paint matches
+  the OS preference without waiting for the React tree.
+- Failures (missing key, parse error) are silently caught; no theme attribute is
+  set, and the default light-theme CSS variables apply until React hydrates.
+
 - **State + persistence**: `themeMode` (`'light' | 'dark' | 'system'`) lives in
   `SettingsContext` and is persisted under the single `credence:settings`
   localStorage key. There is no separate `'theme'` key.

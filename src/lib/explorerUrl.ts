@@ -7,7 +7,7 @@
  */
 export function explorerUrl(network: string, hash: string): string {
   const base =
-    network === 'testnet'
+    network === 'test'
       ? 'https://stellar.expert/explorer/testnet/tx'
       : 'https://stellar.expert/explorer/public/tx'
   return `${base}/${encodeURIComponent(hash)}`

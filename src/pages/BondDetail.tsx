@@ -9,11 +9,8 @@ import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatUsdc } from '../lib/format'
 import ConfirmDialog from '../components/ConfirmDialog'
-import {
-  computeWithdrawBreakdown,
-  calcUnlockDate,
-  type MockBond,
-} from '../lib/bondPenalty'
+import ConnectWalletDialog from '../components/ConnectWalletDialog'
+import { computeWithdrawBreakdown, calcUnlockDate, calcTimeRemaining, calcLockStartDate, type MockBond } from '../lib/bondPenalty'
 import './BondDetail.css'
 
 const mockBonds: MockBond[] = [
@@ -26,11 +23,14 @@ export default function BondDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { addToast } = useToast()
-  const { isConnected, connect } = useWallet()
+  const { isConnected } = useWallet()
   const withdrawTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const [connectModalOpen, setConnectModalOpen] = useState(false)
+  const connectTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   const bondId = Number(id)
   useDocumentTitle(`Bond #${bondId || 'Detail'}`)
+  const connectBannerId = `bond-detail-connect-required-${bondId || 'detail'}`
 
   const initialBond = useMemo(() => {
     return mockBonds.find((b) => b.id === bondId)
@@ -81,7 +81,8 @@ export default function BondDetail() {
 
   const handleWithdrawClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (!isConnected) {
-      connect()
+      connectTriggerRef.current = event.currentTarget
+      setConnectModalOpen(true)
       return
     }
     withdrawTriggerRef.current = event.currentTarget
@@ -114,33 +115,46 @@ export default function BondDetail() {
       </div>
 
       {!isConnected && (
-        <Banner
-          severity="warning"
-          title="Connect wallet required"
-          action={{ label: 'Connect wallet', onClick: connect }}
-        >
-          Withdrawal and lock extensions require a connected Stellar wallet.
-        </Banner>
+        <div id={connectBannerId}>
+          <Banner
+            severity="warn"
+            title="Connect wallet required"
+            action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
+          >
+            Withdrawal and lock extensions require a connected Stellar wallet.
+          </Banner>
+        </div>
       )}
 
       {initialBond.status !== 'active' && breakdown.penaltyUsdc > 0 && (
-        <Banner severity="warning" title="Early Withdrawal Penalty Active">
-          This bond is currently locked. Withdrawing early will slash {breakdown.penaltyAmount} ({breakdown.penaltyPercent}% penalty).
+        <Banner severity="warn" title="Early Withdrawal Penalty Active">
+          This bond is currently locked. Withdrawing early will slash {breakdown.penaltyAmount} (
+          {breakdown.penaltyPercent}% penalty).
         </Banner>
       )}
 
       <div className="bond-detail__content">
         {/* Core details card */}
         <section className="bond-detail__card" aria-labelledby="bond-info-title">
-          <h2 id="bond-info-title" className="bond-detail__card-title">Bond Specification</h2>
+          <h2 id="bond-info-title" className="bond-detail__card-title">
+            Bond Specification
+          </h2>
           <dl className="bond-detail__info-list">
             <div className="bond-detail__info-row">
               <dt>Bonded Amount</dt>
               <dd className="bond-detail__amount">{formatUsdc(initialBond.amountUsdc)}</dd>
             </div>
             <div className="bond-detail__info-row">
+              <dt>Time Remaining</dt>
+              <dd className="bond-detail__timeRemaining">{calcTimeRemaining(duration)}</dd>
+            </div>
+            <div className="bond-detail__info-row">
               <dt>Lock Duration</dt>
               <dd>{duration} Days</dd>
+            </div>
+            <div className="bond-detail__info-row">
+              <dt>Lock Start Date</dt>
+              <dd>{calcLockStartDate()}</dd>
             </div>
             <div className="bond-detail__info-row">
               <dt>Estimated Unlock Date</dt>
@@ -157,6 +171,10 @@ export default function BondDetail() {
                   variant="secondary"
                   onClick={() => extendLock(30)}
                   disabled={!isConnected}
+                  title={
+                    !isConnected ? 'Connect your wallet to extend the lock duration' : undefined
+                  }
+                  aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   +30 Days
                 </Button>
@@ -165,10 +183,29 @@ export default function BondDetail() {
                   variant="secondary"
                   onClick={() => extendLock(90)}
                   disabled={!isConnected}
+                  title={
+                    !isConnected ? 'Connect your wallet to extend the lock duration' : undefined
+                  }
+                  aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   +90 Days
                 </Button>
               </div>
+            </div>
+
+            <div className="bond-detail__action-section">
+              <span className="bond-detail__action-label">Top-Up Bond</span>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!isConnected}
+                title={
+                  !isConnected ? 'Connect your wallet to top up this bond' : undefined
+                }
+                aria-describedby={!isConnected ? connectBannerId : undefined}
+              >
+                Add USDC
+              </Button>
             </div>
 
             <div className="bond-detail__action-section bond-detail__action-section--withdraw">
@@ -177,8 +214,8 @@ export default function BondDetail() {
                 ref={withdrawTriggerRef}
                 type="button"
                 variant={breakdown.penaltyUsdc > 0 ? 'danger' : 'primary'}
-                onClick={isConnected ? handleWithdrawClick : connect}
-                aria-haspopup={isConnected ? 'dialog' : undefined}
+                onClick={handleWithdrawClick}
+                aria-haspopup="dialog"
               >
                 {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
               </Button>
@@ -187,8 +224,13 @@ export default function BondDetail() {
         </section>
 
         {/* Slash-risk panel */}
-        <section className="bond-detail__card bond-detail__card--warning" aria-labelledby="slash-panel-title">
-          <h2 id="slash-panel-title" className="bond-detail__card-title">Slash-Risk Panel</h2>
+        <section
+          className="bond-detail__card bond-detail__card--warning"
+          aria-labelledby="slash-panel-title"
+        >
+          <h2 id="slash-panel-title" className="bond-detail__card-title">
+            Slash-Risk Panel
+          </h2>
           <div className="bond-detail__slash-breakdown">
             <div className="bond-detail__slash-row">
               <span>Current Early-Withdrawal Penalty</span>
@@ -196,7 +238,7 @@ export default function BondDetail() {
             </div>
             <div className="bond-detail__slash-row">
               <span>USDC Penalty Amount</span>
-              <span className="bond-detail__penalty-amount">{breakdown.penaltyAmount}</span>
+              <span className="bond-detail__penalty-amount">−{breakdown.penaltyAmount}</span>
             </div>
             <div className="bond-detail__divider" />
             <div className="bond-detail__slash-row bond-detail__slash-row--total">
@@ -205,7 +247,8 @@ export default function BondDetail() {
             </div>
           </div>
           <p className="bond-detail__slash-disclaimer">
-            All penalty calculations are dynamic and subject to protocol slashing rules. Once initiated, withdrawal is irreversible.
+            All penalty calculations are dynamic and subject to protocol slashing rules. Once
+            initiated, withdrawal is irreversible.
           </p>
         </section>
       </div>
@@ -221,6 +264,12 @@ export default function BondDetail() {
           returnFocusRef={withdrawTriggerRef}
         />
       )}
+
+      <ConnectWalletDialog
+        open={connectModalOpen}
+        onClose={() => setConnectModalOpen(false)}
+        returnFocusRef={connectTriggerRef}
+      />
     </main>
   )
 }

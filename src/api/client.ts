@@ -286,7 +286,10 @@ function requestFingerprint(
 ): string {
   const comparableHeaders: string[] = []
   headers.forEach((value, name) => {
-    if (name !== 'idempotency-key') comparableHeaders.push(`${name}:${value}`)
+    const lowerName = name.toLowerCase()
+    if (lowerName !== 'idempotency-key' && lowerName !== 'x-correlation-id') {
+      comparableHeaders.push(`${lowerName}:${value}`)
+    }
   })
 
   return JSON.stringify([
@@ -334,7 +337,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
     const existing = replayEntries.get(normalizedKey)
     const url = buildUrl(path)
-    const fingerprint = requestFingerprint(url, init, serializedBody, requestHeaders)
+    const fingerprint = requestFingerprint(url, { ...init, method }, serializedBody, requestHeaders)
 
     if (existing) {
       if (existing.fingerprint !== fingerprint) {

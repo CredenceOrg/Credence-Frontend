@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { advanceIdentityEpoch } from '../api'
 import { DOM_EVENTS } from '../events'
 import {
   checkFreighterInstalled,
@@ -192,6 +193,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
         ({ address: nextAddress, network: nextNetwork }) => {
           setAddress((prevAddress) => {
             if (prevAddress && nextAddress && prevAddress !== nextAddress) {
+              advanceIdentityEpoch()
               emitWalletSessionEvent('account_changed', {
                 address: nextAddress,
                 network: nextNetwork,
@@ -203,6 +205,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
           })
           setNetwork((prevNetwork) => {
             if (prevNetwork && nextNetwork && prevNetwork !== nextNetwork) {
+              advanceIdentityEpoch()
               emitWalletSessionEvent('network_changed', {
                 address: nextAddress,
                 network: nextNetwork,
@@ -266,6 +269,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
         return
       }
 
+      advanceIdentityEpoch()
       setAddress(result.address)
       const freighterNetwork = await syncNetwork()
 
@@ -274,6 +278,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
         parseNetwork(_settingsNetwork) &&
         freighterNetwork !== parseNetwork(_settingsNetwork)
       ) {
+        advanceIdentityEpoch()
         clearPersistedWalletSession()
         setAddress('')
         setError({
@@ -308,6 +313,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
     stopWatcher()
     connectInFlightRef.current = false
     clearPersistedWalletSession()
+    advanceIdentityEpoch()
     setAddress('')
     setNetwork(null)
     setError(null)
@@ -346,7 +352,11 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       const existingAddress = await fetchFreighterAddress()
       if (!existingAddress || cancelled) return
 
-      if (persistedSession && persistedSession.address && existingAddress !== persistedSession.address) {
+      if (
+        persistedSession &&
+        persistedSession.address &&
+        existingAddress !== persistedSession.address
+      ) {
         clearPersistedWalletSession()
         return
       }

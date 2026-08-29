@@ -49,7 +49,7 @@ export default function Transactions() {
   }
 
   const { network } = useSettings()
-  const { data, isLoading, error, refetch, page, totalPages, goToPage, prefetchPage } =
+  const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage } =
     useTransactions()
   const { addToast } = useToast()
   const [filter, setFilter] = useState<StatusFilter>('all')
@@ -398,15 +398,15 @@ export default function Transactions() {
               <Button
                 type="button"
                 variant="secondary"
-                disabled={page >= totalPages}
+                disabled={!hasNextPage}
                 onClick={() => goToPage(page + 1)}
                 onMouseEnter={() => {
-                  if (page < totalPages) {
+                  if (hasNextPage) {
                     void prefetchPage(page + 1)
                   }
                 }}
                 onFocus={() => {
-                  if (page < totalPages) {
+                  if (hasNextPage) {
                     void prefetchPage(page + 1)
                   }
                 }}

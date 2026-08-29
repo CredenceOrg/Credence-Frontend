@@ -46,6 +46,8 @@ export interface ActivityTimelineProps {
   emptyDescription?: string
   /** Opts into drawer-based navigation: swaps the disclosure button to "View details" and makes the row clickable. */
   onSelect?: (item: ActivityItem) => void
+  /** Idempotency nonce for deterministic safe retry and replay protection. */
+  nonce?: string
 }
 
 /**
@@ -71,6 +73,7 @@ export default function ActivityTimeline({
   emptyTitle = 'No activity yet',
   emptyDescription = 'Attestations and events will appear here once activity begins.',
   onSelect,
+  nonce,
 }: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -100,6 +103,7 @@ export default function ActivityTimeline({
       className={`activity-surface${compact ? ' activity-surface--compact' : ''}`}
       aria-label="Activity and attestations"
       onKeyDown={handleKeyDown}
+      data-nonce={nonce}
     >
       <header className="activity-surface__header">
         <div>

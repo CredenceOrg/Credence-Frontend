@@ -4,8 +4,8 @@ import { useSettings } from './SettingsContext'
 import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWallet'
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useToast } from '../components/ToastProvider'
-import SessionTimeoutDialog from '../components/SessionTimeoutDialog'
-import { clearAppLocalStorage } from '../lib/clearAppLocalStorage'
+import SessionTimeoutModal from '../components/SessionTimeoutModal'
+import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean
@@ -35,7 +35,7 @@ export function useWalletContext(): WalletContextValue {
   return useContext(WalletContext)
 }
 
-/** Read shared wallet connection state with the legacy `connected` alias. */
+/** Read shared wallet connection state with the legacy connected alias. */
 export function useWallet(): WalletContextValue {
   return useWalletContext()
 }
@@ -65,19 +65,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [wallet.isConnected, lastReauthTime])
 
   const handleLogout = useCallback(() => {
-    const gen = ++logoutGenRef.current
-    // Disconnect wallet first to ensure the wallet extension is in a clean
-    // state before clearing localStorage. If wallet.disconnect() throws, the
-    // generation check in the finally block still allows navigation/toast.
+    const prevAddress = wallet.address
+    const prevNetwork = wallet.network
     wallet.disconnect()
     // Now clear app-local storage (settings, cached data).
     clearAppLocalStorage()
     setShowWarning(false)
-    setLastReauthTime(null)
-    if (gen === logoutGenRef.current) {
-      navigate('/signin')
-      addToast('warning', 'Logged out due to inactivity.')
-    }
+
+    emitWalletSessionEvent('session_expired', {
+      address: null,
+      network: null,
+      correlationId: generateCorrelationId('session-idle-expiry'),
+      metadata: {
+        previousAddress: prevAddress || null,
+        previousNetwork: prevNetwork || null,
+        reason: 'inactivity',
+      },
+    })
+
+    navigate('/signin')
+    addToast('warning', 'Logged out due to inactivity.')
   }, [wallet, navigate, addToast])
 
   const handleStayLoggedIn = useCallback(() => {

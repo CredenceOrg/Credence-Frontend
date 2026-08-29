@@ -172,6 +172,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<WalletError | null>(null)
   const watcherStopRef = useRef<(() => void) | null>(null)
+  const connectInFlightRef = useRef(false)
 
   const stopWatcher = useCallback(() => {
     watcherStopRef.current?.()
@@ -221,7 +222,9 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
 
   const connect = useCallback(async () => {
     if (typeof window === 'undefined') return
+    if (connectInFlightRef.current) return
 
+    connectInFlightRef.current = true
     const correlationId = generateCorrelationId('wallet-connect')
     emitWalletSessionEvent('session_connecting', {
       address: null,
@@ -294,12 +297,16 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
         metadata: { code: 'unknown', message: 'Unable to connect to Freighter.' },
       })
     } finally {
+      connectInFlightRef.current = false
       setIsConnecting(false)
     }
   }, [startWatcher, syncNetwork])
 
   const disconnect = useCallback(() => {
+    const previousAddress = address
+    const previousNetwork = network
     stopWatcher()
+    connectInFlightRef.current = false
     clearPersistedWalletSession()
     setAddress('')
     setNetwork(null)
@@ -310,7 +317,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       address: null,
       network: null,
       correlationId: generateCorrelationId('wallet-disconnect'),
-      metadata: { previousAddress: prevAddress || null, previousNetwork: prevNetwork || null },
+      metadata: { previousAddress, previousNetwork },
     })
   }, [stopWatcher, address, network])
 

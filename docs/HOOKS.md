@@ -1276,3 +1276,5 @@ When you add a hook to `src/hooks/` or a utility to `src/lib/`:
    usage example linking to source). Keep it accurate to the real signature — no aspirational
    APIs.
 3. Add the entry to the [Contents](#contents) list above.
+4. If the new primitive is a data-fetching hook, ensure it obeys the serialization contract
+   described in [CONCURRENCY.md](CONCURRENCY.md).

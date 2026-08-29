@@ -168,7 +168,7 @@ export default function Attestations() {
               emptyDescription={t('attestations.emptyDescription')}
             />
           )}
-        </section>
+        </div>
       </div>
 
       <AttestationDetailDrawer

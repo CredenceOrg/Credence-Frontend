@@ -84,6 +84,8 @@ function mockLoaded(transactions: any = [TX1, TX2, TX3]) {
     refetch: vi.fn(),
     page: 1,
     totalPages: 1,
+    hasNextPage: false,
+    nextCursor: undefined,
     goToPage: vi.fn(),
     prefetchPage: vi.fn(),
   })
@@ -97,6 +99,8 @@ function mockLoading() {
     refetch: vi.fn(),
     page: 1,
     totalPages: 0,
+    hasNextPage: true,
+    nextCursor: undefined,
     goToPage: vi.fn(),
     prefetchPage: vi.fn(),
   })
@@ -110,6 +114,8 @@ function mockError() {
     refetch: vi.fn(),
     page: 1,
     totalPages: 0,
+    hasNextPage: false,
+    nextCursor: undefined,
     goToPage: vi.fn(),
     prefetchPage: vi.fn(),
   })
@@ -123,6 +129,8 @@ function mockEmpty() {
     refetch: vi.fn(),
     page: 1,
     totalPages: 0,
+    hasNextPage: false,
+    nextCursor: undefined,
     goToPage: vi.fn(),
     prefetchPage: vi.fn(),
   })

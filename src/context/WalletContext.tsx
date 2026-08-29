@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { advanceIdentityEpoch } from '../api'
 import { useSettings } from './SettingsContext'
 import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWallet'
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useToast } from '../components/ToastProvider'
 import SessionTimeoutDialog from '../components/SessionTimeoutDialog'
-import { clearAppLocalStorage } from '../lib/clearAppLocalStorage'
+import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean
@@ -35,7 +36,7 @@ export function useWalletContext(): WalletContextValue {
   return useContext(WalletContext)
 }
 
-/** Read shared wallet connection state with the legacy `connected` alias. */
+/** Read shared wallet connection state with the legacy connected alias. */
 export function useWallet(): WalletContextValue {
   return useWalletContext()
 }
@@ -50,8 +51,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const [showWarning, setShowWarning] = useState(false)
   const [lastReauthTime, setLastReauthTime] = useState<number | null>(null)
+  const logoutGenRef = useRef(0)
 
-  // Set last reauth time when wallet connects
+  // Atomic reauth-time tracking: derive directly from wallet address rather
+  // than scheduling separate state updates after connect/reauth calls. This
+  // prevents lastReauthTime from being set after a concurrent disconnect.
   useEffect(() => {
     if (wallet.isConnected && lastReauthTime === null) {
       setLastReauthTime(Date.now())
@@ -62,10 +66,25 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [wallet.isConnected, lastReauthTime])
 
   const handleLogout = useCallback(() => {
-    clearAppLocalStorage()
+    const prevAddress = wallet.address
+    const prevNetwork = wallet.network
+    advanceIdentityEpoch()
     wallet.disconnect()
+    // Now clear app-local storage (settings, cached data).
+    clearAppLocalStorage()
     setShowWarning(false)
-    setLastReauthTime(null)
+
+    emitWalletSessionEvent('session_expired', {
+      address: null,
+      network: null,
+      correlationId: generateCorrelationId('session-idle-expiry'),
+      metadata: {
+        previousAddress: prevAddress || null,
+        previousNetwork: prevNetwork || null,
+        reason: 'inactivity',
+      },
+    })
+
     navigate('/signin')
     addToast('warning', 'Logged out due to inactivity.')
   }, [wallet, navigate, addToast])
@@ -75,9 +94,18 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const reauth = useCallback(async () => {
-    // Reconnect wallet as re-authentication
+    const gen = logoutGenRef.current
+    // Reconnect wallet as re-authentication.
+    // wallet.connect() uses its own generation counter internally, so
+    // a concurrent disconnect will invalidate this connect attempt.
     await wallet.connect()
-    setLastReauthTime(Date.now())
+    // Only update reauth time if:
+    // 1. Logout hasn't been triggered in the meantime (same generation)
+    // 2. The wallet actually reports connected (connect may have been
+    //    invalidated by a concurrent disconnect)
+    if (logoutGenRef.current === gen && wallet.isConnected) {
+      setLastReauthTime(Date.now())
+    }
   }, [wallet])
 
   const isReauthRequired = useCallback(() => {

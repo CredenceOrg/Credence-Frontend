@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { createTypedCustomEvent, SETTINGS_EVENTS } from '../events/schema'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
 
@@ -45,6 +46,7 @@ export interface SettingsState {
    * persist the current context state.
    */
   saveSettings: (next?: SettingsPayload) => void
+  resetToDefaults: () => void
   cancelSettings: () => void
   hasUnsavedChanges: boolean
 }
@@ -87,6 +89,7 @@ const defaultState: SettingsState = {
   setQuietHoursStart: () => {},
   setQuietHoursEnd: () => {},
   saveSettings: (_payload?: SettingsPayload) => {},
+  resetToDefaults: () => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
 }
@@ -149,6 +152,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const VALID_ADDRESS_DISPLAYS: AddressDisplayOption[] = ['full', 'short', 'friendly']
   const VALID_AUTO_DISMISSES: AutoDismissOption[] = ['off', '3s', '5s', '8s']
 
+  const coerceThemeMode = (v: string): ThemeMode =>
+    (VALID_THEMES.includes(v as ThemeMode) ? v : defaultPersistedSettings.themeMode) as ThemeMode
   const coerceNetwork = (v: string): NetworkOption =>
     (VALID_NETWORKS.includes(v as NetworkOption)
       ? v
@@ -172,17 +177,52 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return parsed.ok ? `${pad2(parsed.hours)}:${pad2(parsed.minutes)}` : fallback
   }
 
+  const hasPersistedSettings = (
+    value: Partial<PersistedSettings> | undefined
+  ): value is Partial<PersistedSettings> => {
+    if (!value || typeof value !== 'object') return false
+
+    const entries = Object.entries(value) as Array<[keyof PersistedSettings, unknown]>
+    for (const [key, entryValue] of entries) {
+      if (key === 'themeMode' && typeof entryValue === 'string') {
+        if (!VALID_THEMES.includes(entryValue as ThemeMode)) return false
+      }
+      if (key === 'network' && typeof entryValue === 'string') {
+        if (!VALID_NETWORKS.includes(entryValue as NetworkOption)) return false
+      }
+      if (key === 'addressDisplay' && typeof entryValue === 'string') {
+        if (!VALID_ADDRESS_DISPLAYS.includes(entryValue as AddressDisplayOption)) return false
+      }
+      if (key === 'autoDismiss' && typeof entryValue === 'string') {
+        if (!VALID_AUTO_DISMISSES.includes(entryValue as AutoDismissOption)) return false
+      }
+      if (key === 'toastsEnabled' && typeof entryValue !== 'boolean') return false
+      if (key === 'quietHoursEnabled' && typeof entryValue !== 'boolean') return false
+      if (key === 'quietHoursStart' && typeof entryValue !== 'string') return false
+      if (key === 'quietHoursEnd' && typeof entryValue !== 'string') return false
+    }
+
+    return true
+  }
+
+  const safePersistedSettingsRaw = hasPersistedSettings(persistedSettingsRaw)
+    ? persistedSettingsRaw
+    : defaultPersistedSettings
+
   const persistedSettings: PersistedSettings = {
-    ...persistedSettingsRaw,
-    network: coerceNetwork(persistedSettingsRaw.network as unknown as string),
-    addressDisplay: coerceAddressDisplay(persistedSettingsRaw.addressDisplay as unknown as string),
-    autoDismiss: coerceAutoDismiss(persistedSettingsRaw.autoDismiss as unknown as string),
+    ...safePersistedSettingsRaw,
+    themeMode: coerceThemeMode(safePersistedSettingsRaw.themeMode as unknown as string),
+    network: coerceNetwork(safePersistedSettingsRaw.network as unknown as string),
+    addressDisplay: coerceAddressDisplay(
+      safePersistedSettingsRaw.addressDisplay as unknown as string
+    ),
+    autoDismiss: coerceAutoDismiss(safePersistedSettingsRaw.autoDismiss as unknown as string),
     quietHoursStart: coerceHHmm(
-      persistedSettingsRaw.quietHoursStart,
+      safePersistedSettingsRaw.quietHoursStart,
       defaultPersistedSettings.quietHoursStart
     ),
     quietHoursEnd: coerceHHmm(
-      persistedSettingsRaw.quietHoursEnd,
+      safePersistedSettingsRaw.quietHoursEnd,
       defaultPersistedSettings.quietHoursEnd
     ),
   }
@@ -238,11 +278,48 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   ])
 
   const saveSettings = () => {
-    const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
+    const payload = {
+      themeMode,
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
+    }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
     if (typeof window !== 'undefined') {
       window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, payload))
+    }
+  }
+
+  const resetToDefaults = () => {
+    const defaults = {
+      themeMode: defaultPersistedSettings.themeMode,
+      network: defaultPersistedSettings.network,
+      addressDisplay: defaultPersistedSettings.addressDisplay,
+      toastsEnabled: defaultPersistedSettings.toastsEnabled,
+      autoDismiss: defaultPersistedSettings.autoDismiss,
+      quietHoursEnabled: defaultPersistedSettings.quietHoursEnabled,
+      quietHoursStart: defaultPersistedSettings.quietHoursStart,
+      quietHoursEnd: defaultPersistedSettings.quietHoursEnd,
+    }
+
+    setThemeMode(defaults.themeMode)
+    setNetwork(defaults.network)
+    setAddressDisplay(defaults.addressDisplay)
+    setToastsEnabled(defaults.toastsEnabled)
+    setAutoDismiss(defaults.autoDismiss)
+    setQuietHoursEnabled(defaults.quietHoursEnabled)
+    setQuietHoursStart(defaults.quietHoursStart)
+    setQuietHoursEnd(defaults.quietHoursEnd)
+    setPersistedSettings(defaults)
+    setOriginalSettings(defaults)
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, defaults))
     }
   }
 
@@ -299,6 +376,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursStart,
     setQuietHoursEnd,
     saveSettings,
+    resetToDefaults,
     cancelSettings,
     hasUnsavedChanges,
   }

@@ -1,14 +1,17 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
 import {
   ApiAmountError,
+  ApiBodyTooLargeError,
   ApiError,
   ApiRateLimitError,
+  MAX_REQUEST_BODY_BYTES,
   apiFetch,
   apiRateLimiterSnapshot,
   defaultApiRateLimiter,
   resetApiRateLimiter,
   type ApiFetchOptions,
 } from './client'
+import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -22,6 +25,7 @@ function jsonResponse(payload: unknown, init: ResponseInit = {}) {
 afterEach(() => {
   fetchMock.mockReset()
   vi.unstubAllGlobals()
+  resetWalletAuditTrail()
 })
 
 describe('apiFetch', () => {
@@ -206,6 +210,139 @@ describe('apiFetch', () => {
       status: 0,
       message: 'Network request failed',
     })
+  })
+
+  it('commits one effect when a keyed operation is duplicated or reordered', async () => {
+    const committedKeys = new Set<string>()
+    fetchMock.mockImplementation(async (_url, init) => {
+      const key = (init?.headers as Headers).get('Idempotency-Key')
+      if (key && !committedKeys.has(key)) committedKeys.add(key)
+      return jsonResponse({ committed: true, count: committedKeys.size })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const first = apiFetch<{ committed: boolean; count: number }>('/bonds', {
+      method: 'POST',
+      idempotencyKey: 'bond-1',
+      body: { amount: '10.00' },
+    })
+    const duplicate = apiFetch<{ committed: boolean; count: number }>('/bonds', {
+      method: 'POST',
+      idempotencyKey: 'bond-1',
+      body: { amount: '10.00' },
+    })
+
+    await expect(Promise.all([duplicate, first])).resolves.toEqual([
+      { committed: true, count: 1 },
+      { committed: true, count: 1 },
+    ])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('allows a timeout retry and retains only the successful effect', async () => {
+    let attempts = 0
+    let committedEffects = 0
+    const committedResponses = new Map<string, { committedEffects: number }>()
+    fetchMock.mockImplementation(async () => {
+      attempts += 1
+      const key = (fetchMock.mock.calls.at(-1)?.[1]?.headers as Headers).get('Idempotency-Key')
+      if (key && committedResponses.has(key)) return jsonResponse(committedResponses.get(key))
+
+      committedEffects += 1
+      const response = { committedEffects }
+      if (key) committedResponses.set(key, response)
+      if (attempts === 1) throw new TypeError('response timed out after commit')
+      return jsonResponse(response)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      apiFetch('/bonds', {
+        method: 'POST',
+        idempotencyKey: 'bond-retry',
+        body: { amount: '10.00' },
+      })
+    ).rejects.toMatchObject({ status: 0 })
+    await expect(
+      apiFetch('/bonds', {
+        method: 'POST',
+        idempotencyKey: 'bond-retry',
+        body: { amount: '10.00' },
+      })
+    ).resolves.toEqual({ committedEffects: 1 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(committedEffects).toBe(1)
+  })
+
+  it('rejects conflicting reuse before making another request', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ committed: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/bonds', {
+      method: 'POST',
+      idempotencyKey: 'bond-conflict',
+      body: { amount: '10.00' },
+    })
+
+    await expect(
+      apiFetch('/bonds', {
+        method: 'POST',
+        idempotencyKey: 'bond-conflict',
+        body: { amount: '20.00' },
+      })
+    ).rejects.toMatchObject({
+      status: 409,
+      payload: { code: 'idempotency_key_conflict' },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('forwards the key and rejects empty keys without partial state', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      apiFetch('/bonds', { method: 'POST', idempotencyKey: '   ' })
+    ).rejects.toMatchObject({
+      status: 400,
+      payload: { code: 'invalid_idempotency_key' },
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await apiFetch('/bonds', { method: 'POST', idempotencyKey: 'bond-header' })
+    const requestHeaders = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(requestHeaders.get('Idempotency-Key')).toBe('bond-header')
+  })
+
+  it('rejects JSON bodies exceeding MAX_REQUEST_BODY_BYTES before fetching', async () => {
+    const oversizedPayload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES + 1) }
+
+    await expect(apiFetch('/upload', { method: 'POST', body: oversizedPayload })).rejects.toMatchObject({
+      name: 'ApiBodyTooLargeError',
+      status: 413,
+    } satisfies Partial<ApiBodyTooLargeError>)
+
+    // Fetch must NOT have been called — the guard fires before the network.
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts JSON bodies at exactly MAX_REQUEST_BODY_BYTES', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const payload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES - 100) }
+    await expect(apiFetch('/upload', { method: 'POST', body: payload })).resolves.toEqual({ ok: true })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not validate body size for non-JSON payloads (FormData, Blob, etc.)', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const fd = new FormData()
+    fd.append('file', new Blob([new Uint8Array(10_000_000)]), 'big.bin')
+    await expect(apiFetch('/upload', { method: 'POST', body: fd })).resolves.toEqual({ ok: true })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
 

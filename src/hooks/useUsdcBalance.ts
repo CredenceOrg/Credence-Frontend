@@ -66,6 +66,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
   const abortRef = useRef<AbortController | null>(null)
   const fetchIdRef = useRef(0)
   const mountedRef = useRef(true)
+  const inflightRef = useRef(false)
 
   const isReauthRequired =
     isConnected && typeof checkIsReauthRequired === 'function' && checkIsReauthRequired()
@@ -84,6 +85,11 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
       setError(new SessionReauthRequiredError())
       return
     }
+
+    // Prevent concurrent Horizon fetches — a second request while the first
+    // is still in-flight is redundant and wastes browser/network resources.
+    if (inflightRef.current) return
+    inflightRef.current = true
 
     abortRef.current?.abort()
 
@@ -112,6 +118,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
           : new Error('Unexpected error while fetching USDC balance')
       )
     } finally {
+      inflightRef.current = false
       if (mountedRef.current && fetchId === fetchIdRef.current) {
         setStatus((prev) => (prev === 'loading' ? 'error' : prev))
       }

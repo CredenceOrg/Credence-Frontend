@@ -18,6 +18,7 @@ import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
 import { EmptyState, LoadingSkeleton } from '../components/states'
 import { calcTimeRemaining } from '../lib/bondPenalty'
+import { runIdempotentOperation } from '../lib/idempotentOperation'
 
 type BondStatus = 'active' | 'locked' | 'grace-period'
 
@@ -66,6 +67,13 @@ const initialBonds: MockBond[] = [
   { id: 2, amountUsdc: 500, status: 'grace-period', durationDays: 90 },
   { id: 3, amountUsdc: 750, status: 'active', durationDays: 180 },
 ]
+
+function createRequestKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
 function getPenaltyRate(status: BondStatus): number {
   switch (status) {
@@ -215,6 +223,7 @@ export default function Bond() {
   const [isPendingCreate, setIsPendingCreate] = useState(false)
   const [isPendingWithdraw, setIsPendingWithdraw] = useState(false)
   const [txStatus, setTxStatus] = useState('')
+  const createBondRequestKeyRef = useRef(createRequestKey())
 
   // Persistent error state for create/withdraw failures (wallet rejected, network down, etc.)
   // These surface as dismissible critical Banners rather than transient Toasts.
@@ -261,8 +270,20 @@ export default function Bond() {
     setIsPendingCreate(true)
     setTxStatus('Submitting transaction…')
     try {
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      await runIdempotentOperation({
+        namespace: 'bond:create',
+        requestKey: createBondRequestKeyRef.current,
+        fingerprint: JSON.stringify({
+          amountUsdc: parsed,
+          walletNetwork: walletNetwork ?? 'public',
+        }),
+        execute: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          return { ok: true }
+        },
+      })
       setTxStatus('')
+      createBondRequestKeyRef.current = createRequestKey()
       navigate('/bond/new')
     } catch (err) {
       setTxStatus('')
@@ -275,7 +296,7 @@ export default function Bond() {
     } finally {
       setIsPendingCreate(false)
     }
-  }, [isConnected, connect, navigate, isPendingCreate, bondAmount, setIsPendingCreate, setTxStatus, setCreateError])
+  }, [isConnected, connect, navigate, isPendingCreate, bondAmount, setIsPendingCreate, setTxStatus, setCreateError, walletNetwork])
 
   const withdrawBreakdown = useMemo(
     () => (withdrawTarget ? computeWithdrawBreakdown(withdrawTarget) : null),
@@ -304,7 +325,21 @@ export default function Bond() {
 
     try {
       // Simulated async transaction — replace with real contract call
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      await runIdempotentOperation({
+        namespace: 'bond:withdraw',
+        requestKey: `${walletNetwork ?? 'public'}:${withdrawTarget.id}`,
+        fingerprint: JSON.stringify({
+          bondId: withdrawTarget.id,
+          amountUsdc: withdrawTarget.amountUsdc,
+          status: withdrawTarget.status,
+          penaltyUsdc: withdrawBreakdown.penaltyUsdc,
+          walletNetwork: walletNetwork ?? 'public',
+        }),
+        execute: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          return { ok: true }
+        },
+      })
       setTxStatus('')
 
       const { penaltyUsdc } = withdrawBreakdown

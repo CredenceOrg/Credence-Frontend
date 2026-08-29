@@ -24,6 +24,7 @@ behavior notes, and a minimal usage example linking to source.
   - [`useFocusTrap`](#usefocustrap)
   - [`useDocumentTitle`](#usedocumenttitle)
   - [`useReducedMotion`](#usereducedmotion)
+  - [`useActivity`](#useactivity)
   - [`useTrustScore`](#usetrustscore)
   - [`useUsdcBalance`](#useusdcbalance)
   - [`useWallet`](#usewallet)
@@ -178,6 +179,60 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 function Banner() {
   const reduceMotion = useReducedMotion()
   return <div className={reduceMotion ? 'no-anim' : 'slide-in'}>…</div>
+}
+```
+
+---
+
+### `useActivity`
+
+Source: [`src/hooks/useActivity.ts`](../src/hooks/useActivity.ts)
+
+```ts
+function useActivity(address: string): UseActivityResult
+
+interface UseActivityResult {
+  data: ActivityItem[]
+  isLoading: boolean
+  error: ApiError | null
+  refetch: () => void
+}
+```
+
+Fetches activity timeline items for a Stellar public key from the Credence API
+(`GET /activity/:address`). The returned `ActivityItem[]` is ready to pass directly to
+`<ActivityTimeline items={data} />`.
+
+**Behavior notes**
+
+- **Manual / lazy:** does _not_ fetch on mount — call `refetch()` after the user submits
+  a lookup. Empty or whitespace-only addresses are silently ignored.
+- **Race-safe:** follows the serialization contract (see [Concurrency contract](CONCURRENCY.md)):
+  in-flight requests are aborted when `refetch` is called again or the hook unmounts;
+  stale responses and `AbortError`s are discarded so only the latest result wins.
+- **Clean failure:** a failed request clears data to `[]` and surfaces the error — no
+  partial or unauthorized state leaks.
+- **SSR-safe / cleanup:** no DOM access; the active `AbortController` is aborted on unmount.
+
+```tsx
+import { useState } from 'react'
+import { useActivity } from '../hooks/useActivity'
+import ActivityTimeline from '../components/ActivityTimeline'
+
+function ActivityPanel() {
+  const [address, setAddress] = useState('')
+  const { data, isLoading, error, refetch } = useActivity(address)
+
+  return (
+    <div>
+      <input value={address} onChange={(e) => setAddress(e.target.value)} />
+      <button onClick={refetch} disabled={isLoading}>
+        Load activity
+      </button>
+      {error && <p role="alert">{error.message}</p>}
+      <ActivityTimeline items={data} />
+    </div>
+  )
 }
 ```
 
@@ -535,3 +590,5 @@ When you add a hook to `src/hooks/` or a utility to `src/lib/`:
    usage example linking to source). Keep it accurate to the real signature — no aspirational
    APIs.
 3. Add the entry to the [Contents](#contents) list above.
+4. If the new primitive is a data-fetching hook, ensure it obeys the serialization contract
+   described in [CONCURRENCY.md](CONCURRENCY.md).

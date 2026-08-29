@@ -203,6 +203,19 @@ export function resetApiRateLimiter(): void {
   defaultApiRateLimiter.reset()
 }
 
+let _identityEpoch = 0
+
+/** Returns the current identity epoch. */
+export function getIdentityEpoch(): number {
+  return _identityEpoch
+}
+
+/** Advances the identity epoch, or sets it explicitly when an epoch is given. */
+export function setIdentityEpoch(epoch?: number): number {
+  _identityEpoch = epoch ?? _identityEpoch + 1
+  return _identityEpoch
+}
+
 function normalizeBaseUrl(value: string): string {
   const trimmed = value.trim()
   if (!trimmed || trimmed === '/') {

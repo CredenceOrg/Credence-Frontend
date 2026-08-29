@@ -34,10 +34,76 @@ import './CreateBondFlow.css'
 // ---------------------------------------------------------------------------
 
 export interface CreateBondFlowProps {
-  /** Called after the user confirms and the bond is "created" */
-  onComplete?: () => void
+  /**
+   * Called after the authoritative bond mutation has committed. May return a
+   * promise that resolves with the on-chain/backend result, or reject when the
+   * wallet/network operation fails.
+   */
+  onComplete?: () => void | Promise<BondCommitResult | void>
   /** Called when the user cancels the flow */
   onCancel?: () => void
+  /**
+   * Optional sink for versioned bond audit records. Records are also retained in
+   * localStorage and in memory so a failed wallet/network request can be recovered.
+   */
+  onAudit?: (record: BondAuditRecord) => void
+}
+
+export interface BondCommitResult {
+  transactionHash?: string
+  bondId?: string
+}
+
+export type BondAuditEvent =
+  | 'BOND_CREATE_REQUESTED'
+  | 'BOND_CREATE_COMMITTED'
+  | 'BOND_CREATE_REJECTED'
+  | 'BOND_CREATE_FAILED'
+
+export interface BondAuditRecord {
+  version: 1
+  sequence: number
+  correlationId: string
+  event: BondAuditEvent
+  timestamp: string
+  payload: {
+    amount: string
+    duration: number | null
+    acknowledged: boolean
+    error?: string
+  }
+  result?: BondCommitResult
+}
+
+const AUDIT_STORAGE_KEY = 'credence.bond.audit.v1'
+
+const createCorrelationId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `bond-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const loadAuditLog = (): BondAuditRecord[] => {
+  try {
+    if (typeof window === 'undefined') return []
+    const raw = window.localStorage.getItem(AUDIT_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? (parsed as BondAuditRecord[]) : []
+  } catch {
+    return []
+  }
+}
+
+const saveAuditLog = (records: BondAuditRecord[]): void => {
+  try {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(records))
+  } catch {
+    // localStorage can be unavailable (private mode, storage full). The in-memory
+    // trail remains authoritative for the current session.
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +116,7 @@ const ReviewDivider = () => <div className="createBondFlow__reviewDivider" />
 // Component
 // ---------------------------------------------------------------------------
 
-export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowProps) {
+export default function CreateBondFlow({ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
   const { addToast } = useToast()
   const { isConnected } = useWallet()
   const {
@@ -65,11 +131,49 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   const [duration, setDuration] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [acknowledged, setAcknowledged] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [confirmError, setConfirmError] = useState('')
+
+  const auditRecordsRef = useRef<BondAuditRecord[]>(loadAuditLog())
+  const correlationIdRef = useRef('')
+  const sequenceRef = useRef<number>(
+    auditRecordsRef.current.reduce((max, record) => Math.max(max, record.sequence), -1) + 1,
+  )
+  const submittingRef = useRef(false)
 
   const step1Ref = useRef<HTMLHeadingElement>(null)
   const step2Ref = useRef<HTMLHeadingElement>(null)
   const step3Ref = useRef<HTMLHeadingElement>(null)
   const step4Ref = useRef<HTMLHeadingElement>(null)
+
+  /**
+   * Appends a versioned audit record. Ordering is guaranteed by the monotonic
+   * `sequence` value; `correlationId` ties every record to one user attempt.
+   */
+  const recordAudit = (
+    event: BondAuditEvent,
+    error?: string,
+    result?: BondCommitResult,
+  ): BondAuditRecord => {
+    const record: BondAuditRecord = {
+      version: 1,
+      sequence: sequenceRef.current++,
+      correlationId: correlationIdRef.current || createCorrelationId(),
+      event,
+      timestamp: new Date().toISOString(),
+      payload: {
+        amount,
+        duration,
+        acknowledged,
+        ...(error ? { error } : {}),
+      },
+      ...(result ? { result } : {}),
+    }
+    auditRecordsRef.current = [...auditRecordsRef.current, record]
+    saveAuditLog(auditRecordsRef.current)
+    onAudit?.(record)
+    return record
+  }
 
   useEffect(() => {
     if (step === 1) step1Ref.current?.focus()
@@ -83,10 +187,16 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
     setAmount('')
     setDuration(null)
     setError('')
+    setConfirmError('')
     setAcknowledged(false)
+    setSubmitting(false)
+    submittingRef.current = false
+    correlationIdRef.current = ''
   }
 
   const handleNext = () => {
+    if (submittingRef.current) return
+
     if (step === 1) {
       if (!amount || Number(amount) <= 0) {
         setError('Please enter a valid amount greater than 0.')
@@ -104,19 +214,62 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   }
 
   const handleBack = () => {
+    if (submittingRef.current) return
+
     setError('')
     setStep(step - 1)
   }
 
   const handleCancel = () => {
+    if (submittingRef.current) return
+
     reset()
     onCancel?.()
   }
 
-  const handleConfirm = () => {
-    addToast('success', 'Bond created successfully.')
-    reset()
-    onComplete?.()
+  const handleConfirm = async () => {
+    if (submittingRef.current) return
+
+    if (!acknowledged) {
+      setConfirmError('Please acknowledge the slashing terms and lock conditions before creating a bond.')
+      correlationIdRef.current = createCorrelationId()
+      recordAudit('BOND_CREATE_REJECTED', 'ACKNOWLEDGEMENT_REQUIRED')
+      return
+    }
+
+    if (!isConnected) {
+      setConfirmError('Wallet disconnected. Reconnect your wallet and try again.')
+      correlationIdRef.current = createCorrelationId()
+      recordAudit('BOND_CREATE_REJECTED', 'WALLET_DISCONNECTED')
+      return
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setConfirmError('Network offline. Reconnect your network and try again.')
+      correlationIdRef.current = createCorrelationId()
+      recordAudit('BOND_CREATE_FAILED', 'NETWORK_OFFLINE')
+      return
+    }
+
+    correlationIdRef.current = createCorrelationId()
+    submittingRef.current = true
+    setSubmitting(true)
+    setConfirmError('')
+    recordAudit('BOND_CREATE_REQUESTED')
+
+    try {
+      const result = await onComplete?.()
+      recordAudit('BOND_CREATE_COMMITTED', undefined, result)
+      addToast('success', 'Bond created successfully.')
+      reset()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Bond creation failed. Please try again.'
+      setConfirmError(message)
+      recordAudit('BOND_CREATE_FAILED', message)
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
+    }
   }
 
   /**
@@ -371,6 +524,11 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
             termsHref="#"
           />
+          {confirmError && (
+            <div className="createBondFlow__error" role="alert">
+              ⚠ {confirmError}
+            </div>
+          )}
           <label className="createBondFlow__ackLabel">
             <input
               type="checkbox"
@@ -388,6 +546,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           <Button
             type="button"
             onClick={handleBack}
+            disabled={submitting}
             className="createBondFlow__navButton createBondFlow__backButton"
           >
             Back
@@ -398,6 +557,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           <Button
             type="button"
             onClick={handleNext}
+            disabled={submitting}
             className="createBondFlow__navButton createBondFlow__nextButton"
           >
             Next
@@ -406,16 +566,17 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           <Button
             type="button"
             onClick={handleConfirm}
-            disabled={!acknowledged}
+            disabled={!acknowledged || submitting}
             className="createBondFlow__navButton createBondFlow__confirmButton"
           >
-            Confirm &amp; Create Bond
+            {submitting ? 'Creating Bond…' : 'Confirm &amp; Create Bond'}
           </Button>
         )}
 
         <Button
           type="button"
           onClick={handleCancel}
+          disabled={submitting}
           className="createBondFlow__navButton createBondFlow__cancelButton"
         >
           Cancel

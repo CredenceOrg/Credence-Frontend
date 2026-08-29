@@ -52,6 +52,8 @@ describe('MutationTracker', () => {
     maxAttempts: 3,
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:01:00.000Z',
+    correlationId: 'corr-bond-create-123',
+    version: 1,
     isRecovered: false,
   }
 
@@ -238,6 +240,72 @@ describe('MutationTracker', () => {
 
       // Should show retrying state temporarily
       expect(screen.getByText('Retrying...')).toBeInTheDocument()
+    })
+
+    it('emits retry success event matching final state after retry', async () => {
+      const user = userEvent.setup()
+      const onSuccess = vi.fn()
+
+      const failedOperation = {
+        ...mockBondCreateOperation,
+        status: 'error',
+        attempts: [
+          {
+            attemptId: 'attempt-1',
+            timestamp: '2024-01-01T00:01:00.000Z',
+            requestHash: 'hash-123',
+            status: 'error',
+            error: {
+              type: 'network',
+              message: 'Network error',
+              timestamp: '2024-01-01T00:01:00.000Z',
+              retryable: true,
+            },
+          },
+        ],
+      }
+
+      const retriedSuccessOperation = {
+        ...mockBondCreateOperation,
+        status: 'success',
+        finalTxHash: 'retry-tx-hash',
+        completedAt: '2024-01-01T00:06:00.000Z',
+        attempts: [
+          ...failedOperation.attempts,
+          {
+            attemptId: 'attempt-2',
+            timestamp: '2024-01-01T00:05:00.000Z',
+            requestHash: 'hash-123',
+            status: 'success',
+            txHash: 'retry-tx-hash',
+          },
+        ],
+      }
+
+      mockGetMutationOperation
+        .mockReturnValueOnce(failedOperation)
+        .mockReturnValue(retriedSuccessOperation)
+      mockRetryMutation.mockResolvedValue(true)
+
+      render(
+        <MutationTracker
+          operationId="bond-create-123"
+          showControls={true}
+          onSuccess={onSuccess}
+        />
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Retry operation' }))
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledWith(retriedSuccessOperation)
+      })
+
+      const payload = onSuccess.mock.calls[0][0]
+      expect(payload.finalTxHash).toBe('retry-tx-hash')
+      expect(payload.attempts[payload.attempts.length - 1].txHash).toBe('retry-tx-hash')
+      expect(payload.attempts).toHaveLength(2)
+      expect(payload.correlationId).toBe('corr-bond-create-123')
     })
 
     it('handles cancel operation', async () => {
@@ -463,6 +531,10 @@ describe('MutationTracker', () => {
       rerender(<MutationTracker operationId="bond-create-123" onSuccess={onSuccess} />)
 
       expect(onSuccess).toHaveBeenCalledWith(successOperation)
+      expect(onSuccess.mock.calls[0][0]).toMatchObject({
+        correlationId: 'corr-bond-create-123',
+        version: 1,
+      })
     })
 
     it('calls onError when operation fails', () => {
@@ -485,6 +557,10 @@ describe('MutationTracker', () => {
       rerender(<MutationTracker operationId="bond-create-123" onError={onError} />)
 
       expect(onError).toHaveBeenCalledWith(errorOperation)
+      const payload = onError.mock.calls[0][0]
+      expect(payload.status).toBe('error')
+      expect(payload.finalTxHash).toBeUndefined()
+      expect(payload.correlationId).toBe('corr-bond-create-123')
     })
 
     it('calls onCancel when operation is cancelled', () => {
@@ -507,6 +583,31 @@ describe('MutationTracker', () => {
       rerender(<MutationTracker operationId="bond-create-123" onCancel={onCancel} />)
 
       expect(onCancel).toHaveBeenCalledWith(cancelledOperation)
+      const payload = onCancel.mock.calls[0][0]
+      expect(payload.status).toBe('cancelled')
+      expect(payload.finalTxHash).toBeUndefined()
+      expect(payload.correlationId).toBe('corr-bond-create-123')
+    })
+
+    it('does not emit terminal events for pending operation', () => {
+      const onSuccess = vi.fn()
+      const onError = vi.fn()
+      const onCancel = vi.fn()
+
+      mockGetMutationOperation.mockReturnValue(mockBondCreateOperation)
+
+      render(
+        <MutationTracker
+          operationId="bond-create-123"
+          onSuccess={onSuccess}
+          onError={onError}
+          onCancel={onCancel}
+        />
+      )
+
+      expect(onSuccess).not.toHaveBeenCalled()
+      expect(onError).not.toHaveBeenCalled()
+      expect(onCancel).not.toHaveBeenCalled()
     })
   })
 

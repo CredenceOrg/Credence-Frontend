@@ -8,6 +8,18 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
    * need this.
    */
   skipRateLimit?: boolean
+  /**
+   * When provided, the request is only dispatched if the active identity
+   * epoch matches this value at call time **and** when the response arrives.
+   * A mismatch at either point causes the promise to reject with
+   * {@link ApiSessionConflictError}, leaving no partial state.
+   *
+   * Pass the epoch obtained from {@link getIdentityEpoch} at the moment the
+   * caller reads the identity it intends to act on. The client advances the
+   * epoch automatically on every {@link setIdentityEpoch} call (disconnect,
+   * reconnect, expiry).
+   */
+  identityEpoch?: number
 }
 
 export class ApiError extends Error {
@@ -40,9 +52,137 @@ export class ApiRateLimitError extends ApiError {
   }
 }
 
+/**
+ * Thrown by `apiFetch` when a session identity conflict is detected.
+ *
+ * ## When is this thrown?
+ *
+ * A conflict is detected in two places:
+ *
+ * 1. **Pre-flight** — the caller supplied an `identityEpoch` option and the
+ *    active epoch has already advanced (disconnect / reconnect / expiry) before
+ *    the request even hits the network. The request is never dispatched.
+ *
+ * 2. **Post-flight** — the epoch advanced *while* the request was in-flight
+ *    (e.g. the user disconnected their wallet before the response arrived). The
+ *    response is discarded and the promise rejects with this error. No partial
+ *    state is committed.
+ *
+ * ## Extends ApiError
+ *
+ * `status` is `409` so that existing `err instanceof ApiError` handlers keep
+ * working. Code that wants specific conflict handling can narrow on this class
+ * or on `err.status === 409`.
+ *
+ * ## Retry contract
+ *
+ * **Do not retry automatically.** A conflict means the identity changed; the
+ * correct recovery path is to check the current session state and, if the user
+ * is still authenticated, re-acquire a fresh epoch via {@link getIdentityEpoch}
+ * before re-issuing the request.
+ */
+export class ApiSessionConflictError extends ApiError {
+  /** Epoch value at the time the request was created (now stale). */
+  readonly staleEpoch: number
+  /** Epoch value at the time the conflict was detected (current). */
+  readonly currentEpoch: number
+
+  constructor(staleEpoch: number, currentEpoch: number, message?: string) {
+    super(
+      409,
+      message ??
+        `Session identity changed during request (epoch ${staleEpoch} → ${currentEpoch}). Re-authenticate and retry.`,
+      { staleEpoch, currentEpoch }
+    )
+    this.name = 'ApiSessionConflictError'
+    this.staleEpoch = staleEpoch
+    this.currentEpoch = currentEpoch
+  }
+}
+
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
 
 export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
+
+// ---------------------------------------------------------------------------
+// Identity epoch
+// ---------------------------------------------------------------------------
+//
+// The identity epoch is a monotonically increasing integer that is advanced
+// every time the session identity changes: wallet connect, disconnect, expiry,
+// or any other event that invalidates previously-held references to the active
+// account.
+//
+// ## Invariant
+//
+// A request is only allowed to commit its result if the epoch has not changed
+// between (a) the moment the caller read the identity it acts on and (b) the
+// moment the response is received. Any mismatch causes apiFetch to reject with
+// ApiSessionConflictError and discard the response, leaving no partial state.
+//
+// ## Usage
+//
+// 1. Read the current epoch with `getIdentityEpoch()` immediately after
+//    confirming the wallet is connected.
+// 2. Pass the epoch in `apiFetch(..., { identityEpoch: epoch })`.
+// 3. When the session ends (disconnect / expiry / reconnect), call
+//    `advanceIdentityEpoch()` so in-flight requests from the previous session
+//    are invalidated.
+//
+// ## Serialization / conflict semantics
+//
+// Concurrent requests that carry the same epoch are each checked individually
+// on arrival. There is no global lock: two concurrent requests for the same
+// epoch are both allowed to commit if the epoch has not advanced by the time
+// each one resolves. This is intentional — read-only queries (GET) are safe
+// to run concurrently. For write operations callers must supply their own
+// optimistic-update + rollback logic (useApiMutation) and tolerate
+// ApiSessionConflictError as a signal to abort.
+//
+// ## Thread / microtask safety
+//
+// JavaScript is single-threaded. The epoch read inside apiFetch and the
+// subsequent fetch() call are not interleaved with other synchronous code.
+// Race conditions can only occur across await boundaries, which is exactly
+// what the post-flight epoch re-check guards against.
+
+let _identityEpoch = 0
+
+/**
+ * Returns the current identity epoch.
+ *
+ * Capture this value **after** confirming the wallet is connected and pass it
+ * to `apiFetch` via the `identityEpoch` option to enable conflict detection.
+ */
+export function getIdentityEpoch(): number {
+  return _identityEpoch
+}
+
+/**
+ * Advances the identity epoch by one and returns the new value.
+ *
+ * Call this on every session boundary: wallet disconnect, session expiry,
+ * wallet reconnect (new account), or any event that changes the active
+ * identity. In-flight requests that carry the previous epoch will reject with
+ * {@link ApiSessionConflictError} when their response arrives.
+ *
+ * Safe to call multiple times in quick succession (e.g. disconnect + navigate
+ * + reconnect): each call bumps the counter and any request carrying a now-
+ * stale epoch will be rejected.
+ */
+export function advanceIdentityEpoch(): number {
+  return ++_identityEpoch
+}
+
+/**
+ * Resets the identity epoch to zero.
+ *
+ * **Test-only.** Do not call from production code. Resets the module-level
+ * counter so epoch-sensitive tests start from a known baseline.
+ */
+export function resetIdentityEpoch(): void {
+  _identityEpoch = 0
+}
 
 /**
  * Process-wide default rate limiter consulted by `apiFetch`.
@@ -162,7 +302,7 @@ function errorMessage(status: number, payload: unknown): string {
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, skipRateLimit, ...init } = options
+  const { body, headers, skipRateLimit, identityEpoch, ...init } = options
   const hasJsonBody = isJsonBody(body)
 
   // Rate-limit gate: cheap O(k) sliding-window check before paying the cost
@@ -179,6 +319,20 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
   }
 
+  // Pre-flight identity epoch check.
+  //
+  // If the caller supplied an epoch, verify it against the current module-
+  // level epoch before issuing the request. An epoch mismatch here means the
+  // session already changed (disconnect / reconnect / expiry) before this
+  // request even hit the network — reject immediately without dispatching.
+  if (identityEpoch !== undefined && identityEpoch !== _identityEpoch) {
+    throw new ApiSessionConflictError(
+      identityEpoch,
+      _identityEpoch,
+      `Session identity changed before request was dispatched (epoch ${identityEpoch} → ${_identityEpoch}).`
+    )
+  }
+
   let response: Response
   try {
     response = await fetch(buildUrl(path), {
@@ -192,6 +346,20 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
     const message = error instanceof Error ? error.message : 'Network request failed'
     throw new ApiError(0, message, error)
+  }
+
+  // Post-flight identity epoch check.
+  //
+  // The request was in-flight during an await. Check that the epoch has not
+  // advanced since the pre-flight check. If it has, the response belongs to a
+  // now-stale session and must be discarded. Reject with ApiSessionConflictError
+  // so the caller can decide whether to re-authenticate and retry.
+  if (identityEpoch !== undefined && identityEpoch !== _identityEpoch) {
+    throw new ApiSessionConflictError(
+      identityEpoch,
+      _identityEpoch,
+      `Session identity changed while request was in-flight (epoch ${identityEpoch} → ${_identityEpoch}). Response discarded.`
+    )
   }
 
   const payload = await parseResponse(response)

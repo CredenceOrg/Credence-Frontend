@@ -10,6 +10,25 @@ const PENDING_TXS_KEY = 'credence:pendingTransactions'
  * server returns, so it must remain stable across cursor requests.
  */
 const PAGE_SIZE = 20
+/**
+ * Hard ceiling on the number of distinct pages the hook will ever fetch.
+ *
+ * Guarantees termination under an adversarial or buggy server that never
+ * stops returning a `nextCursor` (a cursor loop): once `MAX_PAGES` distinct
+ * pages have been fetched the hook reports end-of-stream and refuses to fetch
+ * further. This keeps ordering/end-of-stream deterministic and prevents
+ * unbounded network work on a single list.
+ */
+const MAX_PAGES = 1000
+/**
+ * Bound on the number of pages retained in the VDOM cache and cursor map.
+ *
+ * For large result sets the client never caches every page in memory; the
+ * two most recent pages stay cached for smooth backward navigation while
+ * older ones are evicted. Pages are always lazily refetchable from the
+ * server, so eviction does not change the data — it only bounds memory.
+ */
+const MAX_CACHED_PAGES = 50
 
 type TransactionsResponse = ApiResponse<operations['listTransactions']>
 
@@ -107,8 +126,15 @@ export function useTransactions(): UseTransactionsResult {
 
   const fetchPage = useCallback(
     async (pageNum: number, signal?: AbortSignal): Promise<FetchedPage | null> => {
+      // Deterministic termination: never fetch beyond the hard page ceiling.
+      if (pageNum > MAX_PAGES) {
+        return null
+      }
+
       // The first page has no preceding cursor; every later page requires the
-      // cursor returned by its predecessor in the chain.
+      // cursor returned by its predecessor in the chain. A missing cursor for
+      // a later page means the chain is invalid (e.g. end-of-stream already
+      // reached or a corrupted refetch), so refuse to issue the request.
       const cursor = pageNum === 1 ? undefined : cursorMapRef.current.get(pageNum - 1)
       if (pageNum > 1 && cursor === undefined) {
         return null
@@ -129,6 +155,16 @@ export function useTransactions(): UseTransactionsResult {
       // write cannot corrupt pagination state.
       cursorMapRef.current.set(pageNum, result.nextCursor)
       pageCacheRef.current.set(pageNum, result.items)
+
+      // Bound cache growth: evict the oldest pages once the working set grows
+      // beyond MAX_CACHED_PAGES. Refetching the server is idempotent, so the
+      // only cost of eviction is a later network round-trip.
+      while (pageCacheRef.current.size > MAX_CACHED_PAGES) {
+        const oldest = pageCacheRef.current.keys().next().value
+        if (oldest === undefined) break
+        pageCacheRef.current.delete(oldest)
+        cursorMapRef.current.delete(oldest)
+      }
 
       return { items: result.items, nextCursor: result.nextCursor }
     },
@@ -185,7 +221,7 @@ export function useTransactions(): UseTransactionsResult {
 
   const goToPage = useCallback(
     async (pageNum: number) => {
-      if (pageNum < 1 || pageNum === page) return
+      if (pageNum < 1 || pageNum > MAX_PAGES || pageNum === page) return
 
       // If we already have this page cached, use it immediately and update the
       // end-of-stream signal to match the cached page.
@@ -248,7 +284,7 @@ export function useTransactions(): UseTransactionsResult {
 
   const prefetchPage = useCallback(
     async (pageNum: number) => {
-      if (pageNum < 1) return
+      if (pageNum < 1 || pageNum > MAX_PAGES) return
       // Skip if already cached or already being fetched via navigation.
       if (pageCacheRef.current.has(pageNum)) return
       if (pageNum > 1 && cursorMapRef.current.get(pageNum - 1) === undefined) return

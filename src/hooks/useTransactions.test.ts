@@ -253,4 +253,117 @@ describe('useTransactions cursor pagination', () => {
     expect(rendered.result.current.page).toBe(1)
     expect(rendered.result.current.hasNextPage).toBe(false)
   })
+
+  it('preserves the current page and recovers when the server rejects an invalid cursor', async () => {
+    const page1 = [makeTx(), makeTx()]
+    const page2 = [makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'valid-cursor-1' }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(2))
+    expect(rendered.result.current.hasNextPage).toBe(true)
+
+    // The cursor is echoed verbatim; the server now rejects it as invalid.
+    await act(async () => {
+      apiFetchMock.mockRejectedValueOnce(new ApiError(400, 'Invalid cursor'))
+      await rendered.result.current.goToPage(2)
+    })
+
+    // An invalid cursor must leave the visible page and cursor chain intact.
+    expect(rendered.result.current.error?.status).toBe(400)
+    expect(rendered.result.current.data).toEqual(page1)
+    expect(rendered.result.current.page).toBe(1)
+    expect(rendered.result.current.nextCursor).toBe('valid-cursor-1')
+    expect(rendered.result.current.hasNextPage).toBe(true)
+
+    // Recovery: the same page succeeds once the cursor is accepted again.
+    await act(async () => {
+      apiFetchMock.mockImplementationOnce(() => Promise.resolve({ items: page2 }))
+      await rendered.result.current.goToPage(2)
+    })
+    expect(rendered.result.current.error).toBeNull()
+    expect(rendered.result.current.data).toEqual(page2)
+    expect(rendered.result.current.hasNextPage).toBe(false)
+
+    // The cursor was passed through unchanged (no client-side rewriting).
+    const badCursorUrl = String(
+      apiFetchMock.mock.calls.find(([p]) => String(p).includes('cursor='))?.[0]
+    )
+    expect(query(badCursorUrl).get('cursor')).toBe('valid-cursor-1')
+  })
+
+  it('handles a large result without skipping or duplicating records across pages', async () => {
+    // Emulate a server that returns a *larger* page than PAGE_SIZE, plus a
+    // final trailing page, and verify the client never drops or repeats rows.
+    const page1 = Array.from({ length: 500 }, () => makeTx())
+    const page2 = Array.from({ length: 250 }, () => makeTx())
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'big-1' }, { items: page2 }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(500))
+    expect(rendered.result.current.hasNextPage).toBe(true)
+    expect(rendered.result.current.data.map((t) => t.id)).toEqual(page1.map((t) => t.id))
+
+    await act(async () => {
+      await rendered.result.current.goToPage(2)
+    })
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(250))
+
+    // Every shipped record on page 2 is exactly what the server returned, in
+    // order, with no overlap with page 1 (no skip / no duplicate).
+    const page2Ids = new Set(page2.map((t) => t.id))
+    expect(rendered.result.current.data.map((t) => t.id)).toEqual([...page2Ids])
+    for (const tx of page1) {
+      expect(page2Ids.has(tx.id)).toBe(false)
+    }
+    expect(rendered.result.current.hasNextPage).toBe(false)
+    expect(rendered.result.current.totalPages).toBe(2)
+  })
+
+  it('does not skip or corrupt the chain when records are inserted between page fetches', async () => {
+    const page1 = [makeTx(), makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'chain-1' }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(2))
+
+    // A record is inserted on the server before page 2 is requested. The opaque
+    // cursor still returns exactly the server's page-2 slice — the client must
+    // neither drop the new record (it is a legitimate item on page 2) nor
+    // re-emit page-1 records. This is the cursor semantics guarantee.
+    const inserted = makeTx()
+    const trailing = makeTx()
+    await act(async () => {
+      apiFetchMock.mockImplementationOnce(() =>
+        Promise.resolve({ items: [inserted, trailing], nextCursor: undefined })
+      )
+      await rendered.result.current.goToPage(2)
+    })
+
+    expect(rendered.result.current.data.map((t) => t.id)).toEqual([inserted.id, trailing.id])
+    expect(rendered.result.current.hasNextPage).toBe(false)
+
+    // Page 2 was fetched using the exact cursor from page 1.
+    const page2Url = String(apiFetchMock.mock.calls[apiFetchMock.mock.calls.length - 1][0])
+    expect(query(page2Url).get('cursor')).toBe('chain-1')
+    // No scope/filter params were added, keeping the page scoped server-side.
+    expect(query(page2Url).has('address')).toBe(false)
+  })
+
+  it('refuses to navigate or fetch beyond the deterministic page ceiling', async () => {
+    const page1 = [makeTx(), makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'c1' }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(2))
+
+    // goToPage(5000) is far beyond the hard page cap (MAX_PAGES). It must be a
+    // no-op that neither mutates state nor issues a network request.
+    const callsBefore = apiFetchMock.mock.calls.length
+    await act(async () => {
+      await rendered.result.current.goToPage(5000)
+    })
+
+    expect(apiFetchMock.mock.calls.length).toBe(callsBefore)
+    expect(rendered.result.current.page).toBe(1)
+    expect(rendered.result.current.data).toEqual(page1)
+    expect(rendered.result.current.hasNextPage).toBe(true)
+    expect(rendered.result.current.error).toBeNull()
+  })
 })

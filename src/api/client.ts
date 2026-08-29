@@ -1,9 +1,5 @@
+import { ApiRateLimiter, DEFAULT_API_RATE_LIMIT, readApiRateLimitOverrides } from './rateLimit'
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
-import {
-  ApiRateLimiter,
-  DEFAULT_API_RATE_LIMIT,
-  readApiRateLimitOverrides,
-} from './rateLimit'
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | unknown[] | null
@@ -62,8 +58,6 @@ export class ApiRateLimitError extends ApiError {
 /**
  * Thrown by `apiFetch` when a session identity conflict is detected.
  *
- * ## When is this thrown?
- *
  * A conflict is detected in two places:
  *
  * 1. **Pre-flight** — the caller supplied an `identityEpoch` option and the
@@ -75,18 +69,10 @@ export class ApiRateLimitError extends ApiError {
  *    response is discarded and the promise rejects with this error. No partial
  *    state is committed.
  *
- * ## Extends ApiError
- *
- * `status` is `409` so that existing `err instanceof ApiError` handlers keep
- * working. Code that wants specific conflict handling can narrow on this class
- * or on `err.status === 409`.
- *
- * ## Retry contract
- *
- * **Do not retry automatically.** A conflict means the identity changed; the
- * correct recovery path is to check the current session state and, if the user
- * is still authenticated, re-acquire a fresh epoch via {@link getIdentityEpoch}
- * before re-issuing the request.
+ * `status` is `409` so existing `err instanceof ApiError` handlers keep
+ * working; code that wants specific conflict handling can narrow on this class
+ * or on `err.status === 409`. Do **not** retry automatically — re-acquire a
+ * fresh epoch via {@link getIdentityEpoch} and re-issue.
  */
 export class ApiSessionConflictError extends ApiError {
   /** Epoch value at the time the request was created (now stale). */
@@ -108,16 +94,19 @@ export class ApiSessionConflictError extends ApiError {
 }
 
 /**
- * Thrown by `apiFetch` when the request body exceeds the maximum allowed size.
- *
- * Extends `ApiError` with `status: 413` so existing `instanceof ApiError` checks
- * keep working; callers that need specific handling can narrow on this class or
- * on `err.status === 413`.
+ * Thrown by `apiFetch` when a request body exceeds `MAX_REQUEST_BODY_BYTES`.
+ * Enforced locally (before any expense) so oversized or adversarial payloads
+ * are never serialized over the wire.
  */
 export class ApiBodyTooLargeError extends ApiError {
-  constructor(maxBytes: number, payload?: unknown) {
-    super(413, `Request body exceeds the maximum allowed size of ${maxBytes} bytes`, payload)
+  readonly limitBytes: number
+  readonly bodySizeBytes: number
+
+  constructor(limitBytes: number, payload?: { bodySize: number }) {
+    super(413, `Request body too large (limit ${limitBytes} bytes).`, payload ?? { limitBytes })
     this.name = 'ApiBodyTooLargeError'
+    this.limitBytes = limitBytes
+    this.bodySizeBytes = payload?.bodySize ?? 0
   }
 }
 
@@ -136,6 +125,13 @@ type ReplayEntry = {
 const replayEntries = new Map<string, ReplayEntry>()
 
 // ── Identity epoch ──────────────────────────────────────────────────────────
+//
+// A monotonic counter advanced on every session boundary (connect, disconnect,
+// expiry, reconnect, account change). Callers capture the current epoch with
+// `getIdentityEpoch()` and pass it to `apiFetch` via the `identityEpoch`
+// option; the client checks it both before dispatching and when the response
+// arrives, rejecting with `ApiSessionConflictError` and discarding stale
+// results so no partial state leaks across sessions.
 let _identityEpoch = 0
 
 /** Returns the current identity epoch counter. */
@@ -146,6 +142,16 @@ export function getIdentityEpoch(): number {
 /** Advances the identity epoch by 1 and returns the new value. */
 export function advanceIdentityEpoch(): number {
   _identityEpoch += 1
+  return _identityEpoch
+}
+
+/**
+ * Advances the identity epoch, or sets it to an explicit value when one is
+ * given. Session-boundary callers (disconnect / expiry / reconnect / account
+ * change) use this to record the newly active identity epoch.
+ */
+export function setIdentityEpoch(epoch?: number): number {
+  _identityEpoch = epoch ?? _identityEpoch + 1
   return _identityEpoch
 }
 
@@ -201,19 +207,6 @@ export function apiRateLimiterSnapshot(): Readonly<{
  */
 export function resetApiRateLimiter(): void {
   defaultApiRateLimiter.reset()
-}
-
-let _identityEpoch = 0
-
-/** Returns the current identity epoch. */
-export function getIdentityEpoch(): number {
-  return _identityEpoch
-}
-
-/** Advances the identity epoch, or sets it explicitly when an epoch is given. */
-export function setIdentityEpoch(epoch?: number): number {
-  _identityEpoch = epoch ?? _identityEpoch + 1
-  return _identityEpoch
 }
 
 function normalizeBaseUrl(value: string): string {
@@ -337,8 +330,9 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
-  const correlationId = generateCorrelationId('api')
+  const correlationId = generateCorrelationId('api-fetch')
   const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
+  const method = (init.method || 'GET').toUpperCase()
 
   if (idempotencyKey !== undefined) {
     const normalizedKey = idempotencyKey.trim()
@@ -360,7 +354,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
 
     requestHeaders.set('Idempotency-Key', normalizedKey)
-    const requestPromise = apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody, { correlationId, path, skipRateLimit, identityEpoch })
+    const requestPromise = apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody, {
+      correlationId,
+      path,
+      method,
+      skipRateLimit,
+      identityEpoch,
+    })
     replayEntries.set(normalizedKey, { fingerprint, promise: requestPromise })
     requestPromise.catch(() => {
       if (replayEntries.get(normalizedKey)?.promise === requestPromise) {
@@ -370,12 +370,19 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     return requestPromise
   }
 
-  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody, { correlationId, path, skipRateLimit, identityEpoch })
+  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody, {
+    correlationId,
+    path,
+    method,
+    skipRateLimit,
+    identityEpoch,
+  })
 }
 
 interface ApiFetchContext {
   correlationId: string
   path: string
+  method: string
   skipRateLimit?: boolean
   identityEpoch?: number
 }
@@ -387,7 +394,9 @@ async function apiFetchWithoutReplay<T>(
   serializedBody: BodyInit | undefined,
   ctx: ApiFetchContext
 ): Promise<T> {
-  // Rate-limit gate
+  // Rate-limit gate: cheap O(k) sliding-window check before paying the cost
+  // of a fetch + DNS + TLS round-trip. When the bucket is empty we surface a
+  // typed ApiRateLimitError instead of letting a runaway loop slam prod.
   if (!ctx.skipRateLimit) {
     const decision = defaultApiRateLimiter.acquire()
     if (!decision.allowed) {
@@ -426,7 +435,7 @@ async function apiFetchWithoutReplay<T>(
         address: null,
         network: null,
         correlationId: ctx.correlationId,
-        metadata: { path: ctx.path, method: init.method, aborted: true },
+        metadata: { path: ctx.path, method: ctx.method, aborted: true },
       })
       throw error
     }
@@ -435,12 +444,17 @@ async function apiFetchWithoutReplay<T>(
       address: null,
       network: null,
       correlationId: ctx.correlationId,
-      metadata: { path: ctx.path, method: init.method, status: 0, message },
+      metadata: { path: ctx.path, method: ctx.method, status: 0, message },
     })
     throw new ApiError(0, message, error)
   }
 
-  // Post-flight identity epoch check
+  // Post-flight identity epoch check.
+  //
+  // The request was in-flight during an await. Check that the epoch has not
+  // advanced since the pre-flight check. If it has, the response belongs to a
+  // now-stale session and must be discarded. Reject with ApiSessionConflictError
+  // so the caller can decide whether to re-authenticate and retry.
   if (ctx.identityEpoch !== undefined && ctx.identityEpoch !== _identityEpoch) {
     throw new ApiSessionConflictError(
       ctx.identityEpoch,
@@ -457,7 +471,7 @@ async function apiFetchWithoutReplay<T>(
       address: null,
       network: null,
       correlationId: ctx.correlationId,
-      metadata: { path: ctx.path, method: init.method, status: response.status, message },
+      metadata: { path: ctx.path, method: ctx.method, status: response.status, message },
     })
     throw new ApiError(response.status, message, payload)
   }
@@ -466,7 +480,7 @@ async function apiFetchWithoutReplay<T>(
     address: null,
     network: null,
     correlationId: ctx.correlationId,
-    metadata: { path: ctx.path, method: init.method, status: response.status },
+    metadata: { path: ctx.path, method: ctx.method, status: response.status },
   })
 
   return payload as T

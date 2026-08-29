@@ -1,4 +1,9 @@
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
+import {
+  ApiRateLimiter,
+  DEFAULT_API_RATE_LIMIT,
+  readApiRateLimitOverrides,
+} from './rateLimit'
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | unknown[] | null
@@ -102,6 +107,23 @@ export class ApiSessionConflictError extends ApiError {
   }
 }
 
+/**
+ * Thrown by `apiFetch` when the request body exceeds the maximum allowed size.
+ *
+ * Extends `ApiError` with `status: 413` so existing `instanceof ApiError` checks
+ * keep working; callers that need specific handling can narrow on this class or
+ * on `err.status === 413`.
+ */
+export class ApiBodyTooLargeError extends ApiError {
+  constructor(maxBytes: number, payload?: unknown) {
+    super(413, `Request body exceeds the maximum allowed size of ${maxBytes} bytes`, payload)
+    this.name = 'ApiBodyTooLargeError'
+  }
+}
+
+/** Maximum allowed JSON body size in bytes (1 MiB). */
+export const MAX_REQUEST_BODY_BYTES = 1_048_576
+
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
 
 export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
@@ -112,6 +134,26 @@ type ReplayEntry = {
 }
 
 const replayEntries = new Map<string, ReplayEntry>()
+
+// ── Identity epoch ──────────────────────────────────────────────────────────
+let _identityEpoch = 0
+
+/** Returns the current identity epoch counter. */
+export function getIdentityEpoch(): number {
+  return _identityEpoch
+}
+
+/** Advances the identity epoch by 1 and returns the new value. */
+export function advanceIdentityEpoch(): number {
+  _identityEpoch += 1
+  return _identityEpoch
+}
+
+/** Resets the identity epoch to 0. Test-only. */
+export function resetIdentityEpoch(): void {
+  _identityEpoch = 0
+}
+
 /**
  * Process-wide default rate limiter consulted by `apiFetch`.
  *
@@ -266,11 +308,21 @@ function replayConflict(key: string): ApiError {
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, idempotencyKey, ...init } = options
-  const { body, headers, skipRateLimit, ...init } = options
+  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, ...init } = options
   const hasJsonBody = isJsonBody(body)
+
+  // Validate input size before expensive operations. Serializing an oversized
+  // body is wasted work and could exhaust memory or downstream resources.
+  if (hasJsonBody) {
+    const serialized = JSON.stringify(body)
+    if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
+      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
+    }
+  }
+
   const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
-  const requestHeaders = buildHeaders(headers, hasJsonBody)
+  const correlationId = generateCorrelationId('api')
+  const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
 
   if (idempotencyKey !== undefined) {
     const normalizedKey = idempotencyKey.trim()
@@ -292,7 +344,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
 
     requestHeaders.set('Idempotency-Key', normalizedKey)
-    const requestPromise = apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody)
+    const requestPromise = apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody, { correlationId, path, skipRateLimit, identityEpoch })
     replayEntries.set(normalizedKey, { fingerprint, promise: requestPromise })
     requestPromise.catch(() => {
       if (replayEntries.get(normalizedKey)?.promise === requestPromise) {
@@ -302,19 +354,25 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     return requestPromise
   }
 
-  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody)
+  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody, { correlationId, path, skipRateLimit, identityEpoch })
+}
+
+interface ApiFetchContext {
+  correlationId: string
+  path: string
+  skipRateLimit?: boolean
+  identityEpoch?: number
 }
 
 async function apiFetchWithoutReplay<T>(
   url: string,
   init: RequestInit,
   headers: Headers,
-  serializedBody: BodyInit | undefined
+  serializedBody: BodyInit | undefined,
+  ctx: ApiFetchContext
 ): Promise<T> {
-  // Rate-limit gate: cheap O(k) sliding-window check before paying the cost
-  // of a fetch + DNS + TLS round-trip. When the bucket is empty we surface a
-  // typed ApiRateLimitError instead of letting a runaway loop slam prod.
-  if (!skipRateLimit) {
+  // Rate-limit gate
+  if (!ctx.skipRateLimit) {
     const decision = defaultApiRateLimiter.acquire()
     if (!decision.allowed) {
       throw new ApiRateLimitError(
@@ -331,11 +389,11 @@ async function apiFetchWithoutReplay<T>(
   // level epoch before issuing the request. An epoch mismatch here means the
   // session already changed (disconnect / reconnect / expiry) before this
   // request even hit the network — reject immediately without dispatching.
-  if (identityEpoch !== undefined && identityEpoch !== _identityEpoch) {
+  if (ctx.identityEpoch !== undefined && ctx.identityEpoch !== _identityEpoch) {
     throw new ApiSessionConflictError(
-      identityEpoch,
+      ctx.identityEpoch,
       _identityEpoch,
-      `Session identity changed before request was dispatched (epoch ${identityEpoch} → ${_identityEpoch}).`
+      `Session identity changed before request was dispatched (epoch ${ctx.identityEpoch} → ${_identityEpoch}).`
     )
   }
 
@@ -351,8 +409,8 @@ async function apiFetchWithoutReplay<T>(
       emitWalletSessionEvent('action_failed', {
         address: null,
         network: null,
-        correlationId,
-        metadata: { path, method, aborted: true },
+        correlationId: ctx.correlationId,
+        metadata: { path: ctx.path, method: init.method, aborted: true },
       })
       throw error
     }
@@ -360,23 +418,18 @@ async function apiFetchWithoutReplay<T>(
     emitWalletSessionEvent('action_failed', {
       address: null,
       network: null,
-      correlationId,
-      metadata: { path, method, status: 0, message },
+      correlationId: ctx.correlationId,
+      metadata: { path: ctx.path, method: init.method, status: 0, message },
     })
     throw new ApiError(0, message, error)
   }
 
-  // Post-flight identity epoch check.
-  //
-  // The request was in-flight during an await. Check that the epoch has not
-  // advanced since the pre-flight check. If it has, the response belongs to a
-  // now-stale session and must be discarded. Reject with ApiSessionConflictError
-  // so the caller can decide whether to re-authenticate and retry.
-  if (identityEpoch !== undefined && identityEpoch !== _identityEpoch) {
+  // Post-flight identity epoch check
+  if (ctx.identityEpoch !== undefined && ctx.identityEpoch !== _identityEpoch) {
     throw new ApiSessionConflictError(
-      identityEpoch,
+      ctx.identityEpoch,
       _identityEpoch,
-      `Session identity changed while request was in-flight (epoch ${identityEpoch} → ${_identityEpoch}). Response discarded.`
+      `Session identity changed while request was in-flight (epoch ${ctx.identityEpoch} → ${_identityEpoch}). Response discarded.`
     )
   }
 
@@ -387,8 +440,8 @@ async function apiFetchWithoutReplay<T>(
     emitWalletSessionEvent('action_failed', {
       address: null,
       network: null,
-      correlationId,
-      metadata: { path, method, status: response.status, message },
+      correlationId: ctx.correlationId,
+      metadata: { path: ctx.path, method: init.method, status: response.status, message },
     })
     throw new ApiError(response.status, message, payload)
   }
@@ -396,8 +449,8 @@ async function apiFetchWithoutReplay<T>(
   emitWalletSessionEvent('action_succeeded', {
     address: null,
     network: null,
-    correlationId,
-    metadata: { path, method, status: response.status },
+    correlationId: ctx.correlationId,
+    metadata: { path: ctx.path, method: init.method, status: response.status },
   })
 
   return payload as T

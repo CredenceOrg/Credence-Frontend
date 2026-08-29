@@ -306,4 +306,56 @@ describe('useWallet', () => {
     })
     expect(window.localStorage.getItem('credence:wallet-session')).toBeNull()
   })
+
+  it('guards against concurrent connect calls — second call is a no-op while first is in-flight', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    let resolveAccess!: (value: { ok: true; address: string }) => void
+    mocks.mockRequestFreighterAccess.mockImplementation(
+      () => new Promise((resolve) => { resolveAccess = resolve })
+    )
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    // Fire first connect — it will block on requestFreighterAccess.
+    void result.current.connect()
+
+    await waitFor(() => {
+      expect(result.current.isConnecting).toBe(true)
+    })
+
+    // Fire second connect while first is still in-flight.
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveAccess({ ok: true, address: TEST_ADDRESS })
+    })
+
+    expect(result.current.isConnected).toBe(true)
+    expect(result.current.address).toBe(TEST_ADDRESS)
+    expect(result.current.isConnecting).toBe(false)
+  })
+
+  it('allows a second connect after the first completes', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+    expect(result.current.isConnected).toBe(true)
+    expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await result.current.connect()
+    })
+    expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(2)
+  })
 })

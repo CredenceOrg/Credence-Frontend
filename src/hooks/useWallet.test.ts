@@ -125,8 +125,9 @@ describe('useWallet', () => {
 
     expect(result.current.error).toMatchObject({ code: 'network_mismatch' })
     expect(result.current.isConnected).toBe(false)
+    // Atomic rollback: network is rolled back to null on mismatch.
     expect(result.current.address).toBe('')
-    expect(result.current.network).toBe('test')
+    expect(result.current.network).toBeNull()
   })
 
   it('blocks connection on network mismatch — testnet settings with mainnet wallet', async () => {
@@ -141,8 +142,9 @@ describe('useWallet', () => {
 
     expect(result.current.error).toMatchObject({ code: 'network_mismatch' })
     expect(result.current.isConnected).toBe(false)
+    // Atomic rollback: network is rolled back to null on mismatch.
     expect(result.current.address).toBe('')
-    expect(result.current.network).toBe('public')
+    expect(result.current.network).toBeNull()
   })
 
   it('surfaces unknown error when client throws', async () => {

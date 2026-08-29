@@ -172,6 +172,15 @@ export default function ActivityTimeline({
                   </div>
                   <p className="activity-row__description">{item.description}</p>
 
+                  {item.amountUsdc != null && (
+                    <p
+                      className="activity-row__amount"
+                      aria-label={`Amount: ${formatAmount(item.amountUsdc)}`}
+                    >
+                      {formatAmount(item.amountUsdc)}
+                    </p>
+                  )}
+
                   <button
                     id={buttonId}
                     type="button"

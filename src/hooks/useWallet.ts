@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { advanceIdentityEpoch } from '../api'
 import { DOM_EVENTS } from '../events'
 import {
   checkFreighterInstalled,
@@ -172,16 +173,16 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<WalletError | null>(null)
   const watcherStopRef = useRef<(() => void) | null>(null)
+  const connectInFlightRef = useRef(false)
 
   const stopWatcher = useCallback(() => {
     watcherStopRef.current?.()
     watcherStopRef.current = null
   }, [])
 
-  const syncNetwork = useCallback(async () => {
-    const freighterNetwork = await fetchFreighterNetwork()
-    setNetwork(freighterNetwork)
-    return freighterNetwork
+  /** Read-only: fetch Freighter network without touching state. */
+  const fetchNetwork = useCallback(async (): Promise<CredenceNetwork | null> => {
+    return fetchFreighterNetwork()
   }, [])
 
   const startWatcher = useCallback(
@@ -191,6 +192,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
         ({ address: nextAddress, network: nextNetwork }) => {
           setAddress((prevAddress) => {
             if (prevAddress && nextAddress && prevAddress !== nextAddress) {
+              advanceIdentityEpoch()
               emitWalletSessionEvent('account_changed', {
                 address: nextAddress,
                 network: nextNetwork,
@@ -202,6 +204,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
           })
           setNetwork((prevNetwork) => {
             if (prevNetwork && nextNetwork && prevNetwork !== nextNetwork) {
+              advanceIdentityEpoch()
               emitWalletSessionEvent('network_changed', {
                 address: nextAddress,
                 network: nextNetwork,
@@ -221,7 +224,9 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
 
   const connect = useCallback(async () => {
     if (typeof window === 'undefined') return
+    if (connectInFlightRef.current) return
 
+    connectInFlightRef.current = true
     const correlationId = generateCorrelationId('wallet-connect')
     emitWalletSessionEvent('session_connecting', {
       address: null,
@@ -231,9 +236,12 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
 
     setIsConnecting(true)
     setError(null)
+    setNetwork(null)
+    setIsConnecting(true)
 
     try {
       const installed = await checkFreighterInstalled()
+      if (gen !== connectGenRef.current) return
       if (!installed) {
         setError({
           code: 'not_installed',
@@ -249,6 +257,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       }
 
       const result = await requestFreighterAccess()
+      if (gen !== connectGenRef.current) return
       if (!result.ok) {
         setError({
           code: result.code === 'rejected' ? 'rejected' : result.code,
@@ -263,6 +272,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
         return
       }
 
+      advanceIdentityEpoch()
       setAddress(result.address)
       const freighterNetwork = await syncNetwork()
 
@@ -271,6 +281,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
         parseNetwork(_settingsNetwork) &&
         freighterNetwork !== parseNetwork(_settingsNetwork)
       ) {
+        advanceIdentityEpoch()
         clearPersistedWalletSession()
         setAddress('')
         setError({
@@ -282,7 +293,22 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
 
       writePersistedWalletSession(result.address, freighterNetwork)
       await startWatcher()
+
+      if (gen !== connectGenRef.current) {
+        // Superseded after watcher started — stop it explicitly.
+        stopWatcher()
+        setNetwork(null)
+        return
+      }
+
+      // All side-effects succeeded and generation is current — commit now.
+      setAddress(connectedAddress)
     } catch {
+      if (gen !== connectGenRef.current) return
+      // Full rollback: ensure no partial state remains.
+      stopWatcher()
+      setAddress('')
+      setNetwork(null)
       setError({
         code: 'unknown',
         message: 'Unable to connect to Freighter. Please try again.',
@@ -294,13 +320,18 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
         metadata: { code: 'unknown', message: 'Unable to connect to Freighter.' },
       })
     } finally {
+      connectInFlightRef.current = false
       setIsConnecting(false)
     }
   }, [startWatcher, syncNetwork])
 
   const disconnect = useCallback(() => {
+    const previousAddress = address
+    const previousNetwork = network
     stopWatcher()
+    connectInFlightRef.current = false
     clearPersistedWalletSession()
+    advanceIdentityEpoch()
     setAddress('')
     setNetwork(null)
     setError(null)
@@ -310,7 +341,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       address: null,
       network: null,
       correlationId: generateCorrelationId('wallet-disconnect'),
-      metadata: { previousAddress: prevAddress || null, previousNetwork: prevNetwork || null },
+      metadata: { previousAddress, previousNetwork },
     })
   }, [stopWatcher, address, network])
 
@@ -339,7 +370,11 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       const existingAddress = await fetchFreighterAddress()
       if (!existingAddress || cancelled) return
 
-      if (persistedSession && persistedSession.address && existingAddress !== persistedSession.address) {
+      if (
+        persistedSession &&
+        persistedSession.address &&
+        existingAddress !== persistedSession.address
+      ) {
         clearPersistedWalletSession()
         return
       }
@@ -377,18 +412,20 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       cancelled = true
       stopWatcher()
     }
-  }, [startWatcher, stopWatcher, syncNetwork])
+  }, [startWatcher, stopWatcher, fetchNetwork])
 
   useEffect(() => {
     if (!address) return
 
     const handleFocus = () => {
-      void syncNetwork()
+      void fetchNetwork().then((freighterNetwork) => {
+        setNetwork(freighterNetwork)
+      })
     }
 
     window.addEventListener(DOM_EVENTS.FOCUS, handleFocus)
     return () => window.removeEventListener(DOM_EVENTS.FOCUS, handleFocus)
-  }, [address, syncNetwork])
+  }, [address, fetchNetwork])
 
   return {
     address,

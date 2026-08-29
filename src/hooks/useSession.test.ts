@@ -56,4 +56,26 @@ describe('useSession', () => {
     })
     expect(apiFetch).toHaveBeenCalledTimes(2)
   })
+
+  it('throttles rapid focus events to prevent burst refetch traffic', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ address: 'G789' })
+
+    renderHook(() => useSession())
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledTimes(1)
+    })
+
+    // Fire multiple focus events in quick succession.
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+      window.dispatchEvent(new Event('focus'))
+      window.dispatchEvent(new Event('focus'))
+    })
+
+    // Only one refetch should have been triggered despite three focus events.
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledTimes(2)
+    })
+  })
 })

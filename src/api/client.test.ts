@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiFetch } from './client'
+import {
+  ApiError,
+  ApiRateLimitError,
+  apiFetch,
+  apiRateLimiterSnapshot,
+  defaultApiRateLimiter,
+  resetApiRateLimiter,
+} from './client'
 import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()

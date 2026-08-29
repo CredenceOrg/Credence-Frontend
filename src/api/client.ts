@@ -1,4 +1,5 @@
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
+import { ApiRateLimiter, DEFAULT_API_RATE_LIMIT, readApiRateLimitOverrides } from './rateLimit'
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | unknown[] | null
@@ -100,6 +101,31 @@ export class ApiSessionConflictError extends ApiError {
     this.staleEpoch = staleEpoch
     this.currentEpoch = currentEpoch
   }
+}
+
+let _identityEpoch = 0
+
+/**
+ * Returns the active identity epoch number.
+ */
+export function getIdentityEpoch(): number {
+  return _identityEpoch
+}
+
+/**
+ * Advances the identity epoch monotonically by 1 and returns the new value.
+ * Call this on any session boundary event (disconnect, reconnect, session expiry).
+ */
+export function advanceIdentityEpoch(): number {
+  _identityEpoch += 1
+  return _identityEpoch
+}
+
+/**
+ * Resets the identity epoch to 0. Intended for test teardown/setup.
+ */
+export function resetIdentityEpoch(): void {
+  _identityEpoch = 0
 }
 
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
@@ -244,7 +270,10 @@ function requestFingerprint(
 ): string {
   const comparableHeaders: string[] = []
   headers.forEach((value, name) => {
-    if (name !== 'idempotency-key') comparableHeaders.push(`${name}:${value}`)
+    const lowerName = name.toLowerCase()
+    if (lowerName !== 'idempotency-key' && lowerName !== 'x-correlation-id') {
+      comparableHeaders.push(`${lowerName}:${value}`)
+    }
   })
 
   return JSON.stringify([
@@ -266,11 +295,19 @@ function replayConflict(key: string): ApiError {
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, idempotencyKey, ...init } = options
-  const { body, headers, skipRateLimit, ...init } = options
+  const {
+    body,
+    headers,
+    idempotencyKey,
+    skipRateLimit,
+    identityEpoch,
+    method = 'GET',
+    ...init
+  } = options
   const hasJsonBody = isJsonBody(body)
   const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
-  const requestHeaders = buildHeaders(headers, hasJsonBody)
+  const correlationId = generateCorrelationId('api-fetch')
+  const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
 
   if (idempotencyKey !== undefined) {
     const normalizedKey = idempotencyKey.trim()
@@ -282,7 +319,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
     const existing = replayEntries.get(normalizedKey)
     const url = buildUrl(path)
-    const fingerprint = requestFingerprint(url, init, serializedBody, requestHeaders)
+    const fingerprint = requestFingerprint(url, { ...init, method }, serializedBody, requestHeaders)
 
     if (existing) {
       if (existing.fingerprint !== fingerprint) {
@@ -292,7 +329,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
 
     requestHeaders.set('Idempotency-Key', normalizedKey)
-    const requestPromise = apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody)
+    const requestPromise = apiFetchWithoutReplay<T>(
+      url,
+      { ...init, method },
+      requestHeaders,
+      serializedBody,
+      { skipRateLimit, identityEpoch, correlationId, path, method }
+    )
     replayEntries.set(normalizedKey, { fingerprint, promise: requestPromise })
     requestPromise.catch(() => {
       if (replayEntries.get(normalizedKey)?.promise === requestPromise) {
@@ -302,15 +345,30 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     return requestPromise
   }
 
-  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody)
+  return apiFetchWithoutReplay<T>(
+    buildUrl(path),
+    { ...init, method },
+    requestHeaders,
+    serializedBody,
+    { skipRateLimit, identityEpoch, correlationId, path, method }
+  )
 }
 
 async function apiFetchWithoutReplay<T>(
   url: string,
   init: RequestInit,
   headers: Headers,
-  serializedBody: BodyInit | undefined
+  serializedBody: BodyInit | undefined,
+  context: {
+    skipRateLimit?: boolean
+    identityEpoch?: number
+    correlationId: string
+    path: string
+    method: string
+  }
 ): Promise<T> {
+  const { skipRateLimit, identityEpoch, correlationId, path, method } = context
+
   // Rate-limit gate: cheap O(k) sliding-window check before paying the cost
   // of a fetch + DNS + TLS round-trip. When the bucket is empty we surface a
   // typed ApiRateLimitError instead of letting a runaway loop slam prod.

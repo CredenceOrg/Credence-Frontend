@@ -85,3 +85,42 @@ async function submitData() {
   }
 }
 ```
+
+## Amount Precision & Overflow
+
+Requests that carry monetary amounts should declare them with the opt-in
+`amountFields` option so they are validated and canonicalized **exactly** at
+this boundary — before the rate limiter and before the network:
+
+```typescript
+// src/api/client.ts
+await apiFetch('/bonds', {
+  method: 'POST',
+  body: { borrower: address, amount: '1000.5' },
+  amountFields: { amount: { min: '1.00' } }, // or simply ['amount'] for defaults
+})
+// Wire body: {"borrower":"G…","amount":"1000.50"} — canonical decimal string
+```
+
+Why: `JSON.stringify` alone silently corrupts money — `0.1 + 0.2` becomes
+`0.30000000000000004`, `NaN`/`Infinity` become `null`, large numbers become
+exponent notation, and nothing checks sign, scale, or magnitude. The
+`amountFields` gate (backed by `src/api/amount.ts`, a `BigInt`-only decimal
+engine) guarantees:
+
+- exact decimal-string serialization with fixed scale (default 2, USDC),
+- rejection — never rounding — of excess precision (`INVALID_SCALE`),
+- rejection of negative values (`NEGATIVE`) and non-finite numbers
+  (`NOT_FINITE`),
+- an overflow bound: the scaled integer must fit in a signed 64-bit integer
+  (`OVERFLOW` above `92233720368547758.07` at scale 2), plus optional
+  `min`/`max` rules,
+- no rate-limit budget consumption, no network call, and no caller-body
+  mutation when a value is rejected.
+
+Invalid amounts throw `ApiAmountError extends ApiError` with a synthetic
+`status: 400`, plus structured `field` / `code` / `payload` for handling.
+Calls that omit `amountFields` keep their exact previous behavior.
+
+See [docs/AMOUNT_PRECISION.md](./AMOUNT_PRECISION.md) for the full design,
+invariants, error taxonomy, compatibility, and rollback notes.

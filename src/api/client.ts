@@ -161,6 +161,19 @@ export function resetApiRateLimiter(): void {
   defaultApiRateLimiter.reset()
 }
 
+let _identityEpoch = 0
+
+/** Returns the current identity epoch. */
+export function getIdentityEpoch(): number {
+  return _identityEpoch
+}
+
+/** Advances the identity epoch, or sets it explicitly when an epoch is given. */
+export function setIdentityEpoch(epoch?: number): number {
+  _identityEpoch = epoch ?? _identityEpoch + 1
+  return _identityEpoch
+}
+
 function normalizeBaseUrl(value: string): string {
   const trimmed = value.trim()
   if (!trimmed || trimmed === '/') {
@@ -244,7 +257,9 @@ function requestFingerprint(
 ): string {
   const comparableHeaders: string[] = []
   headers.forEach((value, name) => {
-    if (name !== 'idempotency-key') comparableHeaders.push(`${name}:${value}`)
+    if (name !== 'idempotency-key' && name !== 'x-correlation-id') {
+      comparableHeaders.push(`${name}:${value}`)
+    }
   })
 
   return JSON.stringify([
@@ -266,11 +281,19 @@ function replayConflict(key: string): ApiError {
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, idempotencyKey, ...init } = options
-  const { body, headers, skipRateLimit, ...init } = options
+  const { body, headers, idempotencyKey, identityEpoch, skipRateLimit = false, ...init } = options
   const hasJsonBody = isJsonBody(body)
   const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
-  const requestHeaders = buildHeaders(headers, hasJsonBody)
+  const method = init.method ?? 'GET'
+  const requestHeaders = buildHeaders(headers, hasJsonBody, generateCorrelationId())
+  const correlationId = requestHeaders.get('X-Correlation-ID') ?? ''
+  const requestContext = {
+    path,
+    method,
+    correlationId,
+    skipRateLimit,
+    identityEpoch,
+  }
 
   if (idempotencyKey !== undefined) {
     const normalizedKey = idempotencyKey.trim()
@@ -292,7 +315,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
 
     requestHeaders.set('Idempotency-Key', normalizedKey)
-    const requestPromise = apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody)
+    const requestPromise = apiFetchWithoutReplay<T>(
+      url,
+      init,
+      requestHeaders,
+      serializedBody,
+      requestContext
+    )
     replayEntries.set(normalizedKey, { fingerprint, promise: requestPromise })
     requestPromise.catch(() => {
       if (replayEntries.get(normalizedKey)?.promise === requestPromise) {
@@ -302,15 +331,30 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     return requestPromise
   }
 
-  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody)
+  return apiFetchWithoutReplay<T>(
+    buildUrl(path),
+    init,
+    requestHeaders,
+    serializedBody,
+    requestContext
+  )
 }
 
 async function apiFetchWithoutReplay<T>(
   url: string,
   init: RequestInit,
   headers: Headers,
-  serializedBody: BodyInit | undefined
+  serializedBody: BodyInit | undefined,
+  requestContext: {
+    path: string
+    method: string
+    correlationId: string
+    skipRateLimit: boolean
+    identityEpoch?: number
+  }
 ): Promise<T> {
+  const { path, method, correlationId, skipRateLimit, identityEpoch } = requestContext
+
   // Rate-limit gate: cheap O(k) sliding-window check before paying the cost
   // of a fetch + DNS + TLS round-trip. When the bucket is empty we surface a
   // typed ApiRateLimitError instead of letting a runaway loop slam prod.

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatUsdc,
-  formatAmount,
+  formatMoney,
   normalizeUSDC,
   formatUSDC,
   formatUSDCDisplay,
@@ -211,119 +211,310 @@ describe('sanitizeUSDCInput', () => {
   })
 })
 
-describe('formatAmount', () => {
-  describe('valid finite amounts', () => {
-    it('formats a standard positive amount with USDC suffix', () => {
-      expect(formatAmount(1234.5)).toBe('1,234.5 USDC')
+// ---------------------------------------------------------------------------
+// Rounding modes
+// ---------------------------------------------------------------------------
+
+describe('formatUsdc — rounding modes', () => {
+  it('rounds down when the third decimal digit is less than 5', () => {
+    expect(formatUsdc(1.234)).toBe('1.23 USDC')
+    expect(formatUsdc(9.994)).toBe('9.99 USDC')
+    expect(formatUsdc(0.004)).toBe('0 USDC')
+  })
+
+  it('rounds up when the third decimal digit is greater than 5', () => {
+    expect(formatUsdc(1.236)).toBe('1.24 USDC')
+    expect(formatUsdc(9.997)).toBe('10 USDC')
+    expect(formatUsdc(0.006)).toBe('0.01 USDC')
+  })
+
+  it('rounds up across the whole-number boundary', () => {
+    expect(formatUsdc(0.999)).toBe('1 USDC')
+    expect(formatUsdc(1.999)).toBe('2 USDC')
+    expect(formatUsdc(99.999)).toBe('100 USDC')
+  })
+
+  it('does not round values already at two decimal places', () => {
+    expect(formatUsdc(1.23)).toBe('1.23 USDC')
+    expect(formatUsdc(0.01)).toBe('0.01 USDC')
+    expect(formatUsdc(100.99)).toBe('100.99 USDC')
+  })
+})
+
+describe('normalizeUSDC — rounding modes (toFixed half-away-from-zero)', () => {
+  it('rounds down when the third decimal digit is less than 5', () => {
+    expect(normalizeUSDC('1.234')).toBe('1.23')
+    expect(normalizeUSDC('9.994')).toBe('9.99')
+    expect(normalizeUSDC('0.004')).toBe('0.00')
+  })
+
+  it('rounds up when the third decimal digit is greater than 5', () => {
+    expect(normalizeUSDC('1.236')).toBe('1.24')
+    expect(normalizeUSDC('0.006')).toBe('0.01')
+    expect(normalizeUSDC('9.997')).toBe('10.00')
+  })
+
+  it('rounds up across the whole-number boundary', () => {
+    expect(normalizeUSDC('0.999')).toBe('1.00')
+    expect(normalizeUSDC('1.999')).toBe('2.00')
+  })
+})
+
+describe('sanitizeUSDCInput — truncates (does not round) to two decimal places', () => {
+  it('truncates third digit instead of rounding up', () => {
+    expect(sanitizeUSDCInput('1.236')).toBe('1.23')
+    expect(sanitizeUSDCInput('9.999')).toBe('9.99')
+    expect(sanitizeUSDCInput('0.009')).toBe('0.00')
+  })
+
+  it('truncates third digit instead of rounding down', () => {
+    expect(sanitizeUSDCInput('1.231')).toBe('1.23')
+    expect(sanitizeUSDCInput('0.001')).toBe('0.00')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Trailing-zero stripping
+// ---------------------------------------------------------------------------
+
+describe('formatUsdc — strips trailing zeros (minimumFractionDigits not set)', () => {
+  it('strips both trailing zeros for whole-number values', () => {
+    expect(formatUsdc(1)).toBe('1 USDC')
+    expect(formatUsdc(1000)).toBe('1,000 USDC')
+    expect(formatUsdc(0)).toBe('0 USDC')
+  })
+
+  it('strips one trailing zero when only the hundredths digit is zero', () => {
+    expect(formatUsdc(1.1)).toBe('1.1 USDC')
+    expect(formatUsdc(1.5)).toBe('1.5 USDC')
+    expect(formatUsdc(100.9)).toBe('100.9 USDC')
+  })
+
+  it('retains both decimal digits when neither is zero', () => {
+    expect(formatUsdc(1.23)).toBe('1.23 USDC')
+    expect(formatUsdc(0.01)).toBe('0.01 USDC')
+    expect(formatUsdc(99.99)).toBe('99.99 USDC')
+  })
+
+  it('strips trailing zero produced by rounding', () => {
+    // 1.999 rounds to 2 — both decimal digits become .00 and are stripped
+    expect(formatUsdc(1.999)).toBe('2 USDC')
+  })
+})
+
+describe('formatUSDC — always retains two decimal places (minimumFractionDigits: 2)', () => {
+  it('appends .00 to whole-number strings', () => {
+    expect(formatUSDC('1')).toBe('1.00')
+    expect(formatUSDC('0')).toBe('0.00')
+    expect(formatUSDC('1000')).toBe('1,000.00')
+  })
+
+  it('appends a trailing zero when only one decimal place is given', () => {
+    expect(formatUSDC('1.5')).toBe('1.50')
+    expect(formatUSDC('100.1')).toBe('100.10')
+    expect(formatUSDC('0.1')).toBe('0.10')
+  })
+
+  it('does not alter strings that already have two decimal places', () => {
+    expect(formatUSDC('1.23')).toBe('1.23')
+    expect(formatUSDC('9.99')).toBe('9.99')
+    expect(formatUSDC('0.01')).toBe('0.01')
+  })
+})
+
+describe('formatUSDCDisplay — always retains two decimal places (same contract as formatUSDC)', () => {
+  it('appends .00 to whole-number strings', () => {
+    expect(formatUSDCDisplay('1')).toBe('1.00')
+    expect(formatUSDCDisplay('0')).toBe('0.00')
+    expect(formatUSDCDisplay('1000')).toBe('1,000.00')
+  })
+
+  it('appends a trailing zero when only one decimal place is given', () => {
+    expect(formatUSDCDisplay('1.5')).toBe('1.50')
+    expect(formatUSDCDisplay('0.1')).toBe('0.10')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Locale-specific thousand separators (en-US)
+// ---------------------------------------------------------------------------
+
+describe('formatUsdc — en-US comma thousand separators', () => {
+  it('inserts a comma separator at every third digit from the right', () => {
+    expect(formatUsdc(1_000)).toBe('1,000 USDC')
+    expect(formatUsdc(10_000)).toBe('10,000 USDC')
+    expect(formatUsdc(100_000)).toBe('100,000 USDC')
+    expect(formatUsdc(1_000_000)).toBe('1,000,000 USDC')
+  })
+
+  it('places separators correctly for non-round values', () => {
+    expect(formatUsdc(1_234_567.89)).toBe('1,234,567.89 USDC')
+    expect(formatUsdc(9_999_999.99)).toBe('9,999,999.99 USDC')
+  })
+
+  it('does not insert a separator for values below 1000', () => {
+    expect(formatUsdc(999)).toBe('999 USDC')
+    expect(formatUsdc(100)).toBe('100 USDC')
+    expect(formatUsdc(9.99)).toBe('9.99 USDC')
+  })
+
+  it('handles very large values with multiple separator groups', () => {
+    expect(formatUsdc(1_234_567_890)).toBe('1,234,567,890 USDC')
+  })
+})
+
+describe('formatUSDC — en-US comma thousand separators', () => {
+  it('inserts a comma separator at every third digit from the right', () => {
+    expect(formatUSDC('1000')).toBe('1,000.00')
+    expect(formatUSDC('10000')).toBe('10,000.00')
+    expect(formatUSDC('1000000')).toBe('1,000,000.00')
+  })
+
+  it('places separators correctly for non-round values', () => {
+    expect(formatUSDC('1234567.89')).toBe('1,234,567.89')
+    expect(formatUSDC('9999999.99')).toBe('9,999,999.99')
+  })
+
+  it('handles input that already contains thousand commas', () => {
+    expect(formatUSDC('1,234,567.89')).toBe('1,234,567.89')
+    expect(formatUSDC('1,000,000')).toBe('1,000,000.00')
+  })
+
+  it('does not insert a separator for values below 1000', () => {
+    expect(formatUSDC('999')).toBe('999.00')
+    expect(formatUSDC('100.50')).toBe('100.50')
+  })
+})
+
+describe('normalizeUSDC — strips en-US thousand commas from input before normalizing', () => {
+  it('removes a single thousands comma', () => {
+    expect(normalizeUSDC('1,000')).toBe('1000.00')
+    expect(normalizeUSDC('9,999')).toBe('9999.00')
+  })
+
+  it('removes multiple thousands commas', () => {
+    expect(normalizeUSDC('1,000,000')).toBe('1000000.00')
+    expect(normalizeUSDC('1,234,567.89')).toBe('1234567.89')
+  })
+
+  it('normalizes to two decimal places after stripping separators', () => {
+    expect(normalizeUSDC('1,000.1')).toBe('1000.10')
+    expect(normalizeUSDC('9,999,999')).toBe('9999999.00')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Property-style invariant tests (parametric / table-driven)
+// ---------------------------------------------------------------------------
+
+describe('property: formatUSDC output is always re-parseable as a finite number', () => {
+  const validAmounts = [
+    '0',
+    '0.01',
+    '0.99',
+    '1',
+    '100',
+    '999',
+    '1000',
+    '1234.56',
+    '999999.99',
+    '1000000',
+  ]
+
+  it.each(validAmounts)(
+    'formatUSDC("%s") produces a string whose numeric value matches the input',
+    (input) => {
+      const result = formatUSDC(input)
+      const parsed = Number(result.replace(/,/g, ''))
+      expect(Number.isFinite(parsed)).toBe(true)
+      expect(parsed).toBeCloseTo(Number(input), 1)
+    }
+  )
+})
+
+describe('property: normalizeUSDC → formatUSDC round-trip preserves value', () => {
+  const inputs = ['0', '1', '100', '1000', '1234.5', '9999.99', '1000000']
+
+  it.each(inputs)('formatUSDC(normalizeUSDC("%s")) produces a valid formatted string', (input) => {
+    const normalized = normalizeUSDC(input)
+    const formatted = formatUSDC(normalized)
+    const parsed = Number(formatted.replace(/,/g, ''))
+    expect(Number.isFinite(parsed)).toBe(true)
+    expect(parsed).toBeCloseTo(Number(input), 1)
+  })
+})
+
+describe('property: formatUsdc output always ends with " USDC" for finite inputs', () => {
+  const finiteAmounts = [0, 0.01, 1, 100, 1000, 1234.56, 1_000_000, 9_999_999.99]
+
+  it.each(finiteAmounts)('formatUsdc(%s) ends with " USDC"', (amount) => {
+    expect(formatUsdc(amount)).toMatch(/ USDC$/)
+  })
+})
+
+describe('property: sanitizeUSDCInput output contains only digits, at most one dot, and at most two decimal digits', () => {
+  const inputs = ['123', '1.5', '12.34', '1,000.50', '$100.99', '00123', '12.345', '1.2.3']
+
+  it.each(inputs)('sanitizeUSDCInput("%s") matches the safe decimal pattern', (input) => {
+    const result = sanitizeUSDCInput(input)
+    if (result !== '') {
+      expect(result).toMatch(/^\d+(\.\d{0,2})?$/)
+    }
+  })
+})
+
+describe('formatMoney', () => {
+  describe('happy path — locale-specific formatting', () => {
+    it('formats with en-US comma separators and decimal point', () => {
+      expect(formatMoney(1234.5, 'en-US')).toBe('1,234.5')
+      expect(formatMoney(1_000_000.99, 'en-US')).toBe('1,000,000.99')
+      expect(formatMoney(0, 'en-US')).toBe('0')
     })
 
-    it('formats zero as "0 USDC"', () => {
-      expect(formatAmount(0)).toBe('0 USDC')
+    it('formats with es-ES comma decimal separator; grouping starts at 5+ integer digits', () => {
+      // Modern CLDR sets minimumGroupingDigits=2 for es-ES (group at ≥5 digits).
+      expect(formatMoney(1234.5, 'es-ES')).toBe('1234,5')
+      expect(formatMoney(12345.67, 'es-ES')).toBe('12.345,67')
+      expect(formatMoney(1_000_000.99, 'es-ES')).toBe('1.000.000,99')
+      expect(formatMoney(0, 'es-ES')).toBe('0')
     })
 
-    it('formats a fractional amount with up to 2 decimal places', () => {
-      expect(formatAmount(1234.567)).toBe('1,234.57 USDC')
+    it('formats with fr-FR narrow non-breaking space (U+202F) grouping and comma decimal', () => {
+      expect(formatMoney(1234.5, 'fr-FR')).toBe('1\u202f234,5')
+      expect(formatMoney(1_000_000.99, 'fr-FR')).toBe('1\u202f000\u202f000,99')
+      expect(formatMoney(0, 'fr-FR')).toBe('0')
     })
 
-    it('formats amounts below 1 USDC', () => {
-      expect(formatAmount(0.01)).toBe('0.01 USDC')
+    it('formats with ja-JP comma separators and decimal point', () => {
+      expect(formatMoney(1234.5, 'ja-JP')).toBe('1,234.5')
+      expect(formatMoney(1_000_000.99, 'ja-JP')).toBe('1,000,000.99')
+      expect(formatMoney(0, 'ja-JP')).toBe('0')
     })
 
-    it('formats whole numbers without trailing decimals', () => {
-      expect(formatAmount(100)).toBe('100 USDC')
-    })
-
-    it('formats large values with thousand separators', () => {
-      expect(formatAmount(1e7)).toBe('10,000,000 USDC')
-    })
-
-    it('formats very large values with commas', () => {
-      expect(formatAmount(1_000_000_000)).toBe('1,000,000,000 USDC')
+    it('formats with ar-EG Arabic-Indic digits and Arabic thousand/decimal separators', () => {
+      // ar-EG uses Arabic-Indic digits (١٢٣٤) with ٬ (U+066C) thousand separator and ٫ (U+066B) decimal.
+      expect(formatMoney(1234.5, 'ar-EG')).toBe('١٬٢٣٤٫٥')
+      expect(formatMoney(0, 'ar-EG')).toBe('٠')
     })
   })
 
-  describe('minimum boundary values', () => {
-    it('formats 0.001 as "0 USDC" (rounds down)', () => {
-      expect(formatAmount(0.001)).toBe('0 USDC')
+  describe('sad path — non-finite and edge-case inputs', () => {
+    it('renders NaN as "NaN" across all locales', () => {
+      expect(formatMoney(NaN, 'en-US')).toBe('NaN')
+      expect(formatMoney(NaN, 'es-ES')).toBe('NaN')
+      expect(formatMoney(NaN, 'ar-EG')).toBe('NaN')
     })
 
-    it('formats 0.005 as "0.01 USDC" (rounds up at half cent)', () => {
-      expect(formatAmount(0.005)).toBe('0.01 USDC')
-    })
-
-    it('formats the smallest positive cent', () => {
-      expect(formatAmount(0.009)).toBe('0.01 USDC')
-    })
-  })
-
-  describe('near-overflow and MAX_SAFE_INTEGER', () => {
-    it('formats Number.MAX_SAFE_INTEGER without precision loss', () => {
-      const maxSafe = Number.MAX_SAFE_INTEGER // 9007199254740991
-      const result = formatAmount(maxSafe)
-      expect(result).toBe('9,007,199,254,740,991 USDC')
-    })
-
-    it('clamps values exceeding MAX_SAFE_INTEGER to that boundary', () => {
-      const result = formatAmount(Number.MAX_SAFE_INTEGER + 1)
-      expect(result).toBe('9,007,199,254,740,991 USDC')
-    })
-
-    it('clamps extremely large values to MAX_SAFE_INTEGER', () => {
-      const result = formatAmount(1e18)
-      expect(result).toBe('9,007,199,254,740,991 USDC')
+    it('renders Infinity as "∞" across all locales', () => {
+      expect(formatMoney(Infinity, 'en-US')).toBe('∞')
+      expect(formatMoney(-Infinity, 'en-US')).toBe('-∞')
     })
   })
 
-  describe('invalid and edge-case inputs', () => {
-    it('returns "—" for undefined', () => {
-      expect(formatAmount(undefined)).toBe('—')
-    })
-
-    it('returns "—" for null', () => {
-      expect(formatAmount(null)).toBe('—')
-    })
-
-    it('returns "—" for NaN', () => {
-      expect(formatAmount(NaN)).toBe('—')
-    })
-
-    it('returns "—" for positive Infinity', () => {
-      expect(formatAmount(Infinity)).toBe('—')
-    })
-
-    it('returns "—" for negative Infinity', () => {
-      expect(formatAmount(-Infinity)).toBe('—')
-    })
-
-    it('returns "—" for negative amounts', () => {
-      expect(formatAmount(-1)).toBe('—')
-    })
-
-    it('normalizes -0 (negative zero) to "0 USDC"', () => {
-      // -0 is finite and not < 0, so it is treated as a valid zero amount.
-      // The || 0 in the implementation normalizes -0 → 0.
-      expect(formatAmount(-0)).toBe('0 USDC')
-    })
-
-    it('returns "—" for very small negative values', () => {
-      expect(formatAmount(-0.01)).toBe('—')
-    })
-  })
-
-  describe('deterministic formatting', () => {
-    it('produces consistent output for repeated calls', () => {
-      const inputs = [0, 0.01, 100, 1234.56, 1e7, NaN, Infinity, null, undefined]
-      for (const input of inputs) {
-        const first = formatAmount(input as number)
-        const second = formatAmount(input as number)
-        expect(first).toBe(second)
-      }
-    })
-
-    it('does not mutate the input number', () => {
-      const value = 1234.56
-      formatAmount(value)
-      expect(value).toBe(1234.56)
+  describe('default locale', () => {
+    it('defaults to en-US when no locale is provided', () => {
+      expect(formatMoney(1234.5)).toBe('1,234.5')
+      expect(formatMoney(0)).toBe('0')
     })
   })
 })

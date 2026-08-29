@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -16,6 +17,9 @@ function StateDump() {
         addressDisplay: s.addressDisplay,
         toastsEnabled: s.toastsEnabled,
         autoDismiss: s.autoDismiss,
+        quietHoursEnabled: s.quietHoursEnabled,
+        quietHoursStart: s.quietHoursStart,
+        quietHoursEnd: s.quietHoursEnd,
       })}
     </pre>
   )
@@ -84,6 +88,9 @@ describe('SettingsContext persistence & theme application', () => {
       addressDisplay: 'short',
       toastsEnabled: true,
       autoDismiss: '5s',
+      quietHoursEnabled: false,
+      quietHoursStart: '22:00',
+      quietHoursEnd: '07:00',
     })
 
     // system + prefers-color-scheme false => light
@@ -98,6 +105,9 @@ describe('SettingsContext persistence & theme application', () => {
       addressDisplay: 'full',
       toastsEnabled: false,
       autoDismiss: '3s',
+      quietHoursEnabled: true,
+      quietHoursStart: '20:00',
+      quietHoursEnd: '06:30',
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
     setupMatchMedia(false)
@@ -175,6 +185,9 @@ describe('SettingsContext persistence & theme application', () => {
       addressDisplay: 'short',
       toastsEnabled: true,
       autoDismiss: '5s',
+      quietHoursEnabled: false,
+      quietHoursStart: '22:00',
+      quietHoursEnd: '07:00',
     })
   })
 
@@ -230,6 +243,7 @@ function SettingsConsumer() {
       <button onClick={() => s.setAddressDisplay('full')}>set full</button>
       <button onClick={() => s.setToastsEnabled(false)}>disable toasts</button>
       <button onClick={() => s.setAutoDismiss('3s')}>set 3s</button>
+      <button onClick={() => s.resetToDefaults()}>reset defaults</button>
       <button onClick={() => s.saveSettings()}>save</button>
     </div>
   )
@@ -351,6 +365,9 @@ describe('SettingsProvider', () => {
       expect(stored.themeMode).toBe('dark')
       expect(stored.network).toBe('public')
       expect(stored.toastsEnabled).toBe(true)
+      expect(stored.quietHoursEnabled).toBe(false)
+      expect(stored.quietHoursStart).toBe('22:00')
+      expect(stored.quietHoursEnd).toBe('07:00')
     })
 
     it('persists full payload when saveSettings is called after changes', async () => {
@@ -366,6 +383,9 @@ describe('SettingsProvider', () => {
         addressDisplay: 'short',
         toastsEnabled: true,
         autoDismiss: '5s',
+        quietHoursEnabled: false,
+        quietHoursStart: '22:00',
+        quietHoursEnd: '07:00',
       })
     })
 
@@ -387,6 +407,35 @@ describe('SettingsProvider', () => {
 
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
       expect(stored.autoDismiss).toBe('3s')
+    })
+
+    it('resetToDefaults restores all settings and persists the defaults', async () => {
+      const user = userEvent.setup()
+      renderWithProvider()
+      await user.click(screen.getByRole('button', { name: 'set dark' }))
+      await user.click(screen.getByRole('button', { name: 'set testnet' }))
+      await user.click(screen.getByRole('button', { name: 'set full' }))
+      await user.click(screen.getByRole('button', { name: 'disable toasts' }))
+      await user.click(screen.getByRole('button', { name: 'set 3s' }))
+      await user.click(screen.getByRole('button', { name: 'reset defaults' }))
+
+      expect(screen.getByTestId('theme').textContent).toBe('system')
+      expect(screen.getByTestId('network').textContent).toBe('public')
+      expect(screen.getByTestId('address').textContent).toBe('short')
+      expect(screen.getByTestId('toasts').textContent).toBe('true')
+      expect(screen.getByTestId('dismiss').textContent).toBe('5s')
+
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+      expect(stored).toEqual({
+        themeMode: 'system',
+        network: 'public',
+        addressDisplay: 'short',
+        toastsEnabled: true,
+        autoDismiss: '5s',
+        quietHoursEnabled: false,
+        quietHoursStart: '22:00',
+        quietHoursEnd: '07:00',
+      })
     })
   })
 

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, apiFetch } from './client'
+import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -13,6 +14,7 @@ function jsonResponse(payload: unknown, init: ResponseInit = {}) {
 afterEach(() => {
   fetchMock.mockReset()
   vi.unstubAllGlobals()
+  resetWalletAuditTrail()
 })
 
 describe('apiFetch', () => {
@@ -196,6 +198,226 @@ describe('apiFetch', () => {
       name: 'ApiError',
       status: 0,
       message: 'Network request failed',
+    })
+  })
+
+  it('commits one effect when a keyed operation is duplicated or reordered', async () => {
+    const committedKeys = new Set<string>()
+    fetchMock.mockImplementation(async (_url, init) => {
+      const key = (init?.headers as Headers).get('Idempotency-Key')
+      if (key && !committedKeys.has(key)) committedKeys.add(key)
+      return jsonResponse({ committed: true, count: committedKeys.size })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const first = apiFetch<{ committed: boolean; count: number }>('/bonds', {
+      method: 'POST',
+      idempotencyKey: 'bond-1',
+      body: { amount: '10.00' },
+    })
+    const duplicate = apiFetch<{ committed: boolean; count: number }>('/bonds', {
+      method: 'POST',
+      idempotencyKey: 'bond-1',
+      body: { amount: '10.00' },
+    })
+
+    await expect(Promise.all([duplicate, first])).resolves.toEqual([
+      { committed: true, count: 1 },
+      { committed: true, count: 1 },
+    ])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('allows a timeout retry and retains only the successful effect', async () => {
+    let attempts = 0
+    let committedEffects = 0
+    const committedResponses = new Map<string, { committedEffects: number }>()
+    fetchMock.mockImplementation(async () => {
+      attempts += 1
+      const key = (fetchMock.mock.calls.at(-1)?.[1]?.headers as Headers).get('Idempotency-Key')
+      if (key && committedResponses.has(key)) return jsonResponse(committedResponses.get(key))
+
+      committedEffects += 1
+      const response = { committedEffects }
+      if (key) committedResponses.set(key, response)
+      if (attempts === 1) throw new TypeError('response timed out after commit')
+      return jsonResponse(response)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      apiFetch('/bonds', {
+        method: 'POST',
+        idempotencyKey: 'bond-retry',
+        body: { amount: '10.00' },
+      })
+    ).rejects.toMatchObject({ status: 0 })
+    await expect(
+      apiFetch('/bonds', {
+        method: 'POST',
+        idempotencyKey: 'bond-retry',
+        body: { amount: '10.00' },
+      })
+    ).resolves.toEqual({ committedEffects: 1 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(committedEffects).toBe(1)
+  })
+
+  it('rejects conflicting reuse before making another request', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ committed: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/bonds', {
+      method: 'POST',
+      idempotencyKey: 'bond-conflict',
+      body: { amount: '10.00' },
+    })
+
+    await expect(
+      apiFetch('/bonds', {
+        method: 'POST',
+        idempotencyKey: 'bond-conflict',
+        body: { amount: '20.00' },
+      })
+    ).rejects.toMatchObject({
+      status: 409,
+      payload: { code: 'idempotency_key_conflict' },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('forwards the key and rejects empty keys without partial state', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      apiFetch('/bonds', { method: 'POST', idempotencyKey: '   ' })
+    ).rejects.toMatchObject({
+      status: 400,
+      payload: { code: 'invalid_idempotency_key' },
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await apiFetch('/bonds', { method: 'POST', idempotencyKey: 'bond-header' })
+    const requestHeaders = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(requestHeaders.get('Idempotency-Key')).toBe('bond-header')
+  })
+})
+
+describe('apiFetch rate limiting (defence-in-depth)', () => {
+  // Shrink the bucket just for this block so the negative test sits well
+  // below the production default cap of 20 / 5s. Defaults are still covered
+  // by the ApiRateLimiter unit tests in src/api/rateLimit.test.ts.
+  const TEST_MAX = 3
+  const TEST_WINDOW_MS = 60_000
+  let originalConfig: { maxRequests: number; windowMs: number; enabled: boolean }
+
+  beforeAll(() => {
+    originalConfig = { ...apiRateLimiterSnapshot() }
+    defaultApiRateLimiter.configure({
+      maxRequests: TEST_MAX,
+      windowMs: TEST_WINDOW_MS,
+    })
+  })
+
+  afterAll(() => {
+    defaultApiRateLimiter.configure(originalConfig)
+  })
+
+  /**
+   * NEGATIVE TEST — fails without the fix, passes with it.
+   *
+   * Before this PR: `apiFetch(missing)` returns a 404 every call, fetch is
+   * invoked N+1 times and all rejections are plain `ApiError`. After this PR:
+   * the (N+1)th call short-circuits at the rate-limit gate and throws
+   * `ApiRateLimitError` without touching the network.
+   */
+  it('rejects the (N+1)th call with ApiRateLimitError instead of hitting fetch', async () => {
+    expect(defaultApiRateLimiter.config.maxRequests).toBe(TEST_MAX)
+
+    // First N calls: endpoint returns 404 but the gate lets them through.
+    for (let i = 0; i < TEST_MAX; i++) {
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+    }
+    vi.stubGlobal('fetch', fetchMock)
+
+    for (let i = 0; i < TEST_MAX; i++) {
+      const err = await apiFetch('/runaway').catch((e) => e)
+      expect(err).toBeInstanceOf(ApiError)
+      expect(err).not.toBeInstanceOf(ApiRateLimitError)
+    }
+
+    // (N+1)th call: limiter blocks it before fetch runs.
+    await expect(apiFetch('/runaway')).rejects.toMatchObject({
+      name: 'ApiRateLimitError',
+      status: 429,
+      retryAfterMs: expect.any(Number),
+    } satisfies Partial<ApiRateLimitError>)
+
+    // Negative-test invariant: fetch was only invoked TEST_MAX times.
+    expect(fetchMock).toHaveBeenCalledTimes(TEST_MAX)
+  })
+
+  it('ApiRateLimitError is also an ApiError so existing handlers keep working', async () => {
+    // mockImplementation so each fetch return is a fresh Response with a
+    // readable body — `mockResolvedValue(jsonResponse(...))` would re-use one
+    // Response and trip the "body already read" guard.
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({})))
+    vi.stubGlobal('fetch', fetchMock)
+    for (let i = 0; i < TEST_MAX; i++) {
+      await apiFetch('/x').catch(() => undefined)
+    }
+
+    let captured: unknown
+    try {
+      await apiFetch('/x')
+    } catch (err) {
+      captured = err
+    }
+
+    expect(captured).toBeInstanceOf(ApiError)
+    expect(captured).toBeInstanceOf(ApiRateLimitError)
+  })
+
+  it('skipRateLimit bypasses the limiter without touching the gate', async () => {
+    resetApiRateLimiter()
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    // TEST_MAX + 2 calls is well over the configured cap, but skipRateLimit
+    // should let them all through and hit fetch every time.
+    for (let i = 0; i < TEST_MAX + 2; i++) {
+      await expect(apiFetch('/loop', { skipRateLimit: true })).resolves.toEqual({ ok: true })
+    }
+
+    expect(fetchMock).toHaveBeenCalledTimes(TEST_MAX + 2)
+  })
+
+  it('resetApiRateLimiter frees capacity without waiting for the window', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    for (let i = 0; i < TEST_MAX; i++) {
+      await apiFetch('/x')
+    }
+    await expect(apiFetch('/x')).rejects.toBeInstanceOf(ApiRateLimitError)
+
+    resetApiRateLimiter()
+
+    await expect(apiFetch('/x')).resolves.toEqual({ ok: true })
+  })
+
+  it('apiRateLimiterSnapshot reflects the active configuration', () => {
+    const snapshot = apiRateLimiterSnapshot()
+    expect(snapshot).toEqual({
+      maxRequests: TEST_MAX,
+      windowMs: TEST_WINDOW_MS,
+      enabled: true,
     })
   })
 })

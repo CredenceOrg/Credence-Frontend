@@ -333,9 +333,26 @@ Use this checklist to decide where new state should live:
 
 **✅ Use useToast() for:**
 
-- Confirmation messages after an action
-- Error messages that should not block the UI
-- Non-critical alerts
+- Transient success/failure confirmations
+- Irreversible action feedback (use `useActionToast()` for `sign`, `send`, `approve`, and `delete` actions)
+- Non-critical background events
+
+**🚀 Standardized Action Toasts:**
+
+For irreversible actions, we standardise messages using the `useActionToast()` hook instead of `useToast()`. This hook takes an action type (`'sign'`, `'send'`, `'approve'`, `'delete'`) and a promise, and handles the success/failure toasts for you:
+
+```tsx
+import { useActionToast } from '../hooks/useActionToast'
+
+function ActionComponent() {
+  const { withToast } = useActionToast()
+
+  const handleDelete = async () => {
+    // Automatically shows a success toast if resolved, or a danger toast if rejected (and rethrows)
+    await withToast('delete', apiFetch('/resource/123', { method: 'DELETE' }))
+  }
+}
+```
 
 **❌ Don't add to SettingsContext:**
 

@@ -22,22 +22,16 @@
   color: var(--text-info);
 }
 
-.banner--success {
-  background: var(--bg-success);
-  border-color: var(--border-success);
-  color: var(--text-success);
-}
-
-.banner--warning {
+.banner--warn {
   background: var(--bg-warning);
   border-color: var(--border-warning);
   color: var(--text-warning);
 }
 
-.banner--danger {
-  background: var(--bg-danger);
-  border-color: var(--border-danger);
-  color: var(--text-danger);
+.banner--incident {
+  background: var(--bg-incident);
+  border-color: var(--border-incident);
+  color: var(--text-incident);
 }
 
 /* ─── Dismissible vs persistent visual distinction ────────────────────────── */
@@ -147,6 +141,18 @@
 
   .banner__dismiss {
     margin-left: auto;
+  }
+}
+
+/* Very small screens (360px): ensure banner content fits without overflow */
+@media (max-width: 360px) {
+  .banner {
+    padding: var(--credence-space-2) var(--credence-space-3);
+    font-size: var(--credence-font-size-xs);
+  }
+
+  .banner__link {
+    font-size: var(--credence-font-size-xs);
   }
 }
 

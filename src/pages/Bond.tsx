@@ -1,38 +1,66 @@
-import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './Bond.css'
-import Banner from '../components/Banner'
-import Disclaimer from '../components/Disclaimer'
-import { useToast } from '../components/ToastProvider'
-import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
+import Banner from '../components/Banner'
+import Badge from '../components/Badge'
 import Button from '../components/Button'
-import EmptyState from '../components/states/EmptyState'
-import AmountInput from '../components/AmountInput'
+import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from '../components/ConfirmDialog'
+import ConnectGate from '../components/ConnectGate'
+import Disclaimer from '../components/Disclaimer'
 import { FormField } from '../components/forms/FormField'
-import { useSettings } from '../context/SettingsContext'
+import AmountInput from '../components/AmountInput'
+import { useToast } from '../components/ToastProvider'
 import { useWallet } from '../context/WalletContext'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useSettings } from '../context/SettingsContext'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { formatUsdc } from '../lib/format'
-import {
-  type MockBond,
-  getPenaltyRate,
-  computeWithdrawBreakdown,
-} from '../lib/bondPenalty'
+import { EmptyState, LoadingSkeleton } from '../components/states'
+import { calcTimeRemaining } from '../lib/bondPenalty'
+import { runIdempotentOperation } from '../lib/idempotentOperation'
 
-const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
+type BondStatus = 'active' | 'locked' | 'grace-period'
 
-export interface MockBond {
+interface MockBond {
   id: number
   amountUsdc: number
-  status: string
-  durationDays: number
+  status: BondStatus
+  durationDays?: number
 }
-function getPenaltyRate(_status: string) { return 0 }
-function computeWithdrawBreakdown(_bond: MockBond) {
-  return { bondAmount: '0', penaltyPercent: 0, penaltyAmount: '0', resultingBalance: '0', penaltyUsdc: 0 }
+
+/**
+ * Error-channel decision table for Bond actions
+ * ─────────────────────────────────────────────
+ * | Failure mode              | Channel                          | Why                        |
+ * | Network error (create)    | critical Banner (dismissible)    | Persistent — user must act |
+ * | Wallet rejected (create)  | critical Banner (dismissible)    | Persistent — user must act |
+ * | Amount < minimum          | inline FormField error           | Immediate field-level hint |
+ * | Network error (withdraw)  | critical Banner (dismissible)    | Persistent — user must act |
+ * | Wallet rejected (withdraw)| critical Banner (dismissible)    | Persistent — user must act |
+ * | Withdraw success (clean)  | success Toast                    | Transient confirmation     |
+ * | Withdraw success (slashed)| warning Toast                    | Transient + info           |
+ */
+function bondErrorType(err: unknown): 'network' | 'backend' | 'validation' | 'generic' {
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase()
+    if (msg.includes('network') || msg.includes('fetch') || msg.includes('offline')) {
+      return 'network'
+    }
+    if (msg.includes('rejected') || msg.includes('denied') || msg.includes('user refused')) {
+      return 'generic'
+    }
+    if (msg.includes('invalid') || msg.includes('validation')) {
+      return 'validation'
+    }
+    if (msg.includes('server') || msg.includes('500') || msg.includes('503')) {
+      return 'backend'
+    }
+  }
+  return 'generic'
 }
+
+const MIN_BOND_AMOUNT = 100
 
 const initialBonds: MockBond[] = [
   { id: 1, amountUsdc: 1000, status: 'locked', durationDays: 30 },
@@ -40,108 +68,235 @@ const initialBonds: MockBond[] = [
   { id: 3, amountUsdc: 750, status: 'active', durationDays: 180 },
 ]
 
-/** Minimum USDC required to create a bond. */
-const MIN_BOND_AMOUNT = 10
+function createRequestKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
-interface BondRowProps {
+function getPenaltyRate(status: BondStatus): number {
+  switch (status) {
+    case 'locked':
+      return 0.2
+    case 'grace-period':
+      return 0.1
+    case 'active':
+    default:
+      return 0
+  }
+}
+
+function computeWithdrawBreakdown(bond: MockBond): ConfirmDialogPenaltyBreakdown & {
+  penaltyUsdc: number
+} {
+  const penaltyPercent = Math.round(getPenaltyRate(bond.status) * 100)
+  const penaltyUsdc = bond.amountUsdc * getPenaltyRate(bond.status)
+  const resultingUsdc = bond.amountUsdc - penaltyUsdc
+
+  return {
+    bondAmount: formatUsdc(bond.amountUsdc),
+    penaltyAmount: formatUsdc(penaltyUsdc),
+    penaltyPercent,
+    resultingBalance: formatUsdc(resultingUsdc),
+    penaltyUsdc,
+  }
+}
+
+function BondRow({
+  bond,
+  isConnected,
+  onWithdraw,
+  onConnect,
+  onSelect,
+}: {
   bond: MockBond
   isConnected: boolean
   onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
   onConnect: () => void
-}
-
-function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
+  onSelect: () => void
+}) {
   const [open, setOpen] = useState(false)
-  const panelId = `slash-detail-${bond.id}`
-  const penaltyRate = getPenaltyRate(bond.status)
-  const hasPenalty = penaltyRate > 0
-  const breakdown = useMemo(() => computeWithdrawBreakdown(bond), [bond])
+  const breakdown = computeWithdrawBreakdown(bond)
+  const hasPenalty = getPenaltyRate(bond.status) > 0
+  const panelId = `bond-penalty-panel-${bond.id}`
+  const rowId = `bond-row-${bond.id}`
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onSelect()
+    }
+  }
 
   return (
-    <li className="bond__row">
-      <div className="bond__rowHeader">
-        <div className="bond__amountColumn">
-          <span className="bond__amount">{formatUsdc(bond.amountUsdc)}</span>
-          <Badge variant={bond.status as BadgeVariant} />
-        </div>
-        <div className="bond__actionRow">
-          {hasPenalty && (
-            <button
+    <li
+      className="bond__row bond__row--clickable"
+      tabIndex={0}
+      role="link"
+      aria-label={`View bond #${bond.id}: ${formatUsdc(bond.amountUsdc)}, ${bond.status}${bond.durationDays ? `, ${calcTimeRemaining(bond.durationDays)}` : ''}`}
+      id={rowId}
+      onClick={onSelect}
+      onKeyDown={handleKeyDown}
+    >
+      <div className="bond__rowInfo">
+        <span className="bond__rowAmount">{formatUsdc(bond.amountUsdc)}</span>
+        <span className={`bond__rowStatus bond__rowStatus--${bond.status}`}>
+          {bond.status === 'locked'
+            ? 'Locked'
+            : bond.status === 'grace-period'
+              ? 'Grace Period'
+              : 'Active'}
+        </span>
+      </div>
+      <div className="bond__rowMeta">
+        {bond.durationDays && (
+          <span className="bond__rowTimeRemaining">{calcTimeRemaining(bond.durationDays)}</span>
+        )}
+      </div>
+      <div className="bond__rowActions">
+        {hasPenalty ? (
+          <>
+            <Button
               type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setOpen(!open)
+              }}
               aria-expanded={open}
               aria-controls={panelId}
-              onClick={() => setOpen((v) => !v)}
-              className="bond__penaltyToggle"
             >
               {open ? 'Hide penalty' : 'Show penalty'}
-            </button>
-          )}
-          <Button
-            type="button"
-            variant={hasPenalty ? 'danger' : 'secondary'}
-            onClick={isConnected ? (event) => onWithdraw(bond, event) : onConnect}
-            aria-haspopup={isConnected ? 'dialog' : undefined}
-          >
-            {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
-          </Button>
-        </div>
-      </div>
-
-      {hasPenalty ? (
-        <div
-          id={panelId}
-          role="region"
-          aria-label={`Penalty breakdown for bond ${bond.id}`}
-          hidden={!open}
-          className="bond__penaltyPanel"
-          style={{ display: open ? 'grid' : 'none' }}
+            </Button>
+            {open && (
+              <div id={panelId} className="bond__penaltyPanel">
+                <p>
+                  Penalty ({breakdown.penaltyPercent}%)
+                </p>
+                <p>
+                  <span className="bond__penaltyAmount">
+                    −{breakdown.penaltyAmount}
+                  </span>
+                </p>
+                <p>
+                  You would receive:{' '}
+                  <span>{breakdown.resultingBalance}</span>
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          <span className="bond__noPenalty">No early-withdrawal penalty</span>
+        )}
+        <Button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (isConnected) {
+              onWithdraw(bond, e)
+            } else {
+              onConnect()
+            }
+          }}
+          disabled={!isConnected}
         >
-          <div className="bond__penaltyRow">
-            <span>Bond amount</span>
-            <span>{breakdown.bondAmount}</span>
-          </div>
-          <div className="bond__penaltyRow">
-            <span>Penalty ({breakdown.penaltyPercent}%)</span>
-            <span>− {breakdown.penaltyAmount}</span>
-          </div>
-          <div className="bond__penaltyRowTotal">
-            <span>You receive</span>
-            <span>{breakdown.resultingBalance}</span>
-          </div>
-        </div>
-      ) : (
-        <p id={panelId} className="bond__noPenaltyNotice">
-          No early-withdrawal penalty
-        </p>
-      )}
+          {isConnected ? 'Withdraw' : 'Connect to withdraw'}
+        </Button>
+      </div>
     </li>
   )
 }
 
 export default function Bond() {
-  useDocumentTitle('Bond')
-
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { addToast } = useToast()
-  const { isConnected, connect, network: walletNetwork } = useWallet()
-  const { setNetwork } = useSettings()
+  const { isConnected, connect, isConnecting, network: walletNetwork } = useWallet()
+  const { network: appNetwork, setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
+
   const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
-  const mismatchBannerId = 'bond-network-mismatch'
 
   const [bondAmount, setBondAmount] = useState('')
   const [bondAmountError, setBondAmountError] = useState('')
+  const [isPendingCreate, setIsPendingCreate] = useState(false)
+  const [isPendingWithdraw, setIsPendingWithdraw] = useState(false)
+  const [txStatus, setTxStatus] = useState('')
+  const createBondRequestKeyRef = useRef(createRequestKey())
+
+  // Persistent error state for create/withdraw failures (wallet rejected, network down, etc.)
+  // These surface as dismissible critical Banners rather than transient Toasts.
+  const [createError, setCreateError] = useState<{ type: ReturnType<typeof bondErrorType>; message: string } | null>(null)
+  const [withdrawError, setWithdrawError] = useState<{ type: ReturnType<typeof bondErrorType>; message: string } | null>(null)
+  const createErrorBannerId = 'bond-create-error'
+  const withdrawErrorBannerId = 'bond-withdraw-error'
+  const mismatchBannerId = 'bond-network-mismatch'
+
+  // Simulated bonds-fetch error state — replace with real data-fetch hook error when available.
+  // When the bond list fails to load, surface an inline ErrorState inside the Active Bonds card.
+  // TODO: replace with real loading state when bond list is fetched from the API
+  const isLoadingBonds = false
 
   const bonds = initialBonds
 
-  const handleCreateBond = useCallback(() => {
+  // ── Live-region announcer for transaction progress ──
+  const txStatusAnnouncer = txStatus ? (
+    <span className="sr-only" role="status" aria-live="polite">
+      {txStatus}
+    </span>
+  ) : (
+    <span className="sr-only" role="status" aria-live="polite" />
+  )
+
+  const handleCreateBond = useCallback(async () => {
     if (!isConnected) {
       connect()
       return
     }
-    navigate('/bond/new')
-  }, [isConnected, connect, navigate])
+    if (isPendingCreate) return
+
+    // Client-side amount validation
+    const parsed = parseFloat(bondAmount)
+    if (!bondAmount || isNaN(parsed) || parsed < MIN_BOND_AMOUNT) {
+      setBondAmountError(
+        `Minimum bond amount is ${MIN_BOND_AMOUNT} USDC. Please enter a valid amount.`
+      )
+      return
+    }
+
+    setBondAmountError('')
+    setCreateError(null)
+    setIsPendingCreate(true)
+    setTxStatus('Submitting transaction…')
+    try {
+      await runIdempotentOperation({
+        namespace: 'bond:create',
+        requestKey: createBondRequestKeyRef.current,
+        fingerprint: JSON.stringify({
+          amountUsdc: parsed,
+          walletNetwork: walletNetwork ?? 'public',
+        }),
+        execute: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          return { ok: true }
+        },
+      })
+      setTxStatus('')
+      createBondRequestKeyRef.current = createRequestKey()
+      navigate('/bond/new')
+    } catch (err) {
+      setTxStatus('')
+      const errType = bondErrorType(err)
+      const errMessage =
+        err instanceof Error
+          ? err.message
+          : 'Transaction failed. Please check your wallet and try again.'
+      setCreateError({ type: errType, message: errMessage })
+    } finally {
+      setIsPendingCreate(false)
+    }
+  }, [isConnected, connect, navigate, isPendingCreate, bondAmount, setIsPendingCreate, setTxStatus, setCreateError, walletNetwork])
 
   const withdrawBreakdown = useMemo(
     () => (withdrawTarget ? computeWithdrawBreakdown(withdrawTarget) : null),
@@ -150,50 +305,87 @@ export default function Bond() {
 
   const requestWithdraw = useCallback(
     (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => {
-      if (!isConnected) {
-        connect()
-        return
-      }
-
       withdrawTriggerRef.current = event.currentTarget
       setWithdrawTarget(bond)
     },
-    [isConnected, connect]
+    []
   )
 
   const cancelWithdraw = useCallback(() => {
     setWithdrawTarget(null)
   }, [])
 
-  const confirmWithdraw = useCallback(() => {
+  const confirmWithdraw = useCallback(async () => {
     if (!withdrawTarget || !withdrawBreakdown) return
+    if (isPendingWithdraw) return
 
-    const { penaltyUsdc } = withdrawBreakdown
-    const mockHash = 'b6d396a84d41bf162d05f32a51f8a846b0a6fb2abccedb441f71f11e9f1a2380'
-    if (penaltyUsdc > 0) {
-      addToast(
-        'warning',
-        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
-        { txHash: mockHash }
-      )
-    } else {
-      addToast('success', 'Bond withdrawn successfully.', { txHash: mockHash })
+    setWithdrawError(null)
+    setIsPendingWithdraw(true)
+    setTxStatus('Submitting transaction…')
+
+    try {
+      // Simulated async transaction — replace with real contract call
+      await runIdempotentOperation({
+        namespace: 'bond:withdraw',
+        requestKey: `${walletNetwork ?? 'public'}:${withdrawTarget.id}`,
+        fingerprint: JSON.stringify({
+          bondId: withdrawTarget.id,
+          amountUsdc: withdrawTarget.amountUsdc,
+          status: withdrawTarget.status,
+          penaltyUsdc: withdrawBreakdown.penaltyUsdc,
+          walletNetwork: walletNetwork ?? 'public',
+        }),
+        execute: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          return { ok: true }
+        },
+      })
+      setTxStatus('')
+
+      const { penaltyUsdc } = withdrawBreakdown
+      if (penaltyUsdc > 0) {
+        addToast(
+          'warning',
+          `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
+          { network: walletNetwork ?? 'public' }
+        )
+      } else {
+        addToast('success', 'Bond withdrawn successfully.', {
+          network: walletNetwork ?? 'public',
+        })
+      }
+      setWithdrawTarget(null)
+    } catch (err) {
+      setTxStatus('')
+      const errType = bondErrorType(err)
+      const errMessage =
+        err instanceof Error
+          ? err.message
+          : 'Withdrawal failed. Please check your wallet and try again.'
+      setWithdrawError({ type: errType, message: errMessage })
+    } finally {
+      setIsPendingWithdraw(false)
+      setWithdrawTarget(null)
     }
-    setWithdrawTarget(null)
-  }, [withdrawTarget, withdrawBreakdown, addToast])
+  }, [withdrawTarget, withdrawBreakdown, addToast, walletNetwork, isPendingWithdraw, setIsPendingWithdraw, setTxStatus, setWithdrawError])
 
   const slashExposureBond = useMemo(() => bonds.find((b) => getPenaltyRate(b.status) > 0), [bonds])
+  const slashBannerBreakdown = slashExposureBond
+    ? computeWithdrawBreakdown(slashExposureBond)
+    : null
 
-  const slashBannerBreakdown = useMemo(
-    () => (slashExposureBond ? computeWithdrawBreakdown(slashExposureBond) : null),
-    [slashExposureBond]
+  const navigateRow = useCallback(
+    (bondId: number) => {
+      navigate(`/bond/${bondId}`)
+    },
+    [navigate]
   )
 
   return (
     <div className="bond__container">
-      <div className="bond__headerSection">
-        <h1 className="bond__title">Bond USDC</h1>
-        <p id="bond-desc" className="bond__description">
+      <div style={{ display: 'grid', gap: 'var(--credence-space-3)' }}>
+        <h1>Bond USDC</h1>
+        <p id="bond-desc" style={{ color: 'var(--text-secondary)', maxWidth: '42rem' }}>
           Lock USDC into the Credence contract to build your economic reputation.
         </p>
       </div>
@@ -201,33 +393,6 @@ export default function Bond() {
       <Banner severity="info">
         Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
       </Banner>
-
-      {!isConnected && (
-        <Banner
-          severity="warning"
-          title="Connect wallet required"
-          action={{ label: 'Connect wallet', onClick: connect }}
-        >
-          Create bond and withdraw actions require a connected Stellar wallet.
-        </Banner>
-      )}
-
-      {networkMismatch.mismatch && (
-        <Banner
-          severity="warning"
-          title="Network mismatch"
-          action={{
-            label: `Switch app to ${networkMismatch.actual}`,
-            onClick: () => setNetwork(walletNetwork === 'test' ? 'test' : 'public'),
-          }}
-        >
-          <span id={mismatchBannerId}>
-            Credence is set to <strong>{networkMismatch.expected}</strong>, but Freighter is on{' '}
-            <strong>{networkMismatch.actual}</strong>. Switch the app to the wallet network before
-            creating or withdrawing a bond.
-          </span>
-        </Banner>
-      )}
 
       {slashBannerBreakdown && slashExposureBond && (
         <Banner severity="warning" title="Slash exposure on early withdrawal">
@@ -239,90 +404,182 @@ export default function Bond() {
         </Banner>
       )}
 
-      <div className="bond__cardGrid">
-        <ActionCard title="Create New Bond">
-          <p style={{ color: 'var(--credence-text-secondary)', margin: 0 }}>
-            Lock USDC using the guided four-step wizard — set an amount, choose a lock duration,
-            review slash terms, and confirm.
-          </p>
-
-          <FormField
-            id="bond-amount-quick"
-            label="Amount (USDC)"
-            hint={`Minimum: ${MIN_BOND_AMOUNT} USDC`}
-            error={bondAmountError}
+      {/* Network mismatch banner */}
+      {networkMismatch.mismatch && (
+        <div role="alert" id={mismatchBannerId}>
+          <Banner
+            severity="warning"
+            title="Network mismatch"
+            action={
+              walletNetwork
+                ? {
+                    label: `Switch app to ${walletNetwork === 'test' ? 'Test (Testnet)' : 'Public (Mainnet)'}`,
+                    onClick: () => setNetwork(walletNetwork!),
+                  }
+                : undefined
+            }
           >
-            <AmountInput
-              value={bondAmount}
-              onChange={(next) => {
-                setBondAmount(next)
-                if (bondAmountError) setBondAmountError('')
-              }}
-              balance={0}
-              min={MIN_BOND_AMOUNT}
-              presets={[100, 500, 1000]}
-              currencyLabel="USDC"
-              disabled={networkMismatch.mismatch}
-              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
-            />
-          </FormField>
-
-          <Button
-            type="button"
-            onClick={handleCreateBond}
-            fullWidth
-            disabled={networkMismatch.mismatch}
-            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
-          >
-            {isConnected ? 'Create bond' : 'Connect wallet to continue'}
-          </Button>
-        </ActionCard>
-
-        <ActionCard title="Active Bonds">
-          {bonds.length === 0 ? (
-            <EmptyState
-              illustration="bond"
-              title="No active bonds"
-              description="You do not have any active bonds yet. Create your first bond to start building on-chain reputation."
-              action={{
-                label: 'Create your first bond',
-                onClick: handleCreateBond,
-              }}
-            />
-          ) : (
-            <ul className="bond__listContainer">
-              {bonds.map((bond) => (
-                <BondRow
-                  key={bond.id}
-                  bond={bond}
-                  isConnected={isConnected}
-                  onWithdraw={requestWithdraw}
-                  onConnect={connect}
-                />
-              ))}
-            </ul>
-          )}
-        </ActionCard>
-      </div>
-
-      {withdrawTarget && withdrawBreakdown && (
-        <Suspense fallback={null}>
-          <ConfirmDialog
-            open
-            title="Confirm bond withdrawal"
-            subtitle={`You are withdrawing bond #${withdrawTarget.id} (${formatUsdc(withdrawTarget.amountUsdc)}).`}
-            breakdown={withdrawBreakdown}
-            onConfirm={confirmWithdraw}
-            onCancel={cancelWithdraw}
-            returnFocusRef={withdrawTriggerRef}
-          />
-        </Suspense>
+            Credence is set to {appNetwork === 'test' ? 'Test (Testnet)' : 'Public (Mainnet)'}, but
+            Freighter is on {walletNetwork === 'test' ? 'Test (Testnet)' : 'Public (Mainnet)'}
+          </Banner>
+        </div>
       )}
+
+      {/* Persistent error banner for bond-create failures (wallet rejected, network down).
+          Dismissed by the user or cleared automatically on the next successful attempt. */}
+      {createError && (
+        <div role="alert" id={createErrorBannerId}>
+          <Banner
+            severity="critical"
+            title={
+              createError.type === 'network'
+                ? 'Connection error'
+                : createError.type === 'backend'
+                  ? 'Service unavailable'
+                  : 'Transaction failed'
+            }
+            dismissible
+            onDismiss={() => setCreateError(null)}
+          >
+            {createError.message}
+          </Banner>
+        </div>
+      )}
+
+      {/* Persistent error banner for bond-withdraw failures */}
+      {withdrawError && (
+        <div role="alert" id={withdrawErrorBannerId}>
+          <Banner
+            severity="critical"
+            title={
+              withdrawError.type === 'network'
+                ? 'Connection error'
+                : withdrawError.type === 'backend'
+                  ? 'Service unavailable'
+                  : 'Withdrawal failed'
+            }
+            dismissible
+            onDismiss={() => setWithdrawError(null)}
+          >
+            {withdrawError.message}
+          </Banner>
+        </div>
+      )}
+
+      {/* Transaction status announcer for screen readers */}
+      {txStatusAnnouncer}
+
+      <div className="bond__cardGrid">
+        <ConnectGate
+          title={t('bond.createNewBond')}
+          description={t('bond.connectToCreateBond')}
+          hideWhenDisconnected={false}
+        >
+          <ActionCard title={t('bond.createNewBond')}>
+            <p className="bond__cardDescription">
+              Lock USDC in the Credence smart contract to establish your on-chain reputation.
+            </p>
+
+            <FormField
+              id="bond-amount-quick"
+              label={t('bond.amount')}
+              hint={t('bond.minimumAmount', { amount: MIN_BOND_AMOUNT })}
+              error={bondAmountError || undefined}
+            >
+              <AmountInput
+                value={bondAmount}
+                onChange={(next: string) => {
+                  setBondAmount(next)
+                  if (bondAmountError) setBondAmountError('')
+                }}
+                balance={0}
+                min={MIN_BOND_AMOUNT}
+                presets={[100, 500, 1000]}
+                currencyLabel="USDC"
+                disabled={!isConnected || networkMismatch.mismatch}
+                hideErrorMessage={Boolean(bondAmountError)}
+                aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+              />
+            </FormField>
+
+            <Button
+              type="button"
+              onClick={handleCreateBond}
+              fullWidth
+              disabled={
+                !isConnected ||
+                networkMismatch.mismatch ||
+                (isConnected ? isPendingCreate : isConnecting)
+              }
+              isLoading={isConnected ? isPendingCreate : isConnecting}
+              aria-describedby={
+                networkMismatch.mismatch
+                  ? mismatchBannerId
+                  : createError
+                    ? createErrorBannerId
+                    : undefined
+              }
+              aria-haspopup={!isConnected ? 'dialog' : undefined}
+            >
+              {isConnected ? t('bond.createBond') : t('bond.connectToContinue')}
+            </Button>
+          </ActionCard>
+        </ConnectGate>
+
+        <ConnectGate
+          title={t('bond.manageBonds')}
+          description={t('bond.connectToManageBonds')}
+          hideWhenDisconnected={true}
+        >
+          <ActionCard title={t('bond.activeBonds')}>
+            {isLoadingBonds ? (
+              <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading bonds">
+                <LoadingSkeleton variant="bond-row" rows={3} />
+              </div>
+            ) : bonds.length === 0 ? (
+              <EmptyState
+                illustration="bond"
+                title="No active bonds"
+                description="Create your first bond to start building your on-chain reputation."
+                action={{
+                  label: t('bond.createFirstBond'),
+                  onClick: handleCreateBond,
+                }}
+              />
+            ) : (
+              <ul className="bond__listContainer">
+                {bonds.map((bond) => (
+                  <BondRow
+                    key={bond.id}
+                    bond={bond}
+                    isConnected={isConnected}
+                    onWithdraw={requestWithdraw}
+                    onConnect={connect}
+                    onSelect={() => navigateRow(bond.id)}
+                  />
+                ))}
+              </ul>
+            )}
+          </ActionCard>
+        </ConnectGate>
+      </div>
 
       <Disclaimer
         context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
         termsHref="#"
       />
+
+      {withdrawTarget && withdrawBreakdown && (
+        <ConfirmDialog
+          open
+          title="Confirm bond withdrawal"
+          subtitle={`You are withdrawing bond #${withdrawTarget.id} (${formatUsdc(withdrawTarget.amountUsdc)}).`}
+          breakdown={withdrawBreakdown}
+          onConfirm={confirmWithdraw}
+          onCancel={cancelWithdraw}
+          returnFocusRef={withdrawTriggerRef}
+        />
+      )}
     </div>
   )
 }

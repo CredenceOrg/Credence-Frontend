@@ -7,9 +7,11 @@
 }
 
 .appHeader {
-  padding: var(--credence-space-4) var(--credence-space-8);
+  padding-block: var(--credence-space-4);
   border-bottom: 1px solid var(--credence-border-default);
   background: var(--credence-surface-card);
+}
+.appHeader-inner {
   display: flex;
   align-items: center;
   gap: var(--credence-space-6);
@@ -22,43 +24,10 @@
   text-decoration: none;
 }
 
-/* Desktop inline nav */
 .appNav {
   display: flex;
   gap: var(--credence-space-4);
   flex: 1;
-}
-
-.appNav-link {
-  padding: var(--credence-space-2) var(--credence-space-3);
-  font-weight: var(--credence-font-weight-semibold);
-  font-size: var(--credence-font-size-sm);
-  color: var(--credence-text-secondary);
-  text-decoration: none;
-  border-radius: var(--credence-radius-lg);
-  transition:
-    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
-    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
-}
-
-.appNav-link:hover {
-  background: var(--credence-color-slate-100);
-  color: var(--credence-text-primary);
-}
-
-.appNav-link--active {
-  color: var(--credence-color-primary);
-  font-weight: var(--credence-font-weight-bold);
-  /* token-driven underline for active nav */
-  text-decoration: underline;
-  text-decoration-color: var(--credence-color-primary);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-}
-
-.appNav-link:focus-visible {
-  outline: 2px solid var(--credence-color-primary);
-  outline-offset: 2px;
 }
 
 .appMain {
@@ -75,52 +44,8 @@
   margin-bottom: var(--credence-space-1);
 }
 
-/* ── Shortcuts help button ───────────────────────────────────────────────── */
-
-.appHeader-shortcuts-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 1px solid var(--credence-border-default);
-  border-radius: var(--credence-radius-full);
-  background: transparent;
-  font-family: var(--credence-font-family-base);
-  font-size: var(--credence-font-size-sm);
-  font-weight: var(--credence-font-weight-bold);
-  color: var(--credence-text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
-    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
-    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
-  flex-shrink: 0;
-}
-
-.appHeader-shortcuts-btn:hover {
-  background: var(--credence-color-slate-100);
-  color: var(--credence-text-primary);
-  border-color: var(--credence-color-slate-400);
-}
-
-.appHeader-shortcuts-btn:focus-visible {
-  outline: var(--credence-focus-ring);
-  outline-offset: 2px;
-}
-
-[data-theme='dark'] .appHeader-shortcuts-btn:hover {
-  background: var(--credence-color-slate-700);
-}
-
-/* Mobile: hide desktop nav, tighten header padding */
-@media (max-width: 639px) {
-  .appNav {
-    display: none;
-  }
-
+@media (max-width: 480px) {
   .appHeader {
-    padding: var(--credence-space-3) var(--credence-space-4);
+    padding: var(--credence-space-4) var(--credence-space-4);
   }
 }

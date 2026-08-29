@@ -1,34 +1,69 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSettings } from '../context/SettingsContext'
-import ThemeToggle from '../components/ThemeToggle'
 import { useToast } from '../components/ToastProvider'
-import { FormField } from '../components/forms/FormField'
+import { FormField, Input } from '../components/forms'
 import Toggle from '../components/controls/Toggle'
 import Select from '../components/controls/Select'
+import SegmentedControl from '../components/controls/SegmentedControl'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { ErrorState } from '../components/states'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
+import { isQuietHoursActive, parseHHmm } from '../lib/quietHours'
+import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
+import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
+import { updateSettings } from '../api/settings'
+import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
+import { DOM_EVENTS } from '../config/domEvents'
+import type { AutoDismissOption } from '../context/SettingsContext'
 import './Settings.css'
 
-const FIELD_LABELS: Record<string, string> = {
-  themeMode: 'Theme',
-  network: 'Network',
-  addressDisplay: 'Address display',
-  toastsEnabled: 'Toasts enabled',
-  autoDismiss: 'Auto-dismiss',
-}
-
-function computeDiff(current: Omit<SettingsBlob, keyof unknown>, incoming: SettingsBlob): { key: string; from: string; to: string }[] {
+function computeDiff(
+  current: Omit<SettingsBlob, keyof unknown>,
+  incoming: SettingsBlob
+): { key: string; from: string; to: string }[] {
   const diffs: { key: string; from: string; to: string }[] = []
-  const keys: (keyof SettingsBlob)[] = ['themeMode', 'network', 'addressDisplay', 'toastsEnabled', 'autoDismiss']
+  const keys: (keyof SettingsBlob)[] = [
+    'themeMode',
+    'network',
+    'addressDisplay',
+    'toastsEnabled',
+    'autoDismiss',
+    'quietHoursEnabled',
+    'quietHoursStart',
+    'quietHoursEnd',
+  ]
   for (const key of keys) {
-    if (String(current[key as keyof typeof current]) !== String(incoming[key])) {
-      diffs.push({ key, from: String(current[key as keyof typeof current]), to: String(incoming[key]) })
+    if (String(current[key]) !== String(incoming[key])) {
+      diffs.push({ key, from: String(current[key]), to: String(incoming[key]) })
     }
   }
   return diffs
 }
+
+// Friendly labels for the diff table so users see "Quiet hours" instead of
+// "quietHoursEnabled" when reviewing an import preview.
+const FIELD_LABELS: Record<string, string> = {
+  themeMode: 'Theme mode',
+  network: 'Network',
+  addressDisplay: 'Address display',
+  toastsEnabled: 'Enable toasts',
+  autoDismiss: 'Auto-dismiss',
+  quietHoursEnabled: 'Quiet hours enabled',
+  quietHoursStart: 'Quiet hours start',
+  quietHoursEnd: 'Quiet hours end',
+}
+
+const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+]
+
+const ADDRESS_OPTIONS: { value: 'full' | 'short' | 'friendly'; label: string }[] = [
+  { value: 'full', label: 'Full (G…)' },
+  { value: 'short', label: 'Short (G……)' },
+  { value: 'friendly', label: 'Friendly' },
+]
 
 export default function Settings() {
   const {
@@ -42,45 +77,135 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
-    saveSettings,
   } = useSettings()
   const { addToast } = useToast()
 
   useDocumentTitle('Settings')
 
-  const [draft, setDraft] = useState({
+  // Settings draft mirrors the persisted state at mount and is what the user
+  // edits locally before pressing Save. The dirty detection below intentionally
+  // compares draft against the live context values so the Save button reflects
+  // the user's actual changes. Save / Cancel / Reset / Import paths each feed
+  // the draft explicitly, so the page does not auto-resync on every context
+  // change -- clicking ThemeToggle (or any other incidental context mutation)
+  // must not silently discard pending edits.
+  const [draft, setDraft] = useState(() => ({
     themeMode: themeMode as 'light' | 'dark' | 'system',
     network,
     addressDisplay,
     toastsEnabled,
     autoDismiss,
-  })
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
+  }))
 
   const isDirty =
     draft.themeMode !== themeMode ||
     draft.network !== network ||
     draft.addressDisplay !== addressDisplay ||
     draft.toastsEnabled !== toastsEnabled ||
-    draft.autoDismiss !== autoDismiss
+    draft.autoDismiss !== autoDismiss ||
+    draft.quietHoursEnabled !== quietHoursEnabled ||
+    draft.quietHoursStart !== quietHoursStart ||
+    draft.quietHoursEnd !== quietHoursEnd
 
-  const updateDraft = (key: string, value: string | boolean) => {
+  const updateDraft = (key: string, value: string | boolean | number) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
 
+  // Validate quiet hours draft: start and end must be valid HH:mm and must
+  // differ. The provider falls back to defaults for invalid values, but we
+  // surface the error inline so the user can correct bad input.
+  const quietHoursError = useMemo(() => {
+    if (parseHHmm(draft.quietHoursStart).ok === false) {
+      return 'Start and end times must be in HH:mm format (e.g. 22:00, 07:30).'
+    }
+    if (parseHHmm(draft.quietHoursEnd).ok === false) {
+      return 'Start and end times must be in HH:mm format (e.g. 22:00, 07:30).'
+    }
+    if (draft.quietHoursStart === draft.quietHoursEnd) {
+      return 'Start and end times must differ.'
+    }
+    return undefined
+  }, [draft.quietHoursStart, draft.quietHoursEnd])
+
+  // Live indicator of whether the configured window would silence toasts at this
+  // moment. Recomputed on every render so the user sees the impact immediately.
+  const quietHoursCurrentlyActive = useMemo(() => {
+    if (!draft.quietHoursEnabled) return false
+    if (quietHoursError) return false
+    return isQuietHoursActive({
+      enabled: true,
+      start: draft.quietHoursStart,
+      end: draft.quietHoursEnd,
+    })
+  }, [draft.quietHoursEnabled, draft.quietHoursStart, draft.quietHoursEnd, quietHoursError])
+
+  // Field-by-field equality. Memoized so reference stability keeps the auto-save
+  // hook's internal effect from re-firing on every parent render.
+  const draftIsEqual = useCallback(
+    (a: typeof draft, b: typeof draft) =>
+      a.themeMode === b.themeMode &&
+      a.network === b.network &&
+      a.addressDisplay === b.addressDisplay &&
+      a.toastsEnabled === b.toastsEnabled &&
+      a.autoDismiss === b.autoDismiss &&
+      a.quietHoursEnabled === b.quietHoursEnabled &&
+      a.quietHoursStart === b.quietHoursStart &&
+      a.quietHoursEnd === b.quietHoursEnd,
+    []
+  )
+
+  // Debounced auto-save: every field change triggers a PATCH against the
+  // backend after AUTO_SAVE_DEFAULTS.DEBOUNCE_MS of stability. The hook
+  // owns the AbortController lifecycle and supersedes in-flight saves per
+  // change. This flow is *additive* — the existing manual `Save` button
+  // still commits to `localStorage` via `SettingsContext` so it is also
+  // available offline.
+  const autoSave = useDebouncedAutoSave({
+    value: draft,
+    save: updateSettings,
+    delayMs: AUTO_SAVE_DEFAULTS.DEBOUNCE_MS,
+    isEqual: draftIsEqual,
+  })
+
+  const autoSaveLabels = useMemo<AutoSaveIndicatorLabels>(
+    () => ({
+      saving: 'Saving…',
+      saved: 'Saved',
+      savedRelative: (relative: string) => `Saved ${relative}`,
+      error: "Couldn't save. Try again.",
+      retry: 'Retry',
+    }),
+    []
+  )
+
+  const handleRetry = useCallback(() => {
+    void autoSave.saveNow()
+  }, [autoSave])
+
   const handleSave = () => {
     if (!isDirty) return
+    if (quietHoursError) return
     const payload = {
       themeMode: draft.themeMode,
       network: draft.network,
       addressDisplay: draft.addressDisplay,
       toastsEnabled: draft.toastsEnabled,
       autoDismiss: draft.autoDismiss,
+      quietHoursEnabled: draft.quietHoursEnabled,
+      quietHoursStart: draft.quietHoursStart,
+      quietHoursEnd: draft.quietHoursEnd,
     }
     setThemeMode(payload.themeMode)
     setNetwork(payload.network)
     setAddressDisplay(payload.addressDisplay)
     setToastsEnabled(payload.toastsEnabled)
     setAutoDismiss(payload.autoDismiss)
+    setQuietHoursEnabled(draft.quietHoursEnabled)
+    setQuietHoursStart(draft.quietHoursStart)
+    setQuietHoursEnd(draft.quietHoursEnd)
     saveSettings()
     addToast('success', 'Settings saved successfully')
   }
@@ -98,6 +223,9 @@ export default function Settings() {
       addressDisplay,
       toastsEnabled,
       autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
     })
     addToast('info', 'Settings reverted to last saved state')
   }
@@ -107,8 +235,8 @@ export default function Settings() {
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault()
     }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
+    window.addEventListener(DOM_EVENTS.BEFORE_UNLOAD, handler)
+    return () => window.removeEventListener(DOM_EVENTS.BEFORE_UNLOAD, handler)
   }, [isDirty])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -128,8 +256,26 @@ export default function Settings() {
   }, [])
 
   const currentSettings = useMemo(() => {
-    return { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss])
+    return {
+      themeMode,
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
+    }
+  }, [
+    themeMode,
+    network,
+    addressDisplay,
+    toastsEnabled,
+    autoDismiss,
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
+  ])
 
   const handleExport = useCallback(() => {
     const payload: SettingsBlob = {
@@ -138,6 +284,9 @@ export default function Settings() {
       addressDisplay,
       toastsEnabled,
       autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -149,7 +298,17 @@ export default function Settings() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
     addToast('success', 'Settings exported successfully')
-  }, [themeMode, network, addressDisplay, toastsEnabled, autoDismiss, addToast])
+  }, [
+    themeMode,
+    network,
+    addressDisplay,
+    toastsEnabled,
+    autoDismiss,
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
+    addToast,
+  ])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -194,14 +353,30 @@ export default function Settings() {
     if (!importPreview) return
 
     setThemeMode(importPreview.themeMode)
-    setNetwork(importPreview.network)
-    setAddressDisplay(importPreview.addressDisplay)
+    setNetwork(importPreview.network as 'public' | 'test')
+    setAddressDisplay(importPreview.addressDisplay as 'full' | 'short' | 'friendly')
     setToastsEnabled(importPreview.toastsEnabled)
-    setAutoDismiss(importPreview.autoDismiss)
+    setAutoDismiss(importPreview.autoDismiss as AutoDismissOption)
+    setQuietHoursEnabled(importPreview.quietHoursEnabled ?? false)
+    setQuietHoursStart(importPreview.quietHoursStart ?? '22:00')
+    setQuietHoursEnd(importPreview.quietHoursEnd ?? '07:00')
     saveSettings()
     addToast('success', 'Settings imported successfully')
     resetImportState()
-  }, [importPreview, setThemeMode, setNetwork, setAddressDisplay, setToastsEnabled, setAutoDismiss, saveSettings, addToast, resetImportState])
+  }, [
+    importPreview,
+    setThemeMode,
+    setNetwork,
+    setAddressDisplay,
+    setToastsEnabled,
+    setAutoDismiss,
+    setQuietHoursEnabled,
+    setQuietHoursStart,
+    setQuietHoursEnd,
+    saveSettings,
+    addToast,
+    resetImportState,
+  ])
 
   const handleImportCancel = useCallback(() => {
     resetImportState()
@@ -219,21 +394,27 @@ export default function Settings() {
 
     return (
       <div>
-        <p>The following settings from <strong>{importFileName || 'file'}</strong> will be applied:</p>
-        <table style={{ marginTop: '0.75rem', borderCollapse: 'collapse', width: '100%' }}>
+        <p>
+          The following settings from <strong>{importFileName || 'file'}</strong> will be applied:
+        </p>
+        <table className="settings-diff-table">
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>Setting</th>
-              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>Current</th>
-              <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>Imported</th>
+              <th>Setting</th>
+              <th>Current</th>
+              <th>Imported</th>
             </tr>
           </thead>
           <tbody>
             {diffs.map((d) => (
               <tr key={d.key}>
-                <td style={{ padding: '0.25rem 0.5rem' }}>{FIELD_LABELS[d.key] || d.key}</td>
-                <td style={{ padding: '0.25rem 0.5rem' }}><code>{d.from}</code></td>
-                <td style={{ padding: '0.25rem 0.5rem' }}><code>{d.to}</code></td>
+                <td>{FIELD_LABELS[d.key] || d.key}</td>
+                <td>
+                  <code>{d.from}</code>
+                </td>
+                <td>
+                  <code>{d.to}</code>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -246,58 +427,46 @@ export default function Settings() {
     <div className="settings-page">
       <h1 style={{ marginTop: 0 }}>Settings</h1>
 
+      {/* ── Appearance ──────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">Appearance</h2>
-        <p className="form-hint">Controls for theme and visual preferences.</p>
+        <p className="settings-section__description">Controls for theme and visual preferences.</p>
 
-        <FormField id="theme-seg" label="Theme">
-          <div role="radiogroup" aria-label="Theme mode" style={{ display: 'flex', gap: '0.5rem' }}>
-            <label>
-              <input
-                type="radio"
-                name="theme"
-                checked={themeMode === 'light'}
-                onChange={() => setThemeMode('light')}
-              />{' '}
-              Light
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="theme"
-                checked={themeMode === 'dark'}
-                onChange={() => setThemeMode('dark')}
-              />{' '}
-              Dark
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="theme"
-                checked={themeMode === 'system'}
-                onChange={() => setThemeMode('system')}
-              />{' '}
-              System
-            </label>
-          </div>
-        </FormField>
-
-        <FormField id="theme-toggle" label="Quick toggle">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ThemeToggle />
-            <span className="form-hint">
-              Use the quick toggle to flip light/dark immediately. Theme radio buttons above apply
-              on Save.
-            </span>
-          </div>
-        </FormField>
+        {/*
+         * fieldset + legend groups the three radio-style theme options so that
+         * screen readers announce "Theme mode: Light / Dark / System" as a
+         * single navigable group, satisfying WCAG 1.3.1 (Info & Relationships).
+         * The SegmentedControl renders role="radiogroup" internally, so the
+         * outer fieldset provides the additional native form landmark and the
+         * legend provides the visible/AT-readable caption.
+         */}
+        <fieldset className="settings-fieldset">
+          <legend className="settings-fieldset__legend">Theme mode</legend>
+          <SegmentedControl
+            id="theme-mode"
+            ariaLabel="Theme mode"
+            value={draft.themeMode}
+            onChange={(v) => updateDraft('themeMode', v)}
+            options={THEME_OPTIONS}
+          />
+          <p className="settings-field-hint">
+            <em>System</em> follows your OS preference automatically.
+          </p>
+        </fieldset>
       </section>
 
+      {/* ── Network ─────────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="network-heading">
         <h2 id="network-heading">Network</h2>
-        <p className="form-hint">Choose the Stellar network to interact with.</p>
+        <p className="settings-section__description">
+          Choose the Stellar network to interact with.
+        </p>
 
-        <FormField id="network-select" label="Stellar Network">
+        <FormField
+          id="network-select"
+          label="Stellar Network"
+          hint="Changing to Testnet uses isolated, non-real assets."
+        >
           <Select
             value={network}
             onChange={setNetwork}
@@ -309,62 +478,55 @@ export default function Settings() {
         </FormField>
       </section>
 
+      {/* ── Display ─────────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="display-heading">
         <h2 id="display-heading">Display</h2>
-        <p className="form-hint">How addresses and identifiers are presented in the UI.</p>
+        <p className="settings-section__description">
+          How addresses and identifiers are presented in the UI.
+        </p>
 
-        <fieldset style={{ border: 'none', padding: 0 }}>
-          <legend className="sr-only">Address display format</legend>
-          <FormField id="address-display" label="Address format">
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <label>
-                <input
-                  type="radio"
-                  name="address"
-                  checked={addressDisplay === 'full'}
-                  onChange={() => setAddressDisplay('full')}
-                />{' '}
-                Full (G...)
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="address"
-                  checked={addressDisplay === 'short'}
-                  onChange={() => setAddressDisplay('short')}
-                />{' '}
-                Short (G...…)
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="address"
-                  checked={addressDisplay === 'friendly'}
-                  onChange={() => setAddressDisplay('friendly')}
-                />{' '}
-                Friendly (when available)
-              </label>
-            </div>
-          </FormField>
+        {/*
+         * fieldset + legend provides a native grouping landmark for the three
+         * address-format options. The SegmentedControl renders role="radiogroup"
+         * internally; the outer fieldset ensures the group is announced even in
+         * browsing mode (not just forms mode) for screen readers that do not
+         * expose ARIA radiogroup in browsing mode.
+         */}
+        <fieldset className="settings-fieldset">
+          <legend className="settings-fieldset__legend">Address format</legend>
+          <SegmentedControl
+            id="address-display"
+            ariaLabel="Address display format"
+            value={draft.addressDisplay}
+            onChange={(v) => updateDraft('addressDisplay', v)}
+            options={ADDRESS_OPTIONS}
+          />
+          <p className="settings-field-hint">
+            <em>Friendly</em> shows a registered name when available, otherwise falls back to{' '}
+            <em>Short</em>.
+          </p>
         </fieldset>
       </section>
 
+      {/* ── Notifications ───────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="notifications-heading">
         <h2 id="notifications-heading">Notifications</h2>
-        <p className="form-hint">Control toast and notification behavior.</p>
+        <p className="settings-section__description">
+          Control toast and notification behavior.
+        </p>
 
         <FormField id="toasts-enabled" label="Enable toasts">
-          <Toggle
-            checked={draft.toastsEnabled}
-            onChange={(v) => updateDraft('toastsEnabled', v)}
-            ariaLabel="Enable toasts"
-          />
+          <Toggle checked={toastsEnabled} onChange={setToastsEnabled} ariaLabel="Enable toasts" />
         </FormField>
 
-        <FormField id="auto-dismiss" label="Auto-dismiss duration">
+        <FormField
+          id="auto-dismiss"
+          label="Auto-dismiss duration"
+          hint="How long before a toast automatically closes. Danger toasts always require manual dismissal."
+        >
           <Select
-            value={draft.autoDismiss}
-            onChange={(v) => updateDraft('autoDismiss', v)}
+            value={autoDismiss}
+            onChange={setAutoDismiss}
             options={[
               { value: 'off', label: 'Off (require manual dismiss)' },
               { value: '3s', label: '3 seconds' },
@@ -374,30 +536,84 @@ export default function Settings() {
           />
         </FormField>
 
-        <FormField id="toast-preview" label="Preview">
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={() => addToast('info', 'This is a preview notification')}
-              style={{ padding: '0.5rem 0.75rem' }}
-              aria-label="Show preview toast"
-            >
-              Show preview
-            </button>
-            <span className="form-hint">Preview respects current toast settings.</span>
-          </div>
-        </FormField>
+        <div className="settings-preview-row">
+          <button
+            type="button"
+            className="settings-btn settings-btn--secondary"
+            onClick={() => addToast('info', 'This is a preview notification')}
+            aria-label="Show preview toast notification"
+          >
+            Show preview
+          </button>
+          <span className="settings-field-hint">Preview respects current toast settings.</span>
+        </div>
+
+        {/* Quiet Hours sub-section */}
+        <fieldset className="settings-fieldset settings-fieldset--card" aria-describedby="quiet-hours-desc">
+          <legend className="settings-fieldset__legend settings-fieldset__legend--card">
+            Quiet Hours
+          </legend>
+          <p id="quiet-hours-desc" className="settings-section__description">
+            When enabled, non-critical toasts will be suppressed during the configured window.
+            Critical (danger) toasts always surface regardless.
+          </p>
+
+          <FormField id="quiet-hours-enabled" label="Enable quiet hours">
+            <Toggle
+              checked={draft.quietHoursEnabled}
+              onChange={(v) => updateDraft('quietHoursEnabled', v)}
+              ariaLabel="Enable quiet hours"
+            />
+          </FormField>
+
+          <FormField id="quiet-hours-start" label="Start time (HH:mm)" error={quietHoursError}>
+            <Input
+              compact
+              value={draft.quietHoursStart}
+              onChange={(e) => updateDraft('quietHoursStart', e.target.value)}
+              placeholder="22:00"
+              maxLength={5}
+              autoComplete="off"
+            />
+          </FormField>
+
+          <FormField
+            id="quiet-hours-end"
+            label="End time (HH:mm)"
+            success={
+              !quietHoursError && draft.quietHoursEnabled
+                ? quietHoursCurrentlyActive
+                  ? 'Quiet hours are currently active — non-critical toasts are suppressed.'
+                  : 'Quiet hours are not currently active.'
+                : undefined
+            }
+          >
+            <Input
+              compact
+              value={draft.quietHoursEnd}
+              onChange={(e) => updateDraft('quietHoursEnd', e.target.value)}
+              placeholder="07:00"
+              maxLength={5}
+              autoComplete="off"
+              aria-invalid={quietHoursError ? 'true' : undefined}
+              aria-describedby={quietHoursError ? 'quiet-hours-start-error' : undefined}
+            />
+          </FormField>
+        </fieldset>
       </section>
 
+      {/* ── Backup & Restore ────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="backup-heading">
         <h2 id="backup-heading">Backup &amp; Restore</h2>
-        <p className="form-hint">Export your settings as a JSON file, or import settings from a previous export.</p>
+        <p className="settings-section__description">
+          Export your settings as a JSON file, or import settings from a previous export.
+        </p>
 
         <div className="settings-backup-row">
           <button
             type="button"
+            className="settings-btn settings-btn--secondary"
             onClick={handleExport}
-            style={{ padding: '0.5rem 0.75rem' }}
             aria-label="Export settings to JSON file"
           >
             Export settings
@@ -408,14 +624,14 @@ export default function Settings() {
             type="file"
             accept=".json,application/json"
             onChange={handleFileChange}
-            style={{ display: 'none' }}
+            className="sr-only"
             aria-hidden="true"
             tabIndex={-1}
           />
           <button
             type="button"
+            className="settings-btn settings-btn--secondary"
             onClick={() => fileInputRef.current?.click()}
-            style={{ padding: '0.5rem 0.75rem' }}
             aria-label="Import settings from JSON file"
           >
             Import settings
@@ -423,7 +639,7 @@ export default function Settings() {
         </div>
 
         {importError && (
-          <div role="alert" style={{ marginTop: '0.75rem' }}>
+          <div role="alert" className="settings-import-error">
             <ErrorState
               type="validation"
               title="Invalid settings file"
@@ -437,32 +653,31 @@ export default function Settings() {
         )}
       </section>
 
-      <div className="settings-actions">
+      {/* ── Actions bar ─────────────────────────────────────────── */}
+      <div className="settings-actions" role="group" aria-label="Save or discard settings">
+        <AutoSaveIndicator
+          status={autoSave.status}
+          lastSavedAt={autoSave.lastSavedAt}
+          labels={autoSaveLabels}
+          onRetry={handleRetry}
+        />
         <button
           type="button"
+          className="settings-btn settings-btn--primary"
           onClick={handleSave}
-          disabled={!isDirty}
-          aria-disabled={!isDirty}
-          style={{ padding: '0.5rem 0.75rem' }}
+          disabled={!isDirty || !!quietHoursError}
+          aria-disabled={!isDirty || !!quietHoursError}
         >
           {isDirty ? 'Save' : 'Saved'}
         </button>
-        <button type="button" onClick={handleCancel} style={{ padding: '0.5rem 0.75rem' }}>
+        <button
+          type="button"
+          className="settings-btn settings-btn--secondary"
+          onClick={handleCancel}
+        >
           Cancel
         </button>
       </div>
-
-      <ConfirmDialog
-        open={importConfirmOpen}
-        title="Import Settings"
-        subtitle={diffs.length > 0 ? 'Review the changes below before applying.' : undefined}
-        description={confirmDescription}
-        confirmPhrase="IMPORT"
-        confirmHint="This will overwrite your current settings with the imported values."
-        confirmLabel="Import settings"
-        onConfirm={handleImportConfirm}
-        onCancel={handleImportCancel}
-      />
     </div>
   )
 }

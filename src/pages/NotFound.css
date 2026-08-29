@@ -1,70 +1,171 @@
-.not-found-container {
+/*
+ * 404 / NotFound Page styles
+ *
+ * Migrated to consume the standardised `error-state` panel for the headline
+ * treatment (see src/components/states/ErrorState.css) and replace four emoji
+ * glyphs with token-based SVG icons. The page keeps its bespoke quick-links
+ * card because the four primary routes are unique to this 404 recovery flow.
+ *
+ * Uses Credence design system tokens and supports responsive layouts.
+ */
+
+.not-found-page {
   text-align: center;
   padding: var(--credence-space-12) var(--credence-space-6);
-  max-width: 28rem;
+  max-width: 32rem; /* 512px, perfect for the embedded ErrorState panel + quick-links card */
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 50vh;
+  min-height: 60vh;
+  gap: var(--credence-space-6);
 }
 
-.not-found-icon-wrap {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--credence-radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto var(--credence-space-4);
-  background: var(--credence-color-danger-surface-strong);
-  color: var(--credence-color-white, #ffffff);
+/* Subheading / error code badge — calm, not loud. */
+.not-found-page__code {
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-bold);
+  color: var(--credence-color-danger-text);
+  margin: 0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.not-found-title {
-  font-size: var(--credence-font-size-xl);
+/* Heading — uses primary text so it isn't read as "another error message". */
+.not-found-page__title {
+  font-size: var(--credence-font-size-3xl);
   font-weight: var(--credence-font-weight-bold);
   color: var(--credence-text-primary);
-  margin-bottom: var(--credence-space-2);
+  margin: 0;
+  line-height: var(--credence-line-height-tight);
+  letter-spacing: var(--credence-letter-spacing-tight);
 }
 
-.not-found-code {
-  font-size: var(--credence-font-size-lg);
-  font-weight: var(--credence-font-weight-semibold);
-  color: var(--credence-color-danger-text);
-  margin-bottom: var(--credence-space-4);
-}
-
-.not-found-description {
-  color: var(--credence-text-secondary);
-  font-size: var(--credence-font-size-sm);
-  line-height: var(--credence-line-height-base);
-  margin-bottom: var(--credence-space-6);
-}
-
-.not-found-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--credence-space-3);
+/* Wrapper around the standardised ErrorState panel. We override the
+   panel's default `max-width: 28rem` so it fills the page column. */
+.not-found-page__panel {
   width: 100%;
 }
 
-.not-found-footer-text {
+.not-found-page__panel .error-state {
+  max-width: none;
+}
+
+/* Recovery Actions Row */
+.not-found-page__actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--credence-space-4);
+  width: 100%;
+  justify-content: center;
+  margin-bottom: var(--credence-space-4);
+}
+
+/* Quick Links Card / Section */
+.not-found-page__quick-links-container {
+  width: 100%;
+  background: var(--credence-surface-card);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  padding: var(--credence-space-6);
+  text-align: left;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.not-found-page__quick-links-title {
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-bold);
   color: var(--credence-text-secondary);
-  font-size: var(--credence-font-size-xs);
-  line-height: var(--credence-line-height-sm);
-  margin-top: var(--credence-space-6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--credence-space-4);
+  border-bottom: 1px solid var(--credence-border-default);
+  padding-bottom: var(--credence-space-2);
 }
 
-.not-found-link {
+.not-found-page__quick-links-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--credence-space-3);
+}
+
+.not-found-page__link-item {
+  display: flex;
+  align-items: center;
+}
+
+.not-found-page__link {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-3);
   color: var(--credence-color-primary);
-  text-decoration: none;
   font-weight: var(--credence-font-weight-semibold);
+  font-size: var(--credence-font-size-sm);
+  padding: var(--credence-space-3);
+  border-radius: var(--credence-radius-md);
+  width: 100%;
+  transition: all var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 
-.not-found-link:hover,
-.not-found-link:focus-visible {
-  text-decoration: underline;
-  outline: none;
+.not-found-page__link:hover {
+  background: var(--credence-color-info-surface);
+  color: var(--credence-color-primary-strong);
+  padding-left: var(--credence-space-4);
+}
+
+.not-found-page__link:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Token-based SVG icons (replaced emoji per PR #936 standardisation) */
+.not-found-page__link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--credence-radius-sm);
+  background: var(--credence-color-info-surface);
+  color: var(--credence-color-primary-strong);
+  flex-shrink: 0;
+}
+
+.not-found-page__link-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .not-found-page {
+    padding: var(--credence-space-8) var(--credence-space-4);
+    min-height: 50vh;
+    gap: var(--credence-space-4);
+  }
+
+  .not-found-page__title {
+    font-size: var(--credence-font-size-2xl);
+  }
+
+  .not-found-page__actions {
+    flex-direction: column;
+    gap: var(--credence-space-3);
+  }
+
+  .not-found-page__quick-links-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .not-found-page__link {
+    transition: none;
+  }
 }

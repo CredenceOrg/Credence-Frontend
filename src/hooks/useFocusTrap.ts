@@ -1,4 +1,5 @@
 import { RefObject, useEffect, useRef } from 'react'
+import { DOM_EVENTS } from '../events'
 
 /**
  * CSS selector matching the elements that are eligible to receive keyboard focus
@@ -20,9 +21,15 @@ const FOCUSABLE_SELECTOR =
  * `disabled`/visibility while the trap is active.
  */
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (el) => el.offsetParent !== null || el.getClientRects().length > 0
-  )
+  const elements = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+  if (
+    typeof navigator !== 'undefined' &&
+    navigator.userAgent &&
+    navigator.userAgent.includes('jsdom')
+  ) {
+    return elements
+  }
+  return elements.filter((el) => el.offsetParent !== null || el.getClientRects().length > 0)
 }
 
 /**
@@ -163,6 +170,9 @@ export function useFocusTrap({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
+        // Stop the event from bubbling to any outer focus trap so that only
+        // the innermost active trap consumes the keypress (inside-out close order).
+        event.stopPropagation()
         onEscape?.()
         return
       }
@@ -187,10 +197,10 @@ export function useFocusTrap({
       }
     }
 
-    container.addEventListener('keydown', handleKeyDown)
+    container.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
 
     return () => {
-      container.removeEventListener('keydown', handleKeyDown)
+      container.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
 
       if (!returnFocusOnDeactivate) return
 

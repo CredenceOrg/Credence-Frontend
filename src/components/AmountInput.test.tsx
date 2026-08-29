@@ -199,6 +199,16 @@ describe('AmountInput', () => {
       expect(screen.getByRole('button', { name: /set max amount/i })).toBeDisabled()
       expect(screen.getByRole('alert')).toHaveTextContent('Amount exceeds available balance.')
     })
+
+    it('hides the inline error message when hideErrorMessage is true', () => {
+      renderInput({ value: '200.00', balance: 100, hideErrorMessage: true })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByRole('textbox').closest('.amountInput')).toHaveAttribute(
+        'data-invalid',
+        'true'
+      )
+    })
   })
 
   describe('onValidityChange callback', () => {
@@ -223,6 +233,95 @@ describe('AmountInput', () => {
     it('calls onValidityChange(true) when value is empty', () => {
       const onValidityChange = vi.fn()
       renderInput({ value: '', balance: 100, onValidityChange })
+      expect(onValidityChange).toHaveBeenCalledWith(true)
+    })
+  })
+
+  describe('min prop (below-minimum validation)', () => {
+    it('shows inline error when value is below min', () => {
+      renderInput({ value: '5.00', balance: 1000, min: 10 })
+      expect(screen.getByRole('alert')).toHaveTextContent('Amount must be at least 10 USDC.')
+    })
+
+    it('does not show a below-min error when value equals min', () => {
+      renderInput({ value: '10.00', balance: 1000, min: 10 })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('does not show a below-min error when value exceeds min', () => {
+      renderInput({ value: '50.00', balance: 1000, min: 10 })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('does not show a below-min error when value is empty', () => {
+      renderInput({ value: '', balance: 1000, min: 10 })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('marks the input aria-invalid when below min', () => {
+      renderInput({ value: '3.00', balance: 1000, min: 10 })
+      expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('links the below-min error to the input via aria-describedby', () => {
+      renderInput({ value: '3.00', balance: 1000, min: 10 })
+      const input = screen.getByRole('textbox')
+      const errorId = input.getAttribute('aria-describedby')
+      expect(errorId).toBeTruthy()
+      expect(document.getElementById(errorId!)).toHaveTextContent(
+        'Amount must be at least 10 USDC.'
+      )
+    })
+
+    it('explicit error prop overrides the below-min error', () => {
+      renderInput({ value: '3.00', balance: 1000, min: 10, error: 'Custom floor error' })
+      expect(screen.getByRole('alert')).toHaveTextContent('Custom floor error')
+      expect(screen.queryByText(/Amount must be at least/)).not.toBeInTheDocument()
+    })
+
+    it('over-balance error takes precedence over below-min error', () => {
+      // value > balance AND value < min is an unusual edge case (min > balance),
+      // but over-balance should win because it is the stricter constraint.
+      renderInput({ value: '200.00', balance: 100, min: 500 })
+      expect(screen.getByRole('alert')).toHaveTextContent('Amount exceeds available balance.')
+      expect(screen.queryByText(/Amount must be at least/)).not.toBeInTheDocument()
+    })
+
+    it('uses a custom currencyLabel in the below-min message', () => {
+      renderInput({ value: '5.00', balance: 1000, min: 10, currencyLabel: 'XLM' })
+      expect(screen.getByRole('alert')).toHaveTextContent('Amount must be at least 10 XLM.')
+    })
+  })
+
+  describe('onValidityChange with min prop', () => {
+    it('calls onValidityChange(false) when value is below min', () => {
+      const onValidityChange = vi.fn()
+      renderInput({ value: '5.00', balance: 1000, min: 10, onValidityChange })
+      expect(onValidityChange).toHaveBeenCalledWith(false)
+    })
+
+    it('calls onValidityChange(true) when value equals min', () => {
+      const onValidityChange = vi.fn()
+      renderInput({ value: '10.00', balance: 1000, min: 10, onValidityChange })
+      expect(onValidityChange).toHaveBeenCalledWith(true)
+    })
+
+    it('calls onValidityChange(true) when value exceeds min but is within balance', () => {
+      const onValidityChange = vi.fn()
+      renderInput({ value: '50.00', balance: 1000, min: 10, onValidityChange })
+      expect(onValidityChange).toHaveBeenCalledWith(true)
+    })
+
+    it('calls onValidityChange(false) when value is both over balance and below min', () => {
+      // Over-balance dominates; validity is still false
+      const onValidityChange = vi.fn()
+      renderInput({ value: '200.00', balance: 100, min: 500, onValidityChange })
+      expect(onValidityChange).toHaveBeenCalledWith(false)
+    })
+
+    it('calls onValidityChange(true) when value is empty regardless of min', () => {
+      const onValidityChange = vi.fn()
+      renderInput({ value: '', balance: 1000, min: 10, onValidityChange })
       expect(onValidityChange).toHaveBeenCalledWith(true)
     })
   })

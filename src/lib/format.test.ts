@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatUsdc,
+  formatAmount,
   normalizeUSDC,
   formatUSDC,
   formatUSDCDisplay,
@@ -204,8 +205,125 @@ describe('sanitizeUSDCInput', () => {
   })
 
   it('truncates exactly 2 decimal places (boundary: exactly 2 digits)', () => {
-    expect(sanitizeUSDCInput('1.23')).toBe('1.23')   // at limit — unchanged
-    expect(sanitizeUSDCInput('1.2')).toBe('1.2')     // under limit — unchanged
-    expect(sanitizeUSDCInput('1.230')).toBe('1.23')  // over limit — truncated
+    expect(sanitizeUSDCInput('1.23')).toBe('1.23') // at limit — unchanged
+    expect(sanitizeUSDCInput('1.2')).toBe('1.2') // under limit — unchanged
+    expect(sanitizeUSDCInput('1.230')).toBe('1.23') // over limit — truncated
+  })
+})
+
+describe('formatAmount', () => {
+  describe('valid finite amounts', () => {
+    it('formats a standard positive amount with USDC suffix', () => {
+      expect(formatAmount(1234.5)).toBe('1,234.5 USDC')
+    })
+
+    it('formats zero as "0 USDC"', () => {
+      expect(formatAmount(0)).toBe('0 USDC')
+    })
+
+    it('formats a fractional amount with up to 2 decimal places', () => {
+      expect(formatAmount(1234.567)).toBe('1,234.57 USDC')
+    })
+
+    it('formats amounts below 1 USDC', () => {
+      expect(formatAmount(0.01)).toBe('0.01 USDC')
+    })
+
+    it('formats whole numbers without trailing decimals', () => {
+      expect(formatAmount(100)).toBe('100 USDC')
+    })
+
+    it('formats large values with thousand separators', () => {
+      expect(formatAmount(1e7)).toBe('10,000,000 USDC')
+    })
+
+    it('formats very large values with commas', () => {
+      expect(formatAmount(1_000_000_000)).toBe('1,000,000,000 USDC')
+    })
+  })
+
+  describe('minimum boundary values', () => {
+    it('formats 0.001 as "0 USDC" (rounds down)', () => {
+      expect(formatAmount(0.001)).toBe('0 USDC')
+    })
+
+    it('formats 0.005 as "0.01 USDC" (rounds up at half cent)', () => {
+      expect(formatAmount(0.005)).toBe('0.01 USDC')
+    })
+
+    it('formats the smallest positive cent', () => {
+      expect(formatAmount(0.009)).toBe('0.01 USDC')
+    })
+  })
+
+  describe('near-overflow and MAX_SAFE_INTEGER', () => {
+    it('formats Number.MAX_SAFE_INTEGER without precision loss', () => {
+      const maxSafe = Number.MAX_SAFE_INTEGER // 9007199254740991
+      const result = formatAmount(maxSafe)
+      expect(result).toBe('9,007,199,254,740,991 USDC')
+    })
+
+    it('clamps values exceeding MAX_SAFE_INTEGER to that boundary', () => {
+      const result = formatAmount(Number.MAX_SAFE_INTEGER + 1)
+      expect(result).toBe('9,007,199,254,740,991 USDC')
+    })
+
+    it('clamps extremely large values to MAX_SAFE_INTEGER', () => {
+      const result = formatAmount(1e18)
+      expect(result).toBe('9,007,199,254,740,991 USDC')
+    })
+  })
+
+  describe('invalid and edge-case inputs', () => {
+    it('returns "—" for undefined', () => {
+      expect(formatAmount(undefined)).toBe('—')
+    })
+
+    it('returns "—" for null', () => {
+      expect(formatAmount(null)).toBe('—')
+    })
+
+    it('returns "—" for NaN', () => {
+      expect(formatAmount(NaN)).toBe('—')
+    })
+
+    it('returns "—" for positive Infinity', () => {
+      expect(formatAmount(Infinity)).toBe('—')
+    })
+
+    it('returns "—" for negative Infinity', () => {
+      expect(formatAmount(-Infinity)).toBe('—')
+    })
+
+    it('returns "—" for negative amounts', () => {
+      expect(formatAmount(-1)).toBe('—')
+    })
+
+    it('normalizes -0 (negative zero) to "0 USDC"', () => {
+      // -0 is finite and not < 0, so it is treated as a valid zero amount.
+      // The || 0 in the implementation normalizes -0 → 0.
+      expect(formatAmount(-0)).toBe('0 USDC')
+    })
+
+    it('returns "—" for very small negative values', () => {
+      expect(formatAmount(-0.01)).toBe('—')
+    })
+  })
+
+  describe('deterministic formatting', () => {
+    it('produces consistent output for repeated calls', () => {
+      const inputs = [0, 0.01, 100, 1234.56, 1e7, NaN, Infinity, null, undefined]
+      for (const input of inputs) {
+        const first = formatAmount(input as number)
+        const second = formatAmount(input as number)
+        expect(first).toBe(second)
+      }
+    })
+
+    it('does not mutate the input number', () => {
+      const value = 1234.56
+      formatAmount(value)
+      expect(value).toBe(1234.56)
+    })
   })
 })

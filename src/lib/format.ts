@@ -130,3 +130,39 @@ export function sanitizeUSDCInput(nextValue: string): string {
 
   return `${trimmedWhole}.${trimmedFraction}`
 }
+
+/**
+ * Safe amount formatter for USDC values displayed in activity and data surfaces.
+ *
+ * Validates the input before formatting and returns a consistent display string.
+ * This function is the single source of truth for amount display in timeline,
+ * transaction, and summary surfaces.
+ *
+ * Invariants:
+ *  - Never throws.
+ *  - Returns "—" (em-dash) for null, undefined, NaN, Infinity, or -Infinity.
+ *  - Clamps values exceeding Number.MAX_SAFE_INTEGER to that boundary.
+ *  - Normalizes -0 to 0.
+ *  - Formats non-negative finite values with thousand separators and up to
+ *    2 decimal places, appended with "USDC".
+ *
+ * @example
+ * formatAmount(1234.5)       // → "1,234.5 USDC"
+ * formatAmount(0)            // → "0 USDC"
+ * formatAmount(null)         // → "—"
+ * formatAmount(NaN)          // → "—"
+ * formatAmount(Infinity)     // → "—"
+ * formatAmount(-5)           // → "—"
+ * formatAmount(1e18)         // → "9,007,199,254,740,991 USDC" (clamped)
+ */
+export function formatAmount(amount: number | undefined | null): string {
+  if (amount == null) return '—'
+  if (!Number.isFinite(amount)) return '—'
+  if (amount < 0) return '—'
+
+  // Normalize -0 to 0 and clamp to safe integer boundary to prevent
+  // floating-point precision loss when formatting.
+  const safe = Math.min(amount, Number.MAX_SAFE_INTEGER) || 0
+
+  return `${safe.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDC`
+}

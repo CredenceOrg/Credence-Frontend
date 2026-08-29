@@ -14,6 +14,9 @@ const makeItem = (overrides: Partial<ActivityItem> = {}): ActivityItem => ({
   ...overrides,
 })
 
+const amountItem = (amountUsdc: number | undefined): ActivityItem =>
+  makeItem({ id: 'amt-1', title: 'Amount test', amountUsdc })
+
 describe('ActivityTimeline', () => {
   describe('default (no props)', () => {
     it('renders the section with the correct aria-label', () => {
@@ -138,6 +141,70 @@ describe('ActivityTimeline', () => {
     it('renders actor prefixed with "By"', () => {
       render(<ActivityTimeline items={[makeItem({ actor: 'Node 99' })]} />)
       expect(screen.getByText('By Node 99')).toBeInTheDocument()
+    })
+  })
+
+  describe('amount display', () => {
+    it('renders a formatted amount when amountUsdc is provided', () => {
+      render(<ActivityTimeline items={[amountItem(1500)]} />)
+      expect(screen.getByText('1,500 USDC')).toBeInTheDocument()
+    })
+
+    it('renders "0 USDC" for a zero amount', () => {
+      render(<ActivityTimeline items={[amountItem(0)]} />)
+      expect(screen.getByText('0 USDC')).toBeInTheDocument()
+    })
+
+    it('renders fractional amounts with correct precision', () => {
+      render(<ActivityTimeline items={[amountItem(1234.567)]} />)
+      expect(screen.getByText('1,234.57 USDC')).toBeInTheDocument()
+    })
+
+    it('does not render an amount element when amountUsdc is absent', () => {
+      const { container } = render(
+        <ActivityTimeline items={[makeItem({ amountUsdc: undefined })]} />
+      )
+      expect(container.querySelector('.activity-row__amount')).toBeNull()
+    })
+
+    it('renders "—" for NaN amount', () => {
+      render(<ActivityTimeline items={[amountItem(NaN)]} />)
+      expect(screen.getByText('—')).toBeInTheDocument()
+    })
+
+    it('renders "—" for Infinity amount', () => {
+      render(<ActivityTimeline items={[amountItem(Infinity)]} />)
+      expect(screen.getByText('—')).toBeInTheDocument()
+    })
+
+    it('renders "—" for negative amount', () => {
+      render(<ActivityTimeline items={[amountItem(-5)]} />)
+      expect(screen.getByText('—')).toBeInTheDocument()
+    })
+
+    it('renders a large amount with thousand separators', () => {
+      render(<ActivityTimeline items={[amountItem(1_000_000)]} />)
+      expect(screen.getByText('1,000,000 USDC')).toBeInTheDocument()
+    })
+
+    it('includes aria-label with formatted amount', () => {
+      render(<ActivityTimeline items={[amountItem(1500)]} />)
+      expect(screen.getByLabelText('Amount: 1,500 USDC')).toBeInTheDocument()
+    })
+
+    it('renders amounts for each item independently', () => {
+      const items = [
+        makeItem({ id: 'a', title: 'Alpha', amountUsdc: 100 }),
+        makeItem({ id: 'b', title: 'Beta' }),
+        makeItem({ id: 'c', title: 'Gamma', amountUsdc: 200 }),
+      ]
+      render(<ActivityTimeline items={items} />)
+      expect(screen.getByText('100 USDC')).toBeInTheDocument()
+      expect(screen.getByText('200 USDC')).toBeInTheDocument()
+      // Beta has no amount, so only 2 amount elements should exist
+      const amountEls = screen.getAllByText(/USDC$/)
+      // 2 explicit amounts + no hidden amounts
+      expect(amountEls).toHaveLength(2)
     })
   })
 })

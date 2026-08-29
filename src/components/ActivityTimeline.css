@@ -148,7 +148,8 @@
 
 .activity-row__description,
 .activity-row__actor,
-.activity-row__meta {
+.activity-row__meta,
+.activity-row__amount {
   font-size: var(--credence-font-size-xs);
   line-height: var(--credence-line-height-base);
 }
@@ -156,6 +157,11 @@
 .activity-row__description,
 .activity-row__actor {
   color: var(--credence-text-secondary);
+}
+
+.activity-row__amount {
+  color: var(--credence-text-primary);
+  font-weight: var(--credence-font-weight-semibold);
 }
 
 .activity-row__meta {

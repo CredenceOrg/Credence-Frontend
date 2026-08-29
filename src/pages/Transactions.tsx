@@ -7,6 +7,7 @@ import { useSettings } from '../context/SettingsContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useTransactions } from '../hooks/useTransactions'
 import { explorerUrl } from '../lib/explorerUrl'
+import { formatAmount } from '../lib/format'
 import { truncateAddress } from '../lib/stellar'
 import type { Transaction } from '../api/types'
 
@@ -45,7 +46,7 @@ export default function Transactions() {
 
   const filtered = useMemo(
     () => (filter === 'all' ? data : data.filter((tx) => tx.status === filter)),
-    [data, filter],
+    [data, filter]
   )
 
   const hasData = !isLoading && !error
@@ -121,9 +122,7 @@ export default function Transactions() {
                     <td data-label="Type" className="transactions__type">
                       {tx.type}
                     </td>
-                    <td data-label="Amount">
-                      {tx.amountUsdc != null ? `${tx.amountUsdc.toLocaleString('en-US')} USDC` : '—'}
-                    </td>
+                    <td data-label="Amount">{formatAmount(tx.amountUsdc)}</td>
                     <td data-label="Status">
                       <Badge variant={STATUS_BADGE_MAP[tx.status]} label={tx.status} />
                     </td>

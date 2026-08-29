@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './ActivityTimeline.css'
 import EmptyState from './states/EmptyState'
+import { formatAmount } from '@/lib/format'
 
 export type ActivityTone = 'success' | 'warning' | 'info'
 
@@ -13,6 +14,8 @@ export interface ActivityItem {
   statusLabel: string
   tone: ActivityTone
   meta: string
+  /** USDC amount involved in this activity event, if applicable. */
+  amountUsdc?: number
 }
 
 export interface ActivityTimelineProps {
@@ -31,6 +34,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
     statusLabel: 'Accepted',
     tone: 'success',
     meta: 'Tx 0x93a1...22f4',
+    amountUsdc: 1500,
   },
   {
     id: 'evt-002',
@@ -51,6 +55,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
     statusLabel: 'In review',
     tone: 'info',
     meta: 'Window +90d',
+    amountUsdc: 0,
   },
 ]
 
@@ -109,6 +114,15 @@ export default function ActivityTimeline({
                   </div>
                   <p className="activity-row__description">{item.description}</p>
 
+                  {item.amountUsdc != null && (
+                    <p
+                      className="activity-row__amount"
+                      aria-label={`Amount: ${formatAmount(item.amountUsdc)}`}
+                    >
+                      {formatAmount(item.amountUsdc)}
+                    </p>
+                  )}
+
                   <button
                     type="button"
                     aria-expanded={isExpanded}
@@ -139,7 +153,10 @@ export default function ActivityTimeline({
                         borderRadius: 'var(--credence-radius-md)',
                       }}
                     >
-                      <p className="activity-row__actor" style={{ marginBottom: 'var(--credence-space-1)' }}>
+                      <p
+                        className="activity-row__actor"
+                        style={{ marginBottom: 'var(--credence-space-1)' }}
+                      >
                         <strong>Actor:</strong> {item.actor}
                       </p>
                       <p className="activity-row__meta">

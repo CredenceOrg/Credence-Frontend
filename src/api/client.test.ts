@@ -1,6 +1,13 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiFetch } from './client'
-import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import {
+  ApiError,
+  ApiRateLimitError,
+  apiFetch,
+  apiRateLimiterSnapshot,
+  defaultApiRateLimiter,
+  resetApiRateLimiter,
+} from './client'
+import { resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -234,7 +241,8 @@ describe('apiFetch', () => {
     const committedResponses = new Map<string, { committedEffects: number }>()
     fetchMock.mockImplementation(async () => {
       attempts += 1
-      const key = (fetchMock.mock.calls.at(-1)?.[1]?.headers as Headers).get('Idempotency-Key')
+      const calls = fetchMock.mock.calls
+      const key = (calls[calls.length - 1]?.[1]?.headers as Headers).get('Idempotency-Key')
       if (key && committedResponses.has(key)) return jsonResponse(committedResponses.get(key))
 
       committedEffects += 1

@@ -16,7 +16,7 @@
  * - Users see consistent operation status across sessions
  */
 
-import { apiFetch, ApiError } from '../api/client'
+import { apiFetch, ApiError, ApiRateLimitError } from '../api/client'
 import {
   type MutationOperation,
   type MutationOperationId,
@@ -28,6 +28,7 @@ import {
   createMutationOperation,
 } from './mutationStorage'
 import { submitCreateBond, submitWithdrawBond } from './bondMutations'
+import { validateBondAmount, validateTrustScoreAddress } from './mutationGuard'
 import { logInfo, logWarn, logError } from './log'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -49,7 +50,6 @@ const DEFAULT_RETRY_POLICY: RetryPolicy = {
   backoffMultiplier: 2,
   retryableErrors: ['network', 'timeout', 'generic'],
 }
-
 
 const OPERATION_RECOVERY_TIMEOUT_MS = 300000 // 5 minutes
 
@@ -81,11 +81,25 @@ function createMutationError(
   }
 }
 
+/** Coerce a payload's `retryAfterMs` to a positive finite number, else undefined. */
+function safeNumber(value: unknown): number | undefined {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
 function apiErrorToMutationError(apiError: ApiError): MutationError {
   let type: MutationError['type'] = 'generic'
   let retryable = true
 
-  if (apiError.status === 0) {
+  if (apiError.status === 429) {
+    // Rate limit / fair-use rejection. Not a validation error: surface it with
+    // an actionable retryAfterMs so callers wait rather than hammer. It is
+    // intentionally *not* auto-retried by the backoff loop (that would just
+    // re-trigger the limiter); the operation stays recoverable so the user can
+    // retry once the window passes.
+    type = 'rate_limit'
+    retryable = false
+  } else if (apiError.status === 0) {
     type = 'network'
   } else if (apiError.status >= 400 && apiError.status < 500) {
     type = 'validation'
@@ -93,6 +107,19 @@ function apiErrorToMutationError(apiError: ApiError): MutationError {
   } else if (apiError.status >= 500) {
     type = 'backend'
   }
+
+  const retryAfterMs =
+    apiError.payload && typeof apiError.payload === 'object' && 'retryAfterMs' in apiError.payload
+      ? safeNumber(apiError.payload.retryAfterMs)
+      : apiError instanceof ApiRateLimitError
+        ? apiError.retryAfterMs
+        : undefined
+
+  const mutationError = createMutationError(type, apiError.message, retryable, apiError.status)
+  if (retryAfterMs !== undefined) {
+    mutationError.retryAfterMs = retryAfterMs
+  }
+  return mutationError
 
   // Check for wallet rejection patterns
   if (
@@ -130,12 +157,21 @@ async function executeBondCreate(
   params: { amountUsdc: number },
   context: ExecutionContext
 ): Promise<ExecutionResult> {
+  const amount = validateBondAmount(params?.amountUsdc)
+  if (!amount.ok) {
+    // Bounded input: reject adversarial/burst sizes before any expensive work.
+    return {
+      success: false,
+      error: createMutationError('validation', amount.message, false),
+    }
+  }
+
   try {
-    const result = await submitCreateBond(params)
+    const result = await submitCreateBond({ amountUsdc: amount.value })
     return {
       success: true,
       txHash: result.hash,
-      response: { hash: result.hash, amountUsdc: params.amountUsdc },
+      response: { hash: result.hash, amountUsdc: amount.value },
     }
   } catch (error) {
     const mutationError =
@@ -155,12 +191,26 @@ async function executeBondWithdraw(
   params: { bondId: number; amountUsdc: number },
   context: ExecutionContext
 ): Promise<ExecutionResult> {
+  const amount = validateBondAmount(params?.amountUsdc)
+  if (!amount.ok) {
+    return {
+      success: false,
+      error: createMutationError('validation', amount.message, false),
+    }
+  }
+  if (!Number.isSafeInteger(params?.bondId) || (params?.bondId ?? 0) <= 0) {
+    return {
+      success: false,
+      error: createMutationError('validation', 'Bond id must be a positive integer.', false),
+    }
+  }
+
   try {
-    const result = await submitWithdrawBond(params)
+    const result = await submitWithdrawBond({ bondId: params.bondId, amountUsdc: amount.value })
     return {
       success: true,
       txHash: result.hash,
-      response: { hash: result.hash, bondId: params.bondId, amountUsdc: params.amountUsdc },
+      response: { hash: result.hash, bondId: params.bondId, amountUsdc: amount.value },
     }
   } catch (error) {
     const mutationError =
@@ -180,8 +230,17 @@ async function executeTrustScoreLookup(
   params: { address: string },
   context: ExecutionContext
 ): Promise<ExecutionResult> {
+  const address = validateTrustScoreAddress(params?.address)
+  if (!address.ok) {
+    // Bounded input: reject unbounded/empty addresses before the lookup path.
+    return {
+      success: false,
+      error: createMutationError('validation', address.message, false),
+    }
+  }
+
   try {
-    const result = await apiFetch(`/trust-score/${encodeURIComponent(params.address)}`, {
+    const result = await apiFetch(`/trust-score/${encodeURIComponent(address.value)}`, {
       signal: context.signal,
     })
     return {

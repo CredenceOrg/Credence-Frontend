@@ -1,12 +1,6 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import {
-  ApiError,
-  ApiRateLimitError,
-  apiFetch,
-  apiRateLimiterSnapshot,
-  defaultApiRateLimiter,
-  resetApiRateLimiter,
-} from './client'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ApiError, apiFetch } from './client'
+import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -20,6 +14,7 @@ function jsonResponse(payload: unknown, init: ResponseInit = {}) {
 afterEach(() => {
   fetchMock.mockReset()
   vi.unstubAllGlobals()
+  resetWalletAuditTrail()
 })
 
 describe('apiFetch', () => {

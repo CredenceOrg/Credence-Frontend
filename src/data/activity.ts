@@ -38,9 +38,15 @@ function makeItem(input: MockItemInput): ActivityItem {
   }
 }
 
+// The sample activity is ordered newest-first by timestamp. Each record
+// carries an eventVersion for the event schema and a correlationId so
+// that consumers can trace a logical action across emitted events and
+// verify audit parity with the committed state.
 export const SAMPLE_ACTIVITY: ActivityItem[] = [
   makeItem({
     id: 'evt-001',
+    eventVersion: '1.0',
+    correlationId: 'corr-001',
     timestamp: 'Apr 28, 14:22 UTC',
     title: 'Attestation submitted',
     description:
@@ -51,6 +57,8 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
   }),
   makeItem({
     id: 'evt-002',
+    eventVersion: '1.0',
+    correlationId: 'corr-002',
     timestamp: 'Apr 27, 09:48 UTC',
     title: 'Proof mismatch detected',
     description:
@@ -61,6 +69,8 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
   }),
   makeItem({
     id: 'evt-003',
+    eventVersion: '1.0',
+    correlationId: 'corr-003',
     timestamp: 'Apr 26, 20:11 UTC',
     title: 'Credential refreshed',
     description:
@@ -71,6 +81,8 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
   }),
   makeItem({
     id: 'evt-004',
+    eventVersion: '1.0',
+    correlationId: 'corr-004',
     timestamp: 'Apr 25, 12:01 UTC',
     title: 'Bond-backed identity confirmed',
     description:
@@ -81,6 +93,8 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
   }),
   makeItem({
     id: 'evt-005',
+    eventVersion: '1.0',
+    correlationId: 'corr-005',
     timestamp: 'Apr 24, 16:33 UTC',
     title: 'Stale credential flagged',
     description:

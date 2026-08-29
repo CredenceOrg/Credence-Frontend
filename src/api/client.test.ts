@@ -1,13 +1,15 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
 import {
+  ApiBodyTooLargeError,
   ApiError,
   ApiRateLimitError,
+  MAX_REQUEST_BODY_BYTES,
   apiFetch,
   apiRateLimiterSnapshot,
   defaultApiRateLimiter,
   resetApiRateLimiter,
 } from './client'
-import { resetWalletAuditTrail } from '../lib/walletAudit'
+import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -241,8 +243,7 @@ describe('apiFetch', () => {
     const committedResponses = new Map<string, { committedEffects: number }>()
     fetchMock.mockImplementation(async () => {
       attempts += 1
-      const calls = fetchMock.mock.calls
-      const key = (calls[calls.length - 1]?.[1]?.headers as Headers).get('Idempotency-Key')
+      const key = (fetchMock.mock.calls.at(-1)?.[1]?.headers as Headers).get('Idempotency-Key')
       if (key && committedResponses.has(key)) return jsonResponse(committedResponses.get(key))
 
       committedEffects += 1
@@ -309,6 +310,37 @@ describe('apiFetch', () => {
     await apiFetch('/bonds', { method: 'POST', idempotencyKey: 'bond-header' })
     const requestHeaders = fetchMock.mock.calls[0][1]?.headers as Headers
     expect(requestHeaders.get('Idempotency-Key')).toBe('bond-header')
+  })
+
+  it('rejects JSON bodies exceeding MAX_REQUEST_BODY_BYTES before fetching', async () => {
+    const oversizedPayload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES + 1) }
+
+    await expect(apiFetch('/upload', { method: 'POST', body: oversizedPayload })).rejects.toMatchObject({
+      name: 'ApiBodyTooLargeError',
+      status: 413,
+    } satisfies Partial<ApiBodyTooLargeError>)
+
+    // Fetch must NOT have been called — the guard fires before the network.
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts JSON bodies at exactly MAX_REQUEST_BODY_BYTES', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const payload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES - 100) }
+    await expect(apiFetch('/upload', { method: 'POST', body: payload })).resolves.toEqual({ ok: true })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not validate body size for non-JSON payloads (FormData, Blob, etc.)', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const fd = new FormData()
+    fd.append('file', new Blob([new Uint8Array(10_000_000)]), 'big.bin')
+    await expect(apiFetch('/upload', { method: 'POST', body: fd })).resolves.toEqual({ ok: true })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
 

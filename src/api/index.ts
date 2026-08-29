@@ -18,8 +18,12 @@ export {
   ApiError,
   ApiRateLimitError,
   ApiSessionConflictError,
+  ApiBodyTooLargeError,
+  MAX_REQUEST_BODY_BYTES,
   getIdentityEpoch,
   advanceIdentityEpoch,
+  resetApiRateLimiter,
+  apiRateLimiterSnapshot,
 } from './client'
 export type { ApiFetchOptions } from './client'
 

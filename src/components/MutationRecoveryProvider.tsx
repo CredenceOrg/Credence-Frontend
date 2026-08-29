@@ -7,7 +7,7 @@
  * recovery, tracking, and status monitoring.
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import {
   initializeMutationSystem,
   shutdownMutationSystem,
@@ -27,6 +27,32 @@ import { logInfo, logWarn, logError } from '../lib/log'
 // Context Types
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Audit/event record emitted when a bond or trust-score mutation reaches a
+ * committed terminal state. Events are emitted in `updatedAt` order and use
+ * the operation id as the correlation identifier. `sequence` is monotonic per
+ * provider instance and SHOULD be used by consumers for deterministic replay.
+ */
+export interface MutationAuditEvent {
+  version: 1
+  sequence: number
+  correlationId: string
+  operationId: string
+  type: MutationType
+  status: MutationOperation['status']
+  updatedAt: string
+  occurredAt: string
+  snapshot: MutationOperation
+}
+
+const MUTATION_EVENT_VERSION = 1 as const
+
+const MUTATION_AUDIT_TYPES: ReadonlySet<string> = new Set([
+  'bond_create',
+  'bond_withdraw',
+  'trust_score_lookup',
+])
+
 export interface MutationRecoveryContextValue {
   // System status
   isInitialized: boolean
@@ -36,6 +62,10 @@ export interface MutationRecoveryContextValue {
   // Operations
   activeOperations: MutationOperation[]
   recentOperations: MutationOperation[]
+
+  // Audit/event records
+  auditEvents: MutationAuditEvent[]
+  getAuditEvents: () => MutationAuditEvent[]
 
   // Actions
   refreshOperations: () => void
@@ -73,6 +103,10 @@ export function MutationRecoveryProvider({
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const [activeOperations, setActiveOperations] = useState<MutationOperation[]>([])
   const [recentOperations, setRecentOperations] = useState<MutationOperation[]>([])
+  const [auditEvents, setAuditEvents] = useState<MutationAuditEvent[]>([])
+  const auditEventsRef = useRef<MutationAuditEvent[]>([])
+  const emittedAuditOperationIds = useRef<Set<string>>(new Set())
+  const auditEventSequence = useRef(0)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // System Initialization
@@ -136,6 +170,48 @@ export function MutationRecoveryProvider({
     try {
       const allOperations = getMutationOperations()
 
+      // Emit audit/event records only for newly observed committed bond and
+      // trust-score mutations. This intentionally excludes rejected, stale,
+      // repeated, and failed operations so no partial/uncommitted state is
+      // recorded as authoritative.
+      const committedMutations = allOperations
+        .filter(
+          (op) =>
+            MUTATION_AUDIT_TYPES.has(op.type) &&
+            op.status === 'completed' &&
+            !emittedAuditOperationIds.current.has(op.id)
+        )
+        .sort(
+          (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+        )
+
+      if (committedMutations.length > 0) {
+        const emittedEvents: MutationAuditEvent[] = committedMutations.map((op) => {
+          auditEventSequence.current += 1
+          emittedAuditOperationIds.current.add(op.id)
+
+          return {
+            version: MUTATION_EVENT_VERSION,
+            sequence: auditEventSequence.current,
+            correlationId: op.id,
+            operationId: op.id,
+            type: op.type,
+            status: op.status,
+            updatedAt: op.updatedAt,
+            occurredAt: new Date().toISOString(),
+            snapshot: { ...op },
+          }
+        })
+
+        auditEventsRef.current = [...auditEventsRef.current, ...emittedEvents]
+        setAuditEvents(auditEventsRef.current)
+
+        logInfo('mutation_recovery_provider_audit_events_emitted', {
+          eventCount: emittedEvents.length,
+          correlationIds: emittedEvents.map((event) => event.correlationId),
+        })
+      }
+
       // Filter active operations (pending, submitting)
       const active = allOperations.filter(
         (op) => op.status === 'pending' || op.status === 'submitting'
@@ -164,6 +240,10 @@ export function MutationRecoveryProvider({
 
   const getOperationsByType = useCallback((type: MutationType): MutationOperation[] => {
     return getMutationOperations(type)
+  }, [])
+
+  const getAuditEvents = useCallback((): MutationAuditEvent[] => {
+    return auditEventsRef.current
   }, [])
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -276,7 +356,9 @@ export function MutationRecoveryProvider({
     systemStatus,
     activeOperations,
     recentOperations,
+    auditEvents,
     refreshOperations,
+    getAuditEvents,
     getOperationsByType,
     reinitialize,
     performHealthCheck,

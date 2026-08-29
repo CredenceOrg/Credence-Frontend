@@ -179,6 +179,11 @@
   margin-bottom: var(--credence-space-1);
 }
 
+.activity-row__amount {
+  color: var(--credence-text-primary);
+  font-weight: var(--credence-font-weight-semibold);
+}
+
 .activity-row__meta {
   font-size: var(--credence-font-size-xs);
   line-height: var(--credence-line-height-base);

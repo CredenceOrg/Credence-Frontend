@@ -6,11 +6,6 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   /** Stable key for retrying one state-changing operation safely. */
   idempotencyKey?: string
   /**
-   * Optional caller-supplied correlation identifier for end-to-end tracing.
-   * When omitted, a fresh one is generated per request.
-   */
-  correlationId?: string
-  /**
    * When true, bypasses the client-side rate limiter for this call only.
    * Defaults to false. Intended for tests; production callers should never
    * need this.
@@ -24,8 +19,8 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
    *
    * Pass the epoch obtained from {@link getIdentityEpoch} at the moment the
    * caller reads the identity it intends to act on. The client advances the
-   * epoch automatically on every {@link advanceIdentityEpoch} call
-   * (disconnect, reconnect, expiry).
+   * epoch automatically on every {@link setIdentityEpoch} call (disconnect,
+   * reconnect, expiry).
    */
   identityEpoch?: number
 }
@@ -63,8 +58,6 @@ export class ApiRateLimitError extends ApiError {
 /**
  * Thrown by `apiFetch` when a session identity conflict is detected.
  *
- * ## When is this thrown?
- *
  * A conflict is detected in two places:
  *
  * 1. **Pre-flight** — the caller supplied an `identityEpoch` option and the
@@ -76,18 +69,10 @@ export class ApiRateLimitError extends ApiError {
  *    response is discarded and the promise rejects with this error. No partial
  *    state is committed.
  *
- * ## Extends ApiError
- *
- * `status` is `409` so that existing `err instanceof ApiError` handlers keep
- * working. Code that wants specific conflict handling can narrow on this class
- * or on `err.status === 409`.
- *
- * ## Retry contract
- *
- * **Do not retry automatically.** A conflict means the identity changed; the
- * correct recovery path is to check the current session state and, if the user
- * is still authenticated, re-acquire a fresh epoch via {@link getIdentityEpoch}
- * before re-issuing the request.
+ * `status` is `409` so existing `err instanceof ApiError` handlers keep
+ * working; code that wants specific conflict handling can narrow on this class
+ * or on `err.status === 409`. Do **not** retry automatically — re-acquire a
+ * fresh epoch via {@link getIdentityEpoch} and re-issue.
  */
 export class ApiSessionConflictError extends ApiError {
   /** Epoch value at the time the request was created (now stale). */
@@ -108,89 +93,29 @@ export class ApiSessionConflictError extends ApiError {
   }
 }
 
+/**
+ * Thrown by `apiFetch` when a request body exceeds `MAX_REQUEST_BODY_BYTES`.
+ * Enforced locally (before any expense) so oversized or adversarial payloads
+ * are never serialized over the wire.
+ */
+export class ApiBodyTooLargeError extends ApiError {
+  readonly limitBytes: number
+  readonly bodySizeBytes: number
+
+  constructor(limitBytes: number, payload?: { bodySize: number }) {
+    super(413, `Request body too large (limit ${limitBytes} bytes).`, payload ?? { limitBytes })
+    this.name = 'ApiBodyTooLargeError'
+    this.limitBytes = limitBytes
+    this.bodySizeBytes = payload?.bodySize ?? 0
+  }
+}
+
+/** Maximum allowed JSON body size in bytes (1 MiB). */
+export const MAX_REQUEST_BODY_BYTES = 1_048_576
+
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
 
 export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
-
-// ---------------------------------------------------------------------------
-// Identity epoch
-// ---------------------------------------------------------------------------
-//
-// The identity epoch is a monotonically increasing integer that is advanced
-// every time the session identity changes: wallet connect, disconnect, expiry,
-// or any other event that invalidates previously-held references to the active
-// account.
-//
-// ## Invariant
-//
-// A request is only allowed to commit its result if the epoch has not changed
-// between (a) the moment the caller read the identity it acts on and (b) the
-// moment the response is received. Any mismatch causes apiFetch to reject with
-// ApiSessionConflictError and discard the response, leaving no partial state.
-//
-// ## Usage
-//
-// 1. Read the current epoch with `getIdentityEpoch()` immediately after
-//    confirming the wallet is connected.
-// 2. Pass the epoch in `apiFetch(..., { identityEpoch: epoch })`.
-// 3. When the session ends (disconnect / expiry / reconnect), call
-//    `advanceIdentityEpoch()` so in-flight requests from the previous session
-//    are invalidated.
-//
-// ## Serialization / conflict semantics
-//
-// Concurrent requests that carry the same epoch are each checked individually
-// on arrival. There is no global lock: two concurrent requests for the same
-// epoch are both allowed to commit if the epoch has not advanced by the time
-// each one resolves. This is intentional — read-only queries (GET) are safe
-// to run concurrently. For write operations callers must supply their own
-// optimistic-update + rollback logic (useApiMutation) and tolerate
-// ApiSessionConflictError as a signal to abort.
-//
-// ## Thread / microtask safety
-//
-// JavaScript is single-threaded. The epoch read inside apiFetch and the
-// subsequent fetch() call are not interleaved with other synchronous code.
-// Race conditions can only occur across await boundaries, which is exactly
-// what the post-flight epoch re-check guards against.
-
-let _identityEpoch = 0
-
-/**
- * Returns the current identity epoch.
- *
- * Capture this value **after** confirming the wallet is connected and pass it
- * to `apiFetch` via the `identityEpoch` option to enable conflict detection.
- */
-export function getIdentityEpoch(): number {
-  return _identityEpoch
-}
-
-/**
- * Advances the identity epoch by one and returns the new value.
- *
- * Call this on every session boundary: wallet disconnect, session expiry,
- * wallet reconnect (new account), or any event that changes the active
- * identity. In-flight requests that carry the previous epoch will reject with
- * {@link ApiSessionConflictError} when their response arrives.
- *
- * Safe to call multiple times in quick succession (e.g. disconnect + navigate
- * + reconnect): each call bumps the counter and any request carrying a now-
- * stale epoch will be rejected.
- */
-export function advanceIdentityEpoch(): number {
-  return ++_identityEpoch
-}
-
-/**
- * Resets the identity epoch to zero.
- *
- * **Test-only.** Do not call from production code. Resets the module-level
- * counter so epoch-sensitive tests start from a known baseline.
- */
-export function resetIdentityEpoch(): void {
-  _identityEpoch = 0
-}
 
 type ReplayEntry = {
   fingerprint: string
@@ -198,6 +123,42 @@ type ReplayEntry = {
 }
 
 const replayEntries = new Map<string, ReplayEntry>()
+
+// ── Identity epoch ──────────────────────────────────────────────────────────
+//
+// A monotonic counter advanced on every session boundary (connect, disconnect,
+// expiry, reconnect, account change). Callers capture the current epoch with
+// `getIdentityEpoch()` and pass it to `apiFetch` via the `identityEpoch`
+// option; the client checks it both before dispatching and when the response
+// arrives, rejecting with `ApiSessionConflictError` and discarding stale
+// results so no partial state leaks across sessions.
+let _identityEpoch = 0
+
+/** Returns the current identity epoch counter. */
+export function getIdentityEpoch(): number {
+  return _identityEpoch
+}
+
+/** Advances the identity epoch by 1 and returns the new value. */
+export function advanceIdentityEpoch(): number {
+  _identityEpoch += 1
+  return _identityEpoch
+}
+
+/**
+ * Advances the identity epoch, or sets it to an explicit value when one is
+ * given. Session-boundary callers (disconnect / expiry / reconnect / account
+ * change) use this to record the newly active identity epoch.
+ */
+export function setIdentityEpoch(epoch?: number): number {
+  _identityEpoch = epoch ?? _identityEpoch + 1
+  return _identityEpoch
+}
+
+/** Resets the identity epoch to 0. Test-only. */
+export function resetIdentityEpoch(): void {
+  _identityEpoch = 0
+}
 
 /**
  * Process-wide default rate limiter consulted by `apiFetch`.
@@ -331,12 +292,9 @@ function requestFingerprint(
 ): string {
   const comparableHeaders: string[] = []
   headers.forEach((value, name) => {
-    // Transport/tracing headers are excluded: `Idempotency-Key` is the very
-    // key being replayed and `X-Correlation-ID` is (re)generated per dispatch,
-    // so neither is part of the semantic request identity. Including them
-    // would make identical keyed operations look like different operations.
-    if (name !== 'idempotency-key' && name !== 'x-correlation-id') {
-      comparableHeaders.push(`${name}:${value}`)
+    const lowerName = name.toLowerCase()
+    if (lowerName !== 'idempotency-key' && lowerName !== 'x-correlation-id') {
+      comparableHeaders.push(`${lowerName}:${value}`)
     }
   })
 
@@ -358,37 +316,23 @@ function replayConflict(key: string): ApiError {
   )
 }
 
-interface ApiFetchDispatchOptions {
-  correlationId: string
-  path: string
-  method: string
-  skipRateLimit?: boolean
-  identityEpoch?: number
-}
-
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const {
-    body,
-    headers,
-    correlationId: clientCorrelationId,
-    idempotencyKey,
-    skipRateLimit,
-    identityEpoch,
-    ...init
-  } = options
-  const correlationId = clientCorrelationId || generateCorrelationId('req')
+  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, ...init } = options
   const hasJsonBody = isJsonBody(body)
-  const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
-  const method = (init.method || 'GET').toUpperCase()
-  const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
 
-  const dispatch: ApiFetchDispatchOptions = {
-    correlationId,
-    path,
-    method,
-    skipRateLimit,
-    identityEpoch,
+  // Validate input size before expensive operations. Serializing an oversized
+  // body is wasted work and could exhaust memory or downstream resources.
+  if (hasJsonBody) {
+    const serialized = JSON.stringify(body)
+    if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
+      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
+    }
   }
+
+  const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
+  const correlationId = generateCorrelationId('api-fetch')
+  const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
+  const method = (init.method || 'GET').toUpperCase()
 
   if (idempotencyKey !== undefined) {
     const normalizedKey = idempotencyKey.trim()
@@ -400,7 +344,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
     const existing = replayEntries.get(normalizedKey)
     const url = buildUrl(path)
-    const fingerprint = requestFingerprint(url, init, serializedBody, requestHeaders)
+    const fingerprint = requestFingerprint(url, { ...init, method }, serializedBody, requestHeaders)
 
     if (existing) {
       if (existing.fingerprint !== fingerprint) {
@@ -410,13 +354,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
 
     requestHeaders.set('Idempotency-Key', normalizedKey)
-    const requestPromise = apiFetchWithoutReplay<T>(
-      url,
-      init,
-      requestHeaders,
-      serializedBody,
-      dispatch
-    )
+    const requestPromise = apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody, {
+      correlationId,
+      path,
+      method,
+      skipRateLimit,
+      identityEpoch,
+    })
     replayEntries.set(normalizedKey, { fingerprint, promise: requestPromise })
     requestPromise.catch(() => {
       if (replayEntries.get(normalizedKey)?.promise === requestPromise) {
@@ -426,7 +370,21 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     return requestPromise
   }
 
-  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody, dispatch)
+  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody, {
+    correlationId,
+    path,
+    method,
+    skipRateLimit,
+    identityEpoch,
+  })
+}
+
+interface ApiFetchContext {
+  correlationId: string
+  path: string
+  method: string
+  skipRateLimit?: boolean
+  identityEpoch?: number
 }
 
 async function apiFetchWithoutReplay<T>(
@@ -434,19 +392,12 @@ async function apiFetchWithoutReplay<T>(
   init: RequestInit,
   headers: Headers,
   serializedBody: BodyInit | undefined,
-  { correlationId, path, method, skipRateLimit, identityEpoch }: ApiFetchDispatchOptions
+  ctx: ApiFetchContext
 ): Promise<T> {
-  emitWalletSessionEvent('action_attempted', {
-    address: null,
-    network: null,
-    correlationId,
-    metadata: { path, method },
-  })
-
   // Rate-limit gate: cheap O(k) sliding-window check before paying the cost
   // of a fetch + DNS + TLS round-trip. When the bucket is empty we surface a
   // typed ApiRateLimitError instead of letting a runaway loop slam prod.
-  if (!skipRateLimit) {
+  if (!ctx.skipRateLimit) {
     const decision = defaultApiRateLimiter.acquire()
     if (!decision.allowed) {
       throw new ApiRateLimitError(
@@ -463,11 +414,11 @@ async function apiFetchWithoutReplay<T>(
   // level epoch before issuing the request. An epoch mismatch here means the
   // session already changed (disconnect / reconnect / expiry) before this
   // request even hit the network — reject immediately without dispatching.
-  if (identityEpoch !== undefined && identityEpoch !== _identityEpoch) {
+  if (ctx.identityEpoch !== undefined && ctx.identityEpoch !== _identityEpoch) {
     throw new ApiSessionConflictError(
-      identityEpoch,
+      ctx.identityEpoch,
       _identityEpoch,
-      `Session identity changed before request was dispatched (epoch ${identityEpoch} → ${_identityEpoch}).`
+      `Session identity changed before request was dispatched (epoch ${ctx.identityEpoch} → ${_identityEpoch}).`
     )
   }
 
@@ -483,8 +434,8 @@ async function apiFetchWithoutReplay<T>(
       emitWalletSessionEvent('action_failed', {
         address: null,
         network: null,
-        correlationId,
-        metadata: { path, method, aborted: true },
+        correlationId: ctx.correlationId,
+        metadata: { path: ctx.path, method: ctx.method, aborted: true },
       })
       throw error
     }
@@ -492,8 +443,8 @@ async function apiFetchWithoutReplay<T>(
     emitWalletSessionEvent('action_failed', {
       address: null,
       network: null,
-      correlationId,
-      metadata: { path, method, status: 0, message },
+      correlationId: ctx.correlationId,
+      metadata: { path: ctx.path, method: ctx.method, status: 0, message },
     })
     throw new ApiError(0, message, error)
   }
@@ -504,11 +455,11 @@ async function apiFetchWithoutReplay<T>(
   // advanced since the pre-flight check. If it has, the response belongs to a
   // now-stale session and must be discarded. Reject with ApiSessionConflictError
   // so the caller can decide whether to re-authenticate and retry.
-  if (identityEpoch !== undefined && identityEpoch !== _identityEpoch) {
+  if (ctx.identityEpoch !== undefined && ctx.identityEpoch !== _identityEpoch) {
     throw new ApiSessionConflictError(
-      identityEpoch,
+      ctx.identityEpoch,
       _identityEpoch,
-      `Session identity changed while request was in-flight (epoch ${identityEpoch} → ${_identityEpoch}). Response discarded.`
+      `Session identity changed while request was in-flight (epoch ${ctx.identityEpoch} → ${_identityEpoch}). Response discarded.`
     )
   }
 
@@ -519,8 +470,8 @@ async function apiFetchWithoutReplay<T>(
     emitWalletSessionEvent('action_failed', {
       address: null,
       network: null,
-      correlationId,
-      metadata: { path, method, status: response.status, message },
+      correlationId: ctx.correlationId,
+      metadata: { path: ctx.path, method: ctx.method, status: response.status, message },
     })
     throw new ApiError(response.status, message, payload)
   }
@@ -528,8 +479,8 @@ async function apiFetchWithoutReplay<T>(
   emitWalletSessionEvent('action_succeeded', {
     address: null,
     network: null,
-    correlationId,
-    metadata: { path, method, status: response.status },
+    correlationId: ctx.correlationId,
+    metadata: { path: ctx.path, method: ctx.method, status: response.status },
   })
 
   return payload as T

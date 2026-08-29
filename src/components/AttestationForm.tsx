@@ -9,6 +9,30 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useToast } from './ToastProvider'
 import { ATTESTATION_EVENTS, type AttestationPayload } from '../events'
 
+const ATTESTATION_CONFIRMED_EVENT = 'credence:attestation:confirmed'
+const ATTESTATION_EVENT_VERSION = 1
+let attestationEventSequence = 0
+
+function createCorrelationId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
+function emitAttestationConfirmed(payload: AttestationPayload, correlationId: string): void {
+  attestationEventSequence += 1
+  window.dispatchEvent(
+    new CustomEvent(ATTESTATION_CONFIRMED_EVENT, {
+      detail: {
+        version: ATTESTATION_EVENT_VERSION,
+        type: ATTESTATION_CONFIRMED_EVENT,
+        sequence: attestationEventSequence,
+        correlationId,
+        occurredAt: new Date().toISOString(),
+        payload,
+      },
+    }),
+  )
+}
+
 /**
  * Props for the AttestationForm component.
  */
@@ -16,8 +40,9 @@ export interface AttestationFormProps {
   /**
    * Callback triggered when an attestation is successfully confirmed and submitted.
    * Receives the finalized attestation data.
+   * May return the authoritative finalized payload for event emission.
    */
-  onSubmitSuccess?: (payload: AttestationPayload) => void
+  onSubmitSuccess?: (payload: AttestationPayload) => void | Promise<AttestationPayload | void>
   /**
    * Disables form fields and the submit action during submission or external loading.
    */
@@ -44,10 +69,14 @@ export default function AttestationForm({
   const [evidence, setEvidence] = useState('')
   const [errors, setErrors] = useState<{ subject?: string; evidence?: string }>({})
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submittingRef = useRef(false)
+  const correlationIdRef = useRef<string | null>(null)
   const submitButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleSubjectChange = (val: string) => {
     setSubject(val)
+    correlationIdRef.current = null
     if (errors.subject) {
       setErrors((prev) => ({ ...prev, subject: undefined }))
     }
@@ -56,13 +85,22 @@ export default function AttestationForm({
   const handleEvidenceChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value
     setEvidence(val)
+    correlationIdRef.current = null
     if (errors.evidence) {
       setErrors((prev) => ({ ...prev, evidence: undefined }))
     }
   }
 
+  const handleTypeChange = (val: string) => {
+    setType(val)
+    correlationIdRef.current = null
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (submittingRef.current) {
+      return
+    }
 
     const newErrors: { subject?: string; evidence?: string } = {}
 
@@ -87,17 +125,39 @@ export default function AttestationForm({
     setConfirmOpen(true)
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (submittingRef.current) {
+      return
+    }
+
+    submittingRef.current = true
+    setIsSubmitting(true)
     setConfirmOpen(false)
-    addToast('success', 'Attestation submitted successfully.')
-    onSubmitSuccess?.({ subject, type, evidence })
-    setSubject('')
-    setEvidence('')
-    setType(ATTESTATION_EVENTS.TYPES.IDENTITY)
-    setErrors({})
+
+    const correlationId = correlationIdRef.current ?? createCorrelationId()
+    correlationIdRef.current = correlationId
+
+    try {
+      const payload: AttestationPayload = { subject, type, evidence }
+
+      const committedPayload = (await onSubmitSuccess?.(payload)) ?? payload
+      emitAttestationConfirmed(committedPayload, correlationId)
+      addToast('success', 'Attestation submitted successfully.')
+      setSubject('')
+      setEvidence('')
+      setType(ATTESTATION_EVENTS.TYPES.IDENTITY)
+      setErrors({})
+      correlationIdRef.current = null
+    } catch {
+      addToast('error', 'Attestation submission failed. Your changes have been kept for retry.')
+    } finally {
+      submittingRef.current = false
+      setIsSubmitting(false)
+    }
   }
 
   const handleCancel = () => {
+    correlationIdRef.current = null
     setConfirmOpen(false)
   }
 
@@ -121,7 +181,7 @@ export default function AttestationForm({
           value={subject}
           onChange={handleSubjectChange}
           onValidationChange={setIsSubjectValid}
-          disabled={disabled}
+          disabled={disabled || isSubmitting}
           error={errors.subject}
         />
 
@@ -129,7 +189,8 @@ export default function AttestationForm({
           <Select
             id="type-select"
             value={type}
-            onChange={setType}
+            onChange={handleTypeChange}
+            disabled={disabled || isSubmitting}
             options={[
               { value: ATTESTATION_EVENTS.TYPES.IDENTITY, label: 'Identity Verification' },
               { value: ATTESTATION_EVENTS.TYPES.PEER_VOUCH, label: 'Peer Vouch' },
@@ -149,7 +210,7 @@ export default function AttestationForm({
             <Textarea
               value={evidence}
               onChange={handleEvidenceChange}
-              disabled={disabled}
+              disabled={disabled || isSubmitting}
               placeholder="Provide proof or verification details..."
               rows={4}
             />
@@ -167,7 +228,13 @@ export default function AttestationForm({
           </div>
         </div>
 
-        <Button ref={submitButtonRef} type="submit" variant="primary" disabled={disabled} fullWidth>
+        <Button
+          ref={submitButtonRef}
+          type="submit"
+          variant="primary"
+          disabled={disabled || isSubmitting}
+          fullWidth
+        >
           Submit Attestation
         </Button>
       </form>

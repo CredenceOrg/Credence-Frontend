@@ -25,6 +25,24 @@ import { logInfo, logWarn } from '../lib/log'
 import './MutationTracker.css'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Event Versioning
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const MUTATION_EVENT_VERSION = 1 as const
+
+export interface MutationTrackerEvent {
+  version: typeof MUTATION_EVENT_VERSION
+  operationId: MutationOperationId
+  operationType: MutationOperation['type']
+  status: MutationOperation['status']
+  previousStatus: MutationOperation['status'] | null
+  sequence: number
+  correlationId: string
+  recordedAt: string
+  operation: MutationOperation
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Component Types
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -42,6 +60,8 @@ export interface MutationTrackerProps {
   onError?: (operation: MutationOperation) => void
   /** Callback when operation is cancelled */
   onCancel?: (operation: MutationOperation) => void
+  /** Callback for every committed status transition */
+  onEvent?: (event: MutationTrackerEvent) => void
   /** Custom class name */
   className?: string
 }
@@ -68,12 +88,14 @@ export default function MutationTracker({
   onSuccess,
   onError,
   onCancel,
+  onEvent,
   className = '',
 }: MutationTrackerProps) {
   const [operation, setOperation] = useState<MutationOperation | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRetrying, setIsRetrying] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
+  const lastStatusRef = useRef<MutationOperation['status'] | null>(null)
 
   // ═══════════════════════════════════════════════════════════════════════════
   // State Management
@@ -84,12 +106,16 @@ export default function MutationTracker({
     setOperation(currentOperation)
     setIsLoading(false)
 
-    // Fire callbacks for status changes
+    // Fire callbacks/events only for observed committed transitions.
     if (currentOperation) {
-      const prevStatus = operation?.status
+      const previousStatus = lastStatusRef.current
       const newStatus = currentOperation.status
 
-      if (prevStatus !== newStatus) {
+      if (
+        previousStatus !== null &&
+        previousStatus !== newStatus &&
+        (newStatus === 'success' || newStatus === 'error' || newStatus === 'cancelled')
+      ) {
         switch (newStatus) {
           case 'success':
             onSuccess?.(currentOperation)
@@ -101,9 +127,25 @@ export default function MutationTracker({
             onCancel?.(currentOperation)
             break
         }
+
+        onEvent?.({
+          version: MUTATION_EVENT_VERSION,
+          operationId,
+          operationType: currentOperation.type,
+          status: newStatus,
+          previousStatus,
+          sequence: currentOperation.attempts.length,
+          correlationId: operationId,
+          recordedAt: new Date().toISOString(),
+          operation: currentOperation,
+        })
       }
+
+      lastStatusRef.current = newStatus
+    } else {
+      lastStatusRef.current = null
     }
-  }, [operationId, operation?.status, onSuccess, onError, onCancel])
+  }, [operationId, onSuccess, onError, onCancel, onEvent])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Effects

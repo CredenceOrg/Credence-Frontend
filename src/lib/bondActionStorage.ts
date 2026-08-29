@@ -155,7 +155,14 @@ function migrateRecordToMutationSystem(
           status: mapLegacyStatusToMutation(record.status),
           error: record.lastError
             ? {
-                type: record.lastError.type as 'network' | 'backend' | 'validation' | 'wallet_rejected' | 'timeout' | 'generic',
+                type: record.lastError.type as
+                  | 'network'
+                  | 'backend'
+                  | 'validation'
+                  | 'wallet_rejected'
+                  | 'timeout'
+                  | 'generic'
+                  | 'rate_limit',
                 message: record.lastError.message,
                 timestamp: record.lastError.at,
                 retryable:
@@ -245,7 +252,14 @@ export function updateBondAction(
                 status: mapLegacyStatusToMutation(updated.status),
                 error: updated.lastError
                   ? {
-                      type: updated.lastError.type as 'network' | 'backend' | 'validation' | 'wallet_rejected' | 'timeout' | 'generic',
+                      type: updated.lastError.type as
+                        | 'network'
+                        | 'backend'
+                        | 'validation'
+                        | 'wallet_rejected'
+                        | 'timeout'
+                        | 'generic'
+                        | 'rate_limit',
                       message: updated.lastError.message,
                       timestamp: updated.lastError.at,
                       retryable:

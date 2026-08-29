@@ -33,9 +33,16 @@ export type MutationType = 'bond_create' | 'bond_withdraw' | 'trust_score_lookup
 export type MutationOperationId = string // UUID or deterministic hash
 
 export interface MutationError {
-  type: 'network' | 'backend' | 'validation' | 'wallet_rejected' | 'timeout' | 'generic'
+  type:
+    'network' | 'backend' | 'validation' | 'wallet_rejected' | 'timeout' | 'generic' | 'rate_limit'
   message: string
   code?: string | number
+  /**
+   * Present when `type === 'rate_limit'`: the number of milliseconds before a
+   * retry of this exact mutation is likely to succeed, so the UI can show an
+   * actionable "retry after Ns" message instead of letting the user hammer.
+   */
+  retryAfterMs?: number
   timestamp: string
   retryable: boolean
 }
@@ -561,7 +568,9 @@ export function cleanupCompletedOperations(): number {
 export function resetMutationStorage(): void {
   const removeResult = safeRemoveItem(MUTATION_STORAGE_V2_KEY)
   if (!removeResult.ok) {
-    logWarn('mutation_storage_reset_failed', { error: removeResult.error?.message || 'Unknown error' })
+    logWarn('mutation_storage_reset_failed', {
+      error: removeResult.error?.message || 'Unknown error',
+    })
   }
 
   // Also clean up legacy keys

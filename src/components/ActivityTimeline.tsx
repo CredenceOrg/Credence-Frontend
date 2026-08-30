@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import './ActivityTimeline.css'
 import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY, ACTIVITY_ITEMS } from '../data/activity'
 import { AttestationStatus, toneToStatus } from '../events'
@@ -7,6 +7,8 @@ import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
 import type { BadgeVariant } from './Badge'
+import { AttestationStatus, toneToStatus } from '../events'
+import { formatAmount } from '../lib/format'
 
 /**
  * Maps ActivityTimeline tone values to Badge variants.
@@ -100,6 +102,20 @@ export default function ActivityTimeline({
     },
     [expandedId, onSelect]
   )
+
+  // Atomic state recovery: Ensure that if items change (e.g. filtered, replaced, or rolled back on error),
+  // any expandedId that is no longer present in items is automatically cleared so no orphaned panel or
+  // unauthorized partial detail remains open.
+  useEffect(() => {
+    if (expandedId !== null && !items.some((item) => item.id === expandedId)) {
+      setExpandedId(null)
+    }
+  }, [items, expandedId])
+
+  // Reset expansion state when nonce changes to guarantee deterministic replay and idempotency protection.
+  useEffect(() => {
+    setExpandedId(null)
+  }, [nonce])
 
   return (
     <section

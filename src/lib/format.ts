@@ -33,6 +33,31 @@ export function formatUsdc(amount: number): string {
 }
 
 /**
+ * Formats a numeric USDC amount for display in activity timelines and transaction surfaces.
+ *
+ * Rejects NaN, Infinity, negative values, and undefined/null before formatting, returning '—'.
+ * Clamps values exceeding MAX_SAFE_INTEGER to prevent floating-point precision loss.
+ *
+ * @example
+ * formatAmount(1500)       // → "1,500 USDC"
+ * formatAmount(0)          // → "0 USDC"
+ * formatAmount(1234.567)   // → "1,234.57 USDC"
+ * formatAmount(-5)         // → "—"
+ * formatAmount(NaN)        // → "—"
+ */
+export function formatAmount(amount?: number | null): string {
+  if (amount == null || !Number.isFinite(amount) || amount < 0) {
+    return '—'
+  }
+  const safeAmount = Math.min(amount, Number.MAX_SAFE_INTEGER)
+  const formatted = safeAmount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
+  return `${formatted} USDC`
+}
+
+/**
  * Normalizes user-entered USDC string into a consistent representation.
  *
  * Converts user input (with or without commas) to a fixed 2-decimal string.

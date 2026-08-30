@@ -13,6 +13,25 @@
  * (WalletContext, session expiry handlers) need them at the component layer.
  * `resetIdentityEpoch` is test-only and is intentionally omitted here.
  */
+export { apiFetch, ApiError, ApiRateLimitError, ApiAmountError } from './client'
+export type { ApiFetchOptions, ApiAmountFields, ApiAmountErrorCode } from './client'
+
+export {
+  AmountError,
+  parseAmount,
+  tryParseAmount,
+  compareAmounts,
+  resolveAmountRules,
+  MAX_INT64,
+  USDC_SCALE,
+  MAX_SCALE,
+} from './amount'
+export type {
+  AmountRules,
+  ResolvedAmountRules,
+  AmountErrorCode,
+  TryParseAmountResult,
+} from './amount'
 export {
   apiFetch,
   ApiError,

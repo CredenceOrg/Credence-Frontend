@@ -85,6 +85,8 @@ npm run generate:api   # regenerate src/api/generated.ts after spec changes
 
 Use `apiFetch<T>()` for JSON requests so pages and hooks get consistent `/api` prefixing, typed `ApiError` failures, and `AbortSignal` cancellation support without coupling the client to React. Import named types from `src/api/types.ts`; for spec-verified operation types use `ApiResponse<operations['myOp']>`. See [docs/API_TYPES.md](./docs/API_TYPES.md) for the full codegen workflow.
 
+Requests that carry USDC amounts should declare them with the opt-in `amountFields` option so they are validated and serialized as exact, canonical decimal strings (no float drift, rounding, sign, scale, or int64-overflow surprises) before the request leaves the client. See [docs/AMOUNT_PRECISION.md](./docs/AMOUNT_PRECISION.md) for the design and invariants.
+
 For mutation flows that need optimistic UI updates, the shared hook `useApiMutation()` in [src/hooks/useApiMutation.ts](./src/hooks/useApiMutation.ts) provides `onMutate`, `setData`, and `rollback` helpers so local state can be updated immediately and safely reverted on failure.
 
 The link variable intent and legal handoff notes are also tracked in `docs/footer-link-manifest.md`.

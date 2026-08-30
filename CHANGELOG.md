@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Exact decimal amounts at the API boundary** (`src/api/amount.ts`, `src/api/client.ts`): new `BigInt`-only decimal engine plus an opt-in `amountFields` option on `apiFetch`. Declared amount fields are validated (plain unsigned decimal grammar, scale, sign, int64 scaled-integer overflow, optional `min`/`max`) and serialized as canonical decimal strings (`1000.5` → `'1000.50'`) matching the `Bond.amount` contract in `openapi.yaml`. Invalid amounts reject with a typed `ApiAmountError` (synthetic `status: 400`, structured `field`/`code`) **before** the rate limiter or the network is touched, and the caller's body object is never mutated. Excess precision is rejected (`INVALID_SCALE`), never rounded. Calls that omit `amountFields` keep byte-identical previous behavior. Design, invariants, compatibility, and rollback notes: [docs/AMOUNT_PRECISION.md](docs/AMOUNT_PRECISION.md); tests: `src/api/amount.test.ts` (unit + seeded property tests against an independent oracle) and `src/api/client.test.ts` (integration boundary).
+- **`parseAmount` / `tryParseAmount` / `compareAmounts` / `resolveAmountRules`** exported from `src/api`: exact-decimal helpers UI code can reuse for live validation and comparisons without duplicating the rules. Also fixes a latent `isolatedModules` type error in the `src/api/index.ts` barrel (`ApiFetchOptions` re-exported as a value).
+
 ### Refactored
 
 - **`useLocalStorage<T>` hook** (`src/hooks/useLocalStorage.ts`): generic hook that encapsulates the read/parse/fallback pattern for localStorage. SSR-safe (`window` guard), corrupt-JSON-tolerant, and treats falsy-but-valid stored values (`false`, `0`, `""`) correctly. Returns a stable `[value, setValue]` tuple where `setValue` writes through to localStorage synchronously. Pure helpers `resolveStoredValue` and `writeToStorage` are also exported for testing.

@@ -1,6 +1,8 @@
 import { ApiRateLimiter, DEFAULT_API_RATE_LIMIT, readApiRateLimitOverrides } from './rateLimit'
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
 
+import { AmountError, parseAmount, type AmountErrorCode, type AmountRules } from './amount'
+
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | unknown[] | null
   /** Stable key for retrying one state-changing operation safely. */
@@ -12,6 +14,34 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
    */
   skipRateLimit?: boolean
   /**
+   * Declares decimal amount fields inside a JSON object `body` so they are
+   * validated and serialized exactly at this boundary.
+   *
+   * Opt-in and backwards compatible: when omitted (or empty), the body is
+   * serialized exactly as before. When present, each declared field must
+   * exist on the body and hold a plain unsigned decimal (string, finite
+   * non-negative number, or non-negative bigint). Valid values are replaced
+   * with their canonical decimal-string form (e.g. `1000.5` → `'1000.50'`)
+   * matching the `Bond.amount` contract in `openapi.yaml`; invalid values
+   * reject with {@link ApiAmountError} **before** the rate limiter is
+   * consulted or the network is touched, and the caller's body object is
+   * never mutated.
+   *
+   * Accepts either:
+   * - an array of top-level field names using the default USDC rules
+   *   (scale 2, min `'0'`, max = the int64 scaled-integer bound), or
+   * - a map of field name to {@link AmountRules} (or `true` for defaults).
+   *
+   * @example
+   * ```ts
+   * await apiFetch('/bonds', {
+   *   method: 'POST',
+   *   body: { borrower: address, amount: '1000.5' },
+   *   amountFields: { amount: { min: '1.00' } },
+   * })
+   * ```
+   */
+  amountFields?: ApiAmountFields
    * When provided, the request is only dispatched if the active identity
    * epoch matches this value at call time **and** when the response arrives.
    * A mismatch at either point causes the promise to reject with
@@ -24,6 +54,22 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
    */
   identityEpoch?: number
 }
+
+/**
+ * Declaration of decimal amount fields for a request body.
+ *
+ * - `string[]`: field names validated with the default USDC rules.
+ * - `Record<string, AmountRules | true>`: per-field rules (`true` = defaults).
+ */
+export type ApiAmountFields = string[] | Record<string, AmountRules | true>
+
+/**
+ * Rejection codes for {@link ApiAmountError}. Mirrors
+ * {@link AmountErrorCode} plus the boundary-only codes `INVALID_BODY`
+ * (`amountFields` declared but the body is not a JSON object) and `MISSING`
+ * (a declared field is absent from the body).
+ */
+export type ApiAmountErrorCode = AmountErrorCode | 'INVALID_BODY' | 'MISSING'
 
 export class ApiError extends Error {
   readonly status: number
@@ -56,6 +102,30 @@ export class ApiRateLimitError extends ApiError {
 }
 
 /**
+ * Thrown by `apiFetch` when a field declared in `amountFields` violates the
+ * exact-decimal amount rules (see `src/api/amount.ts`).
+ *
+ * Extends `ApiError` with a synthetic `status: 400` — mirroring how
+ * `ApiRateLimitError` surfaces client-side rejections as 429 — so existing
+ * handlers that only check `err instanceof ApiError` keep working. The
+ * request is rejected **locally**: no rate-limit budget is consumed and
+ * `fetch` is never called, so a rejected amount can never produce partial
+ * or unauthorized server-side state.
+ */
+export class ApiAmountError extends ApiError {
+  /** Body field the rejection applies to (`null` for body-level rejections). */
+  readonly field: string | null
+  /** Machine-readable rejection reason. */
+  readonly code: ApiAmountErrorCode
+
+  constructor(field: string | null, code: ApiAmountErrorCode, message: string) {
+    super(400, message, { field, code })
+    this.name = 'ApiAmountError'
+    this.field = field
+    this.code = code
+  }
+}
+
  * Thrown by `apiFetch` when a session identity conflict is detected.
  *
  * A conflict is detected in two places:
@@ -237,6 +307,81 @@ function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unkno
   )
 }
 
+/**
+ * Normalizes an {@link ApiAmountFields} spec into ordered `[field, rules]`
+ * pairs (`undefined` rules = defaults).
+ */
+function normalizeAmountFields(
+  amountFields: ApiAmountFields | undefined
+): Array<[string, AmountRules | undefined]> {
+  if (!amountFields) return []
+  if (Array.isArray(amountFields)) {
+    return amountFields.map((field): [string, AmountRules | undefined] => [field, undefined])
+  }
+  return Object.entries(amountFields).map(([field, rules]): [string, AmountRules | undefined] => [
+    field,
+    rules === true ? undefined : rules,
+  ])
+}
+
+/**
+ * Exact-amount gate for `apiFetch`.
+ *
+ * Returns the body to put on the wire: an untouched pass-through when no
+ * `amountFields` are declared (byte-for-byte backwards compatible), or a
+ * shallow copy with every declared amount field replaced by its canonical
+ * decimal string. The caller's body object is never mutated, so a rejected
+ * or failed request leaves no partial state behind.
+ *
+ * @throws {ApiAmountError} before any state change (rate-limit budget,
+ * network) when the body shape is wrong or a declared amount is invalid.
+ */
+function applyAmountFields(
+  body: ApiFetchOptions['body'],
+  amountFields: ApiAmountFields | undefined
+): ApiFetchOptions['body'] {
+  const fields = normalizeAmountFields(amountFields)
+  if (fields.length === 0) return body
+
+  if (!isJsonBody(body) || Array.isArray(body)) {
+    throw new ApiAmountError(
+      null,
+      'INVALID_BODY',
+      'amountFields requires a JSON object body (object bodies only; arrays and streaming bodies are not supported).'
+    )
+  }
+
+  const record = body as Record<string, unknown>
+  const wireBody: Record<string, unknown> = { ...record }
+
+  for (const [field, rules] of fields) {
+    const hasField = Object.prototype.hasOwnProperty.call(record, field)
+    const value = record[field]
+    if (!hasField || value === undefined) {
+      throw new ApiAmountError(
+        field,
+        'MISSING',
+        `Declared amount field "${field}" is missing or undefined.`
+      )
+    }
+    try {
+      wireBody[field] = parseAmount(value as string | number | bigint, rules)
+    } catch (error) {
+      if (error instanceof AmountError) {
+        throw new ApiAmountError(
+          field,
+          error.code,
+          `Invalid amount for field "${field}": ${error.message}`
+        )
+      }
+      throw error
+    }
+  }
+
+  return wireBody
+}
+
+function buildHeaders(headers: HeadersInit | undefined, hasJsonBody: boolean): Headers {
 function buildHeaders(
   headers: HeadersInit | undefined,
   hasJsonBody: boolean,
@@ -317,6 +462,14 @@ function replayConflict(key: string): ApiError {
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { body, headers, skipRateLimit, amountFields, ...init } = options
+
+  // Exact-amount gate: validate and canonicalize declared amount fields
+  // BEFORE any state change. An invalid amount must never consume
+  // rate-limit budget or reach the network, and must never mutate the
+  // caller's body object.
+  const wireBody = applyAmountFields(body, amountFields)
+  const hasJsonBody = isJsonBody(wireBody)
   const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, ...init } = options
   const hasJsonBody = isJsonBody(body)
 
@@ -426,6 +579,8 @@ async function apiFetchWithoutReplay<T>(
   try {
     response = await fetch(url, {
       ...init,
+      headers: buildHeaders(headers, hasJsonBody),
+      body: hasJsonBody ? JSON.stringify(wireBody) : wireBody,
       headers,
       body: serializedBody,
     })

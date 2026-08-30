@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
 import {
+  ApiAmountError,
   ApiBodyTooLargeError,
   ApiError,
   ApiRateLimitError,
@@ -8,6 +9,7 @@ import {
   apiRateLimiterSnapshot,
   defaultApiRateLimiter,
   resetApiRateLimiter,
+  type ApiFetchOptions,
 } from './client'
 import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
 
@@ -459,5 +461,313 @@ describe('apiFetch rate limiting (defence-in-depth)', () => {
       windowMs: TEST_WINDOW_MS,
       enabled: true,
     })
+  })
+})
+
+describe('apiFetch amount precision boundary (exact decimal amounts)', () => {
+  /**
+   * Integration-boundary regression coverage for the `amountFields` gate.
+   *
+   * The invariant under test: a declared amount either leaves this client as
+   * an exact, canonical decimal string on the wire, or the call rejects with
+   * `ApiAmountError` *before* the rate limiter is consulted or `fetch` is
+   * called — with no mutation of the caller's body object.
+   */
+  const amountFetch = (body: unknown, amountFields: ApiFetchOptions['amountFields']) =>
+    apiFetch('/bonds', {
+      method: 'POST',
+      body: body as Record<string, unknown>,
+      amountFields,
+      skipRateLimit: true,
+    })
+
+  function wireBodyOf(callIndex: number): string {
+    return fetchMock.mock.calls[callIndex][1]?.body as string
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('serializes declared amount fields as exact canonical decimal strings', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await amountFetch({ borrower: 'GABC', amount: 1000.5 }, ['amount'])
+
+    // Byte-exact assertion: the number 1000.5 became the canonical decimal
+    // string '1000.50' matching the Bond.amount contract in openapi.yaml.
+    expect(wireBodyOf(0)).toBe('{"borrower":"GABC","amount":"1000.50"}')
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('Content-Type')).toBe('application/json')
+  })
+
+  it('canonicalizes string, number, and bigint inputs identically', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await amountFetch({ amount: '007.5' }, ['amount'])
+    await amountFetch({ amount: 1000n }, ['amount'])
+    await amountFetch({ amount: 1000.5 }, ['amount'])
+    await amountFetch({ amount: '1000' }, { amount: true })
+
+    expect(wireBodyOf(0)).toBe('{"amount":"7.50"}')
+    expect(wireBodyOf(1)).toBe('{"amount":"1000.00"}')
+    expect(wireBodyOf(2)).toBe('{"amount":"1000.50"}')
+    expect(wireBodyOf(3)).toBe('{"amount":"1000.00"}')
+  })
+
+  it('accepts the int64 scaled-integer maximum and rejects anything above it', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await amountFetch({ amount: '92233720368547758.07' }, ['amount'])
+    expect(wireBodyOf(0)).toBe('{"amount":"92233720368547758.07"}')
+
+    await expect(amountFetch({ amount: '92233720368547758.08' }, ['amount'])).rejects.toMatchObject(
+      { name: 'ApiAmountError', code: 'OVERFLOW' }
+    )
+    await expect(amountFetch({ amount: 1e21 }, ['amount'])).rejects.toMatchObject({
+      code: 'OVERFLOW',
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects float drift, excess scale, negative, and non-finite amounts before fetch', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    const invalidBodies = [
+      { amount: 0.1 + 0.2 }, // 0.30000000000000004 — float drift
+      { amount: '1000.005' }, // excess precision — never rounded
+      { amount: -5 }, // negative sign
+      { amount: '-0.01' },
+      { amount: Number.NaN }, // JSON.stringify would emit null
+      { amount: Number.POSITIVE_INFINITY },
+    ]
+
+    for (const body of invalidBodies) {
+      const rejection = await amountFetch(body, ['amount']).then(
+        () => undefined,
+        (error: unknown) => error
+      )
+      expect(rejection, `expected ${JSON.stringify(body)} to be rejected`).toBeInstanceOf(
+        ApiAmountError
+      )
+    }
+
+    // Negative-test invariant: none of the invalid bodies reached the network.
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects missing, mistyped, and empty amount fields before fetch', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(amountFetch({}, ['amount'])).rejects.toMatchObject({ code: 'MISSING' })
+    await expect(amountFetch({ amount: undefined }, ['amount'])).rejects.toMatchObject({
+      code: 'MISSING',
+    })
+    await expect(amountFetch({ amount: null }, ['amount'])).rejects.toMatchObject({
+      code: 'INVALID_TYPE',
+    })
+    await expect(amountFetch({ amount: 'abc' }, ['amount'])).rejects.toMatchObject({
+      code: 'INVALID_FORMAT',
+    })
+    await expect(amountFetch({ amount: '' }, ['amount'])).rejects.toMatchObject({
+      code: 'EMPTY',
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects when the body is not a JSON object', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      apiFetch('/bonds', {
+        method: 'POST',
+        body: [{ amount: '1.00' }],
+        amountFields: ['amount'],
+        skipRateLimit: true,
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_BODY', field: null })
+    await expect(
+      apiFetch('/bonds', {
+        method: 'POST',
+        body: null,
+        amountFields: ['amount'],
+        skipRateLimit: true,
+      })
+    ).rejects.toMatchObject({ code: 'INVALID_BODY' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('enforces per-field rules such as a minimum bond amount and custom scale', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await amountFetch({ amount: '0.00' }, { amount: { min: '0.01' } }).then(
+      () => undefined,
+      (error: unknown) => error
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await amountFetch({ amount: '0.01' }, { amount: { min: '0.01' } })
+    expect(wireBodyOf(0)).toBe('{"amount":"0.01"}')
+
+    // Stellar-precision (7 decimal place) amounts.
+    await amountFetch({ amount: '12.1234567' }, { amount: { scale: 7 } })
+    expect(wireBodyOf(1)).toBe('{"amount":"12.1234567"}')
+    await expect(
+      amountFetch({ amount: '12.12345678' }, { amount: { scale: 7 } })
+    ).rejects.toMatchObject({ code: 'INVALID_SCALE' })
+  })
+
+  it('does not consume rate-limit budget when rejecting an amount', async () => {
+    resetApiRateLimiter()
+    const acquireSpy = vi.spyOn(defaultApiRateLimiter, 'acquire')
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      apiFetch('/bonds', {
+        method: 'POST',
+        body: { amount: '-1' },
+        amountFields: ['amount'],
+      })
+    ).rejects.toBeInstanceOf(ApiAmountError)
+
+    // The amount gate runs BEFORE the limiter: no budget was spent on the
+    // rejected call.
+    expect(acquireSpy).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await apiFetch('/bonds', {
+      method: 'POST',
+      body: { amount: '1.00' },
+      amountFields: ['amount'],
+    })
+    expect(acquireSpy).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('never mutates the caller body object', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const body = { borrower: 'GABC', amount: 1000.5, nested: { keep: true } }
+    const snapshot = structuredClone(body)
+
+    await amountFetch(body, ['amount'])
+
+    expect(body).toEqual(snapshot) // original values untouched
+    expect(typeof body.amount).toBe('number') // still the caller's number
+    expect(body.nested).toBe(body.nested) // sibling references preserved
+    // Only the wire body carries the canonical string.
+    expect(wireBodyOf(0)).toBe('{"borrower":"GABC","amount":"1000.50","nested":{"keep":true}}')
+  })
+
+  it('preserves sibling fields and their JSON types on the wire', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await amountFetch({ borrower: 'GABC', amount: '1000', durationDays: 90, flags: [1, 2] }, [
+      'amount',
+    ])
+
+    expect(JSON.parse(wireBodyOf(0))).toEqual({
+      borrower: 'GABC',
+      amount: '1000.00',
+      durationDays: 90,
+      flags: [1, 2],
+    })
+  })
+
+  it('produces byte-identical wire bodies across repeated identical calls', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await amountFetch({ amount: 1000.5 }, ['amount'])
+    await amountFetch({ amount: 1000.5 }, ['amount'])
+    await amountFetch({ amount: 1000.5 }, ['amount'])
+
+    expect(wireBodyOf(0)).toBe(wireBodyOf(1))
+    expect(wireBodyOf(1)).toBe(wireBodyOf(2))
+    expect(wireBodyOf(0)).toBe('{"amount":"1000.50"}')
+  })
+
+  it('validates concurrently-submitted calls independently', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const results = await Promise.allSettled([
+      amountFetch({ requestId: 'a', amount: '100.00' }, ['amount']),
+      amountFetch({ requestId: 'b', amount: '100.005' }, ['amount']),
+      amountFetch({ requestId: 'c', amount: '50' }, ['amount']),
+    ])
+
+    expect(results[0].status).toBe('fulfilled')
+    expect(results[1].status).toBe('rejected')
+    expect(results[2].status).toBe('fulfilled')
+
+    const rejection = (results[1] as PromiseRejectedResult).reason
+    expect(rejection).toBeInstanceOf(ApiAmountError)
+    expect(rejection.code).toBe('INVALID_SCALE')
+
+    // Exactly the two valid calls reached the network.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(wireBodyOf(0)).toBe('{"requestId":"a","amount":"100.00"}')
+    expect(wireBodyOf(1)).toBe('{"requestId":"c","amount":"50.00"}')
+  })
+
+  it('a network failure after validation leaves no partial state and can be retried', async () => {
+    fetchMock
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const body = { amount: 250.25 }
+    const snapshot = structuredClone(body)
+
+    await expect(amountFetch(body, ['amount'])).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 0,
+    })
+    expect(body).toEqual(snapshot)
+
+    // Retry with a healthy network succeeds with the exact same wire body.
+    await expect(amountFetch(body, ['amount'])).resolves.toEqual({ id: 'b1' })
+    expect(wireBodyOf(1)).toBe('{"amount":"250.25"}')
+  })
+
+  it('leaves bodies untouched when amountFields is omitted or empty (back-compat)', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'b1' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    // Undeclared amounts keep their legacy wire representation, including the
+    // float — the gate is strictly opt-in.
+    await amountFetch({ amount: 1000.005 }, undefined)
+    await amountFetch({ amount: 1000.005 }, [])
+
+    expect(wireBodyOf(0)).toBe('{"amount":1000.005}')
+    expect(wireBodyOf(1)).toBe('{"amount":1000.005}')
+  })
+
+  it('surfaces ApiAmountError as a 400 ApiError with structured field and code', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    let captured: unknown
+    try {
+      await amountFetch({ amount: -1 }, ['amount'])
+    } catch (error) {
+      captured = error
+    }
+
+    expect(captured).toBeInstanceOf(ApiAmountError)
+    expect(captured).toBeInstanceOf(ApiError)
+    const err = captured as ApiAmountError
+    expect(err.status).toBe(400)
+    expect(err.field).toBe('amount')
+    expect(err.code).toBe('NEGATIVE')
+    expect(err.payload).toEqual({ field: 'amount', code: 'NEGATIVE' })
+    expect(err.message).toContain('amount')
   })
 })

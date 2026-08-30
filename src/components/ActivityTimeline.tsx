@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState, type ReactElement } from 'react'
 import './ActivityTimeline.css'
 import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY, ACTIVITY_ITEMS } from '../data/activity'
+import { AttestationStatus, toneToStatus } from '../events'
+import { formatAmount } from '../lib/format'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
@@ -93,7 +95,8 @@ export default function ActivityTimeline({
       if (event.key !== 'Escape' || !expandedId || onSelect) return
       const openId = expandedId
       setExpandedId(null)
-      triggerRefs.current.get(openId)?.focus()
+      const trigger = triggerRefs.current.get(openId)
+      if (trigger) trigger.focus()
     },
     [expandedId, onSelect]
   )

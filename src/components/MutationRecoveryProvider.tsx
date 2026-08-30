@@ -17,8 +17,11 @@ import {
 } from '../lib/mutationSystemInitializer'
 import {
   getMutationOperations,
+  paginateMutationOperations,
   type MutationOperation,
   type MutationType,
+  type PaginateMutationOptions,
+  type PaginatedMutationResult,
 } from '../lib/mutationStorage'
 import { mutationRecoveryEngine } from '../lib/mutationRecovery'
 import { logInfo, logWarn, logError } from '../lib/log'
@@ -45,6 +48,13 @@ export interface MutationAuditEvent {
   snapshot: MutationOperation
 }
 
+export interface PaginatedAuditEventsResult {
+  items: MutationAuditEvent[]
+  nextCursor?: string
+  hasNextPage: boolean
+  totalCount: number
+}
+
 const MUTATION_EVENT_VERSION = 1 as const
 
 const MUTATION_AUDIT_TYPES: ReadonlySet<string> = new Set([
@@ -67,9 +77,15 @@ export interface MutationRecoveryContextValue {
   auditEvents: MutationAuditEvent[]
   getAuditEvents: () => MutationAuditEvent[]
 
-  // Actions
+  // Actions & Pagination
   refreshOperations: () => void
   getOperationsByType: (type: MutationType) => MutationOperation[]
+  paginateOperations: (options?: PaginateMutationOptions) => PaginatedMutationResult
+  paginateAuditEvents: (options?: {
+    cursor?: string
+    limit?: number
+    order?: 'desc' | 'asc'
+  }) => PaginatedAuditEventsResult
 
   // System management
   reinitialize: (config?: MutationSystemConfig) => Promise<boolean>
@@ -178,23 +194,21 @@ export function MutationRecoveryProvider({
         .filter(
           (op) =>
             MUTATION_AUDIT_TYPES.has(op.type) &&
-            op.status === 'completed' &&
-            !emittedAuditOperationIds.current.has(op.id)
+            op.status === 'success' &&
+            !emittedAuditOperationIds.current.has(op.operationId)
         )
-        .sort(
-          (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
-        )
+        .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
 
       if (committedMutations.length > 0) {
         const emittedEvents: MutationAuditEvent[] = committedMutations.map((op) => {
           auditEventSequence.current += 1
-          emittedAuditOperationIds.current.add(op.id)
+          emittedAuditOperationIds.current.add(op.operationId)
 
           return {
             version: MUTATION_EVENT_VERSION,
             sequence: auditEventSequence.current,
-            correlationId: op.id,
-            operationId: op.id,
+            correlationId: op.operationId,
+            operationId: op.operationId,
             type: op.type,
             status: op.status,
             updatedAt: op.updatedAt,
@@ -208,7 +222,7 @@ export function MutationRecoveryProvider({
 
         logInfo('mutation_recovery_provider_audit_events_emitted', {
           eventCount: emittedEvents.length,
-          correlationIds: emittedEvents.map((event) => event.correlationId),
+          operationIds: emittedEvents.map((event) => event.operationId),
         })
       }
 
@@ -241,6 +255,61 @@ export function MutationRecoveryProvider({
   const getOperationsByType = useCallback((type: MutationType): MutationOperation[] => {
     return getMutationOperations(type)
   }, [])
+
+  const paginateOperations = useCallback(
+    (options?: PaginateMutationOptions): PaginatedMutationResult => {
+      return paginateMutationOperations(options)
+    },
+    []
+  )
+
+  const paginateAuditEvents = useCallback(
+    (options?: {
+      cursor?: string
+      limit?: number
+      order?: 'desc' | 'asc'
+    }): PaginatedAuditEventsResult => {
+      const limit = Math.max(1, Math.min(100, options?.limit ?? 20))
+      const order = options?.order ?? 'desc'
+      const events = [...auditEventsRef.current]
+
+      events.sort((a, b) => {
+        const timeA = new Date(a.updatedAt).getTime()
+        const timeB = new Date(b.updatedAt).getTime()
+        if (timeA !== timeB) {
+          return order === 'desc' ? timeB - timeA : timeA - timeB
+        }
+        return order === 'desc' ? b.sequence - a.sequence : a.sequence - b.sequence
+      })
+
+      let sliced = events
+      if (options?.cursor) {
+        try {
+          const cursorSeq = parseInt(options.cursor, 10)
+          if (!isNaN(cursorSeq)) {
+            sliced = events.filter((ev) =>
+              order === 'desc' ? ev.sequence < cursorSeq : ev.sequence > cursorSeq
+            )
+          }
+        } catch {
+          // ignore malformed cursor
+        }
+      }
+
+      const items = sliced.slice(0, limit)
+      const hasNextPage = sliced.length > limit
+      const nextCursor =
+        hasNextPage && items.length > 0 ? String(items[items.length - 1].sequence) : undefined
+
+      return {
+        items,
+        nextCursor,
+        hasNextPage,
+        totalCount: events.length,
+      }
+    },
+    []
+  )
 
   const getAuditEvents = useCallback((): MutationAuditEvent[] => {
     return auditEventsRef.current
@@ -360,6 +429,8 @@ export function MutationRecoveryProvider({
     refreshOperations,
     getAuditEvents,
     getOperationsByType,
+    paginateOperations,
+    paginateAuditEvents,
     reinitialize,
     performHealthCheck,
   }

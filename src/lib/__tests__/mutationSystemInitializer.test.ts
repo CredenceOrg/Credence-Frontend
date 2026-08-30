@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @file mutationSystemInitializer.test.ts
  * @description Integration tests for the mutation system initializer.
@@ -40,7 +41,7 @@ describe('mutationSystemInitializer', () => {
   const mockMutationRecovery = mutationRecovery as any
   const mockBondActionStorage = bondActionStorage as any
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
 
     // Mock successful storage operations
@@ -70,6 +71,12 @@ describe('mutationSystemInitializer', () => {
       failed: 0,
       operations: [],
     })
+
+    try {
+      await shutdownMutationSystem()
+    } catch {
+      // ignore
+    }
   })
 
   describe('initializeMutationSystem', () => {

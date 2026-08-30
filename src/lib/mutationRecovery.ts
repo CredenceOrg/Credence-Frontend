@@ -91,12 +91,15 @@ function apiErrorToMutationError(apiError: ApiError): MutationError {
   let type: MutationError['type'] = 'generic'
   let retryable = true
 
-  if (apiError.status === 429) {
-    // Rate limit / fair-use rejection. Not a validation error: surface it with
-    // an actionable retryAfterMs so callers wait rather than hammer. It is
-    // intentionally *not* auto-retried by the backoff loop (that would just
-    // re-trigger the limiter); the operation stays recoverable so the user can
-    // retry once the window passes.
+  // Check for wallet rejection patterns
+  if (
+    apiError.message.toLowerCase().includes('user rejected') ||
+    apiError.message.toLowerCase().includes('cancelled') ||
+    apiError.message.toLowerCase().includes('denied')
+  ) {
+    type = 'wallet_rejected'
+    retryable = false
+  } else if (apiError.status === 429) {
     type = 'rate_limit'
     retryable = false
   } else if (apiError.status === 0) {
@@ -120,18 +123,23 @@ function apiErrorToMutationError(apiError: ApiError): MutationError {
     mutationError.retryAfterMs = retryAfterMs
   }
   return mutationError
+}
 
-  // Check for wallet rejection patterns
-  if (
-    apiError.message.toLowerCase().includes('user rejected') ||
-    apiError.message.toLowerCase().includes('cancelled') ||
-    apiError.message.toLowerCase().includes('denied')
-  ) {
-    type = 'wallet_rejected'
-    retryable = false
+function parseUnknownError(error: unknown): MutationError {
+  if (error instanceof ApiError) {
+    return apiErrorToMutationError(error)
   }
-
-  return createMutationError(type, apiError.message, retryable, apiError.status)
+  const message = error instanceof Error ? error.message : String(error)
+  const lower = message.toLowerCase()
+  if (
+    lower.includes('user rejected') ||
+    lower.includes('rejected') ||
+    lower.includes('cancelled') ||
+    lower.includes('denied')
+  ) {
+    return createMutationError('wallet_rejected', message, false)
+  }
+  return createMutationError('generic', message, true)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -174,10 +182,7 @@ async function executeBondCreate(
       response: { hash: result.hash, amountUsdc: amount.value },
     }
   } catch (error) {
-    const mutationError =
-      error instanceof ApiError
-        ? apiErrorToMutationError(error)
-        : createMutationError('generic', error instanceof Error ? error.message : String(error))
+    const mutationError = parseUnknownError(error)
 
     return {
       success: false,
@@ -213,10 +218,7 @@ async function executeBondWithdraw(
       response: { hash: result.hash, bondId: params.bondId, amountUsdc: amount.value },
     }
   } catch (error) {
-    const mutationError =
-      error instanceof ApiError
-        ? apiErrorToMutationError(error)
-        : createMutationError('generic', error instanceof Error ? error.message : String(error))
+    const mutationError = parseUnknownError(error)
 
     return {
       success: false,
@@ -386,9 +388,13 @@ export class MutationRecoveryEngine {
       if (operation.status === 'submitting' && operation.attempts.length > 0) {
         // Wait for in-flight operation or retry if timed out
         return await this.recoverSubmittingOperation(operationId, controller.signal)
-      } else if (operation.status === 'pending') {
+      } else if (
+        operation.status === 'pending' ||
+        operation.status === 'error' ||
+        operation.status === 'idle'
+      ) {
         // Resume execution from where it left off
-        return await this.resumeOperation(operationId, controller.signal)
+        return await this.resumeOperation(operationId, controller.signal, operation)
       }
 
       logWarn('mutation_recovery_unsupported_state', {
@@ -504,7 +510,7 @@ export class MutationRecoveryEngine {
 
     // Retry if we haven't exceeded max attempts
     if (operation.attempts.length < operation.maxAttempts) {
-      return await this.resumeOperation(operationId, signal)
+      return await this.resumeOperation(operationId, signal, operation)
     }
 
     return false
@@ -515,10 +521,12 @@ export class MutationRecoveryEngine {
    */
   private async resumeOperation(
     operationId: MutationOperationId,
-    signal: AbortSignal
+    signal: AbortSignal,
+    opParam?: MutationOperation
   ): Promise<boolean> {
-    const operation = getMutationOperation(operationId)
-    if (!operation) return false
+    if (signal.aborted) return false
+    const operation = getMutationOperation(operationId) || opParam
+    if (!operation || operation.status === 'cancelled') return false
 
     if (operation.attempts.length >= operation.maxAttempts) {
       logWarn('mutation_recovery_max_attempts_exceeded', { operationId })
@@ -531,7 +539,9 @@ export class MutationRecoveryEngine {
       await new Promise((resolve) => setTimeout(resolve, retryDelay))
     }
 
-    return await this.executeOperationAttempt(operationId, signal)
+    if (signal.aborted) return false
+
+    return await this.executeOperationAttempt(operationId, signal, operation)
   }
 
   /**
@@ -539,10 +549,12 @@ export class MutationRecoveryEngine {
    */
   private async executeOperationAttempt(
     operationId: MutationOperationId,
-    signal: AbortSignal
+    signal: AbortSignal,
+    opParam?: MutationOperation
   ): Promise<boolean> {
-    const operation = getMutationOperation(operationId)
-    if (!operation) return false
+    if (signal.aborted) return false
+    const operation = getMutationOperation(operationId) || opParam
+    if (!operation || operation.status === 'cancelled') return false
 
     const attemptId = `attempt:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`
 

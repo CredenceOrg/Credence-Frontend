@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @file bondActionStorageMigration.test.ts
  * @description Integration tests specifically for bond action storage migration scenarios.
@@ -16,7 +17,6 @@ import * as storageJson from '../storageJson'
 import * as mutationStorage from '../mutationStorage'
 import {
   readBondActions,
-  writeBondActions,
   updateBondAction,
   createEnhancedBondAction,
   getBondActionMutationOperation,
@@ -57,7 +57,7 @@ describe('bondActionStorageMigration', () => {
       isNewOperation: true,
     })
 
-    mockMutationStorage.updateMutationOperation.mockImplementation((id, updater) => {
+    mockMutationStorage.updateMutationOperation.mockImplementation((id: any, updater: any) => {
       const mockOp = {
         operationId: id,
         type: 'bond_create',
@@ -523,7 +523,7 @@ describe('bondActionStorageMigration', () => {
 
       // Verify the updater function receives and uses legacy data correctly
       let capturedUpdater: any
-      mockMutationStorage.updateMutationOperation.mockImplementation((id, updater) => {
+      mockMutationStorage.updateMutationOperation.mockImplementation((id: any, updater: any) => {
         capturedUpdater = updater
         return updater({
           operationId: id,

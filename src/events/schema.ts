@@ -136,6 +136,9 @@ export interface ActivityEventPayload {
   /** Correlation identifier that ties a logical action across multiple
    *  emitted events and enables audit-parity verification. */
   correlationId?: string
+  /** Optional USDC amount associated with the event (e.g. bond deposits).
+   *  Rendered via `formatAmount`; absent when the event has no monetary value. */
+  amountUsdc?: number
 }
 
 /** Alias for backward-compatibility with component prop definitions */
@@ -182,7 +185,8 @@ export const LEGAL_TRANSITIONS: Readonly<Record<AttestationStatus, readonly Atte
  * predicate without throwing (e.g. filtering, UI guards).
  */
 export function isLegalTransition(from: AttestationStatus, to: AttestationStatus): boolean {
-  return (LEGAL_TRANSITIONS[from] as readonly AttestationStatus[]).includes(to)
+  const targets = LEGAL_TRANSITIONS[from] as readonly AttestationStatus[] | undefined
+  return targets !== undefined && targets.includes(to)
 }
 
 /**

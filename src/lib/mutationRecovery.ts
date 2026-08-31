@@ -408,11 +408,16 @@ export class MutationRecoveryEngine {
         error: error instanceof Error ? error.message : String(error),
       })
 
-      // Mark as error state for user visibility
-      updateMutationOperation(operationId, () => ({
+      // Mark as error state for user visibility. Idle operations must go
+      // through 'pending' first (idle → pending → error) to satisfy the
+      // state-transition matrix.
+      if (operation.status === 'idle') {
+        updateMutationOperation(operationId, () => ({ status: 'pending' }))
+      }
+      updateMutationOperation(operationId, (op) => ({
         status: 'error',
         attempts: [
-          ...operation.attempts,
+          ...op.attempts,
           {
             attemptId: `recovery:${Date.now()}`,
             timestamp: new Date().toISOString(),
@@ -555,6 +560,19 @@ export class MutationRecoveryEngine {
     if (signal.aborted) return false
     const operation = getMutationOperation(operationId) || opParam
     if (!operation || operation.status === 'cancelled') return false
+
+    // If the operation is in 'error' or 'idle', transition through 'pending'
+    // first so we never jump directly to 'submitting' — the state matrix
+    // requires error → pending → submitting.
+    if (operation.status === 'error' || operation.status === 'idle') {
+      const transitioned = updateMutationOperation(operationId, () => ({
+        status: 'pending',
+      }))
+      if (!transitioned || transitioned.status !== 'pending') {
+        logWarn('mutation_recovery_transition_to_pending_failed', { operationId })
+        return false
+      }
+    }
 
     const attemptId = `attempt:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`
 

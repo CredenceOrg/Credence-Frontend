@@ -3,6 +3,11 @@ import './ActivityTimeline.css'
 import { SAMPLE_ACTIVITY, ACTIVITY_ITEMS } from '../data/activity'
 import type { ActivityItem, ActivityTone } from '../events'
 import { AttestationStatus, toneToStatus } from '../events'
+
+// Re-exported so tests and legacy callers that import these types directly
+// from this module continue to resolve without changes.
+export type { ActivityItem, ActivityTone } from '../events'
+export { AttestationStatus } from '../events'
 import { formatAmount } from '../lib/format'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
@@ -166,13 +171,13 @@ export default function ActivityTimeline({
                 onClick={
                   onSelect
                     ? (event) => {
-                        // Stop propagation so a click on the disclosure
-                        // button (which also lives in this row) doesn't
-                        // double-fire — the button's onClick owns
-                        // activation in both paths via stopPropagation.
-                        event.stopPropagation()
-                        onSelect(item)
-                      }
+                      // Stop propagation so a click on the disclosure
+                      // button (which also lives in this row) doesn't
+                      // double-fire — the button's onClick owns
+                      // activation in both paths via stopPropagation.
+                      event.stopPropagation()
+                      onSelect(item)
+                    }
                     : undefined
                 }
               >

@@ -32,6 +32,68 @@ import { validateBondAmount, validateTrustScoreAddress } from './mutationGuard'
 import { logInfo, logWarn, logError } from './log'
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Injectable Executor Interface
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Injectable bond executor — allows tests to inject failures at the exact
+ * network/wallet boundary without mocking the entire module.
+ *
+ * The production default uses the real `submitCreateBond` /
+ * `submitWithdrawBond` implementations. Tests swap in fakes via
+ * `setBondExecutors()`.
+ */
+export interface BondExecutors {
+  createBond: (params: { amountUsdc: number }) => Promise<{ hash: string }>
+  withdrawBond: (params: { bondId: number; amountUsdc: number }) => Promise<{ hash: string }>
+}
+
+/**
+ * Injectable trust-score executor — separates the apiFetch call from the
+ * recovery engine so failures can be injected at the HTTP boundary.
+ */
+export type TrustScoreExecutor = (
+  address: string,
+  signal: AbortSignal
+) => Promise<Record<string, unknown>>
+
+let _bondExecutors: BondExecutors = {
+  createBond: submitCreateBond,
+  withdrawBond: submitWithdrawBond,
+}
+
+let _trustScoreExecutor: TrustScoreExecutor = async (address, signal) => {
+  const result = await apiFetch(`/trust-score/${encodeURIComponent(address)}`, { signal })
+  return result as Record<string, unknown>
+}
+
+/**
+ * Replaces the live bond executors with test doubles.
+ * Returns the previous executors so tests can restore them.
+ *
+ * @example
+ * ```ts
+ * const original = setBondExecutors({ createBond: fakeFn, withdrawBond: fakeFn })
+ * try { ... } finally { setBondExecutors(original) }
+ * ```
+ */
+export function setBondExecutors(executors: BondExecutors): BondExecutors {
+  const previous = _bondExecutors
+  _bondExecutors = executors
+  return previous
+}
+
+/**
+ * Replaces the live trust-score executor with a test double.
+ * Returns the previous executor so tests can restore it.
+ */
+export function setTrustScoreExecutor(executor: TrustScoreExecutor): TrustScoreExecutor {
+  const previous = _trustScoreExecutor
+  _trustScoreExecutor = executor
+  return previous
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Recovery Configuration
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -175,7 +237,8 @@ async function executeBondCreate(
   }
 
   try {
-    const result = await submitCreateBond({ amountUsdc: amount.value })
+    // Use the injectable executor so tests can inject failures at this boundary.
+    const result = await _bondExecutors.createBond({ amountUsdc: amount.value })
     return {
       success: true,
       txHash: result.hash,
@@ -183,7 +246,6 @@ async function executeBondCreate(
     }
   } catch (error) {
     const mutationError = parseUnknownError(error)
-
     return {
       success: false,
       error: mutationError,
@@ -211,7 +273,11 @@ async function executeBondWithdraw(
   }
 
   try {
-    const result = await submitWithdrawBond({ bondId: params.bondId, amountUsdc: amount.value })
+    // Use the injectable executor so tests can inject failures at this boundary.
+    const result = await _bondExecutors.withdrawBond({
+      bondId: params.bondId,
+      amountUsdc: amount.value,
+    })
     return {
       success: true,
       txHash: result.hash,
@@ -219,7 +285,6 @@ async function executeBondWithdraw(
     }
   } catch (error) {
     const mutationError = parseUnknownError(error)
-
     return {
       success: false,
       error: mutationError,
@@ -242,18 +307,20 @@ async function executeTrustScoreLookup(
   }
 
   try {
-    const result = await apiFetch(`/trust-score/${encodeURIComponent(address.value)}`, {
-      signal: context.signal,
-    })
+    // Use the injectable executor so tests can inject failures at the HTTP boundary.
+    const result = await _trustScoreExecutor(address.value, context.signal)
     return {
       success: true,
-      response: result as Record<string, unknown>,
+      response: result,
     }
   } catch (error) {
+    // Preserve the full ApiError rather than re-parsing from a plain Error,
+    // which previously discarded status/payload and made error categorisation
+    // non-deterministic.
     const mutationError =
       error instanceof ApiError
         ? apiErrorToMutationError(error)
-        : createMutationError('generic', error instanceof Error ? error.message : String(error))
+        : parseUnknownError(error)
 
     return {
       success: false,
@@ -462,6 +529,12 @@ export class MutationRecoveryEngine {
 
   /**
    * Recovers an operation that was submitting when the app crashed/reloaded.
+   *
+   * Additional invariant: if the last attempt has `status:'committed'` it
+   * means the network call returned a tx hash but the final `status:'success'`
+   * write did not complete (e.g. process killed between the two writes). We
+   * treat that as confirmed rather than re-submitting, preventing
+   * double-submission.
    */
   private async recoverSubmittingOperation(
     operationId: MutationOperationId,
@@ -472,6 +545,25 @@ export class MutationRecoveryEngine {
 
     const lastAttempt = operation.attempts[operation.attempts.length - 1]
     if (!lastAttempt) return false
+
+    // ── Committed-state detection ────────────────────────────────────────
+    // A 'committed' attempt means the tx hash was persisted but the operation
+    // status was not yet set to 'success'. Promote directly — do not retry.
+    if ((lastAttempt.status as string) === 'committed' && lastAttempt.txHash) {
+      updateMutationOperation(operationId, (op) => ({
+        status: 'success',
+        finalTxHash: lastAttempt.txHash,
+        completedAt: new Date().toISOString(),
+        attempts: op.attempts.map((a) =>
+          a.attemptId === lastAttempt.attemptId ? { ...a, status: 'success' as const } : a
+        ),
+      }))
+      logInfo('mutation_recovery_committed_promoted', {
+        operationId,
+        txHash: lastAttempt.txHash,
+      })
+      return true
+    }
 
     const timeSinceLastAttempt = Date.now() - new Date(lastAttempt.timestamp).getTime()
 
@@ -502,7 +594,7 @@ export class MutationRecoveryEngine {
         ...op.attempts.slice(0, -1),
         {
           ...lastAttempt,
-          status: 'error',
+          status: 'error' as const,
           error: createMutationError('timeout', 'Operation timed out during recovery', true),
         },
       ],
@@ -546,6 +638,21 @@ export class MutationRecoveryEngine {
 
   /**
    * Executes a single operation attempt with proper state management.
+   *
+   * Atomic-rollback invariants enforced here:
+   *
+   * 1. **Committed-state guard** — as soon as the network/wallet call returns
+   *    a tx hash the attempt is immediately written with `status:'committed'`
+   *    and the `txHash` persisted. Only *after* that write succeeds is the
+   *    operation promoted to `status:'success'`. On recovery, an attempt whose
+   *    `status` is `'committed'` is treated as confirmed rather than retried,
+   *    preventing double-submission.
+   *
+   * 2. **Fresh attempt-count** — the retry-eligibility check reads the
+   *    operation back from storage after the attempt record has been written
+   *    so the count includes the just-completed attempt. The stale closure
+   *    value `operation.attempts.length` could have been one-behind, allowing
+   *    one extra retry past `maxAttempts`.
    */
   private async executeOperationAttempt(
     operationId: MutationOperationId,
@@ -567,7 +674,7 @@ export class MutationRecoveryEngine {
           attemptId,
           timestamp: new Date().toISOString(),
           requestHash: operation.requestHash,
-          status: 'submitting',
+          status: 'submitting' as const,
         },
       ],
     }))
@@ -583,7 +690,25 @@ export class MutationRecoveryEngine {
       const result = await executeOperation(context)
 
       if (result.success) {
-        // Update successful attempt and complete operation
+        // ── Committed-state guard (fix #2) ──────────────────────────────
+        // Write the tx hash and mark the attempt as 'committed' BEFORE
+        // setting the operation status to 'success'. If the process dies
+        // between these two writes, recovery will find a 'committed' attempt
+        // with a tx hash and treat it as confirmed rather than retrying.
+        updateMutationOperation(operationId, (op) => ({
+          attempts: op.attempts.map((attempt) =>
+            attempt.attemptId === attemptId
+              ? {
+                  ...attempt,
+                  status: 'committed' as unknown as typeof attempt.status,
+                  txHash: result.txHash,
+                  response: result.response,
+                }
+              : attempt
+          ),
+        }))
+
+        // Now safe to mark the operation itself as success.
         updateMutationOperation(operationId, (op) => ({
           status: 'success',
           finalTxHash: result.txHash,
@@ -591,7 +716,7 @@ export class MutationRecoveryEngine {
           completedAt: new Date().toISOString(),
           attempts: op.attempts.map((attempt) =>
             attempt.attemptId === attemptId
-              ? { ...attempt, status: 'success', txHash: result.txHash, response: result.response }
+              ? { ...attempt, status: 'success' as const }
               : attempt
           ),
         }))
@@ -599,21 +724,30 @@ export class MutationRecoveryEngine {
         logInfo('mutation_recovery_success', { operationId, txHash: result.txHash })
         return true
       } else {
-        // Update failed attempt
+        // Update failed attempt and read FRESH attempt count from storage
+        // (fix #3) so the retry guard uses the post-write count.
         updateMutationOperation(operationId, (op) => ({
-          status: result.shouldRetry && op.attempts.length < op.maxAttempts ? 'pending' : 'error',
           attempts: op.attempts.map((attempt) =>
             attempt.attemptId === attemptId
-              ? { ...attempt, status: 'error', error: result.error }
+              ? { ...attempt, status: 'error' as const, error: result.error }
               : attempt
           ),
         }))
 
-        // Retry if appropriate
-        if (result.shouldRetry && operation.attempts.length + 1 < operation.maxAttempts) {
+        // Read back the operation to get the authoritative attempt count.
+        const freshOp = getMutationOperation(operationId)
+        const freshAttemptCount = freshOp?.attempts.length ?? operation.attempts.length + 1
+        const canRetry =
+          result.shouldRetry === true && freshAttemptCount < (freshOp?.maxAttempts ?? operation.maxAttempts)
+
+        updateMutationOperation(operationId, () => ({
+          status: canRetry ? 'pending' : 'error',
+        }))
+
+        if (canRetry) {
           logInfo('mutation_recovery_retry_scheduled', {
             operationId,
-            attemptNumber: operation.attempts.length + 1,
+            attemptNumber: freshAttemptCount,
           })
           return await this.resumeOperation(operationId, signal)
         }
@@ -636,7 +770,7 @@ export class MutationRecoveryEngine {
         status: 'error',
         attempts: op.attempts.map((attempt) =>
           attempt.attemptId === attemptId
-            ? { ...attempt, status: 'error', error: executionError }
+            ? { ...attempt, status: 'error' as const, error: executionError }
             : attempt
         ),
       }))

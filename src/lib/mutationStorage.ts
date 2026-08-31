@@ -151,6 +151,78 @@ const DEFAULT_MAX_ATTEMPTS = 3
 const STALE_OPERATION_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 // ═══════════════════════════════════════════════════════════════════════════
+// State-Transition Matrix
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Every bond and trust-score mutation follows the lifecycle:
+//
+//   idle ──▶ pending ──▶ submitting ──▶ success
+//                │            │
+//                ▼            ▼
+//             error ◀───── error
+//                │
+//                ▼
+//            pending (retry)
+//
+// Terminal states (no outgoing edges): success, cancelled.
+// The matrix is authoritative: any transition not listed here is rejected
+// by `updateMutationOperation` and the mutation system will not persist
+// unauthorized or partial state.
+
+/**
+ * Legal state-transition matrix for `MutationStatus`.
+ *
+ * Keys are source statuses; values are the set of allowed target statuses.
+ * An empty set means the state is terminal (no outgoing transitions).
+ * The identity transition (status → same status) is always allowed.
+ */
+export const LEGAL_TRANSITIONS: ReadonlyMap<
+  MutationStatus,
+  ReadonlySet<MutationStatus>
+> = new Map([
+  // idle: a freshly created operation can only begin execution
+  ['idle', new Set(['pending'])],
+
+  // pending: queued for execution; can start, fail validation, or be cancelled
+  ['pending', new Set(['submitting', 'error', 'cancelled'])],
+
+  // submitting: in-flight; can succeed, fail permanently, retry (back to pending), or cancel
+  ['submitting', new Set(['success', 'error', 'pending', 'cancelled'])],
+
+  // success: terminal – no outgoing transitions allowed
+  ['success', new Set()],
+
+  // error: failed; can be retried (back to pending) or cancelled
+  ['error', new Set(['pending', 'cancelled'])],
+
+  // cancelled: terminal – no outgoing transitions allowed
+  ['cancelled', new Set()],
+])
+
+/**
+ * Validates whether a state transition is legal under the invariant matrix.
+ *
+ * @returns `null` if the transition is legal (or a no-op), or a human-readable
+ *          violation message if it is illegal.
+ */
+export function validateStateTransition(
+  from: MutationStatus,
+  to: MutationStatus,
+): string | null {
+  // Identity transitions (no actual change) are always valid
+  if (from === to) return null
+
+  const allowed = LEGAL_TRANSITIONS.get(from)
+  if (!allowed) {
+    return `Unknown source status: ${from}`
+  }
+  if (!allowed.has(to)) {
+    return `Illegal state transition: ${from} → ${to}`
+  }
+  return null
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Storage Operations
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -440,12 +512,33 @@ function cleanupStaleOperations(storage: MutationStorageV2): MutationStorageV2 {
 }
 
 /**
+ * Options for creating a mutation operation.
+ */
+export interface CreateMutationOptions {
+  maxAttempts?: number
+  /**
+   * Optional initial status for migration/historical reconstruction.
+   * When provided, the operation is created directly in the given status,
+   * bypassing the normal idle-start lifecycle. This is *only* intended for
+   * migrating legacy records whose terminal state (e.g. `success`) cannot
+   * be reached through the standard idle → pending → … transition chain.
+   * Normal code paths must NOT use this option.
+   */
+  migrationStatus?: MutationStatus
+}
+
+/**
  * Creates a new mutation operation with deduplication check.
+ *
+ * @param options.migrationStatus - When set, the operation is created directly
+ *   in the given status (bypassing the transition matrix). Intended only for
+ *   migrating legacy records that are already in a terminal state.
  */
 export function createMutationOperation(
   type: MutationType,
   params: Record<string, unknown>,
-  maxAttempts: number = DEFAULT_MAX_ATTEMPTS
+  maxAttempts: number = DEFAULT_MAX_ATTEMPTS,
+  options?: CreateMutationOptions
 ): { operationId: MutationOperationId; isNewOperation: boolean } {
   const storage = readMutationStorage()
   const requestHash = calculateRequestHash(type, params)
@@ -464,25 +557,37 @@ export function createMutationOperation(
     return { operationId: existingOperation.operationId, isNewOperation: false }
   }
 
+  // Determine initial status: migration callers may supply a terminal status
+  // that cannot be reached through the normal idle-start lifecycle.
+  const initialStatus: MutationStatus =
+    options?.migrationStatus && LEGAL_TRANSITIONS.has(options.migrationStatus)
+      ? options.migrationStatus
+      : 'idle'
+
   // Create new operation
   const operationId = generateOperationId(type, requestHash)
   const operation: MutationOperation = {
     operationId,
     type,
-    status: 'idle',
+    status: initialStatus,
     requestHash,
     requestMetadata: { ...params },
     attempts: [],
     maxAttempts,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    isRecovered: false,
+    isRecovered: initialStatus !== 'idle',
   }
 
   storage.operations[operationId] = operation
   writeMutationStorage(storage)
 
-  logInfo('mutation_operation_created', { operationId, type, requestHash })
+  logInfo('mutation_operation_created', {
+    operationId,
+    type,
+    requestHash,
+    initialStatus,
+  })
   return { operationId, isNewOperation: true }
 }
 
@@ -502,6 +607,29 @@ export function updateMutationOperation(
   }
 
   const updates = updater(operation)
+
+  // ── Enforce state-transition invariants ─────────────────────────────────
+  // If the updater changes the status field, the transition must be legal.
+  // Illegal transitions are rejected: the original (unmodified) operation is
+  // returned so callers can still read the current state, but nothing is
+  // persisted. This guarantees:
+  //   • Terminal states (success, cancelled) never leave their state.
+  //   • No partial or unauthorized state can survive across any path.
+  if (updates.status !== undefined && updates.status !== operation.status) {
+    const violation = validateStateTransition(operation.status, updates.status)
+    if (violation) {
+      logWarn('mutation_state_transition_violation', {
+        operationId,
+        type: operation.type,
+        from: operation.status,
+        to: updates.status,
+        violation,
+      })
+      // Return the unmodified operation — nothing is persisted
+      return operation
+    }
+  }
+
   const updatedOperation: MutationOperation = {
     ...operation,
     ...updates,

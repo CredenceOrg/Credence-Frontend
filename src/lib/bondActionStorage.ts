@@ -144,13 +144,21 @@ function migrateRecordToMutationSystem(
   try {
     const mutationType = kind === 'create' ? 'bond_create' : 'bond_withdraw'
     const params = record.lastRequest || {}
+    const targetStatus = mapLegacyStatusToMutation(record.status)
 
-    // Create operation in the unified system
-    const { operationId } = createMutationOperation(mutationType, params, 3)
+    // Create operation in the unified system. For terminal states (success,
+    // cancelled) that cannot be reached through idle → pending → …, we pass
+    // migrationStatus so the operation is created directly in the target state.
+    // This is the only code path that bypasses the normal lifecycle — all
+    // other callers must go through idle.
+    const { operationId } = createMutationOperation(mutationType, params, 3, {
+      migrationStatus: targetStatus,
+    })
 
-    // Update the operation to match the legacy state
+    // Fill in the attempt history to reconstruct the legacy state. The
+    // operation was created with the correct status via migrationStatus,
+    // so no further status transitions are needed.
     const operation = updateMutationOperation(operationId, (op) => ({
-      status: mapLegacyStatusToMutation(record.status),
       attempts: [
         {
           attemptId: `legacy:${kind}:${Date.now()}`,

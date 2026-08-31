@@ -365,15 +365,21 @@ export function useEnhancedBondMutations(): UseEnhancedBondMutationsResult {
   ])
 
   const reset = useCallback((): void => {
-    // Reset both legacy and unified storage to idle state
+    // Reset legacy storage to idle state. The unified mutation system tracks
+    // terminal states (success, cancelled) as immutable — we only unlink the
+    // legacy record here so the UI returns to an idle presentation.
     updateBondAction('create', () => ({
       status: 'idle',
       attempts: 0,
+      operationId: undefined,
+      migratedToV2: false,
     }))
 
     updateBondAction('withdraw', () => ({
       status: 'idle',
       attempts: 0,
+      operationId: undefined,
+      migratedToV2: false,
     }))
 
     activeOperationRef.current = null

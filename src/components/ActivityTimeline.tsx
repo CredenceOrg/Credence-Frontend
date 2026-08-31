@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import './ActivityTimeline.css'
-import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY, ACTIVITY_ITEMS } from '../data/activity'
+import { SAMPLE_ACTIVITY, ACTIVITY_ITEMS } from '../data/activity'
+import type { ActivityItem, ActivityTone } from '../events'
 import { AttestationStatus, toneToStatus } from '../events'
 import { formatAmount } from '../lib/format'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
 import type { BadgeVariant } from './Badge'
-import { AttestationStatus, toneToStatus } from '../events'
-import { formatAmount } from '../lib/format'
 
 /**
  * Maps ActivityTimeline tone values to Badge variants.

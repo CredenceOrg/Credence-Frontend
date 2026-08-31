@@ -131,10 +131,103 @@ export interface ActivityEventPayload {
    *  user-facing filterable value (accepted / needs-update / in-review).
    *  Falls back to `toneToStatus(tone)` for legacy items. */
   status?: AttestationStatus
+  /** Event schema version for forward-compatibility (e.g. "1.0"). */
+  eventVersion?: string
+  /** Correlation identifier that ties a logical action across multiple
+   *  emitted events and enables audit-parity verification. */
+  correlationId?: string
+  /** Optional USDC amount associated with the event (e.g. bond deposits).
+   *  Rendered via `formatAmount`; absent when the event has no monetary value. */
+  amountUsdc?: number
 }
 
 /** Alias for backward-compatibility with component prop definitions */
 export type ActivityItem = ActivityEventPayload
+
+// ---------------------------------------------------------------------------
+// State-Transition Invariants
+// ---------------------------------------------------------------------------
+
+/**
+ * Legal transition matrix for `AttestationStatus`.
+ *
+ * Each key is the *from* state; the array lists every *to* state that is
+ * permitted from it.  A transition that does not appear here is illegal
+ * and must be rejected at the entry point before any state is mutated.
+ *
+ * Design rationale
+ * ─────────────────
+ * - `in-review`   is the canonical entry state for a newly submitted attestation.
+ * - `accepted`    is a terminal success state; no further transitions are allowed.
+ * - `needs-update` is a recoverable failure state; the submitter may re-submit,
+ *   which moves the item back to `in-review`.
+ *
+ * Rejected / stale / out-of-order transitions leave the object untouched.
+ * See docs/ATTESTATIONS_VIEW_DESIGN.md §2 and QE-2026-08 for the full rationale.
+ */
+export const LEGAL_TRANSITIONS: Readonly<Record<AttestationStatus, readonly AttestationStatus[]>> =
+  {
+    [ATTESTATION_STATUSES.IN_REVIEW]: [
+      ATTESTATION_STATUSES.ACCEPTED,
+      ATTESTATION_STATUSES.NEEDS_UPDATE,
+    ],
+    [ATTESTATION_STATUSES.NEEDS_UPDATE]: [ATTESTATION_STATUSES.IN_REVIEW],
+    // accepted is terminal — no outbound transitions.
+    [ATTESTATION_STATUSES.ACCEPTED]: [],
+  } as const
+
+/**
+ * Returns `true` when transitioning from `from` to `to` is legal per
+ * `LEGAL_TRANSITIONS`, and `false` otherwise.
+ *
+ * Prefer `assertLegalTransition` at mutation entry points where an illegal
+ * transition should hard-fail.  Use `isLegalTransition` when you need a
+ * predicate without throwing (e.g. filtering, UI guards).
+ */
+export function isLegalTransition(from: AttestationStatus, to: AttestationStatus): boolean {
+  const targets = LEGAL_TRANSITIONS[from] as readonly AttestationStatus[] | undefined
+  return targets !== undefined && targets.includes(to)
+}
+
+/**
+ * Asserts that the `from → to` transition is legal.
+ *
+ * Throws a `RangeError` if:
+ * - `from` or `to` is not a recognised `AttestationStatus`, or
+ * - the transition is not listed in `LEGAL_TRANSITIONS`.
+ *
+ * Call this at every mutation entry point (form submit handler, API
+ * response handler, optimistic-update path) *before* writing new state.
+ * Because the throw happens prior to any `setState` / store update, a
+ * rejected transition can never leave an object in a partial or
+ * unauthorised state.
+ *
+ * @example
+ * assertLegalTransition(currentItem.status, 'accepted')
+ * setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'accepted' } : i))
+ */
+export function assertLegalTransition(from: AttestationStatus, to: AttestationStatus): void {
+  const knownStatuses = Object.values(ATTESTATION_STATUSES) as AttestationStatus[]
+
+  if (!knownStatuses.includes(from)) {
+    throw new RangeError(
+      `assertLegalTransition: unknown source status "${from}". ` +
+      `Valid values: ${knownStatuses.join(', ')}.`
+    )
+  }
+  if (!knownStatuses.includes(to)) {
+    throw new RangeError(
+      `assertLegalTransition: unknown target status "${to}". ` +
+      `Valid values: ${knownStatuses.join(', ')}.`
+    )
+  }
+  if (!isLegalTransition(from, to)) {
+    throw new RangeError(
+      `assertLegalTransition: illegal transition "${from}" → "${to}". ` +
+      `Legal targets from "${from}": [${LEGAL_TRANSITIONS[from].join(', ') || 'none'}].`
+    )
+  }
+}
 
 /**
  * Transaction Domain Event Constants & Types

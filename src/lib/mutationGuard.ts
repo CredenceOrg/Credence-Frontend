@@ -18,6 +18,8 @@
  * is produced and no partial work or wallet interaction occurs.
  */
 
+import { AmountError, parseAmount } from '../api/amount'
+
 /** Allowed bond amount range (USDC), finite and inclusive. */
 export const BOND_AMOUNT_MIN_USDC = 10
 export const BOND_AMOUNT_MAX_USDC = 1_000_000
@@ -35,29 +37,29 @@ export type MutationInputResult<T> = { ok: true; value: T } | { ok: false; messa
  * surface an actionable, user-facing message and always avoids calling the
  * downstream submit path for invalid input.
  */
-export function validateBondAmount(value: unknown): MutationInputResult<number> {
-  const numeric = typeof value === 'number' ? value : Number(value)
-
-  if (typeof value === 'number' && !Number.isFinite(value)) {
-    return { ok: false, message: 'Bond amount must be a finite number.' }
-  }
-  if (!Number.isFinite(numeric)) {
-    return { ok: false, message: 'Bond amount must be a valid number.' }
-  }
-  if (numeric < BOND_AMOUNT_MIN_USDC) {
+export function validateBondAmount(value: unknown): MutationInputResult<string> {
+  try {
+    // The mutation boundary must retain the canonical decimal string. Converting
+    // it back to a number here would reintroduce the precision loss this guard
+    // exists to prevent.
     return {
-      ok: false,
-      message: `Bond amount must be at least ${BOND_AMOUNT_MIN_USDC} USDC.`,
+      ok: true,
+      value: parseAmount(value as string | number | bigint, {
+        min: BOND_AMOUNT_MIN_USDC,
+        max: BOND_AMOUNT_MAX_USDC,
+      }),
     }
-  }
-  if (numeric > BOND_AMOUNT_MAX_USDC) {
-    return {
-      ok: false,
-      message: `Bond amount must not exceed ${BOND_AMOUNT_MAX_USDC} USDC.`,
-    }
-  }
+  } catch (error) {
+    if (!(error instanceof AmountError)) throw error
 
-  return { ok: true, value: numeric }
+    if (error.code === 'BELOW_MIN') {
+      return { ok: false, message: `Bond amount must be at least ${BOND_AMOUNT_MIN_USDC} USDC.` }
+    }
+    if (error.code === 'OVERFLOW') {
+      return { ok: false, message: `Bond amount must not exceed ${BOND_AMOUNT_MAX_USDC} USDC.` }
+    }
+    return { ok: false, message: `Bond amount is invalid: ${error.message}` }
+  }
 }
 
 /**

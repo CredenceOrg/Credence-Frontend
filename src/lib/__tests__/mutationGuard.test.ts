@@ -11,14 +11,14 @@ describe('validateBondAmount (bounded input before expensive work)', () => {
   it('accepts the minimum boundary exactly', () => {
     expect(validateBondAmount(BOND_AMOUNT_MIN_USDC)).toEqual({
       ok: true,
-      value: BOND_AMOUNT_MIN_USDC,
+      value: '10.00',
     })
   })
 
   it('accepts the maximum boundary exactly', () => {
     expect(validateBondAmount(BOND_AMOUNT_MAX_USDC)).toEqual({
       ok: true,
-      value: BOND_AMOUNT_MAX_USDC,
+      value: '1000000.00',
     })
   })
 
@@ -50,7 +50,14 @@ describe('validateBondAmount (bounded input before expensive work)', () => {
   })
 
   it('accepts a numeric string within range', () => {
-    expect(validateBondAmount('500')).toEqual({ ok: true, value: 500 })
+    expect(validateBondAmount('500')).toEqual({ ok: true, value: '500.00' })
+  })
+
+  it('rejects fractional precision that cannot be represented exactly', () => {
+    expect(validateBondAmount('10.001').ok).toBe(false)
+    // The nearest JavaScript number has 17 fractional digits. It must be
+    // rejected rather than rounded to a financially different value.
+    expect(validateBondAmount(0.1 + 0.2).ok).toBe(false)
   })
 
   it('never passes through a non-bounded amount as ok', () => {
@@ -59,9 +66,9 @@ describe('validateBondAmount (bounded input before expensive work)', () => {
     for (const s of samples) {
       const r = validateBondAmount(s)
       if (r.ok) {
-        expect(Number.isFinite(r.value)).toBe(true)
-        expect(r.value).toBeGreaterThanOrEqual(BOND_AMOUNT_MIN_USDC)
-        expect(r.value).toBeLessThanOrEqual(BOND_AMOUNT_MAX_USDC)
+        expect(r.value).toMatch(/^\d+\.\d{2}$/)
+        expect(Number(r.value)).toBeGreaterThanOrEqual(BOND_AMOUNT_MIN_USDC)
+        expect(Number(r.value)).toBeLessThanOrEqual(BOND_AMOUNT_MAX_USDC)
       }
     }
   })

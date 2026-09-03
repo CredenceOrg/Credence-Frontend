@@ -132,6 +132,11 @@ declaring the field only on calls that include it.
   Callers that previously sent a raw number amount should expect the string
   form on the backend side once they opt in — this is the documented
   contract, not a regression.
+- **Bond recovery compatibility:** `validateBondAmount` now returns the
+  canonical two-decimal string (for example, `'500'` becomes `'500.00'`) to
+  the bond submission boundary. This is intentional: converting it back to a
+  JavaScript number would defeat the exactness guarantee. Stored historical
+  numeric metadata remains accepted and is canonicalized when recovered.
 - **`Number(-0)` vs `'-0'`:** the number `-0` canonicalizes to `'0.00'`
   (IEEE-754 `-0 === 0`, `String(-0) === '0'`), while the string `'-0'` is
   rejected as `NEGATIVE`. This asymmetry is intentional and tested.

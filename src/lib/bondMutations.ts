@@ -7,17 +7,27 @@
  * - persist and recover mutation state across reloads
  * - test retry/duplicate protection deterministically with fake timers
  */
+import { parseAmount } from '../api/amount'
 
-export async function submitCreateBond(_params: { amountUsdc: number }): Promise<{ hash: string }> {
+export type BondAmountInput = string | number | bigint
+
+export async function submitCreateBond(params: {
+  amountUsdc: BondAmountInput
+}): Promise<{ hash: string }> {
+  // Validate before the wallet/network boundary. Keep the canonical value in
+  // the request shape so a future wallet adapter cannot accidentally receive a
+  // rounded JavaScript number.
+  parseAmount(params.amountUsdc, { min: 10, max: 1_000_000 })
   // Simulated async wallet/network path.
   await new Promise((resolve) => setTimeout(resolve, 50))
   return { hash: `local-bond-create-${Date.now()}` }
 }
 
-export async function submitWithdrawBond(_params: {
+export async function submitWithdrawBond(params: {
   bondId: number
-  amountUsdc: number
+  amountUsdc: BondAmountInput
 }): Promise<{ hash: string }> {
+  parseAmount(params.amountUsdc, { min: 10, max: 1_000_000 })
   await new Promise((resolve) => setTimeout(resolve, 50))
   return { hash: `local-bond-withdraw-${Date.now()}` }
 }

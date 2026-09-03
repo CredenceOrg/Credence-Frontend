@@ -45,24 +45,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   // Determine loading announcement text
   const getLoadingText = (): string => {
     if (loadingText) return loadingText
-
-    // Extract text from children if it's a string
-    const childText = typeof children === 'string' ? children.toLowerCase() : ''
-
-    if (childText.includes('create') || childText.includes('bond')) {
-      return 'Creating bond…'
-    }
-    if (childText.includes('lookup') || childText.includes('look up')) {
-      return 'Looking up…'
-    }
-    if (childText.includes('withdraw')) {
-      return 'Withdrawing…'
-    }
-    if (childText.includes('submit')) {
-      return 'Submitting…'
-    }
-
-    return 'Loading…'
+    // Default loading announcement
+    return 'Sending…'
   }
 
   return (

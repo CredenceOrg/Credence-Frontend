@@ -28,11 +28,15 @@ i18n
   })
 i18n.on('languageChanged', (lng) => {
   handleLanguageChanged(lng)
-  document.documentElement.lang = lng
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.lang = lng
+  }
 })
 
 const initialLanguage = i18n.language || 'en'
 setPreviousLng(initialLanguage)
-document.documentElement.lang = initialLanguage
+if (typeof document !== 'undefined' && document.documentElement) {
+  document.documentElement.lang = initialLanguage
+}
 
 export default i18n

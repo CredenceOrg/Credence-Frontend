@@ -97,7 +97,7 @@ describe('MutationRecoveryEngine', () => {
       const result = await engine.recoverOperation('test-op-1')
 
       expect(result).toBe(true)
-      expect(mockBondMutations.submitCreateBond).toHaveBeenCalledWith({ amountUsdc: 1000 })
+      expect(mockBondMutations.submitCreateBond).toHaveBeenCalledWith({ amountUsdc: '1000.00' })
       expect(mockStorage.updateMutationOperation).toHaveBeenCalledWith(
         'test-op-1',
         expect.any(Function)
@@ -125,7 +125,7 @@ describe('MutationRecoveryEngine', () => {
       expect(result).toBe(true)
       expect(mockBondMutations.submitWithdrawBond).toHaveBeenCalledWith({
         bondId: 123,
-        amountUsdc: 500,
+        amountUsdc: '500.00',
       })
     })
 

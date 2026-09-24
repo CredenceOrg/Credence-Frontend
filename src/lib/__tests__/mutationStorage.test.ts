@@ -297,15 +297,54 @@ describe('mutationStorage', () => {
 
       mockStorage.safeReadJson.mockReturnValue({ ok: true, value: storage })
 
+      // `pending → submitting` is a legal edge; the operation commits the
+      // status and the updater's other fields in one write.
       const updatedOp = updateMutationOperation('test-op', (_op) => ({
-        status: 'success',
+        status: 'submitting',
         completedAt: now,
       }))
 
       expect(updatedOp).toBeDefined()
-      expect(updatedOp?.status).toBe('success')
+      expect(updatedOp?.status).toBe('submitting')
       expect(updatedOp?.completedAt).toBe(now)
       expect(mockStorage.safeWriteJson).toHaveBeenCalled()
+    })
+
+    it('refuses to jump pending → success, which skips submission', () => {
+      // Fresh timestamp: a stale operation would be cleaned up on read and the
+      // test would pass for the wrong reason.
+      const now = new Date().toISOString()
+      const operation: MutationOperation = {
+        operationId: 'test-op',
+        type: 'bond_create',
+        status: 'pending',
+        requestHash: 'hash-123',
+        requestMetadata: { amountUsdc: 1000 },
+        attempts: [],
+        maxAttempts: 3,
+        createdAt: now,
+        updatedAt: now,
+        isRecovered: false,
+      }
+
+      const storage: MutationStorageV2 = {
+        schemaVersion: 2,
+        operations: { 'test-op': operation },
+        metadata: { createdAt: now },
+      }
+
+      mockStorage.safeReadJson.mockReturnValue({ ok: true, value: storage })
+
+      const updatedOp = updateMutationOperation('test-op', (_op) => ({
+        status: 'success',
+        finalTxHash: 'tx-should-not-persist',
+      }))
+
+      // Unchanged operation returned, and nothing written — neither the
+      // status nor the transaction hash the updater tried to attach.
+      expect(updatedOp?.status).toBe('pending')
+      expect(updatedOp?.finalTxHash).toBeUndefined()
+      expect(mockStorage.safeWriteJson).not.toHaveBeenCalled()
     })
 
     it('returns null for non-existent operation', () => {

@@ -17,7 +17,7 @@ import { initiateMutation } from './mutationRecovery'
 import {
   type MutationOperationId,
   getMutationOperation,
-  updateMutationOperation,
+  transitionMutationOperation,
 } from './mutationStorage'
 import { mutationRecoveryEngine } from './mutationRecovery'
 import { logInfo, logWarn } from './log'
@@ -26,7 +26,7 @@ import { logInfo, logWarn } from './log'
 // Trust Score Mutation Types
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface TrustScoreLookupParams {
+export type TrustScoreLookupParams = {
   address: string
 }
 
@@ -155,8 +155,20 @@ export async function retryTrustScoreLookup(operationId: MutationOperationId): P
     return false
   }
 
-  // Reset to pending and trigger recovery
-  updateMutationOperation(operationId, () => ({ status: 'pending' }))
+  // Reset to pending and trigger recovery. The reset is the authoritative
+  // step: if the matrix refuses it (the lookup settled concurrently) the retry
+  // never began, and reporting otherwise would leave the UI spinning on an
+  // operation that is not running.
+  const reset = transitionMutationOperation(operationId, 'pending')
+  if (!reset.ok) {
+    logWarn('trust_score_retry_transition_rejected', {
+      operationId,
+      reason: reset.reason,
+      from: reset.from,
+    })
+    return false
+  }
+
   const recovered = await mutationRecoveryEngine.recoverOperation(operationId)
 
   logInfo('trust_score_retry_initiated', { operationId, recovered })
@@ -281,9 +293,7 @@ export function createEnhancedTrustScoreLookup() {
     return result
   }
 
-  const getStatus = (): EnhancedTrustScoreHookResult['data'] extends TrustScore
-    ? Omit<EnhancedTrustScoreHookResult, 'refetch' | 'retry' | 'cancel'>
-    : null => {
+  const getStatus = (): Omit<EnhancedTrustScoreHookResult, 'refetch' | 'retry' | 'cancel'> => {
     if (!currentOperationId) {
       return {
         data: null,

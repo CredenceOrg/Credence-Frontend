@@ -17,9 +17,12 @@ import { safeReadJson, safeWriteJson } from './storageJson'
 import {
   createMutationOperation,
   updateMutationOperation,
+  transitionMutationOperation,
+  getMutationOperation,
   getMutationOperations,
   type MutationOperationId,
   type MutationOperation,
+  type MutationStatus,
 } from './mutationStorage'
 import { logInfo, logWarn } from './log'
 
@@ -243,13 +246,25 @@ export function updateBondAction(
 ): BondActionsV1 {
   const current = readBondActions(false)
   const record = kind === 'create' ? current.create : current.withdraw
-  const updated = updater(record)
+  let updated = updater(record)
 
-  // If this operation is linked to the mutation system, update both
+  // If this operation is linked to the mutation system, the unified operation
+  // is authoritative and the legacy record is a projection of it.
+  //
+  // The legacy vocabulary is coarser (it has no `submitting` and no
+  // `cancelled`), so a legacy write can easily describe a status change the
+  // lifecycle forbids — the dangerous one being a record flipped to `success`
+  // while the operation is still only `pending`. Previously the unified update
+  // was rejected but the legacy record was written anyway, so the two stores
+  // disagreed: the UI showed a completed bond while recovery still saw work to
+  // do and could submit it again.
+  //
+  // Now the authoritative store decides. If it refuses the transition, the
+  // legacy record is rebuilt from the operation instead of being written as
+  // requested, so the two can never diverge.
   if (updated.operationId) {
-    updateMutationOperation(updated.operationId, (op) => ({
-      status: mapLegacyStatusToMutation(updated.status),
-      updatedAt: new Date().toISOString(),
+    const targetStatus = mapLegacyStatusToMutation(updated.status)
+    const buildFields = (op: MutationOperation): Partial<MutationOperation> => ({
       completedAt: updated.lastSuccessAt,
       finalTxHash: updated.lastTxHash,
       // Add new attempt if status changed to error or success
@@ -261,7 +276,7 @@ export function updateBondAction(
                 attemptId: `legacy-update:${Date.now()}`,
                 timestamp: updated.lastAttemptAt || new Date().toISOString(),
                 requestHash: op.requestHash,
-                status: mapLegacyStatusToMutation(updated.status),
+                status: targetStatus,
                 error: updated.lastError
                   ? {
                       type: updated.lastError.type as
@@ -283,7 +298,32 @@ export function updateBondAction(
               },
             ]
           : op.attempts,
-    }))
+    })
+
+    // `allowIndirect` lets a legacy `pending → success` write reconcile along
+    // the real lifecycle (pending → submitting → success) instead of being
+    // refused outright, which preserves the legacy API's behaviour for every
+    // sequence that is actually reachable.
+    const result = transitionMutationOperation(updated.operationId, targetStatus, buildFields, {
+      allowIndirect: true,
+    })
+
+    if (!result.ok) {
+      logWarn('bond_action_legacy_mirror_rejected', {
+        kind,
+        operationId: updated.operationId,
+        reason: result.reason,
+        from: result.from ?? 'unknown',
+        to: targetStatus,
+      })
+
+      // Reconcile: project the authoritative operation back onto the legacy
+      // record so the caller's view matches what actually happened.
+      const authoritative = result.operation ?? getMutationOperation(updated.operationId)
+      updated = authoritative
+        ? reconcileLegacyRecord(updated, authoritative)
+        : { ...record, operationId: updated.operationId }
+    }
   }
 
   const next: BondActionsV1 =
@@ -291,6 +331,65 @@ export function updateBondAction(
 
   writeBondActions(next)
   return next
+}
+
+/**
+ * Projects an authoritative mutation operation onto the legacy record shape.
+ *
+ * Used when a legacy write was refused by the state-transition matrix: the
+ * request-side metadata the caller supplied is kept (it is not a lifecycle
+ * claim), but every field that describes *outcome* is taken from the
+ * operation, so the legacy store can never assert an outcome the unified
+ * store disagrees with.
+ */
+function reconcileLegacyRecord(
+  requested: BondActionRecord,
+  operation: MutationOperation
+): BondActionRecord {
+  const lastAttempt = operation.attempts[operation.attempts.length - 1]
+
+  return {
+    ...requested,
+    status: mapMutationStatusToLegacy(operation.status),
+    attempts: operation.attempts.length,
+    lastAttemptAt: lastAttempt?.timestamp ?? requested.lastAttemptAt,
+    lastSuccessAt: operation.status === 'success' ? operation.completedAt : undefined,
+    lastError: lastAttempt?.error
+      ? {
+          type: (['network', 'backend', 'validation'].includes(lastAttempt.error.type)
+            ? lastAttempt.error.type
+            : 'generic') as BondActionError['type'],
+          message: lastAttempt.error.message,
+          at: lastAttempt.error.timestamp,
+        }
+      : undefined,
+    lastTxHash: operation.finalTxHash ?? lastAttempt?.txHash,
+    operationId: operation.operationId,
+  }
+}
+
+/**
+ * Maps a unified status onto the coarser legacy vocabulary.
+ *
+ * `submitting` is in-flight work, which legacy callers have always seen as
+ * `pending`. `cancelled` has no legacy equivalent; it is surfaced as `idle`
+ * because the legacy record's job is to describe whether an action is
+ * outstanding, and a cancelled action is not.
+ */
+function mapMutationStatusToLegacy(status: MutationStatus): BondActionStatus {
+  switch (status) {
+    case 'submitting':
+      return 'pending'
+    case 'cancelled':
+      return 'idle'
+    case 'idle':
+    case 'pending':
+    case 'success':
+    case 'error':
+      return status
+    default:
+      return 'error'
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

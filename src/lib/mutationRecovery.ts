@@ -25,7 +25,9 @@ import {
   getMutationOperation,
   getMutationOperations,
   updateMutationOperation,
+  transitionMutationOperation,
   createMutationOperation,
+  isTerminalStatus,
 } from './mutationStorage'
 import { submitCreateBond, submitWithdrawBond } from './bondMutations'
 import { validateBondAmount, validateTrustScoreAddress } from './mutationGuard'
@@ -285,6 +287,38 @@ async function executeOperation(context: ExecutionContext): Promise<ExecutionRes
   }
 }
 
+/**
+ * Records the outcome of an attempt whose status transition was refused.
+ *
+ * This happens when an operation reaches a terminal state (almost always a
+ * user cancellation) while its request is still in flight. The operation's
+ * status is immutable at that point and must stay that way — but the attempt
+ * really did resolve, and silently dropping a transaction hash or an error is
+ * exactly the "lost error state" this system exists to prevent.
+ *
+ * The update carries no status change, so it is permitted by the matrix and
+ * cannot be used to smuggle an operation out of a terminal state.
+ */
+function recordOrphanedAttempt(
+  operationId: MutationOperationId,
+  attemptId: string,
+  result: ExecutionResult
+): void {
+  updateMutationOperation(operationId, (op) => ({
+    attempts: op.attempts.map((attempt) =>
+      attempt.attemptId === attemptId
+        ? {
+            ...attempt,
+            status: result.success ? ('success' as const) : ('error' as const),
+            txHash: result.txHash ?? attempt.txHash,
+            response: result.response ?? attempt.response,
+            error: result.error ?? attempt.error,
+          }
+        : attempt
+    ),
+  }))
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Recovery Engine
 // ═══════════════════════════════════════════════════════════════════════════
@@ -372,15 +406,33 @@ export class MutationRecoveryEngine {
         recoverySource: 'storage',
       }))
 
-      // Try to confirm existing transaction first
+      // Try to confirm existing transaction first.
+      //
+      // A migrated or interrupted operation can carry a txHash while still
+      // recorded as `pending`, which is not one edge away from `success`. We
+      // therefore reconcile along a real path (pending → submitting → success)
+      // instead of jumping, and only report success when the transition was
+      // actually committed — otherwise the caller would be told the operation
+      // completed while storage still says otherwise.
       if (operation.finalTxHash) {
         const confirmed = await this.confirmTransaction(operation.finalTxHash, controller.signal)
         if (confirmed) {
-          updateMutationOperation(operationId, () => ({
-            status: 'success',
-            completedAt: new Date().toISOString(),
-          }))
-          return true
+          const result = transitionMutationOperation(
+            operationId,
+            'success',
+            () => ({ completedAt: new Date().toISOString() }),
+            { allowIndirect: true }
+          )
+          if (result.ok) {
+            return true
+          }
+          logWarn('mutation_recovery_confirm_transition_rejected', {
+            operationId,
+            reason: result.reason,
+            from: result.from,
+          })
+          // A terminal operation is already settled; nothing left to recover.
+          return result.reason === 'terminal_state'
         }
       }
 
@@ -408,29 +460,39 @@ export class MutationRecoveryEngine {
         error: error instanceof Error ? error.message : String(error),
       })
 
-      // Mark as error state for user visibility. Idle operations must go
-      // through 'pending' first (idle → pending → error) to satisfy the
-      // state-transition matrix.
-      if (operation.status === 'idle') {
-        updateMutationOperation(operationId, () => ({ status: 'pending' }))
+      // Mark as error state for user visibility. An `idle` operation is two
+      // edges from `error` (idle → pending → error), so reconcile along the
+      // path in a single atomic commit rather than two separate writes that
+      // could leave the operation parked in `pending` if the second failed.
+      const failed = transitionMutationOperation(
+        operationId,
+        'error',
+        (op) => ({
+          attempts: [
+            ...op.attempts,
+            {
+              attemptId: `recovery:${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              requestHash: operation.requestHash,
+              status: 'error' as const,
+              error: createMutationError(
+                'generic',
+                `Recovery failed: ${error instanceof Error ? error.message : String(error)}`,
+                false
+              ),
+            },
+          ],
+        }),
+        { allowIndirect: true }
+      )
+
+      if (!failed.ok) {
+        logWarn('mutation_recovery_error_transition_rejected', {
+          operationId,
+          reason: failed.reason,
+          from: failed.from,
+        })
       }
-      updateMutationOperation(operationId, (op) => ({
-        status: 'error',
-        attempts: [
-          ...op.attempts,
-          {
-            attemptId: `recovery:${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            requestHash: operation.requestHash,
-            status: 'error',
-            error: createMutationError(
-              'generic',
-              `Recovery failed: ${error instanceof Error ? error.message : String(error)}`,
-              false
-            ),
-          },
-        ],
-      }))
 
       return false
     } finally {
@@ -490,28 +552,51 @@ export class MutationRecoveryEngine {
       if (lastAttempt.txHash) {
         const confirmed = await this.confirmTransaction(lastAttempt.txHash, signal)
         if (confirmed) {
-          updateMutationOperation(operationId, () => ({
-            status: 'success',
-            finalTxHash: lastAttempt.txHash,
-            completedAt: new Date().toISOString(),
-          }))
-          return true
+          const result = transitionMutationOperation(
+            operationId,
+            'success',
+            () => ({
+              finalTxHash: lastAttempt.txHash,
+              completedAt: new Date().toISOString(),
+            }),
+            { allowIndirect: true }
+          )
+          if (result.ok) {
+            return true
+          }
+          logWarn('mutation_recovery_confirm_transition_rejected', {
+            operationId,
+            reason: result.reason,
+            from: result.from,
+          })
+          return result.reason === 'terminal_state'
         }
       }
     }
 
-    // Assume the submitting operation failed and retry if possible
-    updateMutationOperation(operationId, (op) => ({
-      status: 'error',
+    // Assume the submitting operation failed and retry if possible.
+    const timedOut = transitionMutationOperation(operationId, 'error', (op) => ({
       attempts: [
         ...op.attempts.slice(0, -1),
         {
           ...lastAttempt,
-          status: 'error',
+          status: 'error' as const,
           error: createMutationError('timeout', 'Operation timed out during recovery', true),
         },
       ],
     }))
+
+    if (!timedOut.ok) {
+      // Settled concurrently (cancelled, or confirmed by another tab). Leave
+      // the authoritative state alone and do not retry — retrying here is how
+      // a user ends up paying twice.
+      logWarn('mutation_recovery_timeout_transition_rejected', {
+        operationId,
+        reason: timedOut.reason,
+        from: timedOut.from,
+      })
+      return false
+    }
 
     // Retry if we haven't exceeded max attempts
     if (operation.attempts.length < operation.maxAttempts) {
@@ -565,30 +650,51 @@ export class MutationRecoveryEngine {
     // first so we never jump directly to 'submitting' — the state matrix
     // requires error → pending → submitting.
     if (operation.status === 'error' || operation.status === 'idle') {
-      const transitioned = updateMutationOperation(operationId, () => ({
-        status: 'pending',
-      }))
-      if (!transitioned || transitioned.status !== 'pending') {
-        logWarn('mutation_recovery_transition_to_pending_failed', { operationId })
+      const transitioned = transitionMutationOperation(operationId, 'pending')
+      if (!transitioned.ok) {
+        logWarn('mutation_recovery_transition_to_pending_failed', {
+          operationId,
+          reason: transitioned.reason,
+          from: transitioned.from,
+        })
         return false
       }
     }
 
     const attemptId = `attempt:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`
 
-    // Mark as submitting and create new attempt record
-    updateMutationOperation(operationId, (op) => ({
-      status: 'submitting',
+    // Claim the operation for submission. This is the network gate: the
+    // transition to `submitting` must be committed *before* anything is sent,
+    // and if the matrix refuses it — the operation was cancelled or settled
+    // concurrently while we were waiting out the retry backoff — we must
+    // abandon the attempt rather than submit a mutation the user revoked.
+    const claimed = transitionMutationOperation(operationId, 'submitting', (op) => ({
       attempts: [
         ...op.attempts,
         {
           attemptId,
           timestamp: new Date().toISOString(),
           requestHash: operation.requestHash,
-          status: 'submitting',
+          status: 'submitting' as const,
         },
       ],
     }))
+
+    if (!claimed.ok) {
+      logWarn('mutation_recovery_submit_claim_rejected', {
+        operationId,
+        reason: claimed.reason,
+        from: claimed.from,
+      })
+      return false
+    }
+
+    // Re-check the abort signal after the claim: cancellation that landed
+    // during the write must not be followed by a network call.
+    if (signal.aborted) {
+      logInfo('mutation_recovery_aborted_before_submit', { operationId })
+      return false
+    }
 
     const context: ExecutionContext = {
       operationId,
@@ -601,31 +707,69 @@ export class MutationRecoveryEngine {
       const result = await executeOperation(context)
 
       if (result.success) {
-        // Update successful attempt and complete operation
-        updateMutationOperation(operationId, (op) => ({
-          status: 'success',
+        // Commit the successful attempt and complete the operation.
+        const committed = transitionMutationOperation(operationId, 'success', (op) => ({
           finalTxHash: result.txHash,
           finalResponse: result.response,
           completedAt: new Date().toISOString(),
           attempts: op.attempts.map((attempt) =>
             attempt.attemptId === attemptId
-              ? { ...attempt, status: 'success', txHash: result.txHash, response: result.response }
+              ? {
+                  ...attempt,
+                  status: 'success' as const,
+                  txHash: result.txHash,
+                  response: result.response,
+                }
               : attempt
           ),
         }))
 
+        if (!committed.ok) {
+          // The operation settled terminally (typically cancelled) while the
+          // request was in flight, so its status is immutable. The work still
+          // happened, so record the attempt outcome — a status-preserving
+          // update the matrix permits — rather than discarding the txHash and
+          // leaving the user with no evidence of a submitted transaction.
+          recordOrphanedAttempt(operationId, attemptId, result)
+          logWarn('mutation_recovery_success_transition_rejected', {
+            operationId,
+            reason: committed.reason,
+            from: committed.from,
+            txHash: result.txHash,
+          })
+          return false
+        }
+
         logInfo('mutation_recovery_success', { operationId, txHash: result.txHash })
         return true
       } else {
-        // Update failed attempt
-        updateMutationOperation(operationId, (op) => ({
-          status: result.shouldRetry && op.attempts.length < op.maxAttempts ? 'pending' : 'error',
+        // Commit the failed attempt. Both `pending` (retryable) and `error`
+        // are one legal edge from `submitting`; if the operation settled
+        // concurrently the error is still recorded on the attempt so no
+        // failure information is lost.
+        const current = getMutationOperation(operationId)
+        const nextStatus: 'pending' | 'error' =
+          result.shouldRetry && (current?.attempts.length ?? 0) < (current?.maxAttempts ?? 0)
+            ? 'pending'
+            : 'error'
+
+        const committed = transitionMutationOperation(operationId, nextStatus, (op) => ({
           attempts: op.attempts.map((attempt) =>
             attempt.attemptId === attemptId
-              ? { ...attempt, status: 'error', error: result.error }
+              ? { ...attempt, status: 'error' as const, error: result.error }
               : attempt
           ),
         }))
+
+        if (!committed.ok) {
+          recordOrphanedAttempt(operationId, attemptId, result)
+          logWarn('mutation_recovery_failure_transition_rejected', {
+            operationId,
+            reason: committed.reason,
+            from: committed.from,
+          })
+          return false
+        }
 
         // Retry if appropriate
         if (result.shouldRetry && operation.attempts.length + 1 < operation.maxAttempts) {
@@ -650,14 +794,17 @@ export class MutationRecoveryEngine {
         false
       )
 
-      updateMutationOperation(operationId, (op) => ({
-        status: 'error',
+      const committed = transitionMutationOperation(operationId, 'error', (op) => ({
         attempts: op.attempts.map((attempt) =>
           attempt.attemptId === attemptId
-            ? { ...attempt, status: 'error', error: executionError }
+            ? { ...attempt, status: 'error' as const, error: executionError }
             : attempt
         ),
       }))
+
+      if (!committed.ok) {
+        recordOrphanedAttempt(operationId, attemptId, { success: false, error: executionError })
+      }
 
       logError('mutation_recovery_execution_error', {
         operationId,
@@ -672,20 +819,47 @@ export class MutationRecoveryEngine {
    * Cancels active recovery for an operation.
    */
   cancelRecovery(operationId: MutationOperationId): boolean {
+    // Abort any in-flight work first so nothing can commit underneath the
+    // cancellation, then let the matrix decide whether the operation may
+    // actually move to `cancelled`.
     const controller = this.activeRecoveries.get(operationId)
     if (controller) {
       controller.abort('cancelled by user')
       this.activeRecoveries.delete(operationId)
-
-      updateMutationOperation(operationId, () => ({
-        status: 'cancelled',
-        completedAt: new Date().toISOString(),
-      }))
-
-      logInfo('mutation_recovery_cancelled', { operationId })
-      return true
     }
-    return false
+
+    // An operation that is already settled cannot be cancelled. The matrix
+    // treats `cancelled → cancelled` as a legal no-op, so check explicitly:
+    // the boolean this method returns means "this call cancelled it", and a
+    // repeat cancel must not claim to have done anything.
+    const current = getMutationOperation(operationId)
+    if (current && isTerminalStatus(current.status)) {
+      logWarn('mutation_recovery_cancel_rejected', {
+        operationId,
+        reason: 'terminal_state',
+        from: current.status,
+      })
+      return false
+    }
+
+    const result = transitionMutationOperation(operationId, 'cancelled', () => ({
+      completedAt: new Date().toISOString(),
+    }))
+
+    if (!result.ok) {
+      // Terminal operations (already succeeded or already cancelled) cannot be
+      // cancelled. Reporting `true` here is what previously let the UI tell a
+      // user their completed bond had been cancelled.
+      logWarn('mutation_recovery_cancel_rejected', {
+        operationId,
+        reason: result.reason,
+        from: result.from,
+      })
+      return false
+    }
+
+    logInfo('mutation_recovery_cancelled', { operationId, from: result.path[0] ?? null })
+    return true
   }
 
   /**
@@ -693,18 +867,29 @@ export class MutationRecoveryEngine {
    */
   cancelAllRecoveries(): number {
     const activeCount = this.activeRecoveries.size
+    let parked = 0
 
     for (const [operationId, controller] of this.activeRecoveries) {
       controller.abort('app shutdown')
 
-      updateMutationOperation(operationId, () => ({
-        status: 'pending', // Return to pending so it can be recovered on next startup
-      }))
+      // Park the operation back in `pending` so the next startup can resume it.
+      // An operation that settled terminally just before shutdown is left
+      // alone — the matrix refuses to move it, and the count reflects that.
+      const result = transitionMutationOperation(operationId, 'pending')
+      if (result.ok) {
+        parked++
+      } else {
+        logWarn('mutation_recovery_park_rejected', {
+          operationId,
+          reason: result.reason,
+          from: result.from,
+        })
+      }
     }
 
     this.activeRecoveries.clear()
-    logInfo('mutation_recovery_all_cancelled', { count: activeCount })
-    return activeCount
+    logInfo('mutation_recovery_all_cancelled', { count: activeCount, parked })
+    return parked
   }
 
   /**
@@ -750,17 +935,41 @@ export async function initiateMutation(
   const { operationId, isNewOperation } = createMutationOperation(type, params, maxAttempts)
 
   if (!isNewOperation) {
-    // Existing operation - trigger recovery if needed
+    // Deduplicated onto an existing operation. `started` must describe what is
+    // actually true of that operation, because callers surface it to the user.
     const operation = getMutationOperation(operationId)
-    if (operation && (operation.status === 'pending' || operation.status === 'error')) {
-      const recovered = await mutationRecoveryEngine.recoverOperation(operationId)
-      return { operationId, isNewOperation, started: recovered }
+    if (!operation) {
+      return { operationId, isNewOperation, started: false }
     }
-    return { operationId, isNewOperation, started: true }
+
+    // Already settled: `success` means the work is done, any other terminal
+    // state means it can never run again. Neither is "started".
+    if (isTerminalStatus(operation.status)) {
+      return { operationId, isNewOperation, started: operation.status === 'success' }
+    }
+
+    // Already in flight — do not submit a second time.
+    if (operation.status === 'submitting') {
+      return { operationId, isNewOperation, started: true }
+    }
+
+    const recovered = await mutationRecoveryEngine.recoverOperation(operationId)
+    return { operationId, isNewOperation, started: recovered }
   }
 
-  // New operation - start execution
-  updateMutationOperation(operationId, () => ({ status: 'pending' }))
+  // New operation - start execution. If the idle → pending transition is
+  // refused the operation never entered the lifecycle, so do not claim it did.
+  const entered = transitionMutationOperation(operationId, 'pending')
+  if (!entered.ok) {
+    logWarn('mutation_initiate_transition_rejected', {
+      operationId,
+      type,
+      reason: entered.reason,
+      from: entered.from,
+    })
+    return { operationId, isNewOperation, started: false }
+  }
+
   const started = await mutationRecoveryEngine.recoverOperation(operationId)
 
   return { operationId, isNewOperation, started }
@@ -778,8 +987,19 @@ export async function retryMutation(operationId: MutationOperationId): Promise<b
     return false
   }
 
-  // Reset to pending and trigger recovery
-  updateMutationOperation(operationId, () => ({ status: 'pending' }))
+  // Reset to pending and trigger recovery. If the matrix refuses the reset the
+  // operation is still in its old state, so the retry has not happened and we
+  // must not report that it did.
+  const reset = transitionMutationOperation(operationId, 'pending')
+  if (!reset.ok) {
+    logWarn('mutation_retry_transition_rejected', {
+      operationId,
+      reason: reset.reason,
+      from: reset.from,
+    })
+    return false
+  }
+
   return await mutationRecoveryEngine.recoverOperation(operationId)
 }
 

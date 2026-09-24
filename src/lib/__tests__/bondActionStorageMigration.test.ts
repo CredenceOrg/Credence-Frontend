@@ -75,6 +75,33 @@ describe('bondActionStorageMigration', () => {
       return { ...mockOp, ...updater(mockOp) }
     })
 
+    // The legacy mirror now commits through the authoritative transition entry
+    // point, so it needs a default here too.
+    mockMutationStorage.transitionMutationOperation.mockImplementation(
+      (id: any, target: any, updater?: any) => {
+        const mockOp = {
+          operationId: id,
+          type: 'bond_create',
+          status: target,
+          attempts: [],
+          requestHash: 'migrated-hash',
+          requestMetadata: {},
+          maxAttempts: 3,
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-01-01T00:01:00.000Z',
+          isRecovered: true,
+          recoveredAt: '2024-01-01T00:02:00.000Z',
+          recoverySource: 'storage',
+        }
+        const operation = { ...mockOp, ...(updater ? updater(mockOp) : {}), status: target }
+        return { ok: true, operation, path: [target] }
+      }
+    )
+    mockMutationStorage.getMutationOperation.mockReturnValue(null)
+    mockMutationStorage.isTerminalStatus.mockImplementation(
+      (status: any) => status === 'success' || status === 'cancelled'
+    )
+
     mockMutationStorage.getMutationOperations.mockReturnValue([])
   })
 
@@ -109,7 +136,10 @@ describe('bondActionStorageMigration', () => {
       expect(mockMutationStorage.createMutationOperation).toHaveBeenCalledWith(
         'bond_create',
         { amountUsdc: 1000 },
-        3
+        3,
+        // Terminal legacy records are reconstructed directly in their final
+        // state: `success` is not reachable from a fresh operation.
+        { migrationStatus: 'success' }
       )
 
       // Should have updated operation with legacy state
@@ -288,10 +318,13 @@ describe('bondActionStorageMigration', () => {
       expect(result.create.status).toBe('success')
       expect(result.create.lastTxHash).toBe('sync-success-hash')
 
-      // Should update unified system
-      expect(mockMutationStorage.updateMutationOperation).toHaveBeenCalledWith(
+      // Should update the unified system through the authoritative
+      // state-transition entry point, not by writing the status directly.
+      expect(mockMutationStorage.transitionMutationOperation).toHaveBeenCalledWith(
         'sync-test-op',
-        expect.any(Function)
+        'success',
+        expect.any(Function),
+        { allowIndirect: true }
       )
 
       // Should write legacy system
@@ -550,7 +583,11 @@ describe('bondActionStorageMigration', () => {
         requestHash: 'hash',
       })
 
-      expect(updateResult.status).toBe('success')
+      // The status is no longer carried by the updater: the operation was
+      // created directly in `success` via `migrationStatus`, so the updater
+      // only reconstructs the attempt history and outcome fields.
+      expect(updateResult.status).toBeUndefined()
+      expect(updateResult.attempts?.[0]?.status).toBe('success')
       expect(updateResult.completedAt).toBe('2024-01-01T00:03:00.000Z')
       expect(updateResult.finalTxHash).toBe('consistency-hash')
       expect(updateResult.isRecovered).toBe(true)
@@ -591,7 +628,8 @@ describe('bondActionStorageMigration', () => {
         expect(mockMutationStorage.createMutationOperation).toHaveBeenCalledWith(
           'bond_create',
           { amountUsdc: 1200 },
-          3
+          3,
+          { migrationStatus: 'success' }
         )
       })
 

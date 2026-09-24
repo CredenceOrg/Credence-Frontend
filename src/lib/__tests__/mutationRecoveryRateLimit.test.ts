@@ -35,6 +35,8 @@ const mockStorage = mutationStorage as unknown as {
   getMutationOperation: ReturnType<typeof vi.fn>
   getMutationOperations: ReturnType<typeof vi.fn>
   updateMutationOperation: ReturnType<typeof vi.fn>
+  transitionMutationOperation: ReturnType<typeof vi.fn>
+  isTerminalStatus: ReturnType<typeof vi.fn>
   createMutationOperation: ReturnType<typeof vi.fn>
 }
 const mockBondMutations = bondMutations as unknown as {
@@ -86,6 +88,21 @@ beforeEach(() => {
       store = { ...store, ...updater(store) }
       return store
     }
+  )
+  // Authoritative status entry point: commit against the same backing store so
+  // these tests keep observing a coherent operation.
+  mockStorage.transitionMutationOperation.mockImplementation(
+    (
+      _id: string,
+      target: MutationOperation['status'],
+      updater?: (op: MutationOperation) => Partial<MutationOperation>
+    ) => {
+      store = { ...store, ...(updater ? updater(store) : {}), status: target }
+      return { ok: true, operation: store, path: [target] }
+    }
+  )
+  mockStorage.isTerminalStatus.mockImplementation(
+    (status: string) => status === 'success' || status === 'cancelled'
   )
   mockBondMutations.submitCreateBond.mockResolvedValue({ hash: 'test-hash-123' })
   mockBondMutations.submitWithdrawBond.mockResolvedValue({ hash: 'test-hash-456' })

@@ -65,6 +65,32 @@ describe('MutationRecoveryEngine', () => {
       return { ...mockOp, ...updater(mockOp) }
     })
 
+    // `transitionMutationOperation` is the authoritative status entry point.
+    // Default it to a committed transition so tests that are not about the
+    // matrix keep exercising the happy path.
+    mockStorage.transitionMutationOperation.mockImplementation(
+      (id: any, target: any, updater?: any) => {
+        const current = mockStorage.getMutationOperation(id)
+        const base = current ?? {
+          operationId: id,
+          type: 'bond_create',
+          status: 'pending',
+          attempts: [],
+          maxAttempts: 3,
+          requestHash: 'test-hash',
+          requestMetadata: { amountUsdc: 1000 },
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-01-01T00:00:00.000Z',
+          isRecovered: false,
+        }
+        const operation = { ...base, ...(updater ? updater(base) : {}), status: target }
+        return { ok: true, operation, path: [target] }
+      }
+    )
+    mockStorage.isTerminalStatus.mockImplementation(
+      (status: any) => status === 'success' || status === 'cancelled'
+    )
+
     // Default successful bond operations
     mockBondMutations.submitCreateBond.mockResolvedValue({ hash: 'test-hash-123' })
     mockBondMutations.submitWithdrawBond.mockResolvedValue({ hash: 'test-hash-456' })

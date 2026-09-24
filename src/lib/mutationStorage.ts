@@ -83,6 +83,26 @@ export interface MutationOperation {
   isRecovered: boolean
   recoveredAt?: string
   recoverySource?: 'storage' | 'api' | 'manual'
+
+  /**
+   * Bounded, append-only audit trail of every *committed* status transition.
+   *
+   * Optional and additive: records written by earlier builds simply have no
+   * history, and older readers ignore the field, so the v2 schema is
+   * unchanged for compatibility purposes. Rejected transitions are never
+   * recorded here — the trail only ever contains legal edges, which is what
+   * makes the invariant reviewable after the fact.
+   */
+  statusHistory?: MutationStatusTransition[]
+}
+
+/** One committed edge of the state-transition matrix. */
+export interface MutationStatusTransition {
+  from: MutationStatus
+  to: MutationStatus
+  at: string
+  /** True when this edge was traversed as part of a multi-step reconciliation. */
+  indirect?: boolean
 }
 
 // Schema versioning for forward/backward compatibility
@@ -91,6 +111,10 @@ export interface MutationStorageV2 {
   operations: Record<MutationOperationId, MutationOperation>
   metadata: {
     createdAt: string
+    /** Set on every write by `writeMutationStorage`. */
+    updatedAt?: string
+    /** Set when `cleanupStaleOperations` removed at least one operation. */
+    lastCleanup?: string
     lastMigration?: {
       fromVersion: number
       toVersion: number
@@ -176,10 +200,7 @@ const STALE_OPERATION_MS = 24 * 60 * 60 * 1000 // 24 hours
  * An empty set means the state is terminal (no outgoing transitions).
  * The identity transition (status → same status) is always allowed.
  */
-export const LEGAL_TRANSITIONS: ReadonlyMap<
-  MutationStatus,
-  ReadonlySet<MutationStatus>
-> = new Map([
+export const LEGAL_TRANSITIONS: ReadonlyMap<MutationStatus, ReadonlySet<MutationStatus>> = new Map([
   // idle: a freshly created operation can only begin execution
   ['idle', new Set(['pending'])],
 
@@ -205,10 +226,7 @@ export const LEGAL_TRANSITIONS: ReadonlyMap<
  * @returns `null` if the transition is legal (or a no-op), or a human-readable
  *          violation message if it is illegal.
  */
-export function validateStateTransition(
-  from: MutationStatus,
-  to: MutationStatus,
-): string | null {
+export function validateStateTransition(from: MutationStatus, to: MutationStatus): string | null {
   // Identity transitions (no actual change) are always valid
   if (from === to) return null
 
@@ -220,6 +238,220 @@ export function validateStateTransition(
     return `Illegal state transition: ${from} → ${to}`
   }
   return null
+}
+
+/**
+ * Statuses with no outgoing edges in the matrix. Once an operation reaches
+ * one of these it is immutable with respect to status: no code path — retry,
+ * cancel, recovery, migration or legacy mirror — may move it again.
+ */
+export const TERMINAL_STATUSES: ReadonlySet<MutationStatus> = new Set<MutationStatus>([
+  'success',
+  'cancelled',
+])
+
+/** True when `status` is terminal (see {@link TERMINAL_STATUSES}). */
+export function isTerminalStatus(status: MutationStatus): boolean {
+  return TERMINAL_STATUSES.has(status)
+}
+
+/**
+ * Resolves the shortest legal path from `from` to `to` through the matrix.
+ *
+ * This exists because several callers legitimately need to reach a state that
+ * is not one edge away — the clearest case being recovery confirming a
+ * transaction for an operation still recorded as `pending`, which must travel
+ * `pending → submitting → success` rather than jumping straight to `success`.
+ * Resolving the path keeps those callers honest: they either traverse real
+ * edges of the matrix or they are rejected, and they can never invent one.
+ *
+ * @returns the target statuses to traverse, **excluding** `from` and
+ *          **including** `to` (so an identity transition yields `[]`), or
+ *          `null` when `to` is unreachable from `from`.
+ */
+export function resolveTransitionPath(
+  from: MutationStatus,
+  to: MutationStatus
+): MutationStatus[] | null {
+  if (from === to) return []
+
+  // Breadth-first search keeps the result the *shortest* legal path, which
+  // matters: a longer path would fabricate lifecycle states the operation
+  // never actually occupied.
+  const queue: MutationStatus[][] = [[from]]
+  const seen = new Set<MutationStatus>([from])
+
+  while (queue.length > 0) {
+    const path = queue.shift() as MutationStatus[]
+    const tail = path[path.length - 1]
+
+    for (const next of LEGAL_TRANSITIONS.get(tail) ?? []) {
+      if (seen.has(next)) continue
+      const extended = [...path, next]
+      if (next === to) return extended.slice(1)
+      seen.add(next)
+      queue.push(extended)
+    }
+  }
+
+  return null
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Authoritative Transition Entry Point
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Why a requested transition was refused. */
+export type TransitionRejectionReason =
+  'operation_not_found' | 'terminal_state' | 'illegal_transition' | 'unknown_status'
+
+export type MutationTransitionResult =
+  | {
+      ok: true
+      operation: MutationOperation
+      /** Edges actually committed, in order. Empty for an identity transition. */
+      path: MutationStatus[]
+    }
+  | {
+      ok: false
+      reason: TransitionRejectionReason
+      message: string
+      from: MutationStatus | null
+      to: MutationStatus
+      /** The unchanged operation, when one exists, so callers can resync. */
+      operation: MutationOperation | null
+    }
+
+export interface TransitionOptions {
+  /**
+   * Allow reaching `targetStatus` through intermediate legal states when no
+   * direct edge exists (see {@link resolveTransitionPath}). Off by default:
+   * ordinary lifecycle code should only ever traverse single edges, and
+   * needing more than one is a deliberate reconciliation decision.
+   */
+  allowIndirect?: boolean
+}
+
+/** Keep the audit trail useful without letting it grow without bound. */
+const MAX_STATUS_HISTORY = 50
+
+/**
+ * The single authoritative entry point for changing a mutation's status.
+ *
+ * Every status change in the bond and trust-score system goes through here, so
+ * the matrix is enforced in exactly one place. The call is all-or-nothing:
+ *
+ *   • If the transition is legal, the new status **and** every field produced
+ *     by `updater` are committed in one write.
+ *   • If it is illegal, nothing at all is written — not the status, and not
+ *     the updater's other fields. A rejected operation therefore cannot leave
+ *     behind a half-applied txHash, error or completion timestamp.
+ *
+ * Unlike {@link updateMutationOperation}, the outcome is explicit, so callers
+ * can report the authoritative result instead of assuming their request won.
+ *
+ * @param updater produces the non-status fields to commit alongside the
+ *   transition. It may not set `status`; the target comes from `targetStatus`.
+ */
+export function transitionMutationOperation(
+  operationId: MutationOperationId,
+  targetStatus: MutationStatus,
+  updater?: (operation: MutationOperation) => Partial<Omit<MutationOperation, 'status'>>,
+  options?: TransitionOptions
+): MutationTransitionResult {
+  const storage = readMutationStorage()
+  const operation = storage.operations[operationId]
+
+  if (!operation) {
+    logWarn('mutation_operation_not_found', { operationId })
+    return {
+      ok: false,
+      reason: 'operation_not_found',
+      message: `Unknown operation: ${operationId}`,
+      from: null,
+      to: targetStatus,
+      operation: null,
+    }
+  }
+
+  const from = operation.status
+
+  if (!LEGAL_TRANSITIONS.has(from) || !LEGAL_TRANSITIONS.has(targetStatus)) {
+    return reject(operation, 'unknown_status', `Unknown status in ${from} → ${targetStatus}`)
+  }
+
+  // Resolve how (and whether) the target can legally be reached.
+  let path: MutationStatus[] | null
+  if (from === targetStatus) {
+    path = []
+  } else if (LEGAL_TRANSITIONS.get(from)?.has(targetStatus)) {
+    path = [targetStatus]
+  } else if (options?.allowIndirect) {
+    path = resolveTransitionPath(from, targetStatus)
+  } else {
+    path = null
+  }
+
+  if (path === null) {
+    return reject(
+      operation,
+      isTerminalStatus(from) ? 'terminal_state' : 'illegal_transition',
+      isTerminalStatus(from)
+        ? `Operation is in terminal state ${from}; ${targetStatus} is unreachable`
+        : `Illegal state transition: ${from} → ${targetStatus}`
+    )
+  }
+
+  // Legal: build the committed record. The updater runs only now, so its
+  // side-effect-free output is never persisted for a rejected transition.
+  const updates = updater ? updater(operation) : {}
+  const at = new Date().toISOString()
+
+  const history = [...(operation.statusHistory ?? [])]
+  let cursor = from
+  for (const step of path) {
+    history.push({ from: cursor, to: step, at, ...(path.length > 1 ? { indirect: true } : {}) })
+    cursor = step
+  }
+
+  const updatedOperation: MutationOperation = {
+    ...operation,
+    ...updates,
+    status: targetStatus,
+    statusHistory: history.slice(-MAX_STATUS_HISTORY),
+    updatedAt: at,
+  }
+
+  storage.operations[operationId] = updatedOperation
+  writeMutationStorage(storage)
+
+  if (path.length > 1) {
+    logInfo('mutation_state_transition_indirect', {
+      operationId,
+      type: operation.type,
+      from,
+      to: targetStatus,
+      path: path.join(' → '),
+    })
+  }
+
+  return { ok: true, operation: updatedOperation, path }
+
+  function reject(
+    op: MutationOperation,
+    reason: TransitionRejectionReason,
+    message: string
+  ): MutationTransitionResult {
+    logWarn('mutation_state_transition_violation', {
+      operationId,
+      type: op.type,
+      from: op.status,
+      to: targetStatus,
+      reason,
+      violation: message,
+    })
+    return { ok: false, reason, message, from: op.status, to: targetStatus, operation: op }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -543,9 +775,16 @@ export function createMutationOperation(
   const storage = readMutationStorage()
   const requestHash = calculateRequestHash(type, params)
 
-  // Check for existing operation with same request hash
+  // Check for existing operation with same request hash.
+  //
+  // Terminal operations are deliberately excluded. A `success` must not be
+  // re-run, and a `cancelled` one must not be resurrected: because `cancelled`
+  // has no outgoing edges, deduplicating onto it would hand the caller an
+  // operation that can never start again, and the user's repeat request would
+  // silently do nothing. Excluding both means a repeat after a cancellation
+  // gets a genuinely new, runnable operation.
   const existingOperation = Object.values(storage.operations).find(
-    (op) => op.type === type && op.requestHash === requestHash && op.status !== 'success'
+    (op) => op.type === type && op.requestHash === requestHash && !isTerminalStatus(op.status)
   )
 
   if (existingOperation) {
@@ -566,6 +805,7 @@ export function createMutationOperation(
 
   // Create new operation
   const operationId = generateOperationId(type, requestHash)
+  const createdAt = new Date().toISOString()
   const operation: MutationOperation = {
     operationId,
     type,
@@ -574,9 +814,16 @@ export function createMutationOperation(
     requestMetadata: { ...params },
     attempts: [],
     maxAttempts,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt,
+    updatedAt: createdAt,
     isRecovered: initialStatus !== 'idle',
+    // Seed the audit trail so a migration-reconstructed operation is
+    // distinguishable from one that genuinely walked the lifecycle: the entry
+    // records that it entered the state directly at creation time.
+    statusHistory:
+      initialStatus === 'idle'
+        ? []
+        : [{ from: 'idle', to: initialStatus, at: createdAt, indirect: true }],
   }
 
   storage.operations[operationId] = operation
@@ -609,25 +856,21 @@ export function updateMutationOperation(
   const updates = updater(operation)
 
   // ── Enforce state-transition invariants ─────────────────────────────────
-  // If the updater changes the status field, the transition must be legal.
+  // A status change delegates to `transitionMutationOperation`, so the matrix
+  // is enforced in exactly one place and the committed edge is recorded in the
+  // audit trail no matter which API the caller reached for.
+  //
   // Illegal transitions are rejected: the original (unmodified) operation is
   // returned so callers can still read the current state, but nothing is
-  // persisted. This guarantees:
+  // persisted — not the status, and not the updater's other fields. This
+  // guarantees:
   //   • Terminal states (success, cancelled) never leave their state.
   //   • No partial or unauthorized state can survive across any path.
   if (updates.status !== undefined && updates.status !== operation.status) {
-    const violation = validateStateTransition(operation.status, updates.status)
-    if (violation) {
-      logWarn('mutation_state_transition_violation', {
-        operationId,
-        type: operation.type,
-        from: operation.status,
-        to: updates.status,
-        violation,
-      })
-      // Return the unmodified operation — nothing is persisted
-      return operation
-    }
+    const { status: targetStatus, ...rest } = updates
+    const result = transitionMutationOperation(operationId, targetStatus, () => rest)
+    // On rejection, hand back the unchanged operation (unchanged contract).
+    return result.ok ? result.operation : result.operation
   }
 
   const updatedOperation: MutationOperation = {

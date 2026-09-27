@@ -196,5 +196,61 @@ describe('useLocalStorage', () => {
       rerender()
       expect(result.current[1]).toBe(setterBefore)
     })
+    it('handles undefined written value gracefully', () => {
+      const { result } = renderHook(() => useLocalStorage(KEY, 'default'))
+      act(() => result.current[1](undefined as any))
+      expect(result.current[0]).toBe('default')
+    })
+  })
+
+  describe('boundary and recovery states', () => {
+    it('populates error state when localStorage.setItem throws and recovers on retry', () => {
+      let fail = true
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation((k, v) => {
+        if (fail) { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; }
+
+      })
+      const { result } = renderHook(() => useLocalStorage(KEY, 'initial'))
+      
+      act(() => result.current[1]('updated'))
+      // The state itself updates even if storage fails
+      expect(result.current[0]).toBe('updated')
+      expect(result.current[2].error?.name).toBe('QuotaExceededError')
+      
+      // Recovery
+      fail = false
+      act(() => result.current[2].retry())
+      expect(result.current[2].error).toBeNull()
+      
+      act(() => result.current[1]('recovered'))
+      expect(result.current[0]).toBe('recovered')
+      expect(result.current[2].error).toBeNull()
+    })
+
+    it('sets permissionGranted to false on SecurityError', () => {
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        const err = new Error('Security Error')
+        err.name = 'SecurityError'
+        throw err
+      })
+      const { result } = renderHook(() => useLocalStorage(KEY, 'initial'))
+      expect(result.current[2].permissionGranted).toBe(true) // Initial state
+
+      act(() => result.current[1]('updated'))
+      expect(result.current[2].permissionGranted).toBe(false)
+      expect(result.current[2].error?.name).toBe('SecurityError')
+    })
+    
+    it('synchronizes state when another tab modifies the storage (stale state handling)', () => {
+      const { result } = renderHook(() => useLocalStorage(KEY, 'initial'))
+      expect(result.current[0]).toBe('initial')
+      
+      act(() => {
+        localStorage.setItem(KEY, JSON.stringify('from-another-tab'))
+        window.dispatchEvent(new StorageEvent('storage', { key: KEY }))
+      })
+      
+      expect(result.current[0]).toBe('from-another-tab')
+    })
   })
 })

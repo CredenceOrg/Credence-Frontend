@@ -134,9 +134,17 @@ export function pointsToNextTier(score: number, tier: TrustTier): number {
  * Calculate percentage of fill for the gauge (0-100)
  * @param score Current score
  * @returns Percentage (0-100)
+ *
+ * Invariants:
+ * - Total function: every numeric input maps to a finite value in [0, 100].
+ * - Invalid (NaN, ±Infinity) and out-of-range (< 0 or > MAX_SCORE) scores are
+ *   clamped through `normalizeScore`, so a corrupted score can never leak a
+ *   NaN or negative width into the progress/thumb CSS.
+ * - Stateless and deterministic: duplicate or interleaved calls with the same
+ *   input always yield identical output and cannot influence each other.
  */
 export function getProgressPercentage(score: number): number {
-  return Math.min((score / MAX_SCORE) * 100, 100)
+  return (normalizeScore(score) / MAX_SCORE) * 100
 }
 
 export default function TrustGauge({

@@ -42,6 +42,8 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
    * ```
    */
   amountFields?: ApiAmountFields
+
+  /**
    * When provided, the request is only dispatched if the active identity
    * epoch matches this value at call time **and** when the response arrives.
    * A mismatch at either point causes the promise to reject with
@@ -126,6 +128,7 @@ export class ApiAmountError extends ApiError {
   }
 }
 
+/**
  * Thrown by `apiFetch` when a session identity conflict is detected.
  *
  * A conflict is detected in two places:
@@ -381,7 +384,15 @@ function applyAmountFields(
   return wireBody
 }
 
-function buildHeaders(headers: HeadersInit | undefined, hasJsonBody: boolean): Headers {
+/**
+ * Builds request headers with deterministic defaults.
+ *
+ * - Always sets `Accept: application/json` unless already present
+ * - Sets `Content-Type: application/json` if body is JSON and not already present
+ * - Always sets `X-Correlation-ID` unless already present (required for traceability)
+ *
+ * Does not mutate the input headers object. Returns a new Headers instance.
+ */
 function buildHeaders(
   headers: HeadersInit | undefined,
   hasJsonBody: boolean,
@@ -462,7 +473,15 @@ function replayConflict(key: string): ApiError {
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, skipRateLimit, amountFields, ...init } = options
+  const {
+    body,
+    headers,
+    idempotencyKey,
+    skipRateLimit,
+    amountFields,
+    identityEpoch,
+    ...init
+  } = options
 
   // Exact-amount gate: validate and canonicalize declared amount fields
   // BEFORE any state change. An invalid amount must never consume
@@ -470,19 +489,17 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   // caller's body object.
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
-  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, ...init } = options
-  const hasJsonBody = isJsonBody(body)
 
   // Validate input size before expensive operations. Serializing an oversized
   // body is wasted work and could exhaust memory or downstream resources.
   if (hasJsonBody) {
-    const serialized = JSON.stringify(body)
+    const serialized = JSON.stringify(wireBody)
     if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
       throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
     }
   }
 
-  const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
+  const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (wireBody ?? undefined)
   const correlationId = generateCorrelationId('api-fetch')
   const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
   const method = (init.method || 'GET').toUpperCase()
@@ -579,8 +596,6 @@ async function apiFetchWithoutReplay<T>(
   try {
     response = await fetch(url, {
       ...init,
-      headers: buildHeaders(headers, hasJsonBody),
-      body: hasJsonBody ? JSON.stringify(wireBody) : wireBody,
       headers,
       body: serializedBody,
     })

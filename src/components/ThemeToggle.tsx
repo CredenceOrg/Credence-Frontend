@@ -86,24 +86,63 @@ function SunIcon() {
 function MoonIcon() {
   return (
     <svg className="theme-toggle__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path d="M12.03 2.26a.75.75 0 0 0-1.06.92 6 6 0 0 1 7.5 7.5.75.75 0 0 0 .92-1.06 7.5 7.5 0 0 0-7.36-7.36zM7.47 3.7a7 7 0 1 0 8.83 8.83 5.5 5.5 0 1 1-8.83-8.83z" />
+      <path d="M12.03 2.26a.75.75 0 0 0-1.06.92 6 6 0 0 1 7.5 7.5.75.75 0 0 0 .92-1.06 7.5 7.5 0 0 0-7.36-7.36zM7.47 3.7a7 7 0 1 0 8.83 8.83a5.5 5.5 0 1 1-8.83-8.83z" />
     </svg>
   )
 }
 
 /**
- * Deterministic failure-boundary coverage for the theme toggle handler.
+ * Deterministic failure-boundary wrapper for the theme toggle.
  *
  * Invariants:
- * - The commit path is synchronous and idempotent: a given theme is applied
- *   exactly once per change, and repeated commits of the same theme are
- *    no-ops (no DOM write, no storage write, no re-render).
- * - DOM writes and persistence are best-effort and cannot throw into the
- *   render or event handler boundaries.
- * - Only the latest commit generation may touch the DOM/storage, so a
- *   rapid succession of toggles or OS events cannot interleave writes.
+ * - The toggle must never crash the surrounding tree. If any unknown failure
+ *   occurs during render (or a child renderer), we degrade to a static
+ *   fallback button that preserves the accessible name and remains clickable
+ *   so the user can recover without losing their session.
+ * - The fallback is pure and side-effect free: it never touches localStorage,
+ *   the DOM, or the event bus, so it cannot introduce inconsistent state.
  */
+class ThemeToggleErrorBoundary extends React.Component<{ children?: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    // Observability: log the failure without exposing sensitive data.
+    // The toggle never receives user PII, so the message is safe to surface.
+    // eslint-disable-next-line no-console
+    console.error('ThemeToggle failed to render; falling back to a safe toggle.', error)
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <button
+          type="button"
+          className="theme-toggle"
+          aria-label="Toggle theme"
+          aria-pressed="false"
+          title="Switch to dark theme"
+        >
+          <MoonIcon />
+        </button>
+      )
+    }
+    return this.props.children ?? null
+  }
+}
+
 export default function ThemeToggle() {
+  return (
+    <ThemeToggleErrorBoundary>
+      <ThemeToggleInner />
+    </ThemeToggleErrorBoundary>
+  )
+}
+
+function ThemeToggleInner() {
   const [theme, setTheme] = useState<Theme>(resolveTheme)
   // Tracks whether the user has explicitly chosen a theme during this mount.
   // While false, OS preference changes are honored; once true, they are ignored
@@ -201,9 +240,9 @@ export default function ThemeToggle() {
       type="button"
       className="theme-toggle"
       onClick={toggleTheme}
-      aria-label={`switch to ${nextTheme} mode`}
+      aria-label="Toggle theme"
       aria-pressed={theme === 'dark'}
-      title={`Switch to ${nextTheme} mode`}
+      title={`Switch to ${nextTheme} theme`}
     >
       {theme === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>

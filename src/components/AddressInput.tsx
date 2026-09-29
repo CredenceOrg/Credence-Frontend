@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
 import { useSettings } from '../context/SettingsContext'
@@ -16,13 +16,18 @@ interface AddressInputProps {
    * Takes precedence over the built-in format error when provided.
    */
   error?: string
+  /**
+   * Optional callback invoked when a clipboard read fails (permission denied,
+   * unavailable API, etc.) so callers can surface a diagnostic message.
+   */
+  onPasteError?: (error: unknown) => void
 }
 
 /**
  * Validates Stellar public key format.
  * Valid addresses: 56 characters, starts with 'G'
  */
-function isValidStellarAddress(address: string): boolean {
+export function isValidStellarAddress(address: string): boolean {
   if (!address) return false
   // Stellar addresses are 56 characters and start with 'G'
   return /^G[A-Z0-9]{55}$/.test(address)
@@ -94,7 +99,7 @@ function AddressInputInner({
 }: AddressInputInnerProps) {
   return (
     <div
-      className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''}`}
+      className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''}`
     >
       <input
         ref={inputRef}
@@ -131,7 +136,7 @@ function AddressInputInner({
           aria-hidden="true"
         >
           <path
-            d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
+            d="M10.5 9H5.5C4.67157 9 4 9.67157 4 10.5V11.5C4 12.3284 4.67157 13 5.5 13H10.5C11.3284 13 12 12.3284 12 11.5V10.5C12 9.67157 11.3284 9 10.5 9Z"
             stroke="currentColor"
             strokeWidth="1.2"
             strokeLinecap="round"
@@ -152,6 +157,7 @@ export default function AddressInput({
   disabled = false,
   className = '',
   error: externalError,
+  onPasteError,
 }: AddressInputProps) {
   const { addressDisplay } = useSettings()
 
@@ -159,24 +165,33 @@ export default function AddressInput({
 
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  // Tracks whether the last clipboard read failed so we can surface a
+  // diagnostic message without losing the user's existing input.
+  const [pasteFailed, setPasteFailed] = useState(false)
 
   const isValid = isValidStellarAddress(value)
   const isEmpty = !value
   const showError = attempted && !isValid && !isEmpty
   const showSuccess = attempted && isValid
 
-  // Notify parent of validation state change
-  React.useEffect(() => {
+  // Notify parent of validation state change. We key on the boolean
+  // result and the callback identity so consumers can pass an inline
+  // function without triggering an infinite render loop.
+  useEffect(() => {
     onValidationChange?.(isValid)
   }, [isValid, onValidationChange])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (eRect.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     onChange(newValue)
 
     // Mark as attempted if user starts typing
     if (!attempted) {
       setAttempted(true)
+    }
+    // Any manual edit clears a prior paste failure.
+    if (pasteFailed) {
+      setPasteFailed(false)
     }
   }
 
@@ -189,30 +204,57 @@ export default function AddressInput({
     setFocused(true)
   }
 
-  const handlePaste = async () => {
+  /**
+   * Paste handler.
+   *
+   * Invariants:
+   * - Never overwrite the existing value with an empty clipboard result.
+   * - Never clear or corrupt the existing value on failure.
+   * - On failure, focus the input so the user can manually paste.
+   */
+  const handlePaste = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText()
       const trimmedText = text.trim()
+
+      // Guard: if clipboard is empty or whitespace-only, do not
+      // clbler the user's existing input. Surface a non-destructive
+      // failure instead.
+      if (!trimmedText) {
+        setPasteFailed(true)
+        onPasteError?.(new Error('Clipboard is empty'))
+        if (inputRef.current) {
+          inputRef.current.focus()
+        }
+        return
+      }
+
       onChange(trimmedText)
       setAttempted(true)
+      setPasteFailed(false)
 
       // Focus the input after paste
       if (inputRef.current) {
         inputRef.current.focus()
       }
-    } catch {
-      // Clipboard API not available or permission denied
-      // Fallback: focus input for manual paste
+    } catch (err) {
+      // Clipboard API not available or permission denied.
+      // Fallback: focus input for manual paste and surface a diagnostic
+      // without exposing clipboard contents.
+      setPasteFailed(true)
+      onPasteError?.(err)
       if (inputRef.current) {
         inputRef.current.focus()
       }
     }
-  }
+  }, [onChange, onPasteError])
 
   const formatError = showError
     ? 'Invalid address. Stellar public keys are 56 characters starting with G.'
     : undefined
-  const error = externalError ?? formatError
+  // External error takes precedence; otherwise fall back to the format
+  // error, then to a non-destructive paste failure message.
+  const error = externalError ?? formatError ?? (pasteFailed ? 'Unable to read clipboard. Please paste manually.' : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
   // Visual + FormField success only when format is valid and no external error.
   const successMessage = !externalError && showSuccess ? 'Valid Stellar address' : undefined

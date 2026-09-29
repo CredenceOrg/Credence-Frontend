@@ -498,3 +498,69 @@ describe('CreateBondFlow – transition gating under prefers-reduced-motion', ()
     expect(button.style.transition).toBe('none')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Reset – deterministic failure-boundary coverage
+// ---------------------------------------------------------------------------
+
+describe('CreateBondFlow – reset failure boundaries', () => {
+  it('cancel from step 3 clears amount, duration, and acknowledgement', async () => {
+    const user = userEvent.setup()
+    await reachStep3('1000', 30)
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+
+    // Back on step 1 with a cleared amount field
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('0')).toHaveValue('')
+
+    // Advancing without input must re-trigger validation (no stale state)
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
+
+    // Re-enter amount; duration must NOT be silently retained from before
+    await user.type(screen.getByPlaceholderText('0'), '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByText(/select a lock duration/i)).toBeInTheDocument()
+  })
+
+  it('cancel from step 4 clears acknowledgement so confirm is gated again', async () => {
+    const user = userEvent.setup()
+    await reachStep3('1000', 30)
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    await user.click(screen.getByRole('checkbox'))
+    expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).not.toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+
+    // Walk back to step 4 and verify the acknowledgement was reset
+    await user.type(screen.getByPlaceholderText('0'), '1000')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    fireEvent.click(screen.getByRole('button', { name: /30 Days/i }))
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).toBeDisabled()
+  })
+
+  it('repeated cancel is idempotent and does not corrupt state', async () => {
+    await reachStep3('1000', 30)
+    const cancel = screen.getByRole('button', { name: /cancel/i })
+    fireEvent.click(cancel)
+    fireEvent.click(cancel)
+    fireEvent.click(cancel)
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('0')).toHaveValue('')
+  })
+
+  it('reset after confirmation returns to a clean step 1', async () => {
+    const user = userEvent.setup()
+    await reachStep3('1000', 30)
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    await user.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: /Confirm & Create Bond/i }))
+
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('0')).toHaveValue('')
+  })
+})

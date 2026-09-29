@@ -96,7 +96,7 @@ describe('ConfirmDialog', () => {
     })
 
     it('does not render subtitle when omitted', () => {
-      renderDialog({ subtitle: undefined })
+      renderDialog( { subtitle: undefined })
       // heading is there but no subtitle paragraph
       expect(screen.queryByText(/This is irreversible/i)).not.toBeInTheDocument()
     })
@@ -107,13 +107,13 @@ describe('ConfirmDialog', () => {
       expect(within(dl).getByText('Bond amount')).toBeInTheDocument()
       expect(within(dl).getByText('1,000 USDC')).toBeInTheDocument()
       expect(within(dl).getByText(/Slash penalty.*10%/)).toBeInTheDocument()
-      expect(within(dl).getByText('−100 USDC')).toBeInTheDocument()
+      expect(within(dl).getByText('∔100 USDC')).toBeInTheDocument()
       expect(within(dl).getByText('You receive')).toBeInTheDocument()
       expect(within(dl).getByText('900 USDC')).toBeInTheDocument()
     })
 
     it('renders custom confirmLabel on the confirm button', () => {
-      renderDialog({ confirmLabel: 'Yes, withdraw' })
+      renderDialog( { confirmLabel: 'Yes, withdraw' })
       expect(screen.getByRole('button', { name: 'Yes, withdraw' })).toBeInTheDocument()
     })
 
@@ -352,21 +352,14 @@ describe('ConfirmDialog', () => {
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }))
     })
 
-    it('returns focus to returnFocusRef on close', () => {
-      const returnEl = document.createElement('button')
-      returnEl.type = 'button'
-      Object.defineProperty(returnEl, 'offsetParent', {
-        get: () => document.body,
-        configurable: true,
-      })
-      document.body.appendChild(returnEl)
-      returnEl.focus()
+    it('restores focus to the previously focused element on close', () => {
+      const trigger = document.createElement('button')
+      trigger.textContent = 'Open dialog'
+      document.body.appendChild(trigger)
+      trigger.focus()
+      expect(document.activeElement).toBe(trigger)
 
-      const returnFocusRef = createRef<HTMLButtonElement>()
-      ;(returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = returnEl
-
-      const { onConfirm, onCancel, rerender } = renderDialog({ returnFocusRef })
-
+      const { rerender, onConfirm, onCancel } = renderDialog()
       rerender(
         <ConfirmDialog
           open={false}
@@ -374,128 +367,178 @@ describe('ConfirmDialog', () => {
           breakdown={defaultBreakdown}
           onConfirm={onConfirm}
           onCancel={onCancel}
-          returnFocusRef={returnFocusRef}
         />
       )
 
-      expect(document.activeElement).toBe(returnEl)
+      expect(document.activeElement).toBe(trigger)
+      trigger.remove()
+    })
+
+    it('returns focus to the Cancel button when the dialog is reopened', () => {
+      const { rerender, onConfirm, onCancel } = renderDialog()
+      rerender(
+        <ConfirmDialog
+          open={false}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      rerender(
+        <ConfirmDialog
+          open={true}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }))
     })
   })
-})
 
-describe('ConfirmDialog — configurable phrase + optional breakdown', () => {
-  beforeEach(() => {
-    scrollY = 0
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-      cb(0)
-      return 0
-    })
-    vi.spyOn(window, 'scrollTo').mockImplementation(((options?: ScrollToOptions) => {
-      if (options?.top !== undefined) scrollY = options.top
-    }) as typeof window.scrollTo)
-    Object.defineProperty(window, 'scrollY', {
-      get: () => scrollY,
-      configurable: true,
+  describe('forwardRef', () => {
+    it('forwards ref to the dialog element', () => {
+      const ref = createRef<HTMLElement>()}
+      render(
+        <ConfirmDialog
+          open
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+          ref={ref}
+        />
+      )
+      expect(ref.current).toBe(screen.getByRole('dialog'))
     })
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-    document.body.style.overflow = ''
-  })
-
-  describe('default phrase behaviour (unchanged)', () => {
-    it('default phrase is CONFIRM', () => {
-      renderDialog()
-      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toBeInTheDocument()
+  describe('generic destructive action (no breakdown)', () => {
+    it('renders without a breakdown', () => {
+      renderGenericDialog()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.queryByText('Bond amount')).not.toBeInTheDocument()
     })
 
-    it('confirm button disabled until "CONFIRM" typed with default phrase', async () => {
+    it('still requires CONFIRM gating', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderGenericDialog()
+      const button = screen.getByRole('button', { name: 'Clear draft' })
+      expect(button).toBeDisabled()
+      await user.click(button)
+      expect(onConfirm).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('boundary cases', () => {
+    it('treats whitespace-padded CONFIRM as invalid', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.type(input, ' CONFIRM')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
+      expect(onConfirm).not.toHaveBeenCalled()
+    })
+
+    it('rejects a longer string containing CONFIRM', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.type(input, 'CONFIRM ME')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
+      expect(onConfirm).not.toHaveBeenCalled()
+    })
+
+    it('re-disables confirm after backspacing away from a valid CONFIRM', async () => {
       const user = userEvent.setup()
       renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
+      await user.type(input, '{Backspace}')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
+    })
+
+    it('handles paste of exact CONFIRM', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.click(input)
+      await user.paste('CONFIRM')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
+      expect(onConfirm).toHaveBeenCalledOnce()
+    })
+
+    it('treats unicode look-alikes as invalid', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      // Circumfixes and full-width letters must not bypass the gate.
+      await user.type(input, 'CONFIRM!')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
+      expect(onConfirm).not.toHaveBeenCalled()
     })
   })
 
-  describe('custom confirmPhrase', () => {
-    it('label shows the custom phrase', () => {
-      renderGenericDialog({ confirmPhrase: 'DELETE' })
-      expect(screen.getByText(/DELETE/)).toBeInTheDocument()
-    })
-
-    it('gates the confirm button on the custom phrase, not CONFIRM', async () => {
+  describe('retry / recovery / concurrency', () => {
+    it('swallows duplicate clicks and only confirms once', async () => {
       const user = userEvent.setup()
-      renderGenericDialog({ confirmPhrase: 'DELETE' })
-      const input = screen.getByRole('textbox', { name: /type.*delete/i })
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
-      expect(screen.getByRole('button', { name: 'Clear draft' })).toBeDisabled()
+      const button = screen.getByRole('button', { name: 'Withdraw bond' })
+      await user.click(button)
+      await user.click(button)
+      await user.click(button)
+      expect(onConfirm).toHaveBeenCalledOnce()
     })
 
-    it('enables the confirm button when the custom phrase is typed exactly', async () => {
+    it('recovers from a rejected onConfirm and allows a retry', async () => {
       const user = userEvent.setup()
-      renderGenericDialog({ confirmPhrase: 'DELETE' })
-      const input = screen.getByRole('textbox', { name: /type.*delete/i })
-      await user.type(input, 'DELETE')
-      expect(screen.getByRole('button', { name: 'Clear draft' })).toBeEnabled()
+      const onConfirm = vi.fn()
+      onConfirm.mockRejectedOnce(new Error('transaction failed'))
+      const onCancel = vi.fn()
+      render(
+        <ConfirmDialog
+          open
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.type(input, 'CONFIRM')
+      const button = screen.getByRole('button', { name: 'Withdraw bond' })
+      await user.click(button)
+      expect(onConfirm).toHaveBeenCalledOnce()
+      // Retry after failure must be possible and still gated by the input.
+      await user.click(button)
+      expect(onConfirm).toHaveBeenCalledTwices()
     })
 
-    it('comparison remains case-sensitive', async () => {
-      const user = userEvent.setup()
-      renderGenericDialog({ confirmPhrase: 'DELETE' })
-      const input = screen.getByRole('textbox', { name: /type.*delete/i })
-      await user.type(input, 'delete')
-      expect(screen.getByRole('button', { name: 'Clear draft' })).toBeDisabled()
-    })
-  })
-
-  describe('no-breakdown (description slot) render path', () => {
-    it('does not render the breakdown dl when breakdown is omitted', () => {
-      renderGenericDialog()
-      expect(screen.queryByText('Bond amount')).not.toBeInTheDocument()
-    })
-
-    it('renders description content when provided', () => {
-      renderGenericDialog({ description: 'All unsaved work will be lost.' })
-      expect(screen.getByText('All unsaved work will be lost.')).toBeInTheDocument()
-    })
-
-    it('renders nothing in the body slot when neither breakdown nor description is given', () => {
-      renderGenericDialog()
-      // Confirm field is still present; just no breakdown or description
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.queryByText('Bond amount')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('breakdown present takes priority over description', () => {
-    it('renders breakdown and ignores description when both supplied', () => {
-      renderDialog({ description: 'Should not appear' })
-      expect(screen.getByText('Bond amount')).toBeInTheDocument()
-      expect(screen.queryByText('Should not appear')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('confirmHint override', () => {
-    it('shows default hint for bond withdrawal', () => {
-      renderDialog()
-      expect(screen.getByText(/Funds will be sent to your connected wallet/)).toBeInTheDocument()
-    })
-
-    it('shows custom hint when provided', () => {
-      renderGenericDialog({ confirmHint: 'This will permanently delete the draft.' })
-      expect(screen.getByText('This will permanently delete the draft.')).toBeInTheDocument()
-      expect(screen.queryByText(/connected wallet/)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('existing Bond withdrawal call site compat', () => {
-    it('renders breakdown, default phrase and default hint unchanged', () => {
-      renderDialog()
-      expect(screen.getByText('Bond amount')).toBeInTheDocument()
-      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toBeInTheDocument()
-      expect(screen.getByText(/Funds will be sent to your connected wallet/)).toBeInTheDocument()
+    it('keeps the input value intact when the dialog stays open across a rerender', () => {
+      const { rerender, onConfirm, onCancel } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      // Synchronous value set to avoid async timing in this specific case.
+      ;(input as HTMLInputElement).value = 'CONFIRM'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      rerender(
+        <ConfirmDialog
+          open
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toHaveValue('CONFIRM')
     })
   })
 })

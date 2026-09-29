@@ -87,6 +87,8 @@ export default function ConfirmDialog({
   const [confirmText, setConfirmText] = useState('')
   const [announcement, setAnnouncement] = useState('')
   const [prevConfirmEnabled, setPrevConfirmEnabled] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
 
   const handleCancel = useCallback(() => {
     onCancel()
@@ -107,6 +109,8 @@ export default function ConfirmDialog({
       setConfirmText('')
       setAnnouncement('')
       setPrevConfirmEnabled(false)
+      setSubmitError(null)
+      setIsRetrying(false)
       return
     }
 
@@ -131,9 +135,46 @@ export default function ConfirmDialog({
     }
   }, [isConfirmEnabled, prevConfirmEnabled, confirmPhrase, t])
 
+  useEffect(() => {
+    if (!open) return
+    if (isSubmitting) {
+      setSubmitError(null)
+      setIsRetrying(false)
+    }
+  }, [isSubmitting, open])
+
   const handleConfirm = () => {
     if (!isConfirmEnabled) return
-    onConfirm()
+    if (isSubmitting) return
+    setSubmitError(null)
+    try {
+      const result = onConfirm() as unknown
+      if (result && typeof (result as Promise<unknown>).then === 'function') {
+        ;(result as Promise<unknown>).catch((err: unknown) => {
+          const message =
+            err instanceof Error && err.message
+              ? err.message
+              : t('confirmDialog.errors.submitFailed')
+          setSubmitError(message)
+          setAnnouncement(t('confirmDialog.announcements.submitFailed'))
+        })
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : t('confirmDialog.errors.submitFailed')
+      setSubmitError(message)
+      setAnnouncement(t('confirmDialog.announcements.submitFailed'))
+    }
+  }
+
+  const handleRetry = () => {
+    if (isSubmitting) return
+    setIsRetrying(true)
+    setSubmitError(null)
+    setAnnouncement(t('confirmDialog.announcements.retrying'))
+    handleConfirm()
   }
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -159,6 +200,15 @@ export default function ConfirmDialog({
         <div id={announcementId} className="sr-only" aria-live="assertive" aria-atomic="true">
           {announcement}
         </div>
+
+        {submitError && (
+          <div role="alert" className="confirm-dialog__error">
+            <p>{submitError}</p>
+            <Button type="button" variant="secondary" onClick={handleRetry} disabled={isSubmitting}>
+              {t('confirmDialog.retry')}
+            </Button>
+          </div>
+        )}
 
         <header className="confirm-dialog__header">
           <h2 id={titleId} className="confirm-dialog__title">
@@ -234,7 +284,7 @@ export default function ConfirmDialog({
             type="button"
             variant={variant === 'danger' ? 'danger' : 'primary'}
             disabled={!isConfirmEnabled || isSubmitting}
-            isLoading={isSubmitting}
+            isLoading={isSubmitting || isRetrying}
             onClick={handleConfirm}
             aria-disabled={!isConfirmEnabled || isSubmitting}
           >

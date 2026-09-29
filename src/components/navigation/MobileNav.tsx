@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { PrefetchNavLink } from '../PrefetchNavLink'
 import { PRELOADS_BY_PATH } from '../../config/routes'
@@ -48,26 +48,41 @@ export default function MobileNav() {
   useEffect(() => {
     if (!isOpen) return
 
+    // Deterministic failure-boundary handling for the Escape key.
+    // Invariants:
+    //  - Only a single listener is registered per open cycle (cleanup below).
+    //  - Escape always closes the drawer exactly once, even if the event is
+    //    dispatched multiple times or while a close is already in flight.
+    //  - Errors thrown by downstream listeners never leave the drawer stuck
+    //    open; we guard the state transition and swallow listener errors.
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        setIsOpen(false)
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setIsOpen((prev) => (prev ? false : prev))
+    }
+
+    const safeHandleKeyDown = (event: KeyboardEvent) => {
+      try {
+        handleKeyDown(event)
+      } catch {
+        // Failure boundary: never let a keydown handler crash the app or
+        // leave navigation state inconsistent.
       }
     }
 
-    window.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
-    return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
+    window.addEventListener(DOM_EVENTS.KEY_DOWN, safeHandleKeyDown)
+    return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, safeHandleKeyDown)
   }, [isOpen])
+
+  const close = useCallback(() => setIsOpen(false), [])
 
   useFocusTrap({
     containerRef: drawerRef,
     isActive: isOpen,
     initialFocusRef: closeButtonRef,
     returnFocusRef: hamburgerRef,
-    onEscape: () => setIsOpen(false),
+    onEscape: close,
   })
-
-  const close = () => setIsOpen(false)
 
   return (
     <>

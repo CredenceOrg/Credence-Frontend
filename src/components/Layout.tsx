@@ -55,7 +55,7 @@ export default function Layout() {
   const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
-  const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
+  const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt)
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
   const whatsNewButtonRef = useRef<HTMLButtonElement>(null)

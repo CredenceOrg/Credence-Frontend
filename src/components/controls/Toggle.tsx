@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import './controls.css'
 
 interface ToggleProps {
@@ -12,24 +12,21 @@ interface ToggleProps {
   'aria-describedby'?: string
   'aria-invalid'?: boolean | 'true' | 'false'
   'aria-required'?: boolean | 'true' | 'false'
+  /**
+   * Optional controlled submission guard. When provided, the Toggle awaits the
+   * returned promise and only emits one `change` per settled request. While the
+   * promise is in flight the control is disabled and marked busy, preventing
+   * concurrent double-submits from rapid clicks or keyboard auto-repeat.
+   */
+  onChangeAsync?: (next: boolean) => Promise<void>
+  /**
+   * Optional error notification for async failures. When provided, the Toggle
+   * reports the failure and returns to its previous visual state without
+   * losing the user's intent.
+   */
+  onChangeError?: (error: unknown) => void
 }
 
-/**
- * Deterministic failure-boundary coverage for Toggle.
- *
- * Invariants:
- * - The component is controlled: the visual state always derives from the `checked`
- *   prop, never from local mutation. This prevents silent divergence between the
- *   persisted preference and the rendered switch.
- * - A click always emits exactly one next value derived from the current prop.
- *   Rapid or concurrent clicks cannot produce an unsafe or inconsistent result
- *   because the component never assumes the change succeeded; the caller must
- *   commit the new value through the `checked` prop.
- * - While disabled or loading, clicks are ignored and `aria-disabled` reflects the
- *   effective interactive state so assistive technology can report it correctly.
- * - Errors are surfaced through aria attributes and a visual error state without
- *   exposing sensitive data; the error text is provided by the caller.
- */
 export default function Toggle({
   id,
   checked,
@@ -41,42 +38,64 @@ export default function Toggle({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   'aria-required': ariaRequired,
+  onChangeAsync,
+  onChangeError,
 }: ToggleProps) {
-  const isDisabled = !!disabled || !!isLoading
+  const isDisabled = disabled || isLoading
   const isInvalid = !!error || ariaInvalid === true || ariaInvalid === 'true'
 
-  // Track the latest checked value so the click handler always derives the
+  // Track the in-flight async request so concurrent clicks cannot double-submit.
+  const inFlightRef = useRef(false)
+  const [isPending, setIsPending] = useState(false)
 
-  // next value from the current prop, even if the caller has not yet re-rendered.
-  const checkedRef = useRef(checked)
-  useEffect(() => {
-    checkedRef.current = checked
-  }, [checked])
+  const commit = useCallback(
+    (next: boolean) => {
+      if (onChangeAsync) {
+        if (inFlightRef.current) {
+          // Invariant: at most one async change is in flight at any time.
+          return
+        }
+        inFlightRef.current = true
+        setIsPending(true)
+        Promise.resolve(onChangeAsync(next))
+          .then(() => {
+            // Success: the controlled `checked` prop is expected to reflect the new value.
+          })
+          .catch((cause: unknown) => {
+            // Failure: report to the caller and leave the visual state unchanged
+            // so the user can retry without losing data.
+            onChangeError?.(cause)
+          })
+          .finally(() => {
+            inFlightRef.current = false
+            setIsPending(false)
+          })
+        return
+      }
+      onChange(next)
+    },
+    [onChange, onChangeAsync, onChangeError]
+  )
 
-  const handleClick = () => {
-    if (isDisabled) {
-      // Failure boundary: disabled/loading clicks must not emit a change.
-      return
-    }
-    onChange(!checkedRef.current)
-  }
+  const isPendingVisual = isLoading || isPending
+  const effectivelyDisabled = isDisabled || isPending
 
   return (
-    <div className={`control-toggle-wrapper ${isLoading ? 'control-toggle-wrapper--loading' : ''}`$}>
+    <div className={`control-toggle-wrapper ${isPendingVisual ? 'control-toggle-wrapper--loading' : ''}`}>
       <button
         id={id}
-        className={`control-toggle ${isInvalid ? 'control-toggle--error' : ''}`.trim()}
+        className={`control-toggle ${isInvalid ? 'control-toggle--error' : ''}`}
         role="switch"
         aria-checked={checked}
         aria-label={ariaLabel}
-        aria-invalid={"isInvalid ? 'true' : undefined}
+        aria-invalid={isInvalid ? 'true' : undefined}
         aria-describedby={ariaDescribedBy}
         aria-required={ariaRequired}
-        aria-disabled={isDisabled ? 'true' : undefined}
-        disabled={isDisabled}
-        onClick={handleClick}
+        aria-busy={isPending ? 'true' : undefined}
+        disabled={effectivelyDisabled}
+        onClick={() => commit(!checked)}
       >
-        {isLoading ? (
+        {isPendingVisual ? (
           <span className="control-toggle-spinner" aria-hidden="true" />
         ) : checked ? (
           'On'

@@ -71,9 +71,10 @@ export const PermissionDenied: Story = {
   },
 }
 
-export const LoadingAndError: Story = {
+export const LoadingWithPriorValue: Story = {
   args: {
+    checked: true,
     isLoading: true,
-    error: 'Previous attempt failed; retrying.',
+    disabled: true,
   },
 }

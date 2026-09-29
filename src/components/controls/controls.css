@@ -124,6 +124,24 @@
   cursor: not-allowed;
 }
 
+.control-toggle[aria-busy='true'] {
+  cursor: progress;
+}
+
+.control-toggle[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control-toggle[data-stale='true'] {
+  border-style: dashed;
+}
+
+.control-toggle[data-permission-denied='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .control-toggle--error {
   border-color: var(--credence-color-danger-border) !important;
 }

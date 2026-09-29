@@ -3,7 +3,9 @@ import { FormField } from './forms/FormField'
 import './AddressInput.css'
 import { useSettings } from '../context/SettingsContext'
 
-interface AddressInputProps {
+export type FocusState = 'idle' | 'loading' | 'error' | 'stale' | 'permission'
+
+export interface AddressInputProps {
   id: string
   label?: string
   value: string
@@ -21,6 +23,16 @@ interface AddressInputProps {
    * unavailable API, etc.) so callers can surface a diagnostic message.
    */
   onPasteError?: (error: unknown) => void
+  /**
+   * Optional focus callback. May be synchronous or return a Promise.
+   */
+  onFocus?: (event?: React.FocusEvent<HTMLInputElement>) => void | Promise<void>
+  /**
+   * Optional async request triggered on focus (e.g. address lookup, name resolution,
+   * or account authorization). If provided, focus transitions through deterministic
+   * loading, error, retry, stale, and permission states without losing user data.
+   */
+  onFocusRequest?: (address: string) => Promise<string | void>
 }
 
 /**
@@ -74,12 +86,13 @@ interface AddressInputInnerProps {
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onBlur: () => void
-  onFocus: () => void
+  onFocus: (e: React.FocusEvent<HTMLInputElement>) => void
   disabled: boolean
   handlePaste: () => void
   focused: boolean
   showError: boolean
   showSuccess: boolean
+  focusState?: FocusState
 }
 
 function AddressInputInner({
@@ -96,10 +109,12 @@ function AddressInputInner({
   focused,
   showError,
   showSuccess,
+  focusState = 'idle',
 }: AddressInputInnerProps) {
+  const isLoading = focusState === 'loading'
   return (
     <div
-      className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''}`
+      className={`address-input-container ${focused ? 'address-input-container--focused' : ''} ${showError ? 'address-input-container--error' : ''} ${showSuccess ? 'address-input-container--success' : ''} ${isLoading ? 'address-input-container--loading' : ''}`}
     >
       <input
         ref={inputRef}
@@ -107,11 +122,12 @@ function AddressInputInner({
         id={id}
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
+        aria-busy={isLoading ? 'true' : undefined}
         value={value}
         onChange={onChange}
         onBlur={onBlur}
         onFocus={onFocus}
-        disabled={disabled}
+        disabled={disabled || isLoading}
         placeholder="Enter Stellar address (G...)"
         className="address-input-field"
         spellCheck="false"
@@ -122,7 +138,7 @@ function AddressInputInner({
       <button
         type="button"
         onClick={handlePaste}
-        disabled={disabled}
+        disabled={disabled || isLoading}
         className="address-input-paste-button"
         aria-label="Paste address from clipboard"
         title="Paste address from clipboard"
@@ -158,6 +174,8 @@ export default function AddressInput({
   className = '',
   error: externalError,
   onPasteError,
+  onFocus,
+  onFocusRequest,
 }: AddressInputProps) {
   const { addressDisplay } = useSettings()
 
@@ -168,6 +186,11 @@ export default function AddressInput({
   // Tracks whether the last clipboard read failed so we can surface a
   // diagnostic message without losing the user's existing input.
   const [pasteFailed, setPasteFailed] = useState(false)
+
+  // Focus deterministic failure-boundary states
+  const [focusState, setFocusState] = useState<FocusState>('idle')
+  const [focusErrorMsg, setFocusErrorMsg] = useState<string | null>(null)
+  const focusRequestSeq = useRef(0)
 
   const isValid = isValidStellarAddress(value)
   const isEmpty = !value
@@ -181,7 +204,7 @@ export default function AddressInput({
     onValidationChange?.(isValid)
   }, [isValid, onValidationChange])
 
-  const handleChange = (eRect.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     onChange(newValue)
 
@@ -189,9 +212,13 @@ export default function AddressInput({
     if (!attempted) {
       setAttempted(true)
     }
-    // Any manual edit clears a prior paste failure.
+    // Any manual edit clears a prior paste failure or focus error without losing data.
     if (pasteFailed) {
       setPasteFailed(false)
+    }
+    if (focusState !== 'idle') {
+      setFocusState('idle')
+      setFocusErrorMsg(null)
     }
   }
 
@@ -200,8 +227,83 @@ export default function AddressInput({
     setAttempted(true)
   }
 
-  const handleFocus = () => {
+  /**
+   * Deterministic failure-boundary handler for focus operations.
+   *
+   * Invariants enforced:
+   * - Does not clobber user data on failure or rejection.
+   * - Prevents race conditions using monotonic sequence check so stale
+   *   responses from previous requests are discarded.
+   * - Correctly classifies errors into loading, error, retry, stale, and permission states.
+   * - Concurrency guards prevent duplicate execution while loading.
+   */
+  const executeFocus = useCallback(
+    async (event?: React.FocusEvent<HTMLInputElement>) => {
+      if (focusState === 'loading' && focusRequestSeq.current > 0) {
+        return
+      }
+
+      if (!onFocusRequest && !onFocus) {
+        return
+      }
+
+      const seq = ++focusRequestSeq.current
+
+      try {
+        if (onFocusRequest) {
+          setFocusState('loading')
+          setFocusErrorMsg(null)
+          const result = await onFocusRequest(value)
+
+          // Drop stale results from superseded requests
+          if (seq !== focusRequestSeq.current) return
+
+          if (typeof result === 'string') {
+            onChange(result)
+          }
+          setFocusState('idle')
+        } else if (onFocus) {
+          const ret = onFocus(event)
+          if (ret && typeof (ret as Promise<void>).then === 'function') {
+            setFocusState('loading')
+            setFocusErrorMsg(null)
+            await ret
+            if (seq !== focusRequestSeq.current) return
+            setFocusState('idle')
+          }
+        }
+      } catch (err: unknown) {
+        if (seq !== focusRequestSeq.current) return
+
+        const msg = err instanceof Error ? err.message : String(err)
+        const lowerMsg = msg.toLowerCase()
+        const errorObj = err as { name?: string; code?: string }
+
+        if (
+          errorObj?.name === 'PermissionError' ||
+          lowerMsg.includes('permission') ||
+          lowerMsg.includes('unauthorized') ||
+          errorObj?.code === 'PERMISSION_DENIED'
+        ) {
+          setFocusState('permission')
+        } else if (
+          errorObj?.name === 'StaleDataError' ||
+          lowerMsg.includes('stale') ||
+          errorObj?.code === 'STALE_DATA'
+        ) {
+          setFocusState('stale')
+        } else {
+          setFocusState('error')
+        }
+        setFocusErrorMsg(msg)
+      }
+    },
+    [focusState, onFocusRequest, onFocus, value, onChange]
+  )
+
+  const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
     setFocused(true)
+    void executeFocus(event)
   }
 
   /**
@@ -218,7 +320,7 @@ export default function AddressInput({
       const trimmedText = text.trim()
 
       // Guard: if clipboard is empty or whitespace-only, do not
-      // clbler the user's existing input. Surface a non-destructive
+      // clobber the user's existing input. Surface a non-destructive
       // failure instead.
       if (!trimmedText) {
         setPasteFailed(true)
@@ -252,22 +354,31 @@ export default function AddressInput({
   const formatError = showError
     ? 'Invalid address. Stellar public keys are 56 characters starting with G.'
     : undefined
+
+  const showFocusError =
+    focusState === 'error' || focusState === 'stale' || focusState === 'permission'
+  const focusErrorMessage =
+    focusState === 'permission'
+      ? 'Permission denied focusing address.'
+      : focusState === 'stale'
+        ? 'Address data is stale.'
+        : focusState === 'error'
+          ? focusErrorMsg || 'Failed to resolve address on focus.'
+          : undefined
+
   // External error takes precedence; otherwise fall back to the format
   // error, then to a non-destructive paste failure message.
-  const error = externalError ?? formatError ?? (pasteFailed ? 'Unable to read clipboard. Please paste manually.' : undefined)
+  const error =
+    externalError ??
+    formatError ??
+    (pasteFailed ? 'Unable to read clipboard. Please paste manually.' : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
   // Visual + FormField success only when format is valid and no external error.
   const successMessage = !externalError && showSuccess ? 'Valid Stellar address' : undefined
 
   return (
     <div className={`address-input-wrapper ${className}`}>
-      <FormField
-        id={id}
-        label={label}
-        hint={hint}
-        error={error}
-        success={successMessage}
-      >
+      <FormField id={id} label={label} hint={hint} error={error} success={successMessage}>
         <AddressInputInner
           inputRef={inputRef}
           value={value}
@@ -279,8 +390,24 @@ export default function AddressInput({
           focused={focused}
           showError={Boolean(error)}
           showSuccess={Boolean(successMessage)}
+          focusState={focusState}
         />
       </FormField>
+
+      {/* Focus error boundary banner with retry button */}
+      {showFocusError && (
+        <div id={`${id}-focus-error`} className="address-input-focus-error" role="alert">
+          <span className="address-input-focus-error-message">{focusErrorMessage}</span>
+          <button
+            type="button"
+            onClick={() => void executeFocus()}
+            className="address-input-retry-button"
+            aria-label="Retry focus request"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Address echo display when valid */}
       {showSuccess && value && (

@@ -133,6 +133,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   const [acknowledged, setAcknowledged] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [confirmError, setConfirmError] = useState('')
+  const [resetError, setResetError] = useState('')
 
   const auditRecordsRef = useRef<BondAuditRecord[]>(loadAuditLog())
   const correlationIdRef = useRef('')
@@ -182,16 +183,53 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     else if (step === 4) step4Ref.current?.focus()
   }, [step])
 
+  /**
+   * Deterministically resets the wizard to its initial state.
+   *
+   * Invariants enforced here:
+   *  - `submittingRef` is the source of truth for in-flight submissions and is
+   *    always cleared, so a stuck `submitting` state cannot permanently block
+   *    the user from retrying or cancelling.
+   *  - `correlationIdRef` is cleared so the next attempt gets a fresh id and
+   *    audit records from a prior attempt cannot be attributed to a new one.
+   *  - All user-visible error state is cleared to avoid stale messages leaking
+   *    across attempts.
+   *
+   * The reset is idempotent: calling it multiple times (e.g. from a retry
+   * boundary and from an unmount cleanup) yields the same state.
+   */
   const reset = () => {
     setStep(1)
     setAmount('')
     setDuration(null)
     setError('')
     setConfirmError('')
+    setResetError('')
     setAcknowledged(false)
     setSubmitting(false)
     submittingRef.current = false
     correlationIdRef.current = ''
+  }
+
+  /**
+   * Failure-boundary wrapper around `reset`. If any state setter throws (e.g.
+   * due to a React rendering error boundary), we still guarantee that the
+   * imperative refs are cleared so the flow cannot be permanently wedged in a
+   * submitting state. Errors are surfaced via `resetError` for diagnosability.
+   */
+  const safeReset = (): boolean => {
+    try {
+      reset()
+      return true
+    } catch (err) {
+      // Defensive: even if React state updates fail, clear the imperative
+      // guards so a subsequent attempt is not blocked.
+      submittingRef.current = false
+      correlationIdRef.current = ''
+      const message = err instanceof Error ? err.message : 'Failed to reset bond flow.'
+      setResetError(message)
+      return false
+    }
   }
 
   const handleNext = () => {
@@ -223,7 +261,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   const handleCancel = () => {
     if (submittingRef.current) return
 
-    reset()
+    safeReset()
     onCancel?.()
   }
 
@@ -261,7 +299,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
       const result = await onComplete?.()
       recordAudit('BOND_CREATE_COMMITTED', undefined, result)
       addToast('success', 'Bond created successfully.')
-      reset()
+      safeReset()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Bond creation failed. Please try again.'
       setConfirmError(message)
@@ -284,6 +322,18 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     if (!numericAmount || numericAmount <= 0 || !duration) return null
     return computeBondSlashBreakdown(numericAmount, duration)
   }, [amount, duration])
+
+  /**
+   * Reset on unmount so a partially-completed flow cannot leak a stale
+   * `submittingRef` into a remounted instance. This is a best-effort cleanup
+   * and intentionally does not call `onCancel` (unmount is not a user cancel).
+   */
+  useEffect(() => {
+    return () => {
+      submittingRef.current = false
+      correlationIdRef.current = ''
+    }
+  }, [])
 
   // ---------------------------------------------------------------------------
   // Step indicator
@@ -313,6 +363,12 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   return (
     <div className="createBondFlow">
       <StepIndicator />
+
+      {resetError && (
+        <div className="createBondFlow__error" role="alert" data-testid="reset-error">
+          ⚠ {resetError}
+        </div>
+      )}
 
       {/* ── Step 1: Amount ── */}
       {step === 1 && (

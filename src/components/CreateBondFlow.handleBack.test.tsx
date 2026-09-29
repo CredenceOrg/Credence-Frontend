@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * @file CreateBondFlow.handleBack.test.tsx
  * @description Failure-boundary coverage for `handleBack` in `CreateBondFlow.tsx`.
@@ -16,6 +17,7 @@
  *   and no user data leaking into the refusal diagnostic
  */
 
+import React from 'react'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -48,6 +50,10 @@ vi.mock('./ToastProvider', () => ({
 
 vi.mock('../hooks/useReducedMotion', () => ({
   useReducedMotion: vi.fn(() => false),
+}))
+
+vi.mock('../lib/createBondFlowSteps', () => ({
+  BOND_FLOW_STEP_COUNT: 4,
 }))
 
 /** Wallet address used by the mocked context; asserted against log leakage. */

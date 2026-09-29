@@ -1,3 +1,4 @@
+
 /**
  * @file CreateBondFlow.test.tsx
  * @description Tests for the CreateBondFlow wizard, with emphasis on:
@@ -11,6 +12,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { useState } from 'react'
 import CreateBondFlow from './CreateBondFlow'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
@@ -562,5 +564,110 @@ describe('CreateBondFlow – reset failure boundaries', () => {
 
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText('0')).toHaveValue('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Deterministic failure-boundary coverage for handleNext
+// ---------------------------------------------------------------------------
+
+describe('CreateBondFlow – handleNext failure boundaries', () => {
+  it('rejects whitespace-only amount without advancing', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    const amountInput = screen.getByPlaceholderText('0')
+    await user.type(amountInput, '   ')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+  })
+
+  it('rejects non-numeric amount without advancing', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    const amountInput = screen.getByPlaceholderText('0')
+    await user.type(amountInput, 'abc')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+  })
+
+  it('rejects negative amount without advancing', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    const amountInput = screen.getByPlaceholderText('0')
+    await user.type(amountInput, '-100')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+  })
+
+  it('rejects amount exceeding available balance', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    const amountInput = screen.getByPlaceholderText('0')
+    await user.type(amountInput, '999999999')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    // Should either show an error or remain on step 1
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+  })
+
+  it('does not advance past step 4 on repeated next clicks', async () => {
+    const user = userEvent.setup()
+    await reachStep3('1000', 30)
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByText(/Step 4: Confirm Bond/i)).toBeInTheDocument()
+    // Next button should not exist or should be disabled on step 4
+    const nextButtons = screen.queryAllByRole('button', { name: /next/i })
+    nextButtons.forEach((btn) => {
+      if (!(btn as HTMLButtonElement).disabled) {
+        fireEvent.click(btn)
+      }
+    })
+    expect(screen.getByText(/Step 4: Confirm Bond/i)).toBeInTheDocument()
+  })
+
+  it('repeated next clicks on step 1 with valid amount advance only once', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(screen.getByPlaceholderText('0'), '500')
+    const next = screen.getByRole('button', { name: /next/i })
+    fireEvent.click(next)
+    fireEvent.click(next)
+    // Should be on step 2, not step 3
+    expect(screen.getByText(/Step 2: Choose Lock Duration/i)).toBeInTheDocument()
+  })
+
+  it('back from step 1 is a no-op and preserves amount', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(screen.getByPlaceholderText('0'), '500')
+    const backButtons = screen.queryAllByRole('button', { name: /back/i })
+    backButtons.forEach((btn) => fireEvent.click(btn))
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('0')).toHaveValue('500')
+  })
+
+  it('cancel during step 2 clears duration selection deterministically', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(screen.getByPlaceholderText('0'), '500')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    fireEvent.click(screen.getByRole('button', { name: /30 Days/i }))
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('0')).toHaveValue('')
+  })
+
+  it('handleNext is idempotent for the same valid input across retries', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(screen.getByPlaceholderText('0'), '1000')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+    // Amount must persist across back navigation
+    expect(screen.getByPlaceholderText('0')).toHaveValue('1000')
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByText(/Step 2: Choose Lock Duration/i)).toBeInTheDocument()
   })
 })

@@ -1,0 +1,74 @@
+/*
+ * WidgetRefreshButton styling.
+ *
+ * Uses design tokens exclusively (colours, spacing, radii, motion) so themes
+ * and density changes flow through without per-component edits.
+ */
+.widget-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: transparent;
+  color: var(--credence-text-secondary);
+  border: 1px solid transparent;
+  border-radius: var(--credence-radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.widget-refresh:hover:not(:disabled) {
+  background: var(--credence-color-info-surface);
+  color: var(--credence-color-primary-strong);
+  border-color: var(--credence-color-info-border);
+}
+
+.widget-refresh:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.widget-refresh:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.widget-refresh:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+[data-theme='dark'] .widget-refresh:hover:not(:disabled) {
+  background: var(--credence-color-info-surface);
+  color: var(--credence-color-primary-strong);
+  border-color: var(--credence-color-info-border);
+}
+
+.widget-refresh__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  display: block;
+}
+
+.widget-refresh__icon--spinner {
+  animation: widget-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes widget-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .widget-refresh__icon--spinner {
+    animation: none;
+  }
+}

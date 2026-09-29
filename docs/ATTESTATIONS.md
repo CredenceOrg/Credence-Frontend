@@ -12,10 +12,10 @@ Allows trust validators and peers to attest verification data for any Stellar pu
 
 Props:
 
-| Prop | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `onSubmitSuccess` | `(payload: AttestationPayload) => void` | `undefined` | Callback invoked with the finalized payload upon successful form confirmation. |
-| `disabled` | `boolean` | `false` | Disables form fields and button interaction during processing or wallet interactions. |
+| Prop              | Type                                    | Default     | Notes                                                                                 |
+| ----------------- | --------------------------------------- | ----------- | ------------------------------------------------------------------------------------- |
+| `onSubmitSuccess` | `(payload: AttestationPayload) => void` | `undefined` | Callback invoked with the finalized payload upon successful form confirmation.        |
+| `disabled`        | `boolean`                               | `false`     | Disables form fields and button interaction during processing or wallet interactions. |
 
 ---
 

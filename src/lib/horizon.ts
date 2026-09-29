@@ -97,9 +97,7 @@ export async function fetchUsdcBalance(
   const usdcIssuer = USDC_ISSUERS[network]
   const match = account.balances.find(
     (b) =>
-      b.asset_type !== 'native' &&
-      b.asset_code === USDC_ASSET_CODE &&
-      b.asset_issuer === usdcIssuer
+      b.asset_type !== 'native' && b.asset_code === USDC_ASSET_CODE && b.asset_issuer === usdcIssuer
   )
 
   return match ? Number(match.balance) : 0

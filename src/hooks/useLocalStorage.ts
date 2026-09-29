@@ -52,7 +52,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T)
       setStoredValue(value)
       writeToStorage(key, value)
     },
-    [key],
+    [key]
   )
 
   return [storedValue, setValue]

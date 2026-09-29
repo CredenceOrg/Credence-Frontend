@@ -1,147 +1,44 @@
 # Pull Request Summary
 
-## Design: Empty, Error, and Loading States
+## Badge Contrast and Accessibility Improvements
 
 ### Overview
 
-This PR implements comprehensive UI state patterns for the Credence Frontend application, including empty states, error states, and loading skeletons for all core views.
+This PR hardens the badge component against contrast regressions by auditing the shared badge token palette, validating WCAG AA compliance in both light and dark themes, and locking the behavior into automated regression coverage.
 
-### What's Included
+### What Changed
 
-#### 🎨 Components (3 new)
+- Audited tier and status badge variants for text and border contrast using WCAG AA thresholds.
+- Confirmed the current token palette already meets the required contrast ratios, so no additional color token changes were needed.
+- Added regression tests that resolve CSS tokens from the real theme definitions and evaluate badge contrast with the same compositing logic used in the audit.
+- Improved badge accessibility semantics by normalizing unknown variants to an accessible fallback label and avoiding unnecessary title text for unsupported values.
+- Fixed the test bootstrap so the badge regression suite runs correctly in the existing Vitest setup.
 
-- `EmptyState.tsx` - Configurable empty state component with 5 illustration variants
-- `ErrorState.tsx` - Error state component with 4 error types (network, backend, validation, generic)
-- `LoadingSkeleton.tsx` - Loading skeleton with 5 variants (text, card, form, table, dashboard)
+### Files Updated
 
-#### 📚 Documentation (4 files)
+- [src/components/Badge.tsx](../src/components/Badge.tsx)
+- [src/components/Badge.test.tsx](../src/components/Badge.test.tsx)
+- [src/i18n/config.ts](../src/i18n/config.ts)
+- [docs/badge-contrast-audit.md](badge-contrast-audit.md)
 
-- `UI_STATES_GUIDE.md` - Complete guide with design principles, microcopy guidelines, and usage patterns
-- `FIGMA_DESIGN_SPECS.md` - Visual specifications, color palette, layout measurements, and design tokens
-- `IMPLEMENTATION_EXAMPLES.md` - Practical code examples, hooks, testing, and accessibility guidelines
-- `README.md` - Documentation index and quick start guide
+### Scope Covered
 
-#### 🎬 Animations
+- Bronze
+- Silver
+- Gold
+- Platinum
+- Active
+- Locked
+- Slashed
+- Grace Period
 
-- Added shimmer animation to `index.css` for loading skeletons
+### Validation
 
-### Features
+- `npm test -- src/components/Badge.test.tsx` → 58/58 tests passed
+- `npx eslint src/components/Badge.tsx src/components/Badge.test.tsx src/i18n/config.ts` → passed
 
-#### Empty States
+### Notes for Reviewers
 
-- ✅ No bond yet
-- ✅ No trust score yet
-- ✅ No disputes
-- ✅ No attestations
-- ✅ No activity
-
-#### Error States
-
-- ✅ Network failures
-- ✅ Backend errors
-- ✅ Invalid addresses
-- ✅ Generic errors
-
-#### Loading Skeletons
-
-- ✅ Form loading
-- ✅ Card/Dashboard loading
-- ✅ Table loading
-- ✅ Text/Content loading
-
-### Design Principles
-
-1. **User-First**: Clear language explaining why state is empty/error
-2. **Actionable**: Provide clear next steps when possible
-3. **Consistent**: Same patterns across all views
-4. **Accessible**: ARIA attributes and keyboard navigation
-5. **Performant**: Smooth animations and transitions
-
-### Implementation Pattern
-
-```tsx
-function MyComponent() {
-  const { data, isLoading, error } = useQuery()
-
-  if (isLoading) return <LoadingSkeleton variant="card" />
-  if (error) return <ErrorState type="network" />
-  if (!data) return <EmptyState title="..." description="..." />
-
-  return <Content data={data} />
-}
-```
-
-### Microcopy Guidelines
-
-- **Tone**: Friendly, encouraging, never blaming
-- **Length**: Titles 3-6 words, descriptions 1-2 sentences
-- **CTAs**: Action-oriented verbs + outcome
-
-### Files Changed
-
-```
-src/components/states/
-  ├── EmptyState.tsx (new)
-  ├── ErrorState.tsx (new)
-  ├── LoadingSkeleton.tsx (new)
-  └── index.ts (new)
-
-docs/
-  ├── UI_STATES_GUIDE.md (new)
-  ├── FIGMA_DESIGN_SPECS.md (new)
-  ├── IMPLEMENTATION_EXAMPLES.md (new)
-  └── README.md (new)
-
-src/index.css (modified - added shimmer animation)
-```
-
-### Next Steps
-
-1. **Design Review**: Validate with product team
-2. **Figma**: Create visual mockups and add link to FIGMA_DESIGN_SPECS.md
-3. **Integration**: Implement states in actual pages (Home, Bond, TrustScore, Activity)
-4. **Testing**: Add unit tests for state components
-5. **Accessibility**: Audit with screen readers
-
-### Testing Checklist
-
-- [ ] All empty states render correctly
-- [ ] Error states show appropriate messages
-- [ ] Loading skeletons match content layout
-- [ ] Responsive on mobile, tablet, desktop
-- [ ] Keyboard navigation works
-- [ ] Screen reader announces states correctly
-- [ ] Animations are smooth
-- [ ] State transitions work properly
-
-### Screenshots
-
-_To be added: Screenshots of each state variant_
-
-### Related Issues
-
-- Addresses requirement: "Design consistent empty states, error states, and loading skeletons"
-- Tag: `ui-ux-design`
-
-### Review Notes
-
-Please review:
-
-1. Component API and prop interfaces
-2. Microcopy tone and messaging
-3. Color choices and visual hierarchy
-4. Documentation completeness
-5. Accessibility implementation
-
-### Questions for Reviewers
-
-1. Should we add custom illustrations instead of emojis?
-2. Do the error messages provide enough context?
-3. Are the loading skeleton variants sufficient?
-4. Should we add more animation options?
-
----
-
-**Branch**: `design/states-empty-error-loading`
-**Commit**: docs: add ui/ux specs for empty, error, and loading states
-**Files**: 9 files changed, 1942 insertions(+)
+- The audit evaluates both text contrast and non-text border contrast.
+- Dark-theme checks use composited translucent badge surfaces over the page background to reflect the real rendered state.
+- The change is intentionally low-risk: it focuses on verification, regression protection, and accessibility behavior rather than altering the visual system.

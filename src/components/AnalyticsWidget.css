@@ -1,0 +1,141 @@
+/* AnalyticsWidget — compare-periods analytics card.
+   All colours, spacing, radii, and motion are sourced exclusively from
+   --credence-* design tokens; no hard-coded values. */
+
+/* ── Root ──────────────────────────────────────────────────────────────────── */
+
+.analytics-widget {
+  background: var(--credence-surface-card);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  padding: var(--credence-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-4);
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+
+.analytics-widget__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--credence-space-3);
+}
+
+.analytics-widget__title {
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-lg);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
+  margin: 0;
+}
+
+/* ── Toggle row ────────────────────────────────────────────────────────────── */
+
+.analytics-widget__toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-2);
+}
+
+.analytics-widget__toggle-label {
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ── Body ──────────────────────────────────────────────────────────────────── */
+
+.analytics-widget__body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--credence-space-4);
+  transition: grid-template-columns var(--credence-motion-duration-base)
+    var(--credence-motion-easing-standard);
+}
+
+/* When comparison is active, render two equal-width columns side by side. */
+.analytics-widget__body--comparing {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 480px) {
+  /* Stack columns vertically on very small viewports even in compare mode. */
+  .analytics-widget__body--comparing {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Period column ─────────────────────────────────────────────────────────── */
+
+.analytics-widget__period {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-3);
+  padding: var(--credence-space-4);
+  border-radius: var(--credence-radius-lg);
+  border: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-default, var(--credence-color-slate-50));
+}
+
+/* Current period gets a subtle primary accent border to distinguish it. */
+.analytics-widget__period--current {
+  border-color: var(--credence-color-primary);
+}
+
+/* Previous period uses the default neutral border. */
+.analytics-widget__period--previous {
+  border-color: var(--credence-border-default);
+}
+
+/* ── Period label ──────────────────────────────────────────────────────────── */
+
+.analytics-widget__period-label {
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+/* ── Metrics list ──────────────────────────────────────────────────────────── */
+
+.analytics-widget__metrics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-3);
+  margin: 0;
+  padding: 0;
+}
+
+.analytics-widget__metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-1);
+}
+
+.analytics-widget__metric-label {
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-regular);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-secondary);
+}
+
+.analytics-widget__metric-value {
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-xl);
+  font-weight: var(--credence-font-weight-bold);
+  line-height: var(--credence-line-height-tight);
+  color: var(--credence-text-primary);
+  margin: 0;
+}

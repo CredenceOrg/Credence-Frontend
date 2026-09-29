@@ -178,6 +178,33 @@
   --tier-text: var(--credence-color-platinum-text);
 }
 
+/* ─── Dark mode: tinted dark surfaces keep tier identity without blinding
+       light pastels on a dark background ─────────────────────────────────── */
+
+[data-theme='dark'] .tier-ladder__step--bronze {
+  --tier-surface: rgba(180, 83, 9, 0.12);
+  --tier-border: #d97706;
+  --tier-text: #fcd34d;
+}
+
+[data-theme='dark'] .tier-ladder__step--silver {
+  --tier-surface: rgba(100, 116, 139, 0.12);
+  --tier-border: #94a3b8;
+  --tier-text: #cbd5e1;
+}
+
+[data-theme='dark'] .tier-ladder__step--gold {
+  --tier-surface: rgba(161, 98, 7, 0.12);
+  --tier-border: #ca8a04;
+  --tier-text: #fde68a;
+}
+
+[data-theme='dark'] .tier-ladder__step--platinum {
+  --tier-surface: rgba(37, 99, 235, 0.12);
+  --tier-border: #3b82f6;
+  --tier-text: #93c5fd;
+}
+
 .tier-ladder__card {
   flex: 1;
   padding: var(--credence-space-4) var(--credence-space-5);

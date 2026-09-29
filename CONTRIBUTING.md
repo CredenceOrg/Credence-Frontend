@@ -63,6 +63,7 @@ All scripts are defined in `package.json`. Run them from the repo root.
 | Script                  | Command                 | When to use                                           |
 | ----------------------- | ----------------------- | ----------------------------------------------------- |
 | `npm run dev`           | `vite`                  | Local development with HMR                            |
+| `npm run dev:reset`     | `node scripts/dev-reset.mjs` | Clear browser local storage (dev server must be running) |
 | `npm run build`         | `tsc -b && vite build`  | Production bundle; also type-checks the whole project |
 | `npm run preview`       | `vite preview`          | Serve the production build locally                    |
 | `npm run test`          | `vitest run`            | Run the full test suite once (CI mode)                |

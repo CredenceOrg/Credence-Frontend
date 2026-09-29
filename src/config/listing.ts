@@ -1,0 +1,1 @@
+export const LONG_LIST_RENDER_THRESHOLD = 1000

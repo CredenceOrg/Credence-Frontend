@@ -1,0 +1,288 @@
+/* ==========================================================================
+   LoadingSkeleton — shimmer base & BEM modifier classes
+   ========================================================================== */
+
+/* Base shimmer block */
+.skeleton {
+  background: var(--credence-skeleton-gradient);
+  background-size: 200% 100%;
+  border-radius: var(--credence-radius-lg);
+  animation: var(--credence-motion-skeleton);
+}
+
+/* Reduced-motion modifier: disable animation at the CSS layer as well so that
+   even server-rendered / SSR markup is immediately correct before JS runs. */
+.skeleton--no-animation {
+  animation: none;
+}
+
+/* Dark-mode gradient override */
+[data-theme='dark'] .skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--credence-color-slate-700, #334155) 25%,
+    var(--credence-color-slate-600, #475569) 50%,
+    var(--credence-color-slate-700, #334155) 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Structural wrappers (not shimmer — no background/animation of their own)
+   -------------------------------------------------------------------------- */
+
+.skeleton-wrapper {
+  display: block;
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Text variant
+   -------------------------------------------------------------------------- */
+
+.skeleton--text-line {
+  height: 1rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+}
+
+.skeleton--text-line:last-child {
+  margin-bottom: 0;
+  width: 60%;
+}
+
+/* --------------------------------------------------------------------------
+   Card variant
+   -------------------------------------------------------------------------- */
+
+.skeleton--card {
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  padding: var(--credence-space-6);
+}
+
+.skeleton--card-title {
+  height: 1.5rem;
+  width: 40%;
+  margin-bottom: 1rem;
+}
+
+.skeleton--card-body {
+  height: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton--card-footer {
+  height: 1rem;
+  width: 80%;
+}
+
+/* --------------------------------------------------------------------------
+   Form variant
+   -------------------------------------------------------------------------- */
+
+.skeleton--form-group {
+  margin-bottom: 1.5rem;
+}
+
+.skeleton--form-label {
+  height: 0.875rem;
+  width: 30%;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton--form-input {
+  height: 2.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   Table variant
+   -------------------------------------------------------------------------- */
+
+.skeleton--table-header {
+  height: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton--table-row {
+  height: 3.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Dashboard variant
+   -------------------------------------------------------------------------- */
+
+.skeleton--dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.skeleton--dashboard-tile {
+  height: 120px;
+  padding: var(--credence-space-6);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+}
+
+/* --------------------------------------------------------------------------
+   Stat-widget variant (NEW)
+   -------------------------------------------------------------------------- */
+
+.skeleton--stat-widget {
+  height: 100%;
+  min-height: 100px;
+  border-radius: var(--credence-radius-xl);
+  border: 1px solid var(--credence-border-default);
+  padding: var(--credence-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-4);
+}
+
+.skeleton--stat-label {
+  height: 0.875rem;
+  width: 50%;
+  margin-bottom: var(--credence-space-2);
+}
+
+.skeleton--stat-value {
+  height: 2rem;
+  width: 70%;
+}
+
+.skeleton--stat-sub {
+  height: 0.75rem;
+  width: 40%;
+}
+
+/* --------------------------------------------------------------------------
+   List-row variant (NEW)
+   -------------------------------------------------------------------------- */
+
+.skeleton--list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-4);
+  padding: var(--credence-space-4) 0;
+  border-bottom: 1px solid var(--credence-border-default);
+}
+
+.skeleton--list-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--credence-radius-full);
+  flex-shrink: 0;
+}
+
+.skeleton--list-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-2);
+}
+
+.skeleton--list-title {
+  height: 0.875rem;
+  width: 60%;
+}
+
+.skeleton--list-sub {
+  height: 0.75rem;
+  width: 40%;
+}
+
+.skeleton--list-meta {
+  width: 4rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Bond-row variant (NEW)
+   -------------------------------------------------------------------------- */
+
+.skeleton--bond-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--credence-space-4) var(--credence-space-6);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  margin-bottom: var(--credence-space-4);
+  background: var(--credence-surface-card);
+}
+
+.skeleton--bond-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-2);
+}
+
+.skeleton--bond-amount {
+  height: 1.25rem;
+  width: 8rem;
+}
+
+.skeleton--bond-status {
+  height: 1rem;
+  width: 5rem;
+  border-radius: var(--credence-radius-full);
+}
+
+.skeleton--bond-right {
+  display: flex;
+  gap: var(--credence-space-4);
+  align-items: center;
+}
+
+.skeleton--bond-btn {
+  height: 2rem;
+  width: 6rem;
+  border-radius: var(--credence-radius-md);
+}
+
+/* --------------------------------------------------------------------------
+   Trust-score variant (NEW)
+   -------------------------------------------------------------------------- */
+
+.skeleton--trust-score-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-8);
+}
+
+.skeleton--trust-score-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-4);
+}
+
+.skeleton--trust-gauge {
+  height: 200px;
+  width: 200px;
+  border-radius: var(--credence-radius-full);
+  margin: 0 auto;
+}
+
+.skeleton--trust-tier-badge {
+  height: 2rem;
+  width: 6rem;
+  border-radius: var(--credence-radius-full);
+  margin: 0 auto;
+}
+
+.skeleton--trust-stats-row {
+  display: flex;
+  gap: var(--credence-space-6);
+  flex-wrap: wrap;
+}
+
+.skeleton--trust-stat-card {
+  flex: 1;
+  min-width: 140px;
+  height: 80px;
+  border-radius: var(--credence-radius-xl);
+  border: 1px solid var(--credence-border-default);
+}

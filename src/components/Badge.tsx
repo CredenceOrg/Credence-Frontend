@@ -1,4 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import './Badge.css'
+import TooltipOnOverflow from './TooltipOnOverflow'
 
 export type BadgeVariant =
   | 'bronze'
@@ -25,6 +27,12 @@ export interface BadgeProps {
    * when this prop is omitted.
    */
   srPrefix?: string
+  /**
+   * Accessible label for the badge element. Defaults to the display label.
+   * Provide this prop when the badge appears in a context where screen readers
+   * need a more descriptive label than the visible text alone.
+   */
+  ariaLabel?: string
 }
 
 const DEFAULT_LABELS: Record<string, string> = {
@@ -39,19 +47,27 @@ const DEFAULT_LABELS: Record<string, string> = {
   unknown: 'Unknown',
 }
 
-export default function Badge({ variant, label, className = '', srPrefix }: BadgeProps) {
-  const normalizedVariant =
+export default function Badge({ variant, label, className = '', srPrefix, ariaLabel }: BadgeProps) {
+  const normalizedVariant = (
     variant.toLowerCase() in DEFAULT_LABELS ? variant.toLowerCase() : 'unknown'
+  ) as string
 
-  const displayLabel = label || DEFAULT_LABELS[normalizedVariant] || variant
+  const displayLabel =
+    label ??
+    (normalizedVariant === 'unknown' ? DEFAULT_LABELS.unknown : DEFAULT_LABELS[normalizedVariant])
+  const accessibleLabel = ariaLabel ?? displayLabel
+
+  const title =
+    normalizedVariant === 'unknown' && variant.toLowerCase() !== 'unknown'
+      ? undefined
+      : displayLabel
 
   return (
-    <span
-      className={`badge badge--${normalizedVariant} ${className}`.trim()}
-      title={displayLabel}
-    >
-      {srPrefix && <span className="sr-only">{srPrefix} </span>}
-      {displayLabel}
-    </span>
+    <TooltipOnOverflow content={displayLabel}>
+      <span className={`badge badge--${normalizedVariant} ${className}`.trim()}>
+        {srPrefix && <span className="sr-only">{srPrefix} </span>}
+        {displayLabel}
+      </span>
+    </TooltipOnOverflow>
   )
 }

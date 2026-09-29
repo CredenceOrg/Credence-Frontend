@@ -1,0 +1,118 @@
+/* ── EmptyState ────────────────────────────────────────────────────────
+   Consistent zero-data placeholder used across pages.
+   Follows the typography/spacing spec in docs/UI_STATES_GUIDE.md.
+   ─────────────────────────────────────────────────────────────────── */
+
+.empty-state {
+  text-align: center;
+  padding: var(--credence-space-12) var(--credence-space-6);
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+/* Icon wrapper — 64 px circle with contextual background */
+.empty-state__icon {
+  width: 4rem; /* 64px */
+  height: 4rem;
+  border-radius: var(--credence-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--credence-space-4);
+  color: var(--credence-text-primary);
+}
+
+/* Variant backgrounds mirror the illustration tokens */
+.empty-state__icon--bond {
+  background: var(--credence-color-platinum-surface);
+}
+
+.empty-state__icon--trust {
+  background: var(--credence-color-trust-surface);
+}
+
+.empty-state__icon--dispute {
+  background: var(--credence-color-danger-surface-strong);
+}
+
+.empty-state__icon--attestation {
+  background: var(--credence-color-attestation-surface);
+}
+
+.empty-state__icon--activity {
+  background: var(--credence-color-bronze-surface);
+}
+
+/* Semantic heading — always h3 per component contract */
+.empty-state__title {
+  font-size: var(--credence-font-size-lg);
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-text-primary);
+  margin: 0 0 var(--credence-space-2);
+}
+
+/* Body copy — secondary colour, compact line-height */
+.empty-state__description {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-base);
+  margin: 0;
+}
+
+/* When a CTA is present, push it away from the description */
+.empty-state__description--hasAction {
+  margin-bottom: var(--credence-space-6);
+}
+
+/* CTA button — primary / secondary variants */
+.empty-state__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-space-2);
+  padding: var(--credence-space-3) var(--credence-space-6);
+  border: none;
+  border-radius: var(--credence-radius-lg);
+  font-weight: var(--credence-font-weight-semibold);
+  font-size: var(--credence-font-size-sm);
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  background: var(--credence-color-primary-soft);
+  color: var(--credence-color-white);
+}
+
+.empty-state__action--secondary {
+  background: var(--credence-border-default);
+  color: var(--credence-text-primary);
+}
+
+.empty-state__action:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.empty-state__action:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.empty-state__action:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.empty-state__action--secondary:hover:not(:disabled) {
+  background: var(--credence-border-default-hover, var(--credence-border-default));
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-state__action {
+    transition: none;
+  }
+}
+
+/* ── Mobile: prevent overlap with fixed bottom nav ──────────────────────── */
+@media (max-width: 768px) {
+  .empty-state {
+    padding-bottom: calc(56px + var(--credence-space-6));
+  }
+}

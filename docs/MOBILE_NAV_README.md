@@ -191,6 +191,19 @@ This directory contains comprehensive documentation for implementing mobile-resp
 ✅ **Scalable:** Supports future page additions (10+ pages)  
 ✅ **Zero regression:** Desktop unchanged, mobile optimized
 
+### Two-Component Mobile Navigation Architecture
+
+As of the current implementation, mobile navigation uses two complementary components:
+
+- **`BottomNav`** (`src/components/navigation/BottomNav.tsx`) — Fixed bottom bar visible on viewports ≤ 768 px (`BREAKPOINTS.MD`). Shows the 5 primary routes: Dashboard, Bond, Trust Score, Attestations, Transactions. Hidden at wider widths via CSS `display: none`.
+
+- **`MobileNav`** (`src/components/navigation/MobileNav.tsx`) — Hamburger button (☰) in the header that opens a slide-in drawer. Shows secondary/overflow routes only: Home and Settings. Visible at ≤ 640 px (`BREAKPOINTS.SM`).
+
+Navigation link data for both components is centrally managed in `src/config/navLinks.ts`:
+
+- `PRIMARY_NAV_LINKS` → consumed by `BottomNav`
+- `SECONDARY_NAV_LINKS` → consumed by `MobileNav`
+
 ### Key Features
 
 - ✅ 44×44px touch targets (WCAG 2.5.5)
@@ -222,13 +235,13 @@ This directory contains comprehensive documentation for implementing mobile-resp
 - [ ] Create component variants
 - [ ] Design review and approval
 
-### Phase 3: Implementation (Next)
+### Phase 3: Implementation ✅ COMPLETE
 
-- [ ] Create navigation components
-- [ ] Add media query hook
-- [ ] Update Layout component
-- [ ] Add CSS styles
-- [ ] Implement accessibility features
+- [x] Create navigation components
+- [x] Add media query hook
+- [x] Update Layout component
+- [x] Add CSS styles
+- [x] Implement accessibility features
 
 ### Phase 4: Testing (Next)
 

@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
+import noDangerouslySetInnerHtml from './src/eslint-rules/no-dangerously-set-inner-html.js'
 
 export default tseslint.config({
   ignores: ['dist', 'node_modules', 'storybook-static'],
@@ -18,6 +19,13 @@ export default tseslint.config({
       ...globals.browser,
     },
   },
+  plugins: {
+    local: {
+      rules: {
+        'no-dangerously-set-inner-html': noDangerouslySetInnerHtml,
+      },
+    },
+  },
   rules: {
     '@typescript-eslint/no-unused-vars': [
       'error',
@@ -25,5 +33,20 @@ export default tseslint.config({
         argsIgnorePattern: '^_',
       },
     ],
+    'local/no-dangerously-set-inner-html': [
+      'error',
+      {
+        allow: [],
+      },
+    ],
+  },
+}, {
+  files: ['**/*.mjs'],
+  languageOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    globals: {
+      ...globals.node,
+    },
   },
 });

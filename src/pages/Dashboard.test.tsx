@@ -2,7 +2,25 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  ONBOARDING_COMPLETION_STORAGE_KEY,
+  ONBOARDING_STEP_STORAGE_KEY,
+} from '../config/onboarding'
 import Dashboard from './Dashboard'
+
+// Mocks needed because ActionCard now uses useToast, useCopyToClipboard, and useTranslation
+vi.mock('../components/ToastProvider', () => ({
+  useToast: () => ({
+    addToast: vi.fn(),
+    removeToast: vi.fn(),
+    removeAllToasts: vi.fn(),
+    announce: vi.fn(),
+  }),
+}))
+
+vi.mock('../hooks/useCopyToClipboard', () => ({
+  default: () => ({ copy: vi.fn().mockResolvedValue(true), copied: false, reset: vi.fn() }),
+}))
 
 const mockConnect = vi.fn()
 let mockConnected = true
@@ -21,6 +39,27 @@ vi.mock('../context/WalletContext', () => ({
   }),
 }))
 
+const mockRefetch = vi.fn().mockResolvedValue(undefined)
+let mockQueryData = { score: 684, tier: 'gold' }
+let mockIsMobile = false
+
+vi.mock('../hooks/useQuery', () => ({
+  useQuery: (_fn: unknown, options?: { enabled?: boolean }) => {
+    const enabled = options?.enabled !== false
+    return {
+      data: enabled ? mockQueryData : undefined,
+      isLoading: false,
+      error: null,
+      refetch: mockRefetch,
+    }
+  },
+}))
+
+vi.mock('../hooks/useMediaQuery', () => ({
+  useIsMobile: () => mockIsMobile,
+  useMediaQuery: () => mockIsMobile,
+}))
+
 function renderDashboard(initialEntries = ['/']) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
@@ -31,9 +70,13 @@ function renderDashboard(initialEntries = ['/']) {
 
 describe('Dashboard', () => {
   beforeEach(() => {
+    localStorage.clear()
     mockConnect.mockClear()
+    mockRefetch.mockClear()
     mockConnected = true
     mockIsConnecting = false
+    mockQueryData = { score: 684, tier: 'gold' }
+    mockIsMobile = false
   })
 
   it('prompts disconnected users to connect their wallet', async () => {
@@ -48,6 +91,44 @@ describe('Dashboard', () => {
     await user.click(screen.getByRole('button', { name: /connect wallet/i }))
 
     expect(mockConnect).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders a single EmptyState wrapped in an ActionCard when disconnected', () => {
+    mockConnected = false
+
+    const { container } = renderDashboard()
+
+    // Only one article (ActionCard) should render — no dashboard cards
+    const articles = container.querySelectorAll('article')
+    expect(articles).toHaveLength(1)
+
+    // The ActionCard contains the EmptyState with the trust illustration
+    const svg = articles[0].querySelector('svg')
+    expect(svg).not.toBeNull()
+    expect(svg).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('shows the connect-freighter description in the disconnected empty state', () => {
+    mockConnected = false
+
+    renderDashboard()
+
+    expect(
+      screen.getByText(
+        /connect freighter to load your trust score, active bonds, and recent activity/i
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('does not render dashboard cards (trust score, bonds, activity, shortcuts) when disconnected', () => {
+    mockConnected = false
+
+    renderDashboard()
+
+    expect(screen.queryByRole('heading', { name: 'Trust Score' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /active bonds/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /recent activity/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Shortcuts' })).not.toBeInTheDocument()
   })
 
   it('renders connected dashboard cards and activity summary', () => {
@@ -92,5 +173,38 @@ describe('Dashboard', () => {
 
     expect(screen.getByLabelText(/loading dashboard/i)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /wallet required/i })).not.toBeInTheDocument()
+  })
+
+  it('shows the onboarding tour on first visit and records completion when skipped', async () => {
+    const user = userEvent.setup()
+
+    renderDashboard()
+
+    expect(screen.getByText(/quick tour/i)).toBeInTheDocument()
+    expect(screen.getByText(/welcome to your dashboard/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /skip tour/i }))
+
+    expect(localStorage.getItem(ONBOARDING_COMPLETION_STORAGE_KEY)).toBeTruthy()
+    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBeNull()
+  })
+
+  it('persists progress when advancing the onboarding tour', async () => {
+    const user = userEvent.setup()
+
+    renderDashboard()
+
+    await user.click(screen.getByRole('button', { name: /next/i }))
+
+    expect(localStorage.getItem(ONBOARDING_STEP_STORAGE_KEY)).toBe('1')
+    expect(screen.getByText(/review active bonds/i)).toBeInTheDocument()
+  })
+
+  it('resumes an interrupted onboarding tour from the saved step', () => {
+    localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, '2')
+
+    renderDashboard()
+
+    expect(screen.getByText(/monitor recent activity/i)).toBeInTheDocument()
   })
 })

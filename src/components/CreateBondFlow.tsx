@@ -142,18 +142,6 @@ function logRefusedTransition(direction: 'Back' | 'Next', step: number): void {
   console.warn('[CreateBondFlow] Refused out-of-bounds transition', { direction, step })
 }
 
-/**
- * Returns true when the amount is a well-formed, strictly positive decimal
- * string. Rejects NaN, Infinity, negatives, zero, exponent notation and any
- * non-numeric characters so the wizard cannot advance on garbage input.
- */
-function isValidPositiveAmount(value: string): boolean {
-  const trimmed = value.trim()
-  if (!/^\d{1,}(\.\d{1,})?$/.test(trimmed)) return false
-  const numeric = Number(trimmed)
-  return Number.isFinite(numeric) && numeric > 0
-}
-
 // ----------------------------------------------------------------------------
 // Component
 // ----------------------------------------------------------------------------
@@ -178,7 +166,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   const [resetError, setResetError] = useState('')
 
   const auditRecordsRef = useRef<BondAuditRecord[]>(loadAuditLog())
-  const correlationIdRef = useRef('')
+  const correlationIdRef = useRef<string>('')
   const sequenceRef = useRef<number>(
     auditRecordsRef.current.reduce((max, record) => Math.max(max, record.sequence), -1) + 1,
   )
@@ -190,7 +178,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
    * Transition handlers must plan against the step as of *click* time. Reading
    * the `step` state variable gives the value from the last committed render, so
    * several Back presses batched into a single React update would all compute
-   * `step - 1` from the same value and collapse into one move (or, mixed with a 
+   * `step - 1` from the same value and collapse into one move (or, mixed with a
    * Next press, resolve to the wrong direction entirely). `applyStep` therefore
    * writes this ref *synchronously* before `setStep`, which makes duplicate and
    * interleaved invocations deterministic.
@@ -302,23 +290,18 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   }
 
   /**
-   * Next navigation.
+   * Advances the wizard to the next step after validating the current step.
    *
-   * Failure boundaries handled here:
-   *
-   * 1. **In-flight submission.** A duplicate or programmatic Next dispatch while
-   *    a commit is in flight is refused via `submittingRef`, which is written
-   *    synchronously before the async operation begins. This prevents concurrent
-   *    commits from creating duplicate bonds.
-   * 2. **Amount validation.** Step 1 requires a well-formed, strictly positive
-   *    decimal. Validation is performed against the latest committed value and
-   *    the error is surfaced without moving the wizard.
-   * 3. **Duration validation.** Step 2 requires a lock duration to be selected.
-   * 4. **Boundary / overflow.** The target is clamped into [1, 4]. A `Next` on the
-   *    last step is refused and logged rather than silently advancing.
-   *
-   * The current step is read from `stepRef`, not the `step` state variable, so
-   * batched or interleaved invocations are deterministic.
+   * Failure boundaries enforced here:
+   * 1. **In-flight submission.** `submittingRef` guards against duplicate
+   *    dispatches while a commit is pending.
+   * 2. **Validation.** Amount must be > 0 and duration must be selected before
+   *    advancing. Errors are surfaced via `error` and the step is not moved.
+   * 3. **Boundary / overflow.** On the last step `planNextTransition` returns
+   *    `moved: false`; the wizard stays put and the refusal is logged.
+   * 4. *(Stale state.** The transition is planned against `stepRef.current`
+   *    (click-time value), not the last rendered `step`, so batched or interleaved
+   *    dispatches cannot collapse or diverge.
    */
   const handleNext = () => {
     // Guard 1: never advance while a commit is in flight.
@@ -326,28 +309,32 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
 
     const currentStep = stepRef.current
 
-    // Guard 2: per-step validation against the latest committed inputs.
+    // Guard 2: per-step validation. A failed validation must not move the
+    // wizard, and must not clear an existing error until the input is fixed.
     if (currentStep === BOND_FLOW_STEP_AMOUNT) {
-      if (!isValidPositiveAmount(amount)) {
+      const parsedAmount = Number(amount)
+      if (!amount || !Number.finite(parsedAmount) || parsedAmount <= 0) {
         setError('Please enter a valid amount greater than 0.')
         return
       }
     } else if (currentStep === BOND_FLOW_STEP_DURATION) {
-      if (!duration || duration <= 0) {
+      if (!duration) {
         setError('Please select a lock duration.')
         return
       }
     }
 
-    // Guard 3: boundary / overflow. Refusal keeps the wizard state (and any
-    // visible validation error) untouched so a refusal is never mistaken for a
-    // successful navigation.
+    // Guard 3: boundary/overflow. Plan against the click-time step.
     const plan = planNextTransition(currentStep)
     if (!plan.moved) {
+      // Refused: we are already on the last step. Keep the wizard state (and any
+      // visible validation error) untouched so a refusal is never mistaken for a
+      // successful navigation.
       logRefusedTransition('Next', currentStep)
       return
     }
 
+    // Success: clear the validation error and move to the planned target.
     setError('')
     applyStep(plan.targetStep)
   }
@@ -362,39 +349,34 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
    *    clamp a Back press on (or below) step 1 rendered an empty wizard body:
    *    the `step > 1` guard hides Back and `step < 4` still shows Next, leaving
    *    an unrecoverable screen with no progress.
-   * 2. **In-flight submission.** Back is refused while a commit is in flight so
-   *    the user cannot navigate away from an authoritative mutation.
    */
   const handleBack = () => {
-    if (submittingRef.current) return
-
     const currentStep = stepRef.current
     const plan = planBackTransition(currentStep)
     if (!plan.moved) {
       logRefusedTransition('Back', currentStep)
       return
     }
+    // Clearing the error on Back is safe: the user is leaving the validated
+    // step, and returning to it will re-validate.
     setError('')
     applyStep(plan.targetStep)
   }
 
   /**
-   * Commits the bond. This is the only place that writes `submittingRef`, and it
-   * does so *synchronously* before the first await, so a concurrent or duplicate
-   * invocation is rejected before it can create a second bond.
+   * Confirms the bond creation. This is the only path that can commit a bond.
+   *
+   * Invariants:
+   *  - Acknowledgement must be checked before committing.
+   *  - `submittingRef` prevents concurrent commits.
+   *  - A failure leaves the wizard on the confirm step with the error visible,
+   *    so the user can retry without losing input.
+   *  - A success resets the flow and notifies the caller.
    */
   const handleConfirm = async () => {
     if (submittingRef.current) return
     if (!acknowledged) {
       setConfirmError('Please acknowledge the risk disclaimer before confirming.')
-      return
-    }
-    if (!isValidPositiveAmount(amount)) {
-      setConfirmError('Please enter a valid amount greater than 0.')
-      return
-    }
-    if (!duration || duration <= 0) {
-      setConfirmError('Please select a lock duration.')
       return
     }
 
@@ -409,17 +391,21 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
       const commitResult = (result ?? {}) as BondCommitResult
       recordAudit('BOND_CREATE_COMMITTED', undefined, commitResult)
       addToast({
-        type: 'success',
-        message: 'Bond created successfully.',
+        title: 'Bond created',
+        description: 'Your bond has been created successfully.',
+        variant: 'success',
       })
       safeReset()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to create bond.'
+      const message = err instanceof Error ? err.message : 'Failed to create bond.'
       recordAudit('BOND_CREATE_FAILED', message)
       setConfirmError(message)
-      addToast({ type: 'error', message })
-      // Keep the user on the confirm step with their data intact so they can
-      // retry without re-entering anything.
+      addToast({
+        title: 'Bond creation failed',
+        description: message,
+        variant: 'error',
+      })
+    } finally {
       submittingRef.current = false
       setSubmitting(false)
     }
@@ -431,151 +417,118 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     onCancel?.()
   }
 
-  const penalty = useMemo(() => {
-    const numeric = Number.amount || 0
-    const durationDays = duration ?? 0
-    return computeBondSlashBreakdown(numeric, durationDays)
+  const penaltyBreakdown = useMemo(() => {
+    const parsedAmount = Number(amount)
+    if (!amount || !Number.finite(parsedAmount) || parsedAmount <= 0 || !duration) {
+      return null
+    }
+    return computeBondSlashBreakdown(parsedAmount, duration)
   }, [amount, duration])
 
   const unlockDate = useMemo(() => {
     if (!duration) return null
-    return calcunlockDate(duration)
+    return calcUnlockDate(duration)
   }, [duration])
 
-  const progressPercent = Math.round(((step - BOND_FLOW_MIN_STEP) / (BOND_FLOW_STEP_COUNT - 1)) * 100)
+  const isLastStep = step === BOND_FLOW_STEP_CONFIRM
+  const isFirstStep = step === BOND_FLOW_MIN_STEP
+
+  if (balanceStatus === 'loading') {
+    return <LoadingSkeleton />
+  }
 
   return (
     <div className="createBondFlow" data-testid="create-bond-flow">
-      <div className="createBondFlow__progress" aria-hidden="true">
-        <div
-          className="createBondFlow__progressBar"
-          style={{ width: `${progressPercent}%` }}
-        />
-      </div>
-
       {resetError ? (
-        <Banner type="error" title="Reset failed">
+        <Banner variant="error" title="Reset failed">
           {resetError}
         </Banner>
       ) : null}
+      <div className="createBondFlow__progress" aria-label="Progress">
+        Step {step} of {BOND_FLOW_STEP_COUNT}
+      </div>
 
       {step === BOND_FLOW_STEP_AMOUNT && (
-        <section className="createBondFlow__step">
-          <h2 ref={step1Ref} tabIndex={-1}>
+        <section aria-labelledby="create-bond-step-1">
+          <h1 id="create-bond-step-1" ref={step1Ref} tabProuse={-1}>
             Enter bond amount
-          </h2>
-          <FormField label="Bond amount (USDC)" error={error}>
-            <AmountInput
-              value={amount}
-              onChange={(value) => {
-                setAmount(value)
-                if (error) setError('')
-              }}
-              disabled={submitting}
-            />
+          </h1>
+          <FormField label="Amount (USDC)" error={error}>
+            <AmountInput value={amount} onChange={setAmount} />
           </FormField>
-          {balanceStatus === 'loading' ? (
-            <LoadingSkeleton />
-          ) : (
-            <p className="createBondFlow__balance">
-              Available balance: {formatUsdc(balance)} USDC
-            </p>
-          )}
         </section>
       )}
 
       {step === BOND_FLOW_STEP_DURATION && (
-        <section className="createBondFlow__step">
-          <h2 ref={step2Ref} tabIndex={-1}>
+        <section aria-labelledby="create-bond-step-2">
+          <h1 id="create-bond-step-2" ref={step2Ref} tabProuse={-1}>
             Choose lock duration
-          </h2>
-          {error ? <Banner type="error">{error}</Banner> : null}
+          </h1>
+          {error ? <Banner variant="error">{error}</Banner> : null}
           <div className="createBondFlow__durations">
             {[30, 90, 180].map((days) => (
-              <button
+              <Button
                 key={days}
-                type="button"
-                className={`createBondFlow__duration${duration === days ? ' createBondFlow__duration--selected' : ''}`}
-                aria-pressed={duration === days}
-                onClick={() => {
-                  setDuration(days)
-                  if (error) setError('')
-                }}
-                disabled={submitting}
+                variant={duration === days ? 'primary' : 'secondary'}
+                onClick={() => setDuration(days)}
               >
                 {days} days
-              </button>
+              </Button>
             ))}
           </div>
         </section>
       )}
 
       {step === BOND_FLOW_STEP_REVIEW && (
-        <section className="createBondFlow__step">
-          <h2 ref={step3Ref} tabIndex={-1}>
+        <section aria-labelledby="create-bond-step-3">
+          <h1 id="create-bond-step-3" ref={step3Ref} tabProuse={-1}>
             Review terms
-          </h2>
-          <div className="createBondFlow__review">
-            <div class>Bond amount: <bold>{formatUsdc(amount)} USDC</bold></div>
+          </h1>
+          <div className="createBondFlow__reviewCard">
+            <div>Amount: {formatUsdc(Number(amount))} USDC</div>
             <ReviewDivider />
-            <div>Lock duration: <bold>{duration ?? 0} days</bold></div>
+            <div>Lock duration: {duration} days</div>
             <ReviewDivider />
-            <div>
-              Early-withdrawal penalty: <bold>{formatUsdc(penalty.penaltyAmount)} USDC</bold>
-            </div>
-            <ReviewDivider />
-            <div>
-              Resulting balance: <bold>{formatUsdc(penalty.netAmount)} USDC</bold>
-            </div>
-            {unlockDate ? ({
-              <>
-                <ReviewDivider />
-                <div>Unlock date: <bold>{unlockDate.toLocaleDateString()}</bold></div>
-              </>
+            {penaltyBreakdown ? (
+              <div>
+                Early-withdrawal penalty: {formatUsdc(penaltyBreakdown.penaltyAmount)} USDC
+              </div>
             ) : null}
+            <ReviewDivider />
+            {unlockDate ? <div>Unlock date: {unlockDate.toLocaleDateString()}</div> : null}
           </div>
         </section>
       )}
 
       {step === BOND_FLOW_STEP_CONFIRM && (
-        <section className="createBondFlow__step">
-          <h2 ref={step4Ref} tabIndex={-1}>
+        <section aria-labelledby="create-bond-step-4">
+          <h1 id="create-bond-step-4" ref={step4Ref} tabProuse={-1}>
             Confirm bond
-          </h2>
-          <Disclaimer acknowledged={acknowledged} onAcknowledgeChange={setAcknowledged} />
-          {confirmError ? <Banner type="error">{confirmError}</Banner> : null}
+          </h1>
+          <Disclaimer acknowledged={acknowledged} onAcknowledge={setAcknowledged} />
+          {confirmError ? <Banner variant="error"={confirmError}</Banner> : null}
         </section>
       )}
 
       <div className="createBondFlow__actions">
-        {step > BOND_FLOW_MIN_STEP && (
-          <Button type="button" variant="secondary" onClick={handleBack} disabled={submitting}>
+        {!isFirstStep && (
+          <Button variant="secondary" onClick={handleBack} disabled={submitting}>
             Back
           </Button>
         )}
-        {step < BOND_FLOW_MAX_STEP ? (
-          <Button type="button" onClick={handleNext} disabled={submitting}>
+        {!isLastStep ? (
+          <Button variant="primary" onClick={handleNext} disabled={submitting}>
             Next
           </Button>
         ) : (
-          <Button type="button" onClick={handleConfirm} disabled={submitting || !acknowledged}>
-            {submitting ? 'Creating...' : 'Confirm bond'}
+          <Button variant="primary" onClick={handleConfirm} disabled={submitting}>
+            {submitting ? 'Confirming…' : 'Confirm'}
           </Button>
         )}
-        <Button type="button" variant="ghost" onClick={handleCancel} disabled={submitting}>
+        <Button variant="ghost" onClick={handleCancel} disabled={submitting}>
           Cancel
         </Button>
       </div>
-
-      {!isConnected ? (
-        <div className="createBondFlow__connect">
-          <Button type="button" onClick={() => void connect()}>
-            Connect wallet
-          </Button>
-        </div>
-      ) : null}
-
-      {prefersReducedMotion ? null : <div className="createBondFlow__animation" />}
     </div>
   )
 }

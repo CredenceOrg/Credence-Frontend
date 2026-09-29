@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './ThemeToggle.css'
+
+export type Theme = 'light' | 'dark'
 
 function SunIcon() {
   return (
@@ -34,35 +36,81 @@ function MoonIcon() {
   )
 }
 
-export default function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('theme')
-      if (saved === 'light' || saved === 'dark') return saved
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
+/**
+ * Resolves the initial theme from persisted state and the OS preference.
+ *
+ * Invariants:
+ * - Never throws: any storage/media failure falls back to a deterministic 'light'.
+ * - Only the exact values 'light'/'dark' are accepted from storage; anything else
+ *   is treated as absent (corrupted/tampered state cannot latch an invalid theme).
+ */
+export function resolveInitialTheme(): Theme {
+  if (typeof window === 'undefined') {
     return 'light'
-  })
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem('theme', theme)
-  }, [theme])
-
-  const toggleTheme = () => {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'))
   }
 
-  const nextTheme = theme === 'light' ? 'dark' : 'light'
+  try {
+    const saved = window.localStorage.getItem('theme')
+    if (saved === 'light' || saved === 'dark') return saved
+  } catch {
+    // Storage can throw (disabled cookies, private mode, quota). Fall through to OS.
+  }
+
+  try {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  } catch {
+    return 'light'
+  }
+}
+
+export default function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(resolveInitialTheme)
+
+  // Tracks whether the most recent toggle attempt was applied to the document.
+  // Used to give the button a deterministic, diagnosable error state without
+  // losing the user's chosen theme in memory.
+  const [error, setError] = useState<string | null>(null)
+  const lastAppliedRef = useRef<Theme | null>(null)
+
+  useEffect(() => {
+    try {
+      document.documentElement.dataset.theme = theme
+      lastAppliedRef.current = theme
+      setError(null)
+    } catch {
+      // Never throw from an effect: a theme write failure must not crash the tree.
+      // Surface a generic message; do not leak the underlying error.
+      setError('Unable to apply the theme.')
+    }
+
+    try {
+      window.localStorage.setItem('theme', theme)
+    } catch {
+      // Persistence failure is non-fatal: the in-memory theme remains authoritative.
+    }
+  }, [theme])
+
+  /**
+   * Deterministic toggle. Computes the next theme from the current value and applies
+   * it exactly once per click, even under concurrent/rapid re-entrant clicks.
+   */
+  const handleClick = useCallback(() => {
+    setTheme((current) => (current === 'light' ? 'dark' : 'light'))
+  }, [])
+
+  const nextTheme: Theme = theme === 'light' ? 'dark' : 'light'
+  const hasError = error !== null
 
   return (
     <button
       type="button"
       className="theme-toggle"
-      onClick={toggleTheme}
+      onClick={handleClick}
       aria-label={`Switch to ${nextTheme} mode`}
       aria-pressed={theme === 'dark'}
-      title={`Switch to ${nextTheme} mode`}
+      aria-invalid={hasError ? 'true' : undefined}
+      title={error ? error : `Switch to ${nextTheme} mode`}
+      data-theme-state={theme}
     >
       {theme === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>

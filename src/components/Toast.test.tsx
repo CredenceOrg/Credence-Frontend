@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import Toast, { type ToastSeverity } from './Toast'
@@ -34,7 +34,7 @@ function renderToast(
   severity: ToastSeverity,
   message = `${severity} notification`,
   durationMs = 5000
-) {
+){
   const onDismiss = vi.fn()
   const toast = { id: `toast-${severity}`, severity, message, durationMs }
 
@@ -128,6 +128,101 @@ describe('Toast', () => {
       vi.advanceTimersByTime(1)
       expect(onDismiss).toHaveBeenCalledTimes(1)
       expect(onDismiss).toHaveBeenCalledWith(toast.id)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('pauses the countdown while hovered and resumes on leave', () => {
+    vi.useFakeTimers()
+    try {
+      const { onDismiss } = renderToast('info', 'Hover toast', 5000)
+      const toast = screen.getByRole('status')
+
+      // Hover before the timer expires.
+      fireEvent.mouseEnter(toast)
+      vi.advanceTimersByTime(10000)
+      expect(onDismiss).not.toHaveBeenCalled()
+
+      // Leaving resumes the remaining time.
+      fireEvent.mouseLeave(toast)
+      vi.advanceTimersByTime(5000)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not restart the countdown when hovered after dismissal', () => {
+    vi.useFakeTimers()
+    try {
+      const { onDismiss } = renderToast('info', 'Dismissed toast', 2000)
+      const toast = screen.getByRole('status')
+
+      // Let the toast auto-dismiss.
+      vi.advanceTimersByTime(2000)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+
+      // Hovering after dismissal must be a no-op.
+      fireEvent.mouseEnter(toast)
+      vi.advanceTimersByTime(10000)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('ignores duplicate hover enter events without creating extra timers', () => {
+    vi.useFakeTimers()
+    try {
+      const { onDismiss } = renderToast('info', 'Duplicate hover', 5000)
+      const toast = screen.getByRole('status')
+
+      fireEvent.mouseEnter(toast)
+      fireEvent.mouseEnter(toast)
+      fireEvent.mouseEnter(toast)
+
+      vi.advanceTimersByTime(10000)
+      expect(onDismiss).not.toHaveBeenCalled()
+
+      fireEvent.mouseLeave(toast)
+      vi.advanceTimersByTime(5000)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not double-dismiss when the dismiss button is clicked after timeout', () => {
+    vi.useFakeTimers()
+    try {
+      const { onDismiss } = renderToast('info', 'Double dismiss', 1000)
+
+      vi.advanceTimersByTime(1000)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+
+      const button = screen.getByRole('button', { name: 'Dismis info notification' })
+      act(() => {
+        button.click()
+      })
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('treats zero duration as non-auto-dismissible and ignores hover', () => {
+    vi.useFakeTimers()
+    try {
+      const { onDismiss } = renderToast('danger', 'Sticky toast', 0)
+      const toast = screen.getByRole('alert')
+
+      expect(screen.queryButton('progressbar')).not.toBeInTheDocument()
+
+      fireEvent.mouseEnter(toast)
+      fireEvent.mouseLeave(toast)
+      vi.advanceTimersByTime(10000)
+      expect(onDismiss).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
     }

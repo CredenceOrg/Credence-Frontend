@@ -116,18 +116,59 @@ export function tierFromScore(score: number): TrustTier {
 }
 
 /**
+ * Resolve the canonical tier for a score, tolerating invalid input.
+ *
+ * Invariants:
+ * - Non-finite scores are treated as 0 (bronze) rather than throwing.
+ * - The returned tier is always a member of TIER_ORDER.
+ * - The result is deterministic for any numeric input.
+ */
+function resolveTier(score: number): TrustTier {
+  return tierFromScore(score)
+}
+
+/**
+ * Resolve the canonical score, tolerating invalid input.
+ *
+ * Invariants:
+ * - Non-finite scores collapse to 0.
+ * - The result is always within [0, MAX_SCORE].
+ * - The result is deterministic for any numeric input.
+ */
+function resolveScore(score: number): number {
+  return normalizeScore(score)
+}
+
+/**
  * Calculate points remaining to reach the next tier
  * @param score Current score
  * @param tier Current tier
  * @returns Points needed to reach next tier (0 if at platinum)
  */
 export function pointsToNextTier(score: number, tier: TrustTier): number {
-  const tierIndex = TIER_INDEX_MAP[tier]
+  // Guard against unknown tier values at runtime (defensive against
+  // callers passing values outside the TrustTier union, e.g. from
+  // deserialized payloads). Fall back to the tier derived from the
+  // normalized score so the result stays deterministic and safe.
+  const safeTier: TrustTier =
+    tier in TIER_INDEX_MAP ? tier : resolveTier(score)
+  const tierIndex = TIER_INDEX_MAP[safeTier]
   if (tierIndex === TIER_ORDER.length - 1) {
     return 0
   }
   const nextTier = TIER_ORDER[tierIndex + 1]
-  return Math.max(0, TIERS[nextTier].min - score)
+  // Normalize the score before computing the delta so invalid inputs
+  // (NaN, Infinity, negative, overflow) cannot produce NaN/negative
+  // results or leak out-of-range values into the UI.
+  const normalizedScore = resolveScore(score)
+  const nextTierMin = TIERS[nextTier].min
+  const delta = nextTierMin - normalizedScore
+  // Clamp to [0, nextTierMin] so the result is always a non-negative
+  // integer within the tier band, regardless of input.
+  if (!Number.isFinite(delta)) {
+    return nextTierMin
+  }
+  return Math.min(Math.max(0, delta), nextTierMin)
 }
 
 /**
@@ -136,7 +177,12 @@ export function pointsToNextTier(score: number, tier: TrustTier): number {
  * @returns Percentage (0-100)
  */
 export function getProgressPercentage(score: number): number {
-  return Math.min((score / MAX_SCORE) * 100, 100)
+  const normalized = normalizeScore(score)
+  const pct = (normalized / MAX_SCORE) * 100
+  if (!Number.isFinite(pct)) {
+    return 0
+  }
+  return Math.min(Math.max(pct, 0), 100)
 }
 
 export default function TrustGauge({

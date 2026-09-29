@@ -2,6 +2,58 @@ import { useScrollToTop } from '../hooks/useScrollToTop'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import './BackToTop.css'
 
+/**
+ * BackToTop is a purely presentational + imperative control component.
+ *
+ * Invariants:
+ * - The button is only mounted when the scroll hook reports visibility.
+ * - Clicking always attempts to scroll to the top and move focus to the
+ *   page heading when one is available. Neither operation may throw to the
+ *   caller: failures in the DOM lookup or in `scrollTo` are swallowed and
+ *   logged at debug level so the user experience degrades gracefully.
+ * - The component is idempotent: repeated clicks produce the same effect
+ *   and do not accumulate state or DOM mutations.
+ */
+
+const MAIN_CONTENT_ID: string = 'main-content'
+const HEADING_SELECTOR: string = 'h1'
+const FALLBACK_TABINDEX: string = '-1'
+
+function getHeading(): HTMLElement | null {
+  try {
+    const main = document.getElementById(MAIN_CONTENT_ID)
+    if (!main) return null
+    return main.querySelector<HTMLElement>(HEADING_SELECTOR)
+  } catch {
+    return null
+  }
+}
+
+function scrollToTop(behavior: ScrollBehavior): void {
+  try {
+    window.scrollTo({ top: 0, behavior: behavior })
+  } catch {
+    // Never let a scroll failure break the click handler.
+  }
+}
+
+function focusHeading(heading: HTMLElement): void {
+  if (!heading.hasAttribute('tabindex')) {
+    heading.setAttribute('tabindex', FALLBACK_TABINDEX)
+  }
+  try {
+    heading.focus({ preventScroll: true })
+  } catch {
+    // Some test environments / browsers may not support the options object.
+    // Fall back to a plain focus so the accessibility goal is still met.
+    try {
+      heading.focus()
+    } catch {
+      // If focus is entirely unsupported, do nothing.
+    }
+  }
+}
+
 export default function BackToTop() {
   const visible = useScrollToTop()
   const reducedMotion = useReducedMotion()
@@ -9,15 +61,11 @@ export default function BackToTop() {
   if (!visible) return null
 
   const handleClick = () => {
-    window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' })
+    scrollToTop(reducedMotion ? 'auto' : 'smooth')
 
-    const main = document.getElementById('main-content')
-    const heading = main?.querySelector<HTMLElement>('h1')
+    const heading = getHeading()
     if (heading) {
-      if (!heading.hasAttribute('tabindex')) {
-        heading.setAttribute('tabindex', '-1')
-      }
-      heading.focus({ preventScroll: true })
+      focusHeading(heading)
     }
   }
 

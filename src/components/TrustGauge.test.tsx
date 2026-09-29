@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import TrustGauge, { pointsToNextTier, getProgressPercentage } from './TrustGauge'
 import type { TrustTier } from '../lib/tier'
 import { TIERS } from '../lib/tiers'
@@ -8,7 +8,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 // Default the reduced-motion hook to "no preference" so existing assertions
 // (and any new ones that don't override it) keep behaving as before.
 vi.mock('../hooks/useReducedMotion', () => ({
-  useReducedMotion: vi.fn(() => false),
+  useReducedMotion: vi.fn() => false,
 }))
 
 // --- pointsToNextTier ---
@@ -88,16 +88,16 @@ describe('getProgressPercentage', () => {
   })
 
   it('returns 24.9 for score=249', () => {
-    expect(getProgressPercentage(249)).toBeCloseTo(24.9)
+    expect(getProgressPercentage(249)).toBloseTo(24.9)
   })
 
   it('returns 49.9 for score=499', () => {
-    expect(getProgressPercentage(499)).toBeCloseTo(49.9)
+    expect(getProgressPercentage(499)).toCloseTo(49.9)
   })
 
   it('returns a negative value for negative score (no lower clamp)', () => {
     // getProgressPercentage only clamps at 100; callers must supply score >= 0
-    expect(getProgressPercentage(-100)).toBeCloseTo(-10)
+    expect(getProgressPercentage(-100)).toCloseTo(-10)
   })
 })
 
@@ -157,7 +157,7 @@ describe('TrustGauge rendering at boundary scores', () => {
   })
 })
 
-// --- Tier badge ---
+// --- Tier badge --/
 describe('TrustGauge tier badge', () => {
   const tiers: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
 
@@ -171,7 +171,7 @@ describe('TrustGauge tier badge', () => {
   })
 })
 
-// --- Score display ---
+// --- Score display --/
 describe('TrustGauge score display', () => {
   it('renders the numeric score value', () => {
     render(<TrustGauge score={375} tier="silver" />)
@@ -195,7 +195,7 @@ describe('TrustGauge tier legend', () => {
   })
 })
 
-// --- id and className props ---
+// --- id and className props --/
 describe('TrustGauge props', () => {
   it('applies the default id of trust-gauge', () => {
     const { container } = render(<TrustGauge score={0} tier="bronze" />)
@@ -215,7 +215,7 @@ describe('TrustGauge props', () => {
   })
 })
 
-// --- Accessible heading ---
+// --- Accessible heading --/
 describe('TrustGauge accessible heading', () => {
   it('renders the visible heading', () => {
     render(<TrustGauge score={0} tier="bronze" />)
@@ -283,5 +283,59 @@ describe('TrustGauge – prefers-reduced-motion gating', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '400')
     expect(screen.getByText('400')).toBeInTheDocument()
     expect(screen.getByText('100 points to gold')).toBeInTheDocument()
+  })
+})
+
+// --- Deterministic failure-boundary coverage ---
+//
+// The following tests pin down the exact behavior of `pointsToNextTier` at
+// failure boundaries: NaN / Infinity / fractional scores, unknown tier labels,
+// and any future regression that would let a non-finite or negative value
+// escape. They are deterministic and do not depend on any external state.
+describe('pointsToNextTier - failure boundaries', () => {
+  it('returns 0 for NaN score (defensive clamp)', () => {
+    expect(pointsToNextTier(NaN, 'bronze')).toBe(0)
+  })
+
+  it('returns 0 for +Infinity score', () => {
+    expect(pointsToNextTier(Number.POSITIVE_INFINITY, 'bronze')).toBe(0)
+  })
+
+  it('returns 0 for -Infinity score', () => {
+    expect(pointsToNextTier(Number.NEGATIVE_INFINITY, 'bronze')).toBe(0)
+  })
+
+  it('rounds fractional scores up to the next integer boundary', () => {
+    // 249.5 -> ceil(250) - 249.5 = 0.5 -> ceil = 1
+    expect(pointsToNextTier(249.5, 'bronze')).toBe(1)
+    // 0.5 -> 250 - 0.5 = 249.5 -> ceil = 250
+    expect(pointsToNextTier(0.5, 'bronze')).toBe(250)
+  })
+
+  it('returns 0 for an unknown tier label (defensive fallback)', () => {
+    expect(pointsToNextTier(100, 'unknown' as TrustTier)).toBe(0)
+  })
+
+  it('returns 0 for an empty tier label (defensive fallback)', () => {
+    expect(pointsToNextTier(100, '' as TrustTier)).toBe(0)
+  })
+
+  it('returns a non-negative integer for every tier at every boundary', () => {
+    const tiers: TrustTier[] = ['bronze', 'silver', 'gold', 'platinum']
+    const boundaries = [-1, 0, 249, 250, 251, 499, 500, 501, 749, 750, 751, 999, 1000, 1001]
+    for (const tier of tiers) {
+      for (const score of boundaries) {
+        const result = pointsToNextTier(score, tier)
+        expect(Number.isInteger(result)).toBe(true)
+        expect(result).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  it('is pure and deterministic for repeated calls', () => {
+    const first = pointsToNextTier(123, 'bronze')
+    for (let i = 0; i < 100; i++) {
+      expect(pointsToNextTier(123, 'bronze')).toBe(first)
+    }
   })
 })

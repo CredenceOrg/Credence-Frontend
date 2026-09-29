@@ -46,3 +46,34 @@ export const Loading: Story = {
     isLoading: true,
   },
 }
+
+export const Retry: Story = {
+  args: {
+    error: 'Failed to save. Retry available.',
+    isLoading: false,
+    disabled: false,
+  },
+}
+
+export const Stale: Story = {
+  args: {
+    checked: true,
+    error: 'Value may be out of date.',
+    isLoading: false,
+  },
+}
+
+export const PermissionDenied: Story = {
+  args: {
+    checked: false,
+    disabled: true,
+    error: 'You do not have permission to change this setting.',
+  },
+}
+
+export const LoadingAndError: Story = {
+  args: {
+    isLoading: true,
+    error: 'Previous attempt failed; retrying.',
+  },
+}

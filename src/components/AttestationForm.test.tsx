@@ -1,9 +1,18 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import AttestationForm from './AttestationForm'
 import { SettingsProvider } from '../context/SettingsContext'
 import ToastProvider from './ToastProvider'
+
+vi.mock('../lib/stellar', () => ({
+  isValidStellarAddress: vi.fn((addr) => !!addr && addr.startsWith('G') && addr.length === 56),
+  truncateAddress: (addr: string) => {
+    if (!addr) return ''
+    if (addr.length <= 20) return addr
+    return `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`
+  },
+}))
 
 // A valid 56-character Stellar public key
 const VALID_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
@@ -79,10 +88,26 @@ describe('AttestationForm', () => {
       const evidenceTextarea = screen.getByRole('textbox', { name: /evidence/i })
       const countEl = document.querySelector('[aria-live="polite"]')
 
-      expect(countEl?.textContent?.trim()).toBe('0 / 500 characters')
+      expect(countEl?.textContent?.trim()).toBe('0 / 2,000 chars')
 
       await user.type(evidenceTextarea, 'hello')
-      expect(countEl?.textContent?.trim()).toBe('5 / 500 characters')
+      expect(countEl?.textContent?.trim()).toBe('5 / 2,000 chars')
+    })
+
+    it('rejects evidence exceeding 2,000 characters', async () => {
+      const user = userEvent.setup()
+      renderForm()
+
+      const addressInput = screen.getByRole('textbox', { name: /subject address/i })
+      const evidenceTextarea = screen.getByRole('textbox', { name: /evidence/i })
+      const submitButton = screen.getByRole('button', { name: /submit attestation/i })
+
+      await user.type(addressInput, VALID_KEY)
+      // Use fireEvent for the long string to avoid userEvent timeout
+      fireEvent.change(evidenceTextarea, { target: { value: 'A'.repeat(2001) } })
+      await user.click(submitButton)
+
+      expect(screen.getByText(/Evidence cannot exceed 2,000 characters/)).toBeInTheDocument()
     })
   })
 
@@ -123,7 +148,9 @@ describe('AttestationForm', () => {
       await user.click(submitButton)
 
       const confirmInput = screen.getByLabelText(/type confirm to submit/i)
-      const submitAttestationButton = screen.getAllByRole('button', { name: /submit attestation/i })[1]
+      const submitAttestationButton = screen.getAllByRole('button', {
+        name: /submit attestation/i,
+      })[1]
 
       // Initially disabled
       expect(submitAttestationButton).toBeDisabled()
@@ -152,7 +179,9 @@ describe('AttestationForm', () => {
       await user.click(submitButton)
 
       const confirmInput = screen.getByLabelText(/type confirm to submit/i)
-      const submitAttestationButton = screen.getAllByRole('button', { name: /submit attestation/i })[1]
+      const submitAttestationButton = screen.getAllByRole('button', {
+        name: /submit attestation/i,
+      })[1]
 
       await user.type(confirmInput, 'CONFIRM')
       await user.click(submitAttestationButton)
@@ -168,7 +197,7 @@ describe('AttestationForm', () => {
       })
 
       // Success toast should show
-      expect(screen.getByText('Attestation submitted successfully.')).toBeInTheDocument()
+      expect(screen.getAllByText('Attestation submitted successfully.').length).toBeGreaterThan(0)
 
       // Form fields should reset
       expect(addressInput).toHaveValue('')

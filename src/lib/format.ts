@@ -33,6 +33,31 @@ export function formatUsdc(amount: number): string {
 }
 
 /**
+ * Formats a numeric USDC amount for display in activity timelines and transaction surfaces.
+ *
+ * Rejects NaN, Infinity, negative values, and undefined/null before formatting, returning '—'.
+ * Clamps values exceeding MAX_SAFE_INTEGER to prevent floating-point precision loss.
+ *
+ * @example
+ * formatAmount(1500)       // → "1,500 USDC"
+ * formatAmount(0)          // → "0 USDC"
+ * formatAmount(1234.567)   // → "1,234.57 USDC"
+ * formatAmount(-5)         // → "—"
+ * formatAmount(NaN)        // → "—"
+ */
+export function formatAmount(amount?: number | null): string {
+  if (amount == null || !Number.isFinite(amount) || amount < 0) {
+    return '—'
+  }
+  const safeAmount = Math.min(amount, Number.MAX_SAFE_INTEGER)
+  const formatted = safeAmount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
+  return `${formatted} USDC`
+}
+
+/**
  * Normalizes user-entered USDC string into a consistent representation.
  *
  * Converts user input (with or without commas) to a fixed 2-decimal string.
@@ -129,4 +154,221 @@ export function sanitizeUSDCInput(nextValue: string): string {
   const trimmedFraction = fraction.slice(0, 2)
 
   return `${trimmedWhole}.${trimmedFraction}`
+}
+
+/**
+ * Formats a numeric amount with locale-aware separators.
+ *
+ * Uses `formatNumber` so thousands and decimal separators match
+ * the conventions of the target locale, with safe fallback to en-US.
+ *
+ * @example
+ * formatMoney(1234.5, 'en-US')  // → "1,234.5"
+ * formatMoney(1234.5, 'es-ES')  // → "1,234.5" or "1234,5"
+ */
+export function formatMoney(amount: number, locale: string = 'en-US'): string {
+  return formatNumber(amount, locale, { maximumFractionDigits: 2 })
+}
+
+/**
+ * Default fallback locale used when an invalid or unsupported locale is requested.
+ */
+export const DEFAULT_LOCALE = 'en-US'
+
+/**
+ * Validates whether a locale string is supported by the Intl runtime.
+ *
+ * @example
+ * isValidLocale('en-US') // → true
+ * isValidLocale('invalid-locale') // → false
+ */
+export function isValidLocale(locale: string): boolean {
+  if (!locale || typeof locale !== 'string') return false
+  try {
+    return Intl.NumberFormat.supportedLocalesOf(locale).length > 0
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Returns the provided locale if valid, or DEFAULT_LOCALE as a fallback.
+ */
+export function getValidLocale(locale?: string): string {
+  if (locale && isValidLocale(locale)) {
+    return locale
+  }
+  return DEFAULT_LOCALE
+}
+
+/**
+ * Formats a number according to CLDR rules for the given locale.
+ *
+ * Supports negative values, zero, large numbers, and custom options.
+ * Falls back safely to en-US if the locale is unknown or invalid.
+ */
+export function formatNumber(
+  value: number,
+  locale?: string,
+  options?: Intl.NumberFormatOptions
+): string {
+  if (!Number.isFinite(value)) {
+    if (Number.isNaN(value)) return 'NaN'
+    if (value === Infinity) return '∞'
+    if (value === -Infinity) return '-∞'
+  }
+  const safeLocale = getValidLocale(locale)
+  try {
+    return new Intl.NumberFormat(safeLocale, options).format(value)
+  } catch {
+    return new Intl.NumberFormat(DEFAULT_LOCALE, options).format(value)
+  }
+}
+
+/**
+ * Formats a monetary amount with currency code and symbol placement per CLDR rules.
+ *
+ * Handles negative currency values, custom precision, and invalid currency codes gracefully.
+ */
+export function formatCurrency(
+  value: number,
+  currency: string = 'USD',
+  locale?: string,
+  options?: Intl.NumberFormatOptions
+): string {
+  if (!Number.isFinite(value)) {
+    if (Number.isNaN(value)) return 'NaN'
+    if (value === Infinity) return '∞'
+    if (value === -Infinity) return '-∞'
+  }
+  const safeLocale = getValidLocale(locale)
+  try {
+    return new Intl.NumberFormat(safeLocale, {
+      style: 'currency',
+      currency,
+      ...options,
+    }).format(value)
+  } catch {
+    const fallbackOpts: Intl.NumberFormatOptions = {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      ...options,
+    }
+    const formattedNum = formatNumber(value, safeLocale, fallbackOpts)
+    return `${formattedNum} ${currency}`
+  }
+}
+
+/**
+ * Formats a Date object or timestamp into a locale-aware date string.
+ *
+ * Supports 'short', 'medium', and 'long' date styles.
+ * Uses a default UTC timezone for deterministic test output across environments.
+ */
+export function formatDate(
+  dateInput: Date | string | number,
+  formatStyle: 'short' | 'medium' | 'long' = 'medium',
+  locale?: string,
+  timeZone: string = 'UTC'
+): string {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput)
+  if (isNaN(d.getTime())) return 'Invalid Date'
+
+  const safeLocale = getValidLocale(locale)
+  const optionsMap: Record<'short' | 'medium' | 'long', Intl.DateTimeFormatOptions> = {
+    short: { year: 'numeric', month: 'numeric', day: 'numeric', timeZone },
+    medium: { year: 'numeric', month: 'short', day: 'numeric', timeZone },
+    long: { year: 'numeric', month: 'long', day: 'numeric', timeZone },
+  }
+
+  try {
+    return new Intl.DateTimeFormat(safeLocale, optionsMap[formatStyle] || optionsMap.medium).format(
+      d
+    )
+  } catch {
+    return new Intl.DateTimeFormat(
+      DEFAULT_LOCALE,
+      optionsMap[formatStyle] || optionsMap.medium
+    ).format(d)
+  }
+}
+
+/**
+ * Formats a Date object or timestamp into a 12-hour or 24-hour time string.
+ *
+ * Uses a default UTC timezone for deterministic output.
+ */
+export function formatTime(
+  dateInput: Date | string | number,
+  style: '12h' | '24h' = '12h',
+  locale?: string,
+  timeZone: string = 'UTC'
+): string {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput)
+  if (isNaN(d.getTime())) return 'Invalid Time'
+
+  const safeLocale = getValidLocale(locale)
+  const hour12 = style === '12h'
+  const options: Intl.DateTimeFormatOptions = {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12,
+    timeZone,
+  }
+
+  try {
+    return new Intl.DateTimeFormat(safeLocale, options).format(d)
+  } catch {
+    return new Intl.DateTimeFormat(DEFAULT_LOCALE, options).format(d)
+  }
+}
+
+/**
+ * Formats a fractional or whole number as a percentage matching CLDR rules.
+ */
+export function formatPercent(
+  value: number,
+  locale?: string,
+  options?: Intl.NumberFormatOptions
+): string {
+  if (!Number.isFinite(value)) {
+    if (Number.isNaN(value)) return 'NaN'
+    if (value === Infinity) return '∞'
+    if (value === -Infinity) return '-∞'
+  }
+  const safeLocale = getValidLocale(locale)
+  try {
+    return new Intl.NumberFormat(safeLocale, {
+      style: 'percent',
+      ...options,
+    }).format(value)
+  } catch {
+    return new Intl.NumberFormat(DEFAULT_LOCALE, {
+      style: 'percent',
+      ...options,
+    }).format(value)
+  }
+}
+
+/**
+ * Formats a relative time offset matching CLDR relative time conventions.
+ */
+export function formatRelativeTime(
+  value: number,
+  unit: Intl.RelativeTimeFormatUnit,
+  locale?: string,
+  options?: Intl.RelativeTimeFormatOptions
+): string {
+  if (!Number.isFinite(value)) return ''
+  const safeLocale = getValidLocale(locale)
+  try {
+    return new Intl.RelativeTimeFormat(safeLocale, options).format(value, unit)
+  } catch {
+    try {
+      return new Intl.RelativeTimeFormat(DEFAULT_LOCALE, options).format(value, unit)
+    } catch {
+      return `${value} ${unit}`
+    }
+  }
 }

@@ -248,18 +248,18 @@ describe('calcUnlockDate', () => {
     const mockDate = new Date('2026-01-01T00:00:00Z')
     vi.useFakeTimers()
     vi.setSystemTime(mockDate)
-    
+
     const date30 = calcUnlockDate(30)
     const date90 = calcUnlockDate(90)
     const date180 = calcUnlockDate(180)
-    
+
     expect(date30).toMatch(/2026/)
     expect(date30).toMatch(/Jan|January/)
     expect(date90).toMatch(/2026/)
     expect(date90).toMatch(/Apr|April/)
     expect(date180).toMatch(/2026/)
     expect(date180).toMatch(/Jun|June/)
-    
+
     vi.useRealTimers()
   })
 })

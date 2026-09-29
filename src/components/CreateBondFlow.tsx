@@ -1,7 +1,6 @@
 /**
  * @file CreateBondFlow.tsx
  * @description Multi-step wizard for creating a USDC bond on the Credence protocol.
- * Mounted at `/bond/new` via `CreateBondPage` (see `src/pages/CreateBondPage.tsx`).
  *
  * Step 1 – Enter bond amount (USDC)
  * Step 2 – Choose lock duration (30 / 90 / 180 days)
@@ -20,52 +19,161 @@ import { FormField } from './forms/FormField'
 import Button from './Button'
 import Banner from './Banner'
 import Disclaimer from './Disclaimer'
-import LoadingSkeleton from './states/LoadingSkeleton'
 import { useToast } from './ToastProvider'
 import { useWallet } from '../context/WalletContext'
 import { useUsdcBalance } from '../hooks/useUsdcBalance'
-import { computeBondSlashBreakdown, calcUnlockDate } from '../lib/bondPenalty'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { formatUsdc } from '../lib/format'
+import { LoadingSkeleton } from './states'
+import { computeBondSlashBreakdown, calcUnlockDate } from '../lib/bondPenalty'
 
 import './CreateBondFlow.css'
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Types
 // ---------------------------------------------------------------------------
+
+export interface CreateBondFlowProps {
+  /**
+   * Called after the authoritative bond mutation has committed. May return a
+   * promise that resolves with the on-chain/backend result, or reject when the
+   * wallet/network operation fails.
+   */
+  onComplete?: () => void | Promise<BondCommitResult | void>
+  /** Called when the user cancels the flow */
+  onCancel?: () => void
+  /**
+   * Optional sink for versioned bond audit records. Records are also retained in
+   * localStorage and in memory so a failed wallet/network request can be recovered.
+   */
+  onAudit?: (record: BondAuditRecord) => void
+}
+
+export interface BondCommitResult {
+  transactionHash?: string
+  bondId?: string
+}
+
+export type BondAuditEvent =
+  | 'BOND_CREATE_REQUESTED'
+  | 'BOND_CREATE_COMMITTED'
+  | 'BOND_CREATE_REJECTED'
+  | 'BOND_CREATE_FAILED'
+
+export interface BondAuditRecord {
+  version: 1
+  sequence: number
+  correlationId: string
+  event: BondAuditEvent
+  timestamp: string
+  payload: {
+    amount: string
+    duration: number | null
+    acknowledged: boolean
+    error?: string
+  }
+  result?: BondCommitResult
+}
+
+const AUDIT_STORAGE_KEY = 'credence.bond.audit.v1'
+
+const createCorrelationId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `bond-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const loadAuditLog = (): BondAuditRecord[] => {
+  try {
+    if (typeof window === 'undefined') return []
+    const raw = window.localStorage.getItem(AUDIT_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? (parsed as BondAuditRecord[]) : []
+  } catch {
+    return []
+  }
+}
+
+const saveAuditLog = (records: BondAuditRecord[]): void => {
+  try {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(records))
+  } catch {
+    // localStorage can be unavailable (private mode, storage full). The in-memory
+    // trail remains authoritative for the current session.
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Divider used between review card sections
 // ---------------------------------------------------------------------------
+
 const ReviewDivider = () => <div className="createBondFlow__reviewDivider" />
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-interface CreateBondFlowProps {
-  /** Called after the success toast fires. When provided, replaces the default reset-to-step-1 behaviour. */
-  onComplete?: () => void
-  /** Called when the Cancel button is clicked. When provided, replaces the default reset-to-step-1 behaviour. */
-  onCancel?: () => void
-}
-
-export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowProps = {}) {
-  const prefersReducedMotion = useReducedMotion()
+export default function CreateBondFlow({ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
   const { addToast } = useToast()
-  const { isConnected, connect } = useWallet()
-  const { balance, status: balanceStatus, refetch: refetchBalance } =
-    useUsdcBalance()
+  const { isConnected } = useWallet()
+  const {
+    balance,
+    status: balanceStatus,
+    refetch: refetchBalance,
+  } = useUsdcBalance()
+  const prefersReducedMotion = useReducedMotion()
+
   const [step, setStep] = useState(1)
   const [amount, setAmount] = useState('')
   const [duration, setDuration] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [acknowledged, setAcknowledged] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [confirmError, setConfirmError] = useState('')
+
+  const auditRecordsRef = useRef<BondAuditRecord[]>(loadAuditLog())
+  const correlationIdRef = useRef('')
+  const sequenceRef = useRef<number>(
+    auditRecordsRef.current.reduce((max, record) => Math.max(max, record.sequence), -1) + 1,
+  )
+  const submittingRef = useRef(false)
 
   const step1Ref = useRef<HTMLHeadingElement>(null)
   const step2Ref = useRef<HTMLHeadingElement>(null)
   const step3Ref = useRef<HTMLHeadingElement>(null)
   const step4Ref = useRef<HTMLHeadingElement>(null)
+
+  /**
+   * Appends a versioned audit record. Ordering is guaranteed by the monotonic
+   * `sequence` value; `correlationId` ties every record to one user attempt.
+   */
+  const recordAudit = (
+    event: BondAuditEvent,
+    error?: string,
+    result?: BondCommitResult,
+  ): BondAuditRecord => {
+    const record: BondAuditRecord = {
+      version: 1,
+      sequence: sequenceRef.current++,
+      correlationId: correlationIdRef.current || createCorrelationId(),
+      event,
+      timestamp: new Date().toISOString(),
+      payload: {
+        amount,
+        duration,
+        acknowledged,
+        ...(error ? { error } : {}),
+      },
+      ...(result ? { result } : {}),
+    }
+    auditRecordsRef.current = [...auditRecordsRef.current, record]
+    saveAuditLog(auditRecordsRef.current)
+    onAudit?.(record)
+    return record
+  }
 
   useEffect(() => {
     if (step === 1) step1Ref.current?.focus()
@@ -79,10 +187,16 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
     setAmount('')
     setDuration(null)
     setError('')
+    setConfirmError('')
     setAcknowledged(false)
+    setSubmitting(false)
+    submittingRef.current = false
+    correlationIdRef.current = ''
   }
 
   const handleNext = () => {
+    if (submittingRef.current) return
+
     if (step === 1) {
       if (!amount || Number(amount) <= 0) {
         setError('Please enter a valid amount greater than 0.')
@@ -100,16 +214,61 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   }
 
   const handleBack = () => {
+    if (submittingRef.current) return
+
     setError('')
     setStep(step - 1)
   }
 
-  const handleConfirm = () => {
-    addToast('success', 'Bond created successfully.')
-    if (onComplete) {
-      onComplete()
-    } else {
+  const handleCancel = () => {
+    if (submittingRef.current) return
+
+    reset()
+    onCancel?.()
+  }
+
+  const handleConfirm = async () => {
+    if (submittingRef.current) return
+
+    if (!acknowledged) {
+      setConfirmError('Please acknowledge the slashing terms and lock conditions before creating a bond.')
+      correlationIdRef.current = createCorrelationId()
+      recordAudit('BOND_CREATE_REJECTED', 'ACKNOWLEDGEMENT_REQUIRED')
+      return
+    }
+
+    if (!isConnected) {
+      setConfirmError('Wallet disconnected. Reconnect your wallet and try again.')
+      correlationIdRef.current = createCorrelationId()
+      recordAudit('BOND_CREATE_REJECTED', 'WALLET_DISCONNECTED')
+      return
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setConfirmError('Network offline. Reconnect your network and try again.')
+      correlationIdRef.current = createCorrelationId()
+      recordAudit('BOND_CREATE_FAILED', 'NETWORK_OFFLINE')
+      return
+    }
+
+    correlationIdRef.current = createCorrelationId()
+    submittingRef.current = true
+    setSubmitting(true)
+    setConfirmError('')
+    recordAudit('BOND_CREATE_REQUESTED')
+
+    try {
+      const result = await onComplete?.()
+      recordAudit('BOND_CREATE_COMMITTED', undefined, result)
+      addToast('success', 'Bond created successfully.')
       reset()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Bond creation failed. Please try again.'
+      setConfirmError(message)
+      recordAudit('BOND_CREATE_FAILED', message)
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
     }
   }
 
@@ -129,15 +288,19 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   // ---------------------------------------------------------------------------
   // Step indicator
   // ---------------------------------------------------------------------------
+
+  const stepIndicatorTransition = prefersReducedMotion ? 'none' : 'background 0.2s ease'
+  const durationButtonTransition = prefersReducedMotion ? 'none' : 'all 0.2s ease'
+
   const StepIndicator = () => (
     <div className="createBondFlow__stepIndicator" aria-label={`Step ${step} of 4`}>
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className={`createBondFlow__stepBar${i <= step ? ' createBondFlow__stepBar--active' : ''}`}
-          style={{
-            transition: prefersReducedMotion ? 'none' : undefined,
-          }}
+          className={['createBondFlow__stepBar', i <= step ? 'createBondFlow__stepBar--active' : '']
+            .filter(Boolean)
+            .join(' ')}
+          style={{ transition: stepIndicatorTransition }}
         />
       ))}
     </div>
@@ -146,6 +309,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
   return (
     <div className="createBondFlow">
       <StepIndicator />
@@ -162,27 +326,16 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           </Banner>
 
           {/* ── Balance display ── */}
-          <div
-            className="createBondFlow__balanceRow"
-            aria-live="polite"
-            aria-atomic="true"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              minHeight: '1.5rem',
-              marginBottom: 'var(--credence-space-2)',
-            }}
-          >
+          <div className="createBondFlow__balanceRow" aria-live="polite" aria-atomic="true">
             {!isConnected ? (
-              <span style={{ color: 'var(--credence-text-secondary)', fontSize: '0.875rem' }}>
+              <span className="createBondFlow__balanceText">
                 Connect your wallet to see your available balance.
               </span>
             ) : balanceStatus === 'loading' ? (
               <LoadingSkeleton variant="text" rows={1} width="12rem" />
             ) : balanceStatus === 'error' ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
+              <span className="createBondFlow__balanceErrorRow">
+                <span className="createBondFlow__balanceText" role="alert" style={{ color: 'var(--credence-color-danger)' }}>
                   Could not load balance.
                 </span>
                 <Button
@@ -195,38 +348,28 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                 </Button>
               </span>
             ) : (
-              <span style={{ color: 'var(--credence-text-secondary)', fontSize: '0.875rem' }}>
+              <span className="createBondFlow__balanceText">
                 Available: {formatUsdc(balance)}
               </span>
             )}
           </div>
 
-          <FormField id="bond-amount" label="Amount (USDC)" error={error}>
+          <FormField id="bond-amount" label="Amount (USDC)" error={error || undefined}>
             <AmountInput
               value={amount}
               onChange={(next) => {
                 setAmount(next)
                 if (error) setError('')
               }}
-              balance={isConnected ? balance : 0}
+              balance={balance}
               placeholder="0"
-              presets={[30, 90, 180]}
+              presets={[100, 500, 1000]}
               currencyLabel="USDC"
               disabled={!isConnected}
+              hideErrorMessage={Boolean(error)}
               aria-disabled={!isConnected || undefined}
             />
           </FormField>
-
-          {!isConnected && (
-            <Button
-              type="button"
-              onClick={connect}
-              className="createBondFlow__connectButton"
-              style={{ marginTop: 'var(--credence-space-3)' }}
-            >
-              Connect wallet
-            </Button>
-          )}
         </div>
       )}
 
@@ -236,33 +379,38 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           <h2 ref={step2Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 2: Choose Lock Duration
           </h2>
-          <p style={{ color: 'var(--credence-text-secondary)' }}>
+          <p style={{ color: 'var(--text-secondary)' }}>
             Select how long you want to lock your USDC:
           </p>
 
           {error && (
-            <div role="alert" className="createBondFlow__error">
+            <div className="createBondFlow__error" role="alert">
               ⚠ {error}
             </div>
           )}
 
           <div className="createBondFlow__durationRow">
-            {[30, 90, 180].map((d) => (
-              <Button
-                key={d}
-                type="button"
-                onClick={() => {
-                  setDuration(d)
-                  if (error) setError('')
-                }}
-                className={`createBondFlow__durationButton${duration === d ? ' createBondFlow__durationButton--active' : ''}`}
-                style={{
-                  transition: prefersReducedMotion ? 'none' : undefined,
-                }}
-              >
-                {d} Days
-              </Button>
-            ))}
+            {[30, 90, 180].map((d) => {
+              const isActive = duration === d
+              return (
+                <Button
+                  key={d}
+                  type="button"
+                  onClick={() => {
+                    setDuration(d)
+                    if (error) setError('')
+                  }}
+                  className={
+                    isActive
+                      ? 'createBondFlow__durationButton createBondFlow__durationButton--active'
+                      : 'createBondFlow__durationButton'
+                  }
+                  style={{ transition: durationButtonTransition }}
+                >
+                  {d} Days
+                </Button>
+              )
+            })}
           </div>
         </div>
       )}
@@ -274,7 +422,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             Step 3: Review Terms
           </h2>
 
-          <Banner severity="warning" title="Early withdrawal — slash exposure">
+          <Banner severity="warn" title="Early withdrawal — slash exposure">
             Withdrawing before lock maturity incurs a slash penalty on your principal. The figures
             below show exactly what you would receive if you exit early.
           </Banner>
@@ -282,25 +430,25 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           {/* ── Bond summary card ── */}
           <div className="createBondFlow__reviewCard">
             {/* Bond amount */}
-            <div className="createBondFlow__reviewRow">
-              <span className="createBondFlow__reviewLabel">Bond Amount:</span>
-              <strong className="createBondFlow__reviewValue" data-testid="review-bond-amount">
-                {amount} USDC
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Bond Amount:</span>
+              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-bond-amount">
+                {formatUsdc(Number(amount))}
               </strong>
             </div>
 
             {/* Lock duration */}
-            <div className="createBondFlow__reviewRow">
-              <span className="createBondFlow__reviewLabel">Lock Duration:</span>
-              <strong className="createBondFlow__reviewValue" data-testid="review-duration">
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Lock Duration:</span>
+              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-duration">
                 {duration} Days
               </strong>
             </div>
 
             {/* Unlock date */}
-            <div className="createBondFlow__reviewRow">
-              <span className="createBondFlow__reviewLabel">Estimated Unlock Date:</span>
-              <strong className="createBondFlow__reviewValue" data-testid="review-unlock-date">
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Estimated Unlock Date:</span>
+              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-unlock-date">
                 {duration ? calcUnlockDate(duration) : ''}
               </strong>
             </div>
@@ -315,12 +463,14 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             {slashBreakdown ? (
               <>
                 {/* Slash penalty % + amount */}
-                <div className="createBondFlow__penaltyRow">
-                  <span className="createBondFlow__penaltyLabel">
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <span style={{ color: 'var(--text-secondary)' }}>
                     Slash Penalty ({slashBreakdown.penaltyPercent}%):
                   </span>
                   <strong
-                    className="createBondFlow__penaltyAmount"
+                    style={{ color: 'var(--color-danger)' }}
                     data-testid="review-penalty-amount"
                   >
                     −{slashBreakdown.penaltyAmount}
@@ -328,15 +478,24 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
                 </div>
 
                 {/* Resulting balance */}
-                <div className="createBondFlow__resultPanel">
-                  <span className="createBondFlow__resultLabel">You would receive:</span>
+                <div className="createBondFlow__reviewResult">
+                  <span
+                    style={{
+                      color: 'var(--text-secondary)',
+                      fontWeight: 'var(--credence-font-weight-semibold)',
+                    }}
+                  >
+                    You would receive:
+                  </span>
 
                   <strong
-                    className={`createBondFlow__resultValue${
-                      slashBreakdown.resultingUsdc < Number(amount)
-                        ? ' createBondFlow__resultValue--danger'
-                        : ' createBondFlow__resultValue--normal'
-                    }`}
+                    style={{
+                      color:
+                        slashBreakdown.resultingUsdc < Number(amount)
+                          ? 'var(--color-danger)'
+                          : 'var(--text-primary)',
+                      fontSize: 'var(--credence-font-size-lg, 1.125rem)',
+                    }}
                     data-testid="review-resulting-balance"
                   >
                     {slashBreakdown.resultingBalance}
@@ -345,9 +504,9 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
               </>
             ) : (
               /* Fallback: breakdown unavailable (should not normally be reached in step 3) */
-              <div className="createBondFlow__reviewRow">
-                <span className="createBondFlow__reviewLabel">Slash Terms:</span>
-                <strong style={{ color: 'var(--credence-color-danger)' }}>Penalties Apply</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Slash Terms:</span>
+                <strong style={{ color: 'var(--color-danger)' }}>Penalties Apply</strong>
               </div>
             )}
           </div>
@@ -365,6 +524,11 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
             termsHref="#"
           />
+          {confirmError && (
+            <div className="createBondFlow__error" role="alert">
+              ⚠ {confirmError}
+            </div>
+          )}
           <label className="createBondFlow__ackLabel">
             <input
               type="checkbox"
@@ -382,6 +546,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           <Button
             type="button"
             onClick={handleBack}
+            disabled={submitting}
             className="createBondFlow__navButton createBondFlow__backButton"
           >
             Back
@@ -392,6 +557,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           <Button
             type="button"
             onClick={handleNext}
+            disabled={submitting}
             className="createBondFlow__navButton createBondFlow__nextButton"
           >
             Next
@@ -400,16 +566,17 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           <Button
             type="button"
             onClick={handleConfirm}
-            disabled={!acknowledged}
+            disabled={!acknowledged || submitting}
             className="createBondFlow__navButton createBondFlow__confirmButton"
           >
-            Confirm & Create Bond
+            {submitting ? 'Creating Bond…' : 'Confirm &amp; Create Bond'}
           </Button>
         )}
 
         <Button
           type="button"
-          onClick={onCancel ?? reset}
+          onClick={handleCancel}
+          disabled={submitting}
           className="createBondFlow__navButton createBondFlow__cancelButton"
         >
           Cancel

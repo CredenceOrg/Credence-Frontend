@@ -1,5 +1,6 @@
 import { Component, ReactNode } from 'react'
-import ErrorState from './states/ErrorState'
+import ErrorState, { type ErrorStateKind, type ErrorStateSeverity } from './states/ErrorState'
+import './ErrorBoundary.css'
 
 interface Props {
   children: ReactNode
@@ -10,6 +11,11 @@ interface Props {
 interface BoundaryState {
   hasError: boolean
   error: Error | null
+}
+
+interface ClassifiedError {
+  kind: ErrorStateKind
+  severity: ErrorStateSeverity
 }
 
 /**
@@ -43,11 +49,18 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
     )
   }
 
-  private getErrorType(error: Error): 'network' | 'backend' | 'validation' | 'generic' {
+  /**
+   * Classify the error into the standardised (kind, severity) axes so the
+   * panel can render a calm, contextualised grip on the failure.
+   *
+   *  • chunk-load failures are a network-class failure — danger severity.
+   *  • everything else falls back to generic / danger.
+   */
+  private classifyError(error: Error): ClassifiedError {
     if (this.isChunkLoadError(error)) {
-      return 'network'
+      return { kind: 'network', severity: 'danger' }
     }
-    return 'generic'
+    return { kind: 'generic', severity: 'danger' }
   }
 
   static getDerivedStateFromError(error: Error): BoundaryState {
@@ -70,30 +83,24 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
     if (hasError && error) {
       if (fallback) return fallback(error, this.handleReset)
 
+      const { kind, severity } = this.classifyError(error)
+
+      // The whole-app-crash fallback needs stronger wording than the
+      // single-section generic copy (cf. docs/UI_STATES_GUIDE.md "Error
+      // Boundary Strategy"). We pin the title + message so the user
+      // understands the panel is an app-level fallback, not a localized
+      // data-fetch failure — the underlying `kind` still drives the icon.
       return (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '50vh',
-            padding: 'var(--credence-space-6)',
-          }}
-        >
+        <div className="error-fallback-container" data-error-boundary="true">
           <ErrorState
-            type={this.getErrorType(error)}
+            type={kind}
+            severity={severity}
+            title="Something went wrong"
+            message="The app hit an unexpected error and couldn’t recover on its own. Try again, and if it persists, head back to the home page."
+            ariaLabel="Application error"
             action={{ label: 'Try again', onClick: this.handleReset }}
           />
-          <a
-            href="/"
-            style={{
-              marginTop: 'var(--credence-space-4)',
-              fontSize: 'var(--credence-font-size-sm)',
-              color: 'var(--credence-text-secondary)',
-              textDecoration: 'underline',
-            }}
-          >
+          <a className="error-fallback-secondary-link" href="/">
             Go to home page
           </a>
         </div>

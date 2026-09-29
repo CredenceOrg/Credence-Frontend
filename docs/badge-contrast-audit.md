@@ -7,6 +7,7 @@ Method:
 - Text contrast target: WCAG AA 4.5:1 because badges use `0.75rem` text.
 - Border/non-text contrast target: WCAG 2.1 non-text 3:1.
 - Dark translucent badge surfaces were composited over `--credence-surface-page` (`#0f172a`) for the audit.
+- An automated regression check in `src/components/Badge.test.tsx` now validates each badge variant in both themes so future palette changes keep the WCAG AA targets intact.
 
 ## Adjusted Tokens
 

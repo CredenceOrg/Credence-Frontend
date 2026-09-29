@@ -1,0 +1,84 @@
+/* ── Bottom Navigation Bar ───────────────────────────────────────────────── */
+/*
+ * Visibility is controlled by the @media query below.
+ * The breakpoint value (768px) matches BREAKPOINTS.MD from src/config/breakpoints.ts.
+ * The CSS custom property --credence-bottom-nav-breakpoint (injected by BottomNav.tsx)
+ * documents this dependency; plain CSS @media cannot interpolate JS constants.
+ */
+
+.bottomNav {
+  display: none; /* hidden at desktop widths */
+}
+
+/* Show on mobile: ≤ BREAKPOINTS.MD = 768px */
+@media (max-width: 768px) {
+  .bottomNav {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: var(--credence-surface-card);
+    border-top: 1px solid var(--credence-border-default);
+    z-index: 900; /* below MobileNav drawer (1000) and backdrop (999), above main content */
+  }
+}
+
+.bottomNav-list {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.bottomNav-item {
+  flex: 1;
+}
+
+.bottomNav-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--credence-space-2) var(--credence-space-1);
+  min-height: 56px; /* ensures ≥ 44px touch target with label */
+  color: var(--credence-text-secondary);
+  text-decoration: none;
+  transition:
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.bottomNav-tab:hover {
+  color: var(--credence-text-primary);
+  background: var(--credence-color-slate-100);
+}
+
+.bottomNav-tab--active {
+  color: var(--credence-color-primary);
+  font-weight: var(--credence-font-weight-bold);
+  border-top: 2px solid var(--credence-color-primary);
+}
+
+.bottomNav-tab:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: -2px;
+}
+
+.bottomNav-label {
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bottomNav-tab {
+    transition: none;
+  }
+}

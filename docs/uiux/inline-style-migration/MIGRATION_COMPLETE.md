@@ -33,21 +33,22 @@ Successfully migrated all inline `style={{...}}` blocks from three core surfaces
 - No-penalty notice styling
 
 **Classes created:**
-| Class | Purpose | Tokens Used |
-|-------|---------|-------------|
-| `.bond__container` | Root container with gap | `--credence-space-8` |
-| `.bond__headerSection` | Header area layout | `--credence-space-3` |
-| `.bond__title` | Page h1 | `--credence-text-primary`, `--credence-font-size-xl` |
-| `.bond__description` | Descriptive paragraph | `--credence-text-secondary` |
-| `.bond__cardGrid` | Responsive grid for action cards | `--credence-space-6`, responsive sizing |
-| `.bond__row` | Individual bond row | `--credence-space-2`, `--credence-space-3`, `--credence-border-default` |
-| `.bond__rowHeader` | Row header with amount + actions | `--credence-space-3` |
-| `.bond__amountColumn` | Amount and badge column | `--credence-space-1`, `--credence-text-primary` |
-| `.bond__actionRow` | Action buttons row | `--credence-space-2` |
-| `.bond__penaltyToggle` | Show/Hide penalty button | Includes hover, focus-visible states |
-| `.bond__penaltyPanel` | Penalty breakdown container | `--credence-color-warning-surface`, `--credence-space-3` |
-| `.bond__penaltyRow` | Penalty row item | Flex layout |
-| `.bond__noPenaltyNotice` | No penalty text | `--credence-color-success-text` |
+
+| Class                    | Purpose                          | Tokens Used                                                             |
+| ------------------------ | -------------------------------- | ----------------------------------------------------------------------- |
+| `.bond__container`       | Root container with gap          | `--credence-space-8`                                                    |
+| `.bond__headerSection`   | Header area layout               | `--credence-space-3`                                                    |
+| `.bond__title`           | Page h1                          | `--credence-text-primary`, `--credence-font-size-xl`                    |
+| `.bond__description`     | Descriptive paragraph            | `--credence-text-secondary`                                             |
+| `.bond__cardGrid`        | Responsive grid for action cards | `--credence-space-6`, responsive sizing                                 |
+| `.bond__row`             | Individual bond row              | `--credence-space-2`, `--credence-space-3`, `--credence-border-default` |
+| `.bond__rowHeader`       | Row header with amount + actions | `--credence-space-3`                                                    |
+| `.bond__amountColumn`    | Amount and badge column          | `--credence-space-1`, `--credence-text-primary`                         |
+| `.bond__actionRow`       | Action buttons row               | `--credence-space-2`                                                    |
+| `.bond__penaltyToggle`   | Show/Hide penalty button         | Includes hover, focus-visible states                                    |
+| `.bond__penaltyPanel`    | Penalty breakdown container      | `--credence-color-warning-surface`, `--credence-space-3`                |
+| `.bond__penaltyRow`      | Penalty row item                 | Flex layout                                                             |
+| `.bond__noPenaltyNotice` | No penalty text                  | `--credence-color-success-text`                                         |
 
 **Dark theme support:** ✅ Automatic via `data-theme="dark"` in index.css
 
@@ -77,28 +78,29 @@ Successfully migrated all inline `style={{...}}` blocks from three core surfaces
 - Back/Next/Confirm/Cancel button styling (including disabled states)
 
 **New/Enhanced classes:**
-| Class | Purpose | Tokens Used |
-|-------|---------|-------------|
-| `.createBondFlow__step` | Step container layout | `--credence-space-4` |
-| `.createBondFlow__heading` | Step headings (h2) | `--credence-text-primary`, `--credence-font-size-xl` |
-| `.createBondFlow__durationRow` | Duration button grid | `--credence-space-3`, responsive |
-| `.createBondFlow__durationButton` | Duration selection button | Colors, border, padding, transitions |
-| `.createBondFlow__durationButton--active` | Selected duration state | `--credence-color-primary` |
-| `.createBondFlow__error` | Error alert styling | `--credence-color-danger`, `--credence-font-weight-semibold` |
-| `.createBondFlow__reviewCard` | Review summary container | `--credence-space-4`, `--credence-border-default` |
-| `.createBondFlow__reviewRow` | Label + value row | Flex layout |
-| `.createBondFlow__reviewLabel` | Row label text | `--credence-text-secondary` |
-| `.createBondFlow__reviewValue` | Row value text | `--credence-text-primary`, semibold |
-| `.createBondFlow__penaltyRow` | Penalty amount row | `--credence-space-2` |
-| `.createBondFlow__resultPanel` | Result display box | Border, padding, background |
-| `.createBondFlow__resultValue--danger` | Result color when reduced | `--credence-color-danger` |
-| `.createBondFlow__ackLabel` | Acknowledgment checkbox + label | Gap, cursor, flex layout |
-| `.createBondFlow__nav` | Navigation buttons container | `--credence-space-3`, responsive |
-| `.createBondFlow__navButton` | Shared button styles | Padding, border-radius, transitions |
-| `.createBondFlow__backButton` | Back button (secondary) | Border, transparent background |
-| `.createBondFlow__nextButton` | Next button (primary) | `--credence-color-primary` |
-| `.createBondFlow__confirmButton` | Confirm button (conditional) | Handles disabled state |
-| `.createBondFlow__cancelButton` | Cancel button (danger secondary) | `--credence-color-danger` |
+
+| Class                                     | Purpose                          | Tokens Used                                                  |
+| ----------------------------------------- | -------------------------------- | ------------------------------------------------------------ |
+| `.createBondFlow__step`                   | Step container layout            | `--credence-space-4`                                         |
+| `.createBondFlow__heading`                | Step headings (h2)               | `--credence-text-primary`, `--credence-font-size-xl`         |
+| `.createBondFlow__durationRow`            | Duration button grid             | `--credence-space-3`, responsive                             |
+| `.createBondFlow__durationButton`         | Duration selection button        | Colors, border, padding, transitions                         |
+| `.createBondFlow__durationButton--active` | Selected duration state          | `--credence-color-primary`                                   |
+| `.createBondFlow__error`                  | Error alert styling              | `--credence-color-danger`, `--credence-font-weight-semibold` |
+| `.createBondFlow__reviewCard`             | Review summary container         | `--credence-space-4`, `--credence-border-default`            |
+| `.createBondFlow__reviewRow`              | Label + value row                | Flex layout                                                  |
+| `.createBondFlow__reviewLabel`            | Row label text                   | `--credence-text-secondary`                                  |
+| `.createBondFlow__reviewValue`            | Row value text                   | `--credence-text-primary`, semibold                          |
+| `.createBondFlow__penaltyRow`             | Penalty amount row               | `--credence-space-2`                                         |
+| `.createBondFlow__resultPanel`            | Result display box               | Border, padding, background                                  |
+| `.createBondFlow__resultValue--danger`    | Result color when reduced        | `--credence-color-danger`                                    |
+| `.createBondFlow__ackLabel`               | Acknowledgment checkbox + label  | Gap, cursor, flex layout                                     |
+| `.createBondFlow__nav`                    | Navigation buttons container     | `--credence-space-3`, responsive                             |
+| `.createBondFlow__navButton`              | Shared button styles             | Padding, border-radius, transitions                          |
+| `.createBondFlow__backButton`             | Back button (secondary)          | Border, transparent background                               |
+| `.createBondFlow__nextButton`             | Next button (primary)            | `--credence-color-primary`                                   |
+| `.createBondFlow__confirmButton`          | Confirm button (conditional)     | Handles disabled state                                       |
+| `.createBondFlow__cancelButton`           | Cancel button (danger secondary) | `--credence-color-danger`                                    |
 
 **Preserved dynamism:**
 

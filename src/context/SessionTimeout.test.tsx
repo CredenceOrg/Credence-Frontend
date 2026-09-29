@@ -61,7 +61,9 @@ describe('Session Timeout', () => {
     expect(modal).toBeInTheDocument()
     // Using getAllByText since it appears in multiple places for accessibility
     expect(within(modal).getAllByText(/Session Timeout Warning/i).length).toBeGreaterThan(0)
-    expect(within(modal).getAllByText(/Your session will expire in 60 seconds/i).length).toBeGreaterThan(0)
+    expect(
+      within(modal).getAllByText(/Your session will expire in 60 seconds/i).length
+    ).toBeGreaterThan(0)
   })
 
   it('automatically logs out after 15 minutes of inactivity', async () => {

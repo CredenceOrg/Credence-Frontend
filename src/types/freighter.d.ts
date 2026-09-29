@@ -35,11 +35,22 @@ declare module '@stellar/freighter-api' {
     error?: Error | null
   }
 
+  interface SignTransactionResult {
+    signedTxXdr: string
+    signerAddress?: string
+    error?: string | null
+  }
+
   export function isConnected(): Promise<ConnectedResult>
   export function isAllowed(): Promise<AllowedResult>
   export function requestAccess(): Promise<AccessResult>
   export function getAddress(): Promise<AddressResult>
   export function getNetwork(): Promise<NetworkResult>
+
+  export function signTransaction(
+    xdr: string,
+    opts?: { network?: string; networkPassphrase?: string; address?: string }
+  ): Promise<SignTransactionResult>
 
   export class WatchWalletChanges {
     watch(callback: (params: WalletChangeParams) => void): void

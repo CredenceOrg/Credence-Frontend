@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { DOM_EVENTS } from '../events'
 
 export interface UseIdleTimeoutOptions {
   timeoutMs: number
@@ -57,18 +58,25 @@ export function useIdleTimeout({
 
     startTimer()
 
-    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'wheel']
+    const events: string[] = [
+      DOM_EVENTS.MOUSE_MOVE,
+      DOM_EVENTS.KEY_DOWN,
+      DOM_EVENTS.MOUSE_DOWN,
+      DOM_EVENTS.TOUCH_START,
+      DOM_EVENTS.SCROLL,
+      DOM_EVENTS.WHEEL,
+    ]
     events.forEach((event) => {
       window.addEventListener(event, handleActivity, { passive: true })
     })
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener(DOM_EVENTS.VISIBILITY_CHANGE, handleVisibilityChange)
 
     return () => {
       clearTimer()
       events.forEach((event) => {
         window.removeEventListener(event, handleActivity)
       })
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      document.removeEventListener(DOM_EVENTS.VISIBILITY_CHANGE, handleVisibilityChange)
     }
   }, [timeoutMs, setTimeoutImpl, clearTimeoutImpl])
 }

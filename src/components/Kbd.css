@@ -1,0 +1,64 @@
+/* ─── KBD — keyboard key chip ───────────────────────────────────────────────
+ *
+ * Renders a single keyboard key with a raised-button visual using only
+ * --credence-* design tokens. Consumed by docs, tooltips, and the
+ * KeyboardShortcutsDialog.
+ *
+ * Dark-mode overrides live under [data-theme='dark'] so that a simple
+ * data-attribute flip on <html> is enough — no media query needed.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+.credence-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Enough horizontal room for single characters plus a little breathing space */
+  min-width: 1.75rem;
+  padding: var(--credence-space-1) var(--credence-space-2);
+
+  /* Raised-key border: the thicker bottom edge gives a physical "key" feel */
+  border: 1px solid var(--credence-border-default);
+  border-bottom-width: 2px;
+  border-radius: var(--credence-radius-sm);
+
+  background: var(--credence-surface-page);
+
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  color: var(--credence-text-primary);
+  line-height: 1;
+  white-space: nowrap;
+
+  /* Inherit the inline nature of <kbd> but ensure flex layout works */
+  vertical-align: middle;
+}
+
+/* ─── Dark mode ────────────────────────────────────────────────────────────── */
+
+[data-theme='dark'] .credence-kbd {
+  background: var(--credence-color-slate-700);
+  border-color: var(--credence-color-slate-600);
+  color: var(--credence-text-primary);
+}
+
+/* ─── Size variants ────────────────────────────────────────────────────────── */
+
+.credence-kbd--sm {
+  font-size: var(--credence-font-size-xs);
+  min-width: 1.5rem;
+  padding: 0.125rem var(--credence-space-1);
+}
+
+.credence-kbd--md {
+  /* Default size — kept explicit so callers can always reference it */
+  font-size: var(--credence-font-size-xs);
+  min-width: 1.75rem;
+  padding: var(--credence-space-1) var(--credence-space-2);
+}
+
+.credence-kbd--lg {
+  font-size: var(--credence-font-size-sm);
+  min-width: 2.25rem;
+  padding: var(--credence-space-1) var(--credence-space-3);
+}

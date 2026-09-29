@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Exact decimal amounts at the API boundary** (`src/api/amount.ts`, `src/api/client.ts`): new `BigInt`-only decimal engine plus an opt-in `amountFields` option on `apiFetch`. Declared amount fields are validated (plain unsigned decimal grammar, scale, sign, int64 scaled-integer overflow, optional `min`/`max`) and serialized as canonical decimal strings (`1000.5` → `'1000.50'`) matching the `Bond.amount` contract in `openapi.yaml`. Invalid amounts reject with a typed `ApiAmountError` (synthetic `status: 400`, structured `field`/`code`) **before** the rate limiter or the network is touched, and the caller's body object is never mutated. Excess precision is rejected (`INVALID_SCALE`), never rounded. Calls that omit `amountFields` keep byte-identical previous behavior. Design, invariants, compatibility, and rollback notes: [docs/AMOUNT_PRECISION.md](docs/AMOUNT_PRECISION.md); tests: `src/api/amount.test.ts` (unit + seeded property tests against an independent oracle) and `src/api/client.test.ts` (integration boundary).
+- **`parseAmount` / `tryParseAmount` / `compareAmounts` / `resolveAmountRules`** exported from `src/api`: exact-decimal helpers UI code can reuse for live validation and comparisons without duplicating the rules. Also fixes a latent `isolatedModules` type error in the `src/api/index.ts` barrel (`ApiFetchOptions` re-exported as a value).
+
 ### Refactored
+
 - **`useLocalStorage<T>` hook** (`src/hooks/useLocalStorage.ts`): generic hook that encapsulates the read/parse/fallback pattern for localStorage. SSR-safe (`window` guard), corrupt-JSON-tolerant, and treats falsy-but-valid stored values (`false`, `0`, `""`) correctly. Returns a stable `[value, setValue]` tuple where `setValue` writes through to localStorage synchronously. Pure helpers `resolveStoredValue` and `writeToStorage` are also exported for testing.
 - **`SettingsContext`**: replaced the ad-hoc `loadSavedSettings` + five `useState` lazy-init blocks with a single `useLocalStorage<PersistedSettings>` call so the parse-on-mount happens once. Also extracted a `useMigrateLegacyTheme` hook that runs synchronously (before the first `useLocalStorage` read) to absorb any orphaned `theme` key into `credence:settings`. Public `SettingsState` shape and `STORAGE_KEY` are unchanged.
 
 ### Added
+
 - `src/lib/penalty.ts`: extracted `BondStatus`, `MockBond`, `getPenaltyRate`, and `computeWithdrawBreakdown` into a shared module, making the penalty math the single source of truth for Bond.tsx and ConfirmDialog.
 - `src/lib/penalty.test.ts`: unit tests for all penalty rates and breakdown arithmetic (active/grace-period/locked, zero-penalty path, fractional amounts).
 - `ApiError.code` (`src/api/client.ts`): optional `invalid_request_url | network_error | http_error` classification on `ApiError`, so callers can tell a permanent programming fault from a retryable network blip. Additive — existing three-argument `ApiError` construction is unchanged.
@@ -21,14 +28,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - `buildUrl` now rejects origin-relative paths (`//host`, `///bonds`) and backslash paths (`/\host`, `/a\..\b`). The WHATWG URL parser resolves all of these to a **different origin**, so they previously turned an in-app path into a cross-origin request carrying default headers and cookies. Empty, non-string, control-character, and fragment-containing paths are now rejected with a typed `ApiError` instead of being silently rewritten by the URL parser (for example `/bonds\nx` collapsing to `/bondsx`, or `/bonds#other` fetching a different resource).
 - `normalizeBaseUrl` fails closed to same-origin for a scheme-relative, scheme-less, non-http(s), unparseable, or query/fragment-carrying `VITE_API_BASE_URL`, instead of silently sending every API request to another host. The rejected value is never echoed to the console because a base URL may embed credentials.
+- Added a reusable infinite-query wrapper for cursor-based feeds in [`src/hooks/useInfiniteQuery.ts`](src/hooks/useInfiniteQuery.ts).
+- Documented the new pagination helper in the main README and docs index.
+- **`useDebouncedValue` documentation** (`docs/HOOKS.md`): catalog entry covering the central-place search/filter debouncer — signature, parameter table, behavior notes (restart-on-change, `delayMs <= 0` short-circuit, referential stability, testable via injected timers), SSR/cleanup contract, and a Trust-search example.
+- **`useOnceMounted` documentation** (`docs/HOOKS.md`): catalog entry covering the StrictMode-safe run-once guard — signature, behavior notes (StrictMode double-invoke via `calledRef`, true-remount rebinds, latest-callback-wins via ref, optional cleanup, synchronous error propagation), and an analytics `route_view` example.
+- **CHANGELOG merge conflict markers removed**: the long-standing `<<<<<<< Updated upstream` / `=======` / `>>>>>>> Stashed changes` block under `[Unreleased]` is resolved by taking the union of both sides (they were non-overlapping additions from different PRs).
 
 ### Changed
+
 - `Bond.tsx`: imports penalty helpers from `src/lib/penalty.ts`; `slashBannerBreakdown` is now memoized with `useMemo` to avoid recomputing on unrelated renders.
-- `apiFetch` resolves the URL, builds headers, and serializes the body **before** entering the network `try` block. A caller mistake (bad path, invalid header, circular body) is no longer re-wrapped as a retryable `status: 0` network error.
+- **`useDebouncedValue<T>`** (`src/hooks/useDebouncedValue.ts`): added an optional third `options` argument exposing `setTimeoutImpl` / `clearTimeoutImpl` — the same injectable-timer pattern already used by `useCopyToClipboard`. Backwards-compatible (defaults preserve the existing global-timer behaviour); enables per-test assertion of timer scheduling without `vi.mock` of the module. The implementations are captured in refs so the effect only re-runs on `value` / `delayMs` changes (callers may pass inline function literals without thrashing the effect). Errors from a throwing `clearTimeoutImpl` are caught so a broken test double cannot crash the render path.
 
 ## [1.0.0] - 2026-04-28
 
 ### Added
+
 - **Project Initialization**
   - Set up React 18 application with TypeScript and Vite
   - Configured ESLint, Prettier for code quality
@@ -82,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - API proxy setup for backend communication
 
 ### Design Principles Implemented
+
 - User-first approach with clear, encouraging messaging
 - Actionable empty and error states
 - Consistent patterns across all views
@@ -89,10 +104,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performant animations and transitions
 
 ### Next Steps
+
 - Integrate with Credence backend API
 - Add wallet connection functionality
 - Implement Soroban contract calls
 - Add unit tests for components
 - Conduct accessibility audit
-- Create Figma mockups and link in design specs</content>
-<parameter name="filePath">c:\Users\User 2\Desktop\Credence-Frontend\CHANGELOG.md
+- Create Figma mockups and link in design specs

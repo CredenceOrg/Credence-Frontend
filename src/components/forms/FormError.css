@@ -1,0 +1,7 @@
+.form-error {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-space-2);
+  color: var(--credence-color-danger-text);
+  font-size: var(--credence-font-size-sm);
+}

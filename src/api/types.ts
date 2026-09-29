@@ -20,6 +20,7 @@ export type TrustScore = components['schemas']['TrustScore']
 export type Bond = components['schemas']['Bond']
 export type Transaction = components['schemas']['Transaction']
 export type ApiMessageResponse = components['schemas']['ApiMessageResponse']
+export type Tenant = components['schemas']['Tenant']
 
 /**
  * Cursor-paginated list envelope.

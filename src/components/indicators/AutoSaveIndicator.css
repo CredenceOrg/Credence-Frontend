@@ -1,0 +1,90 @@
+/*
+ * AutoSaveIndicator styling. Honours design tokens exclusively — no
+ * hard-coded colours, spacing, or radii.
+ * Variants (`--info`, `--success`, `--danger`) share the same shape so the
+ * pill reads consistently across states.
+ */
+.auto-save-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-space-2);
+  padding-block: var(--credence-space-1);
+  padding-inline: var(--credence-space-3);
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  line-height: var(--credence-line-height-tight);
+  border-radius: var(--credence-radius-full);
+  border: 1px solid transparent;
+  transition:
+    background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+}
+
+.auto-save-indicator--saving,
+.auto-save-indicator--pending {
+  background: var(--credence-color-info-surface);
+  color: var(--credence-color-info-text);
+  border-color: var(--credence-color-info-border);
+}
+
+.auto-save-indicator--saved {
+  background: var(--credence-color-success-surface);
+  color: var(--credence-color-success-text);
+  border-color: var(--credence-color-success-border);
+}
+
+.auto-save-indicator--error {
+  background: var(--credence-color-danger-surface);
+  color: var(--credence-color-danger-text);
+  border-color: var(--credence-color-danger-border);
+}
+
+.auto-save-indicator__spinner {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: var(--credence-radius-full);
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: auto-save-indicator-spin 0.8s linear infinite;
+}
+
+@keyframes auto-save-indicator-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auto-save-indicator__spinner {
+    animation: none;
+  }
+}
+
+.auto-save-indicator__text {
+  /* Trivial marker so callers can deliberately target just the label area. */
+}
+
+.auto-save-indicator__retry {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-weight: var(--credence-font-weight-semibold);
+  font-size: inherit;
+  line-height: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.auto-save-indicator__retry:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--credence-radius-sm);
+}
+
+.auto-save-indicator__retry:hover {
+  text-decoration-thickness: 2px;
+}

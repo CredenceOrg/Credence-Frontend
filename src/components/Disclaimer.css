@@ -4,20 +4,25 @@
  * Must not compete visually with primary CTAs or page headings.
  */
 .disclaimer {
-  margin-top: var(--credence-space-8);
-  padding: var(--credence-space-4);
-  max-width: 65ch;
-  font-size: var(--credence-font-size-sm);
-  line-height: var(--credence-line-height-relaxed);
+  margin: var(--credence-space-12) auto var(--credence-space-8);
+  padding: var(--credence-space-5) var(--credence-space-6);
+  max-width: 70ch;
+  font-size: 0.875rem; /* Better typography sizing */
+  line-height: 1.6;
   color: var(--credence-text-secondary);
   background: var(--credence-color-slate-50);
-  border-left: 3px solid var(--credence-color-warning-border);
+  border: 1px solid var(--credence-color-warning-border);
+  border-left: 4px solid var(--credence-color-warning-border);
   border-radius: var(--credence-radius-md);
+  box-shadow: var(--credence-shadow-sm);
 }
 
 [data-theme='dark'] .disclaimer {
-  background: rgba(148, 163, 184, 0.05);
-  border-left-color: var(--credence-color-warning-text);
+  background: var(--credence-surface-page);
+  border: 1px solid var(--credence-border-default);
+  border-left: 4px solid var(--credence-color-warning-text);
+  color: var(--credence-text-secondary);
+  box-shadow: none;
 }
 
 .disclaimer p {

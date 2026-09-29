@@ -17,6 +17,10 @@
   background: var(--credence-color-slate-100);
 }
 
+[data-theme='dark'] .mobileNav-hamburger:hover {
+  background: var(--credence-color-slate-700);
+}
+
 .mobileNav-hamburger:active {
   transform: scale(0.95);
 }
@@ -30,7 +34,7 @@
 .mobileNav-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--credence-backdrop-mobile);
   z-index: 999;
   animation: mobileNav-fadeIn var(--credence-motion-duration-base)
     var(--credence-motion-easing-standard);
@@ -84,6 +88,10 @@
   background: var(--credence-color-slate-100);
 }
 
+[data-theme='dark'] .mobileNav-close:hover {
+  background: var(--credence-color-slate-700);
+}
+
 .mobileNav-close:focus-visible {
   outline: 2px solid var(--credence-color-primary);
   outline-offset: 2px;
@@ -113,12 +121,28 @@
   background: var(--credence-color-slate-100);
 }
 
+[data-theme='dark'] .mobileNav-link:hover {
+  background: var(--credence-color-slate-700);
+}
+
 .mobileNav-link--active {
   background: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  color: var(--credence-color-on-primary);
+}
+
+/* Keep the active indication visible when the active link is also hovered
+   or focused — .mobileNav-link:hover otherwise wins on specificity and hides it. */
+.mobileNav-link--active:hover {
+  background: var(--credence-color-primary);
+  color: var(--credence-color-on-primary);
 }
 
 .mobileNav-link:focus-visible {
+  outline: 2px solid var(--credence-color-primary);
+  outline-offset: 2px;
+}
+
+.mobileNav-link--active:focus-visible {
   outline: 2px solid var(--credence-color-primary);
   outline-offset: 2px;
 }
@@ -133,13 +157,13 @@
 }
 
 /* Show hamburger + drawer only on mobile */
-@media (max-width: 639px) {
+@media (max-width: 640px) {
   .mobileNav-hamburger {
     display: flex;
   }
 }
 
-@media (min-width: 640px) {
+@media (min-width: 641px) {
   .mobileNav-drawer,
   .mobileNav-backdrop {
     display: none;

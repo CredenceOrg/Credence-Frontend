@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DOM_EVENTS } from '../events'
 
 /**
  * SSR-safe hook that subscribes to a CSS media query and returns whether it
@@ -19,7 +20,7 @@ export function useMediaQuery(query: string): boolean {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return false
     }
-    return window.matchMedia(query).matches
+    return Boolean(window.matchMedia(query)?.matches)
   })
 
   useEffect(() => {
@@ -28,11 +29,13 @@ export function useMediaQuery(query: string): boolean {
     }
 
     const mql = window.matchMedia(query)
-    setMatches(mql.matches)
+    if (!mql) return
 
-    const handler = (event: MediaQueryListEvent) => setMatches(event.matches)
-    mql.addEventListener?.('change', handler)
-    return () => mql.removeEventListener?.('change', handler)
+    setMatches(Boolean(mql.matches))
+
+    const handler = (event: MediaQueryListEvent) => setMatches(Boolean(event?.matches))
+    mql.addEventListener?.(DOM_EVENTS.CHANGE, handler)
+    return () => mql.removeEventListener?.(DOM_EVENTS.CHANGE, handler)
   }, [query])
 
   return matches

@@ -49,6 +49,22 @@ describe('compareNetworkMismatch', () => {
       actual: 'Test (Testnet)',
     })
   })
+
+  it('flags mismatch in reverse — test settings with mainnet wallet', () => {
+    expect(compareNetworkMismatch('test', 'public')).toEqual({
+      mismatch: true,
+      expected: 'Test (Testnet)',
+      actual: 'Public (Mainnet)',
+    })
+  })
+
+  it('marks matching testnet networks as aligned', () => {
+    expect(compareNetworkMismatch('test', 'test')).toEqual({
+      mismatch: false,
+      expected: 'Test (Testnet)',
+      actual: 'Test (Testnet)',
+    })
+  })
 })
 
 describe('useNetworkMismatch', () => {
@@ -77,6 +93,32 @@ describe('useNetworkMismatch', () => {
     })
   })
 
+  it('reports mismatch in reverse — testnet settings with mainnet wallet', () => {
+    mockSettingsNetwork = 'test'
+    mockWalletNetwork = 'public'
+
+    const { result } = renderHook(() => useNetworkMismatch())
+
+    expect(result.current).toEqual({
+      mismatch: true,
+      expected: 'Test (Testnet)',
+      actual: 'Public (Mainnet)',
+    })
+  })
+
+  it('reports no mismatch when both sides are testnet', () => {
+    mockSettingsNetwork = 'test'
+    mockWalletNetwork = 'test'
+
+    const { result } = renderHook(() => useNetworkMismatch())
+
+    expect(result.current).toEqual({
+      mismatch: false,
+      expected: 'Test (Testnet)',
+      actual: 'Test (Testnet)',
+    })
+  })
+
   it('updates when the selected settings network changes', () => {
     const { result, rerender } = renderHook(() => useNetworkMismatch())
 
@@ -93,6 +135,28 @@ describe('useNetworkMismatch', () => {
       mismatch: true,
       expected: 'Test (Testnet)',
       actual: 'Public (Mainnet)',
+    })
+  })
+
+  it('updates when starting on testnet and switching to public settings', () => {
+    mockSettingsNetwork = 'test'
+    mockWalletNetwork = 'test'
+
+    const { result, rerender } = renderHook(() => useNetworkMismatch())
+
+    expect(result.current).toEqual({
+      mismatch: false,
+      expected: 'Test (Testnet)',
+      actual: 'Test (Testnet)',
+    })
+
+    mockSettingsNetwork = 'public'
+    rerender()
+
+    expect(result.current).toEqual({
+      mismatch: true,
+      expected: 'Public (Mainnet)',
+      actual: 'Test (Testnet)',
     })
   })
 })

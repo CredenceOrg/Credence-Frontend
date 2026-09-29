@@ -43,7 +43,7 @@ describe('useWallet', () => {
     expect(result.current.address).toBe('')
     expect(result.current.isConnecting).toBe(false)
     expect(result.current.error).toBeNull()
-    expect(result.current.network).toBe('public')
+    expect(result.current.network).toBeNull()
   })
 
   it('connect populates address and isConnected', async () => {
@@ -113,7 +113,7 @@ describe('useWallet', () => {
     expect(result.current.isConnected).toBe(false)
   })
 
-  it('surfaces network_mismatch error', async () => {
+  it('blocks connection on network mismatch — mainnet settings with testnet wallet', async () => {
     mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
     mocks.mockFetchFreighterNetwork.mockResolvedValue('test')
 
@@ -125,7 +125,26 @@ describe('useWallet', () => {
 
     expect(result.current.error).toMatchObject({ code: 'network_mismatch' })
     expect(result.current.isConnected).toBe(false)
+    // Atomic rollback: network is rolled back to null on mismatch.
     expect(result.current.address).toBe('')
+    expect(result.current.network).toBeNull()
+  })
+
+  it('blocks connection on network mismatch — testnet settings with mainnet wallet', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockFetchFreighterNetwork.mockResolvedValue('public')
+
+    const { result } = renderHook(() => useWallet('test'))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(result.current.error).toMatchObject({ code: 'network_mismatch' })
+    expect(result.current.isConnected).toBe(false)
+    // Atomic rollback: network is rolled back to null on mismatch.
+    expect(result.current.address).toBe('')
+    expect(result.current.network).toBeNull()
   })
 
   it('surfaces unknown error when client throws', async () => {
@@ -212,7 +231,7 @@ describe('useWallet', () => {
       expect(result.current.isConnected).toBe(false)
     })
 
-    expect(result.current.network).toBe('test')
+    expect(result.current.network).toBeNull()
   })
 
   it('restores prior session on mount when already connected', async () => {
@@ -229,5 +248,116 @@ describe('useWallet', () => {
 
     expect(result.current.address).toBe(TEST_ADDRESS)
     expect(result.current.error).toBeNull()
+  })
+
+  it('persists a valid session and restores the same wallet after reload', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockFetchFreighterAddress.mockResolvedValue(TEST_ADDRESS)
+    mocks.mockFetchFreighterNetwork.mockResolvedValue('public')
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    const persisted = JSON.parse(window.localStorage.getItem('credence:wallet-session') ?? 'null')
+    expect(persisted).toMatchObject({ address: TEST_ADDRESS, network: 'public' })
+
+    window.localStorage.clear()
+    vi.clearAllMocks()
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockFetchFreighterAddress.mockResolvedValue(TEST_ADDRESS)
+    mocks.mockFetchFreighterNetwork.mockResolvedValue('public')
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    const restored = renderHook(() => useWallet('public'))
+    await waitFor(() => {
+      expect(restored.result.current.isConnected).toBe(true)
+    })
+    expect(restored.result.current.address).toBe(TEST_ADDRESS)
+  })
+
+  it('drops stale persisted wallet data when the restored account no longer matches', async () => {
+    window.localStorage.setItem(
+      'credence:wallet-session',
+      JSON.stringify({ version: 1, address: 'GSTALE', network: 'public', updatedAt: Date.now() })
+    )
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockFetchFreighterAddress.mockResolvedValue(TEST_ADDRESS)
+    mocks.mockFetchFreighterNetwork.mockResolvedValue('public')
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await waitFor(() => {
+      expect(result.current.address).toBe('')
+    })
+    expect(window.localStorage.getItem('credence:wallet-session')).toBeNull()
+  })
+
+  it('removes invalid persisted wallet data during recovery', async () => {
+    window.localStorage.setItem('credence:wallet-session', '{ invalid json')
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(false)
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await waitFor(() => {
+      expect(result.current.isConnected).toBe(false)
+    })
+    expect(window.localStorage.getItem('credence:wallet-session')).toBeNull()
+  })
+
+  it('guards against concurrent connect calls — second call is a no-op while first is in-flight', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    let resolveAccess!: (value: { ok: true; address: string }) => void
+    mocks.mockRequestFreighterAccess.mockImplementation(
+      () => new Promise((resolve) => { resolveAccess = resolve })
+    )
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    // Fire first connect — it will block on requestFreighterAccess.
+    void result.current.connect()
+
+    await waitFor(() => {
+      expect(result.current.isConnecting).toBe(true)
+    })
+
+    // Fire second connect while first is still in-flight.
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveAccess({ ok: true, address: TEST_ADDRESS })
+    })
+
+    expect(result.current.isConnected).toBe(true)
+    expect(result.current.address).toBe(TEST_ADDRESS)
+    expect(result.current.isConnecting).toBe(false)
+  })
+
+  it('allows a second connect after the first completes', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+    expect(result.current.isConnected).toBe(true)
+    expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await result.current.connect()
+    })
+    expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(2)
   })
 })

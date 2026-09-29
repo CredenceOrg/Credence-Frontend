@@ -1,16 +1,22 @@
 import { ButtonHTMLAttributes, forwardRef, ReactNode } from 'react'
 import { TEST_IDS } from '../config/testIds'
+import LoadingSpinner from './LoadingSpinner'
 import './Button.css'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Visual style variant */
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'link'
+  /** Size variant */
+  size?: 'sm' | 'md' | 'lg'
   /** Loading state - shows spinner and disables interaction */
   isLoading?: boolean
+  /** Loading text override - defaults based on children text */
+  loadingText?: string
   /** Full width button */
   fullWidth?: boolean
   /** Button content */
   children: ReactNode
+  'data-testid'?: string
 }
 
 /**
@@ -20,7 +26,9 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
     variant = 'primary',
+    size = 'md',
     isLoading = false,
+    loadingText,
     fullWidth = false,
     disabled,
     children,
@@ -34,6 +42,29 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   const isDisabled = disabled || isLoading
   const finalTestId = dataTestId ?? (variant === 'primary' ? TEST_IDS.PRIMARY_CTA : undefined)
 
+  // Determine loading announcement text
+  const getLoadingText = (): string => {
+    if (loadingText) return loadingText
+
+    // Extract text from children if it's a string
+    const childText = typeof children === 'string' ? children.toLowerCase() : ''
+
+    if (childText.includes('create') || childText.includes('bond')) {
+      return 'Creating bond…'
+    }
+    if (childText.includes('lookup') || childText.includes('look up')) {
+      return 'Looking up…'
+    }
+    if (childText.includes('withdraw')) {
+      return 'Withdrawing…'
+    }
+    if (childText.includes('submit')) {
+      return 'Submitting…'
+    }
+
+    return 'Loading…'
+  }
+
   return (
     <button
       ref={ref}
@@ -43,44 +74,25 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       className={[
         'credence-button',
         `credence-button--${variant}`,
+        `credence-button--${size}`,
         fullWidth ? 'credence-button--full-width' : '',
         className,
       ]
         .filter(Boolean)
         .join(' ')}
       aria-busy={isLoading}
+      aria-disabled={isDisabled}
       {...props}
     >
       {isLoading && (
-        <span className="credence-button__spinner" aria-hidden="true">
-          <svg
-            className="credence-button__spinner-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle
-              className="credence-button__spinner-track"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="3"
-            />
-            <circle
-              className="credence-button__spinner-head"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </svg>
-        </span>
+        <LoadingSpinner
+          className="credence-button__spinner"
+          iconClassName="credence-button__spinner-icon"
+          aria-hidden="true"
+        />
       )}
       <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {isLoading ? 'Sending…' : ''}
+        {isLoading ? getLoadingText() : ''}
       </span>
       <span className={isLoading ? 'credence-button__content--loading' : ''}>{children}</span>
     </button>

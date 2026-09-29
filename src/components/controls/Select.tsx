@@ -9,6 +9,9 @@ interface SelectProps {
   disabled?: boolean
   isLoading?: boolean
   error?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean | 'true' | 'false'
+  'aria-required'?: boolean | 'true' | 'false'
 }
 
 export default function Select({
@@ -20,9 +23,12 @@ export default function Select({
   disabled,
   isLoading,
   error,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-required': ariaRequired,
 }: SelectProps) {
   const isDisabled = disabled || isLoading
-  const isInvalid = !!error
+  const isInvalid = !!error || ariaInvalid === true || ariaInvalid === 'true'
 
   return (
     <div className={`control-select-wrapper ${isLoading ? 'control-select-wrapper--loading' : ''}`}>
@@ -31,7 +37,9 @@ export default function Select({
         className={`control-select ${isInvalid ? 'control-select--error' : ''}`}
         value={value}
         aria-label={ariaLabel}
-        aria-invalid={isInvalid}
+        aria-invalid={isInvalid ? 'true' : undefined}
+        aria-describedby={ariaDescribedBy}
+        aria-required={ariaRequired}
         disabled={isDisabled}
         onChange={(e) => onChange(e.target.value)}
       >

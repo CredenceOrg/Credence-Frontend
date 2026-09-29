@@ -339,10 +339,23 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return
     const root = window.document.documentElement
 
+    // `matchMedia` is absent in SSR and in some non-browser test environments, and
+    // a third-party shim can throw. Treat every one of those as "OS prefers
+    // light" so `system` mode degrades to a usable light theme instead of
+    // crashing the whole app shell. `ThemeToggle` applies the same fallback so
+    // the button and the document never disagree.
+    const readSystemPrefersDark = (): boolean => {
+      if (typeof window.matchMedia !== 'function') return false
+      try {
+        return Boolean(window.matchMedia('(prefers-color-scheme: dark)')?.matches)
+      } catch {
+        return false
+      }
+    }
+
     const apply = () => {
       if (themeMode === 'system') {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        root.setAttribute('data-theme', isDark ? 'dark' : 'light')
+        root.setAttribute('data-theme', readSystemPrefersDark() ? 'dark' : 'light')
       } else {
         root.setAttribute('data-theme', themeMode)
       }
@@ -352,10 +365,27 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     if (themeMode !== 'system') return
 
-    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    if (typeof window.matchMedia !== 'function') return
+
+    let mql: MediaQueryList
+    try {
+      mql = window.matchMedia('(prefers-color-scheme: dark)')
+    } catch {
+      return
+    }
+    if (!mql) return
+
     const handler = () => apply()
-    mql.addEventListener?.('change', handler)
-    return () => mql.removeEventListener?.('change', handler)
+    // Older Safari exposes only the deprecated listener API.
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', handler)
+      return () => mql.removeEventListener?.('change', handler)
+    }
+    if (typeof mql.addListener === 'function') {
+      mql.addListener(handler)
+      return () => mql.removeListener?.(handler)
+    }
+    return
   }, [themeMode])
 
   const value: SettingsState = {

@@ -91,6 +91,27 @@ user has a dark or system preference saved.
 This removes the historical desync where the toggle kept its own state under a
 duplicate `'theme'` key while the document was driven by `credence:settings`.
 
+### Component invariants (enforced by tests)
+
+`ThemeToggle` guarantees the following; each is covered by a focused test in
+`ThemeToggle.test.tsx` and `ThemeToggle.boundary.test.tsx`.
+
+1. **No self-owned state.** The only local state is the mirrored OS
+   preference, which is derived from — never authoritative over — `themeMode`.
+2. **No self-owned persistence.** The component never calls
+   `localStorage.setItem`/`removeItem`, so the legacy orphan `'theme'` key can
+   never be re-created.
+3. **Total resolution.** Any `themeMode` outside `'light' | 'dark' | 'system'`
+   (corrupt or future value) resolves to `'light'`, so the rendered icon,
+   `title`, and `aria-pressed` always agree with `data-theme`.
+4. **Deterministic repetition.** N clicks always produce a theme that is the
+   exact opposite of the one before, and the control never lands in an
+   un-actionable state.
+5. **Degraded-environment safety.** If `window.matchMedia` is absent, throws,
+   returns `null`, or exposes only the deprecated `addListener` API, the toggle
+   still renders a usable control and `SettingsContext` still applies a valid
+   `data-theme` instead of throwing and taking down the app shell.
+
 ### Legacy `'theme'` key migration
 
 Older builds of `ThemeToggle` persisted the theme under a standalone `'theme'`

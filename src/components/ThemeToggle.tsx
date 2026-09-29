@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSettings } from '../context/SettingsContext'
 import './ThemeToggle.css'
 
 function SunIcon() {
@@ -34,37 +35,123 @@ function MoonIcon() {
   )
 }
 
+/**
+ * SSR-safe read of the OS-level `prefers-color-scheme: dark` preference.
+ *
+ * Returns `false` (light) whenever the preference cannot be determined — no
+ * `window`, no `matchMedia` (older JSDOM, SSR), or a `matchMedia` that throws.
+ * A failed probe degrades to light mode rather than crashing the shell, which
+ * is the same fallback `SettingsContext` uses when it resolves `system`.
+ */
+function getSystemPrefersDark(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false
+  }
+  try {
+    return Boolean(window.matchMedia('(prefers-color-scheme: dark)')?.matches)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * ThemeToggle — a single-icon button for flipping the app between light and
+ * dark mode.
+ *
+ * ## Single source of truth
+ *
+ * The displayed state is derived *entirely* from {@link useSettings}; this
+ * component owns **no** theme state and writes to **no** storage key of its
+ * own. {@link SettingsContext} is the sole owner of the theme (persisted under
+ * the `credence:settings` key) and the sole writer of the document's
+ * `data-theme` attribute. See `docs/dark-mode.md` for the model.
+ *
+ * The light/dark value shown is *resolved* from `themeMode`:
+ * - `'light'` / `'dark'` resolve to themselves;
+ * - `'system'` resolves via `matchMedia('(prefers-color-scheme: dark)')`.
+ *
+ * A `matchMedia` subscription keeps the resolved value (and therefore the icon,
+ * `aria-pressed`, and `aria-label`) in sync when the OS theme changes while
+ * `themeMode` is `'system'`, so the toggle always matches the document's
+ * `data-theme`.
+ *
+ * Clicking flips `themeMode` to the *explicit* opposite of the currently
+ * resolved theme (e.g. resolved-dark → `'light'`), never back to `'system'`.
+ *
+ * ## Invariants
+ *
+ * 1. **No self-owned state.** The only local state is the mirrored OS
+ *    preference, which is derived from — never authoritative over — `themeMode`.
+ * 2. **No self-owned persistence.** This component never calls
+ *    `localStorage.setItem`; the legacy orphan `'theme'` key stays absent.
+ * 3. **Always actionable.** The rendered state must be exactly one of
+ *    `'light' | 'dark'`. Any unrecognized `themeMode` (corrupt storage, an
+ *    unexpected future value) resolves to `'light'` instead of producing an
+ *    icon/label/`aria-pressed` triple that disagrees with `data-theme`.
+ * 4. **Deterministic under repetition.** N clicks always yield the same
+ *    resolved theme, so retries, double-clicks, and concurrent clicks cannot
+ *    desynchronize the toggle from the document.
+ */
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('theme')
-      if (saved === 'light' || saved === 'dark') return saved
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return 'light'
-  })
+  const { themeMode, setThemeMode } = useSettings()
+
+  // Mirror the OS preference so the toggle re-renders when it changes while in
+  // `system` mode. This is a *derived* value, not a second source of truth —
+  // `themeMode` (owned by SettingsContext) remains authoritative.
+  const [systemPrefersDark, setSystemPrefersDark] = useState(getSystemPrefersDark)
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem('theme', theme)
-  }, [theme])
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return
+    }
 
-  const toggleTheme = () => {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'))
-  }
+    let mql: MediaQueryList
+    try {
+      mql = window.matchMedia('(prefers-color-scheme: dark)')
+    } catch {
+      // A matchMedia that throws leaves us on the last known value; the
+      // explicit-theme path in SettingsContext still works.
+      return
+    }
+    if (!mql) return
 
-  const nextTheme = theme === 'light' ? 'dark' : 'light'
+    const handler = (event: MediaQueryListEvent) => setSystemPrefersDark(Boolean(event?.matches))
+    // Re-sync once on mount in case the OS preference changed before subscribing.
+    setSystemPrefersDark(Boolean(mql.matches))
+
+    // Older Safari exposes only the deprecated `addListener` API; subscribe via
+    // whichever pair is present so the toggle still tracks the OS preference.
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', handler)
+      return () => mql.removeEventListener?.('change', handler)
+    }
+    if (typeof mql.addListener === 'function') {
+      mql.addListener(handler)
+      return () => mql.removeListener?.(handler)
+    }
+    return
+  }, [])
+
+  // Invariant 3: coerce anything that is not a known theme mode to a safe
+  // resolved value. `SettingsContext` already validates persisted input, but
+  // this component must not depend on that to stay self-consistent.
+  const resolved: 'light' | 'dark' =
+    themeMode === 'dark' || (themeMode === 'system' && systemPrefersDark) ? 'dark' : 'light'
+  const nextTheme = resolved === 'dark' ? 'light' : 'dark'
+
+  const handleClick = () => setThemeMode(nextTheme)
+  const actionLabel = `Switch to ${nextTheme} theme`
 
   return (
     <button
       type="button"
       className="theme-toggle"
-      onClick={toggleTheme}
-      aria-label={`Switch to ${nextTheme} mode`}
-      aria-pressed={theme === 'dark'}
-      title={`Switch to ${nextTheme} mode`}
+      onClick={handleClick}
+      aria-label="Toggle theme"
+      aria-pressed={resolved === 'dark'}
+      title={actionLabel}
     >
-      {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+      {resolved === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>
   )
 }

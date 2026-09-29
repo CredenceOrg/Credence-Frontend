@@ -68,6 +68,8 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
  * - `http_error` — the server answered with a non-2xx status.
  */
 export type ApiErrorCode = 'invalid_request_url' | 'network_error' | 'http_error'
+
+/**
  * Declaration of decimal amount fields for a request body.
  *
  * - `string[]`: field names validated with the default USDC rules.
@@ -254,33 +256,6 @@ function replaceControlCharacters(value: string): string {
 
 export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
 
-/**
- * Normalizes the configured API base URL.
- *
- * Invariants (all enforced by the `normalizeBaseUrl` tests):
- *  1. The result is either `''` (same-origin, no prefix) or a base with **no
- *     trailing slash**, so joining a path always inserts exactly one separator.
- *  2. The result is never scheme-relative (`//host` or `/\host`) and never a
- *     non-`http(s)` URL, so {@link buildUrl} cannot be steered to a foreign
- *     origin by configuration.
- *  3. The result never carries a query string or fragment, because a path
- *     appended after `?`/`#` would be swallowed by the URL parser and the
- *     server would never see it.
- *  4. The function is idempotent: `normalizeBaseUrl(normalizeBaseUrl(x))`
- *     always equals `normalizeBaseUrl(x)`.
- *  5. Invalid or hostile values **fail closed** to `''` rather than throwing.
- *     A bad `.env` entry degrades the app to same-origin requests instead of
- *     breaking module evaluation (and therefore app boot).
- *
- * Rule 5 means a misconfigured `VITE_API_BASE_URL` cannot leak request URLs or
- * credentials to another host; it can only ever remove the prefix.
- *
- * Exported so the failure boundaries are directly testable. `import.meta.env`
- * is inlined at build time, so stubbing `VITE_API_BASE_URL` from a test cannot
- * reach the module-load path that computes {@link API_BASE_URL}.
- */
-export function normalizeBaseUrl(value: string): string {
-  const trimmed = typeof value === 'string' ? value.trim() : ''
 type ReplayEntry = {
   fingerprint: string
   promise: Promise<unknown>
@@ -373,8 +348,33 @@ export function resetApiRateLimiter(): void {
   defaultApiRateLimiter.reset()
 }
 
-function normalizeBaseUrl(value: string): string {
-  const trimmed = value.trim()
+/**
+ * Normalizes the configured API base URL.
+ *
+ * Invariants (all enforced by the `normalizeBaseUrl` tests):
+ *  1. The result is either `''` (same-origin, no prefix) or a base with **no
+ *     trailing slash**, so joining a path always inserts exactly one separator.
+ *  2. The result is never scheme-relative (`//host` or `/\host`) and never a
+ *     non-`http(s)` URL, so {@link buildUrl} cannot be steered to a foreign
+ *     origin by configuration.
+ *  3. The result never carries a query string or fragment, because a path
+ *     appended after `?`/`#` would be swallowed by the URL parser and the
+ *     server would never see it.
+ *  4. The function is idempotent: `normalizeBaseUrl(normalizeBaseUrl(x))`
+ *     always equals `normalizeBaseUrl(x)`.
+ *  5. Invalid or hostile values **fail closed** to `''` rather than throwing.
+ *     A bad `.env` entry degrades the app to same-origin requests instead of
+ *     breaking module evaluation (and therefore app boot).
+ *
+ * Rule 5 means a misconfigured `VITE_API_BASE_URL` cannot leak request URLs or
+ * credentials to another host; it can only ever remove the prefix.
+ *
+ * Exported so the failure boundaries are directly testable. `import.meta.env`
+ * is inlined at build time, so stubbing `VITE_API_BASE_URL` from a test cannot
+ * reach the module-load path that computes {@link API_BASE_URL}.
+ */
+export function normalizeBaseUrl(value: string): string {
+  const trimmed = typeof value === 'string' ? value.trim() : ''
   if (!trimmed || trimmed === '/') {
     return ''
   }
@@ -539,9 +539,6 @@ function normalizeApiPath(path: string): string {
  */
 export function buildUrl(path: string, baseUrl: string = API_BASE_URL): string {
   return `${normalizeBaseUrl(baseUrl)}${normalizeApiPath(path)}`
-function buildUrl(path: string): string {
-  const normalizedPath = path.startsWith('/') ? path : '/' + path
-  return '' + API_BASE_URL + normalizedPath
 }
 
 function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unknown> | unknown[] {
@@ -633,7 +630,6 @@ function applyAmountFields(
   return wireBody
 }
 
-function buildHeaders(headers: HeadersInit | undefined, hasJsonBody: boolean): Headers {
 function buildHeaders(
   headers: HeadersInit | undefined,
   hasJsonBody: boolean,
@@ -733,7 +729,8 @@ function replayConflict(key: string): ApiError {
  * make a permanent fault look like a transient one worth retrying.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, skipRateLimit, amountFields, ...init } = options
+  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } =
+    options
 
   // Exact-amount gate: validate and canonicalize declared amount fields
   // BEFORE any state change. An invalid amount must never consume
@@ -741,26 +738,23 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   // caller's body object.
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
-  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, ...init } = options
-  const hasJsonBody = isJsonBody(body)
 
   // Pre-flight: deterministic, request-independent failures.
   const url = buildUrl(path)
-  const requestHeaders = buildHeaders(headers, hasJsonBody)
-  const requestBody = hasJsonBody ? JSON.stringify(body) : body
-  // Validate input size before expensive operations. Serializing an oversized
-  // body is wasted work and could exhaust memory or downstream resources.
-  if (hasJsonBody) {
-    const serialized = JSON.stringify(body)
-    if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
-      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
-    }
-  }
-
-  const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
   const correlationId = generateCorrelationId('api-fetch')
   const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
   const method = (init.method || 'GET').toUpperCase()
+  const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (wireBody ?? undefined)
+
+  // Validate input size before expensive operations. Serializing an oversized
+  // body is wasted work and could exhaust memory or downstream resources.
+  if (hasJsonBody) {
+    if (new TextEncoder().encode(serializedBody as string).byteLength > MAX_REQUEST_BODY_BYTES) {
+      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, {
+        bodySize: (serializedBody as string).length,
+      })
+    }
+  }
 
   if (idempotencyKey !== undefined) {
     const normalizedKey = idempotencyKey.trim()
@@ -771,7 +765,6 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
 
     const existing = replayEntries.get(normalizedKey)
-    const url = buildUrl(path)
     const fingerprint = requestFingerprint(url, { ...init, method }, serializedBody, requestHeaders)
 
     if (existing) {
@@ -798,7 +791,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     return requestPromise
   }
 
-  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody, {
+  return apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody, {
     correlationId,
     path,
     method,
@@ -854,10 +847,6 @@ async function apiFetchWithoutReplay<T>(
   try {
     response = await fetch(url, {
       ...init,
-      headers: requestHeaders,
-      body: requestBody,
-      headers: buildHeaders(headers, hasJsonBody),
-      body: hasJsonBody ? JSON.stringify(wireBody) : wireBody,
       headers,
       body: serializedBody,
     })
@@ -872,14 +861,13 @@ async function apiFetchWithoutReplay<T>(
       throw error
     }
     const message = error instanceof Error ? error.message : 'Network request failed'
-    throw new ApiError(0, message, error, 'network_error')
     emitWalletSessionEvent('action_failed', {
       address: null,
       network: null,
       correlationId: ctx.correlationId,
       metadata: { path: ctx.path, method: ctx.method, status: 0, message },
     })
-    throw new ApiError(0, message, error)
+    throw new ApiError(0, message, error, 'network_error')
   }
 
   // Post-flight identity epoch check.
@@ -899,12 +887,6 @@ async function apiFetchWithoutReplay<T>(
   const payload = await parseResponse(response)
 
   if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      errorMessage(response.status, payload),
-      payload,
-      'http_error'
-    )
     const message = errorMessage(response.status, payload)
     emitWalletSessionEvent('action_failed', {
       address: null,
@@ -912,7 +894,7 @@ async function apiFetchWithoutReplay<T>(
       correlationId: ctx.correlationId,
       metadata: { path: ctx.path, method: ctx.method, status: response.status, message },
     })
-    throw new ApiError(response.status, message, payload)
+    throw new ApiError(response.status, message, payload, 'http_error')
   }
 
   emitWalletSessionEvent('action_succeeded', {

@@ -10,11 +10,12 @@
  * Step 4 – Acknowledge disclaimer & confirm
  *
  * @see {@link ../lib/bondPenalty.ts} for penalty-rate policy and computation.
+ * @see {@link ../lib/createBondFlowSteps.ts} for the step-navigation invariants.
  * @see {@link ../lib/format.ts} for shared USDC formatting.
  * @see {@link docs/risk-disclaimer.md} for the full risk/slashing policy.
  */
 
-import { useMemo, useState, useRef, useEffect } from 'react'
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import AmountInput from './AmountInput'
 import { FormField } from './forms/FormField'
 import Button from './Button'
@@ -25,6 +26,18 @@ import { useToast } from './ToastProvider'
 import { useWallet } from '../context/WalletContext'
 import { useUsdcBalance } from '../hooks/useUsdcBalance'
 import { computeBondSlashBreakdown, calcUnlockDate } from '../lib/bondPenalty'
+import {
+  BOND_FLOW_MIN_STEP,
+  BOND_FLOW_MAX_STEP,
+  BOND_FLOW_STEP_COUNT,
+  BOND_FLOW_STEP_AMOUNT,
+  BOND_FLOW_STEP_DURATION,
+  BOND_FLOW_STEP_REVIEW,
+  BOND_FLOW_STEP_CONFIRM,
+  clampBondFlowStep,
+  planBackTransition,
+  planNextTransition,
+} from '../lib/createBondFlowSteps'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { formatUsdc } from '../lib/format'
 
@@ -38,6 +51,23 @@ import './CreateBondFlow.css'
 // Divider used between review card sections
 // ---------------------------------------------------------------------------
 const ReviewDivider = () => <div className="createBondFlow__reviewDivider" />
+
+/**
+ * Emits a diagnostic when a wizard transition is refused because the wizard is
+ * already on the boundary step.
+ *
+ * A refusal is unreachable through the rendered controls (Back is hidden on the
+ * first step, Next is replaced by Confirm on the last), so seeing this in the
+ * console means a duplicate, scripted or programmatic dispatch reached the
+ * handler — exactly the kind of event that is invisible during normal operation
+ * but breaks determinism if it is not handled.
+ *
+ * Privacy: the payload carries only the direction label and the step index. Bond
+ * amounts, wallet addresses and any other user data are deliberately excluded.
+ */
+function logRefusedTransition(direction: 'Back' | 'Next', step: number): void {
+  console.warn('[CreateBondFlow] Refused out-of-bounds transition', { direction, step })
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -54,13 +84,39 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   const prefersReducedMotion = useReducedMotion()
   const { addToast } = useToast()
   const { isConnected, connect } = useWallet()
-  const { balance, status: balanceStatus, refetch: refetchBalance } =
-    useUsdcBalance()
-  const [step, setStep] = useState(1)
+  const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
+  const [step, setStep] = useState<number>(BOND_FLOW_MIN_STEP)
   const [amount, setAmount] = useState('')
   const [duration, setDuration] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [acknowledged, setAcknowledged] = useState(false)
+
+  /**
+   * Latest committed wizard step, mirrored outside React state.
+   *
+   * Transition handlers must plan against the step as of *click* time. Reading
+   * the `step` state variable gives the value from the last committed render, so
+   * several Back presses batched into a single React update would all compute
+   * `step - 1` from the same value and collapse into one move (or, mixed with a
+   * Next press, resolve to the wrong direction entirely). `applyStep` therefore
+   * writes this ref *synchronously* before `setStep`, which makes duplicate and
+   * interleaved invocations deterministic.
+   *
+   * The effect keeps the mirror honest if `step` is ever changed outside
+   * `applyStep` (e.g. by a future prop-driven reset).
+   */
+  const stepRef = useRef(step)
+
+  useEffect(() => {
+    stepRef.current = step
+  }, [step])
+
+  /** Single writer for the wizard step. Enforces the [1, 4] range invariant. */
+  const applyStep = useCallback((next: number) => {
+    const clamped = clampBondFlowStep(next)
+    stepRef.current = clamped
+    setStep(clamped)
+  }, [])
 
   const step1Ref = useRef<HTMLHeadingElement>(null)
   const step2Ref = useRef<HTMLHeadingElement>(null)
@@ -68,14 +124,14 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   const step4Ref = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
-    if (step === 1) step1Ref.current?.focus()
-    else if (step === 2) step2Ref.current?.focus()
-    else if (step === 3) step3Ref.current?.focus()
-    else if (step === 4) step4Ref.current?.focus()
+    if (step === BOND_FLOW_STEP_AMOUNT) step1Ref.current?.focus()
+    else if (step === BOND_FLOW_STEP_DURATION) step2Ref.current?.focus()
+    else if (step === BOND_FLOW_STEP_REVIEW) step3Ref.current?.focus()
+    else if (step === BOND_FLOW_STEP_CONFIRM) step4Ref.current?.focus()
   }, [step])
 
   const reset = () => {
-    setStep(1)
+    applyStep(BOND_FLOW_MIN_STEP)
     setAmount('')
     setDuration(null)
     setError('')
@@ -83,25 +139,71 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   }
 
   const handleNext = () => {
-    if (step === 1) {
+    const currentStep = stepRef.current
+    if (currentStep === BOND_FLOW_STEP_AMOUNT) {
       if (!amount || Number(amount) <= 0) {
         setError('Please enter a valid amount greater than 0.')
         return
       }
     }
-    if (step === 2) {
+    if (currentStep === BOND_FLOW_STEP_DURATION) {
       if (!duration) {
         setError('Please select a lock duration.')
         return
       }
     }
+    const plan = planNextTransition(currentStep)
+    if (!plan.moved) {
+      // Refused: we are already on the last step. Keep the wizard state (and any
+      // visible validation error) untouched so a refusal is never mistaken for a
+      // successful navigation.
+      logRefusedTransition('Next', currentStep)
+      return
+    }
     setError('')
-    setStep(step + 1)
+    applyStep(plan.targetStep)
   }
 
+  /**
+   * Back navigation.
+   *
+   * Failure boundaries handled here (see `../lib/createBondFlowSteps.ts` for the
+   * policy and its invariants):
+   *
+   * 1. **Boundary / underflow.** The target is clamped into [1, 4]. Without the
+   *    clamp a Back press on (or below) step 1 rendered an empty wizard body:
+   *    the `step > 1` guard hides Back and `step < 4` still shows Next, leaving
+   *    an unrecoverable screen with no progress.
+   * 2. **Refusal is a no-op.** When the plan cannot move, wizard state — including
+   *    the visible validation error — is left untouched, so an error can never be
+   *    silently cleared by a navigation that never happened.
+   * 3. **Duplicate / concurrent invocation.** The plan is evaluated against
+   *    `stepRef`, which is updated synchronously, so two Back presses batched
+   *    into one React update move two steps instead of collapsing into one.
+   * 4. **Stale consent.** Leaving the confirm step re-arms the disclaimer
+   *    checkbox, so `Confirm & Create Bond` can never stay enabled against terms
+   *    the user has edited since acknowledging them.
+   * 5. **Out-of-range recovery.** A corrupted or legacy step index is pulled back
+   *    into range rather than propagated.
+   *
+   * **No data loss:** `amount` and `duration` are deliberately preserved, so
+   * going back never discards what the user entered.
+   */
   const handleBack = () => {
+    const currentStep = stepRef.current
+    const plan = planBackTransition(currentStep)
+
+    if (!plan.moved) {
+      // Unreachable through the UI (Back is hidden on step 1) but reachable via
+      // duplicate/programmatic dispatch. Log the step index only — never amounts,
+      // addresses or any other user data.
+      logRefusedTransition('Back', currentStep)
+      return
+    }
+
+    if (plan.invalidatesConsent) setAcknowledged(false)
     setError('')
-    setStep(step - 1)
+    applyStep(plan.targetStep)
   }
 
   const handleConfirm = () => {
@@ -130,16 +232,21 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
   // Step indicator
   // ---------------------------------------------------------------------------
   const StepIndicator = () => (
-    <div className="createBondFlow__stepIndicator" aria-label={`Step ${step} of 4`}>
-      {[1, 2, 3, 4].map((i) => (
-        <div
-          key={i}
-          className={`createBondFlow__stepBar${i <= step ? ' createBondFlow__stepBar--active' : ''}`}
-          style={{
-            transition: prefersReducedMotion ? 'none' : undefined,
-          }}
-        />
-      ))}
+    <div
+      className="createBondFlow__stepIndicator"
+      aria-label={`Step ${step} of ${BOND_FLOW_STEP_COUNT}`}
+    >
+      {Array.from({ length: BOND_FLOW_STEP_COUNT }, (_, index) => index + BOND_FLOW_MIN_STEP).map(
+        (i) => (
+          <div
+            key={i}
+            className={`createBondFlow__stepBar${i <= step ? ' createBondFlow__stepBar--active' : ''}`}
+            style={{
+              transition: prefersReducedMotion ? 'none' : undefined,
+            }}
+          />
+        )
+      )}
     </div>
   )
 
@@ -151,7 +258,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       <StepIndicator />
 
       {/* ── Step 1: Amount ── */}
-      {step === 1 && (
+      {step === BOND_FLOW_STEP_AMOUNT && (
         <div className="createBondFlow__step">
           <h2 ref={step1Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 1: Enter Bond Amount
@@ -181,7 +288,14 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
             ) : balanceStatus === 'loading' ? (
               <LoadingSkeleton variant="text" rows={1} width="12rem" />
             ) : balanceStatus === 'error' ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.875rem',
+                }}
+              >
                 <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
                   Could not load balance.
                 </span>
@@ -231,7 +345,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       )}
 
       {/* ── Step 2: Duration ── */}
-      {step === 2 && (
+      {step === BOND_FLOW_STEP_DURATION && (
         <div className="createBondFlow__step">
           <h2 ref={step2Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 2: Choose Lock Duration
@@ -268,7 +382,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       )}
 
       {/* ── Step 3: Review Terms ── */}
-      {step === 3 && (
+      {step === BOND_FLOW_STEP_REVIEW && (
         <div className="createBondFlow__step">
           <h2 ref={step3Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 3: Review Terms
@@ -355,7 +469,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
       )}
 
       {/* ── Step 4: Confirm ── */}
-      {step === 4 && (
+      {step === BOND_FLOW_STEP_CONFIRM && (
         <div className="createBondFlow__step">
           <h2 ref={step4Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 4: Confirm Bond
@@ -378,7 +492,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
 
       {/* ── Navigation ── */}
       <div className="createBondFlow__nav">
-        {step > 1 && (
+        {step > BOND_FLOW_MIN_STEP && (
           <Button
             type="button"
             onClick={handleBack}
@@ -388,7 +502,7 @@ export default function CreateBondFlow({ onComplete, onCancel }: CreateBondFlowP
           </Button>
         )}
 
-        {step < 4 ? (
+        {step < BOND_FLOW_MAX_STEP ? (
           <Button
             type="button"
             onClick={handleNext}

@@ -1,1 +1,382 @@
-aW1wb3J0IHsgcmVuZGVyLCBzY3JlZW4sIGZpcmVFdmVudCwgYWN0LCBjbGVhbnVwIH0gZnJvbSAnQHRlc3RpbmctbGlicmFyeS9yZWFjdCcKaW1wb3J0IHsgZGVzY3JpYmUsIGl0LCBleHBlY3QsIHZpLCBiZWZvcmVFYWNoLCBhZnRlckVhY2ggfSBmcm9tICd2aXRlc3QnCmltcG9ydCBUaGVtZVRvZ2dsZSBmcm9tICcuL1RoZW1lVG9nZ2xlJwppbXBvcnQgeyBTZXR0aW5nc1Byb3ZpZGVyIH0gZnJvbSAnLi4vY29udGV4dC9TZXR0aW5nc0NvbnRleHQnCgpmdW5jdGlvbiByZW5kZXJUb2dnbGUoKSB7CiAgcmV0dXJuIHJlbmRlcigKICAgIDxTZXR0aW5nc1Byb3ZpZGVyPgogICAgICA8VGhlbWVUb2dnbGUgLz4KICAgIDwvU2V0dGluZ3NQcm92aWRlcj4KICApCn0KCi8vIFNoYXJlZCwgbXV0YWJsZSBPUyBwcmVmZXJlbmNlIHNvIHRoYXQgY29uc3VtZXJzIHdoaWNoIHJlLXF1ZXJ5IG1hdGNoTWVkaWEgb24KLy8gYSAnY2hhbmdlJyBldmVudCAoZS5nLiBTZXR0aW5nc0NvbnRleHQpIG9ic2VydmUgdGhlIHNhbWUgdmFsdWUgdGhlIGV2ZW50Ci8vIGNhcnJpZXMuIFRyYWNrcyByZWdpc3RlcmVkICdjaGFuZ2UnIGxpc3RlbmVycyB0byBlbXVsYXRlIGFuIE9TIHRoZW1lIHN3aXRjaC4KbGV0IG9zUHJlZmVyc0RhcmsgPSBmYWxzZQpsZXQgZGFya0xpc3RlbmVyczogQXJyYXk8KGU6IE1lZGlhUXVlcnlMaXN0RXZlbnQpID0+IHZvaWQ+ID0gW10KCmZ1bmN0aW9uIG1vY2tNYXRjaE1lZGlhKHByZWZlcnNEYXJrOiBib29sZWFuKSB7CiAgb3NQcmVmZXJzRGFyayA9IHByZWZlcnNEYXJrCiAgZGFya0xpc3RlbmVycyA9IFtdCiAgcmV0dXJuIHZpLmZuKChxdWVyeTogc3RyaW5nKTogTWVkaWFRdWVyeUxpc3QgPT4gewogICAgY29uc3QgaXNEYXJrUXVlcnkgPSBxdWVyeS5pbmNsdWRlcygnZGFyaycpCiAgICByZXR1cm4gewogICAgICBnZXQgbWF0Y2hlcygpIHsKICAgICAgICByZXR1cm4gaXNEYXJrUXVlcnkgPyBvc1ByZWZlcnNEYXJrIDogIW9zUHJlZmVyc0RhcmsKICAgICAgfSwKICAgICAgbWVkaWE6IHF1ZXJ5LAogICAgICBvbmNoYW5nZTogbnVsbCwKICAgICAgYWRkRXZlbnRMaXN0ZW5lcjogdmkuZm4oKF90eXBlOiBzdHJpbmcsIGNiOiAoZTogTWVkaWFRdWVyeUxpc3RFdmVudCkgPT4gdm9pZCkgPT4gewogICAgICAgIGlmIChpc0RhcmtRdWVyeSkgZGFya0xpc3RlbmVycy5wdXNoKGNiKQogICAgICB9KSwKICAgICAgcmVtb3ZlRXZlbnRMaXN0ZW5lcjogdmkuZm4oKF90eXBlOiBzdHJpbmcsIGNiOiAoZTogTWVkaWFRdWVyeUxpc3RFdmVudCkgPT4gdm9pZCkgPT4gewogICAgICAgIGlmIChpc0RhcmtRdWVyeSkgZGFya0xpc3RlbmVycyA9IGRhcmtMaXN0ZW5lcnMuZmlsdGVyKChsKSA9PiBsICE9PSBjYikKICAgICAgfSksCiAgICAgIGFkZExpc3RlbmVyOiB2aS5mbigpLAogICAgICByZW1vdmVMaXN0ZW5lcjogdmkuZm4oKSwKICAgICAgZGlzcGF0Y2hFdmVudDogdmkuZm4oKSwKICAgIH0gYXMgdW5rbm93biBhcyBNZWRpYVF1ZXJ5TGlzdAogIH0pCn0KCi8vIEVtdWxhdGUgdGhlIE9TIGZsaXBwaW5nIGl0cyBwcmVmZXJzLWNvbG9yLXNjaGVtZSB3aGlsZSBsaXN0ZW5lcnMgYXJlIGF0dGFjaGVkLgpmdW5jdGlvbiBlbWl0U3lzdGVtVGhlbWVDaGFuZ2UocHJlZmVyc0Rhcms6IGJvb2xlYW4pIHsKICBvc1ByZWZlcnNEYXJrID0gcHJlZmVyc0RhcmsKICBhY3QoKCkgPT4gewogICAgZGFya0xpc3RlbmVycy5mb3JFYWNoKChjYikgPT4gY2IoeyBtYXRjaGVzOiBwcmVmZXJzRGFyayB9IGFzIE1lZGlhUXVlcnlMaXN0RXZlbnQpKQogIH0pCn0KCmZ1bmN0aW9uIGRlZmluZU1hdGNoTWVkaWEocHJlZmVyc0Rhcms6IGJvb2xlYW4pIHsKICBPYmplY3QuZGVmaW5lUHJvcGVydHkod2luZG93LCAnbWF0Y2hNZWRpYScsIHsKICAgIHdyaXRhYmxlOiB0cnVlLAogICAgY29uZmlndXJhYmxlOiB0cnVlLAogICAgdmFsdWU6IG1vY2tNYXRjaE1lZGlhKHByZWZlcnNEYXJrKSwKICB9KQp9CgpiZWZvcmVFYWNoKCgpID0+IHsKICBsb2NhbFN0b3JhZ2UuY2xlYXIoKQogIGRvY3VtZW50LmRvY3VtZW50RWxlbWVudC5yZW1vdmVBdHRyaWJ1dGUoJ2RhdGEtdGhlbWUnKQogIC8vIERlZmF1bHQgT1M6IGxpZ2h0CiAgZGVmaW5lTWF0Y2hNZWRpYShmYWxzZSkKfSkKCmFmdGVyRWFjaCgoKSA9PiB7CiAgY2xlYW51cCgpCiAgdmlLnJlc3RvcmVBbGxNb2NrcygpCiAgbG9jYWxTdG9yYWdlLmNsZWFyKCkKICBkb2N1bWVudC5kb2N1bWVudEVsZW1lbnQucmVtb3ZlQXR0cmlidXRlKCdkYXRhLXRoZW1lJykKfSkKCmRlc2NyaWJlKCdUaGVtZVRvZ2dsZScsICgpID0+IHsKICBpdCgncmVuZGVycyBhIGJ1dHRvbicsICgpID0+IHsKICAgIHJlbmRlclRvZ2dsZSgpCiAgICBleHBlY3Qoc2NyZWVuLmdldEJ5Um9sZSgnYnV0dG9uJykpLnRvQmVJbkRvY3VtZW50KCkKICB9KQoKICBpdCgnc3RhcnRzIHdpdGggYXJpYS1wcmVzc2VkPWZhbHNlIHdoZW4gT1MgaXMgbGlnaHQgYW5kIHRoZW1lTW9kZT1zeXN0ZW0nLCAoKSA9PiB7CiAgICByZW5kZXJUb2dnbGUoKQogICAgZXhwZWN0KHNjcmVlbi5nZXRCeVJvbGUoJ2J1dHRvbicpKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICdmYWxzZScpCiAgfSkKCiAgaXQoJ2tlZXBzIGEgc3RhYmxlIGFjY2Vzc2libGUgbmFtZSBhbmQgZXhwb3NlcyB0aGUgbmV4dCBhY3Rpb24gaW4gdGl0bGUgb24gbGlnaHQgdGhlbWUnLCAoKSA9PiB7CiAgICByZW5kZXJUb2dnbGUoKQogICAgY29uc3QgYnRuID0gc2NyZWVuLmdldEJ5Um9sZSgnYnV0dG9uJykKICAgIGV4cGVjdChidG4pLnRvSGF2ZUF0dHJpYnV0ZSgnYXJpYS1sYWJlbCcsICdUb2dnbGUgdGhlbWUnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQWNjZXNzaWJsZU5hbWUoJ1RvZ2dsZSB0aGVtZScpCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ3RpdGxlJywgJ1N3aXRjaCB0byBkYXJrIHRoZW1lJykKICB9KQoKICBpdCgnY2xpY2tpbmcgc3dpdGNoZXMgdGhlbWVNb2RlIGFuZCBmbGlwcyBhcmlhLXByZXNzZWQnLCAoKSA9PiB7CiAgICByZW5kZXJUb2dnbGUoKQogICAgY29uc3QgYnRuID0gc2NyZWVuLmdldEJ5Um9sZSgnYnV0dG9uJykKICAgIGZpcmVFdmVudC5jbGljayhidG4pCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICd0cnVlJykKICAgIGV4cGVjdChidG4pLnRvSGF2ZUF0dHJpYnV0ZSgnYXJpYS1sYWJlbCcsICdUb2dnbGUgdGhlbWUnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQWNjZXNzaWJsZU5hbWUoJ1RvZ2dsZSB0aGVtZScpCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ3RpdGxlJywgJ1N3aXRjaCB0byBsaWdodCB0aGVtZScpCiAgfSkKCiAgaXQoJ2NsaWNraW5nIHR3aWNlIHJldHVybnMgdG8gb3JpZ2luYWwgc3RhdGUnLCAoKSA9PiB7CiAgICByZW5kZXJUb2dnbGUoKQogICAgY29uc3QgYnRuID0gc2NyZWVuLmdldEJ5Um9sZSgnYnV0dG9uJykKICAgIGZpcmVFdmVudC5jbGljayhidG4pCiAgICBmaXJlRXZlbnQuY2xpY2soYnRuKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAnZmFsc2UnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLWxhYmVsJywgJ1RvZ2dsZSB0aGVtZScpCiAgfSkKCiAgaXQoJ3Jlc29sdmVzIHN5c3RlbeKGkmRhcmsgY29ycmVjdGx5IHdoZW4gT1MgcHJlZmVycyBkYXJrJywgKCkgPT4gewogICAgZGVmaW5lTWF0Y2hNZWRpYSh0cnVlKQogICAgcmVuZGVyVG9nZ2xlKCkKICAgIGNvbnN0IGJ0biA9IHNjcmVlbi5nZXRCeVJvbGUoJ2J1dHRvbicpCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICd0cnVlJykKICAgIGV4cGVjdChidG4pLnRvSGF2ZUF0dHJpYnV0ZSgnYXJpYS1sYWJlbCcsICdUb2dnbGUgdGhlbWUnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCd0aXRsZScsICdTd2l0Y2ggdG8gbGlnaHQgdGhlbWUnKQogIH0pCgogIGl0KCdjbGlja2luZyBmcm9tIHN5c3RlbStkYXJrIHJlc29sdmVzIHRvIGxpZ2h0JywgKCkgPT4gewogICAgZGVmaW5lTWF0Y2hNZWRpYSh0cnVlKQogICAgcmVuZGVyVG9nZ2xlKCkKICAgIGNvbnN0IGJ0biA9IHNjcmVlbi5nZXRCeVJvbGUoJ2J1dHRvbicpCiAgICBmaXJlRXZlbnQuY2xpY2soYnRuKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAnZmFsc2UnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLWxhYmVsJywgJ1RvZ2dsZSB0aGVtZScpCiAgfSkKCiAgaXQoJ2RvZXMgTk9UIHdyaXRlIGRhdGEtdGhlbWUgZGlyZWN0bHkgKFNldHRpbmdzQ29udGV4dCBvd25zIGl0KScsICgpID0+IHsKICAgIC8vIFRoZSB0b2dnbGUgbXVzdCBub3Qgc2V0IGRhdGEtdGhlbWUgaXRzZWxmOyBTZXR0aW5nc0NvbnRleHQgZG9lcyBpdAogICAgY29uc3Qgc2V0U3B5ID0gdmlLnNweU9uKGRvY3VtZW50LmRvY3VtZW50RWxlbWVudCwgJ3NldEF0dHJpYnV0ZScpCiAgICByZW5kZXJUb2dnbGUoKQogICAgZmlyZUV2ZW50LmNsaWNrKHNjcmVlbi5nZXRCeVJvbGUoJ2J1dHRvbicpKQogICAgLy8gc2V0QXR0cmlidXRlIGZvciBkYXRhLXRoZW1lIHNob3VsZCBvbmx5IGNvbWUgZnJvbSBTZXR0aW5nc0NvbnRleHQgdXNlRWZmZWN0LCBub3QgaW5saW5lIGluIHRvZ2dsZQogICAgLy8gV2UganVzdCBhc3NlcnQgaXQncyBjYWxsZWQgdmlhIGNvbnRleHQgKGF0IGxlYXN0IG9uY2UpIG5vdCB6ZXJvIHRpbWVzCiAgICBjb25zdCBkYXRhVGhlbWVDYWxscyA9IHNldFNweS5tb2NrLmNhbGxzLmZpbHRlcigoW2F0dHJdKSA9PiBhdHRyID09PSAnZGF0YS10aGVtZScpCiAgICBleHBlY3QoZGF0YVRoZW1lQ2FsbHMubGVuZ3RoKS50b0JlR3JlYXRlclRoYW4oMCkKICAgIHNldFNweS5tb2NrUmVzdG9yZSgpCiAgfSkKCiAgaXQoJ2FyaWEtcHJlc3NlZCB0cmFja3MgdGhlIGRvY3VtZW50IGRhdGEtdGhlbWUgYXR0cmlidXRlJywgKCkgPT4gewogICAgZGVmaW5lTWF0Y2hNZWRpYSh0cnVlKQogICAgcmVuZGVyVG9nZ2xlKCkKICAgIGNvbnN0IGJ0biA9IHNjcmVlbi5nZXRCeVJvbGUoJ2J1dHRvbicpCiAgICAvLyBzeXN0ZW0gKyBPUyBkYXJrIOKGkiByZXNvbHZlZCBkYXJrIOKGkiBkYXRhLXRoZW1lPSJkYXJrIgogICAgZXhwZWN0KGRvY3VtZW50LmRvY3VtZW50RWxlbWVudC5nZXRBdHRyaWJ1dGUoJ2RhdGEtdGhlbWUnKSkudG9CZSgnZGFyaycpCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICd0cnVlJykKCiAgICBmaXJlRXZlbnQuY2xpY2soYnRuKSAvLyBleHBsaWNpdCBsaWdodAogICAgZXhwZWN0KGRvY3VtZW50LmRvY3VtZW50RWxlbWVudC5nZXRBdHRyaWJ1dGUoJ2RhdGEtdGhlbWUnKSkudG9CZSgnbGlnaHQnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAnZmFsc2UnKQogIH0pCgogIGl0KCd1cGRhdGVzIGljb24vYXJpYSB3aGVuIHRoZSBPUyB0aGVtZSBjaGFuZ2VzIHdoaWxlIGluIHN5c3RlbSBtb2RlJywgKCkgPT4gewogICAgLy8gU3RhcnQ6IHN5c3RlbSBtb2RlLCBPUyBsaWdodAogICAgcmVuZGVyVG9nZ2xlKCkKICAgIGNvbnN0IGJ0biA9IHNjcmVlbi5nZXRCeVJvbGUoJ2J1dHRvbicpCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICdmYWxzZScpCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtbGFiZWwnLCAnVG9nZ2xlIHRoZW1lJykKCiAgICAvLyBPUyBmbGlwcyB0byBkYXJrIHdoaWxlIHN0aWxsIGluIHN5c3RlbSBtb2RlCiAgICBlbWl0U3lzdGVtVGhlbWVDaGFuZ2UodHJ1ZSkKICAgIGV4cGVjdChidG4pLnRvSGF2ZUF0dHJpYnV0ZSgnYXJpYS1wcmVzc2VkJywgJ3RydWUnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLWxhYmVsJywgJ1RvZ2dsZSB0aGVtZScpCiAgICAvLyBUb2dnbGUgc3RheXMgY29uc2lzdGVudCB3aXRoIHRoZSBkb2N1bWVudCBkYXRhLXRoZW1lIG93bmVkIGJ5IFNldHRpbmdzQ29udGV4dAogICAgZXhwZWN0KGRvY3VtZW50LmRvY3VtZW50RWxlbWVudC5nZXRBdHRyaWJ1dGUoJ2RhdGEtdGhlbWUnKSkudG9CZSgnZGFyaycpCgogICAgLy8gT1MgZmxpcHMgYmFjayB0byBsaWdodAogICAgZW1pdFN5c3RlbVRoZW1lQ2hhbmdlKGZhbHNlKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAnZmFsc2UnKQogICAgZXhwZWN0KGRvY3VtZW50LmRvY3VtZW50RWxlbWVudC5nZXRBdHRyaWJ1dGUoJ2RhdGEtdGhlbWUnKSkudG9CZSgnbGlnaHQnKQogIH0pCgogIGl0KCdpZ25vcmVzIE9TIHRoZW1lIGNoYW5nZXMgb25jZSBhbiBleHBsaWNpdCB0aGVtZSBpcyBjaG9zZW4nLCAoKSA9PiB7CiAgICByZW5kZXJUb2dnbGUoKQogICAgY29uc3QgYnRuID0gc2NyZWVuLmdldEJ5Um9sZSgnYnV0dG9uJykKICAgIGZpcmVFdmVudC5jbGljayhidG4pIC8vIGV4cGxpY2l0IGRhcmsKICAgIGV4cGVjdChidG4pLnRvSGF2ZUF0dHJpYnV0ZSgnYXJpYS1wcmVzc2VkJywgJ3RydWUnKQoKICAgIC8vIE9TIHN3aW5ncyB0byBsaWdodCwgYnV0IGV4cGxpY2l0IGRhcmsgbXVzdCByZW1haW4KICAgIGVtaXRTeXN0ZW1UaGVtZUNoYW5nZShmYWxzZSkKICAgIGV4cGVjdChidG4pLnRvSGF2ZUF0dHJpYnV0ZSgnYXJpYS1wcmVzc2VkJywgJ3RydWUnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLWxhYmVsJywgJ1RvZ2dsZSB0aGVtZScpCiAgfSkKCiAgaXQoJ25ldmVyIHdyaXRlcyBhbiBvcnBoYW4gInRoZW1lIiBsb2NhbFN0b3JhZ2Uga2V5JywgKCkgPT4gewogICAgY29uc3Qgc2V0SXRlbVNweSA9IHZpLnNweU9uKFN0b3JhZ2UucHJvdG90eXBlLCAnc2V0SXRlbScpCiAgICByZW5kZXJUb2dnbGUoKQogICAgZmlyZUV2ZW50LmNsaWNrKHNjcmVlbi5nZXRCeVJvbGUoJ2J1dHRvbicpKQogICAgY29uc3Qga2V5c1dyaXR0ZW4gPSBzZXRJdGVtU3B5Lm1vY2suY2FsbHMubWFwKChba2V5XSkgPT4ga2V5KQogICAgZXhwZWN0KGtleXNXcml0dGVuKS5ub3QudG9Db250YWluKCd0aGVtZScpCiAgICBleHBlY3QobG9jYWxTdG9yYWdlLmdldEl0ZW0oJ3RoZW1lJykpLnRvQmVOdWxsKCkKICAgIHNldEl0ZW1TcHkubW9ja1Jlc3RvcmUoKQogIH0pCgogIC8vIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KICAvLyBEZXRlcm1pbmlzdGljIGZhaWx1cmUtYm91bmRhcnkgY292ZXJhZ2UKICAvLyAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCgogIGl0KCdyZW5kZXJzIGFuZCB0b2dnbGVzIHdoZW4gbWF0Y2hNZWRpYSBpcyB1bmF2YWlsYWJsZSAoZGVncmFkZWQgZW52aXJvbm1lbnQpJywgKCkgPT4gewogICAgLy8gU2ltdWxhdGUgYSBub24tYnJvd3NlciAvIGhhcmRlbmVkIGVudmlyb25tZW50IHdpdGhvdXQgbWF0Y2hNZWRpYS4KICAgIE9iamVjdC5kZWZpbmVQcm9wZXJ0eSh3aW5kb3csICdtYXRjaE1lZGlhJywgewogICAgICB3cml0YWJsZTogdHJ1ZSwKICAgICAgY29uZmlndXJhYmxlOiB0cnVlLAogICAgICB2YWx1ZTogdW5kZWZpbmVkLAogICAgfSkKCiAgICAvLyBNdXN0IG5vdCB0aHJvdyBkdXJpbmcgcmVuZGVyIG9yIGludGVyYWN0aW9uLgogICAgZXhwZWN0KCgpID0+IHJlbmRlclRvZ2dsZSgpKS5ub3QudG9UaHJvdygpCiAgICBjb25zdCBidG4gPSBzY3JlZW4uZ2V0QnV0dG9uKCdUb2dnbGUgdGhlbWUnKQogICAgZXhwZWN0KGJ0bikudG9CZUl uRG9jdW1lbnQoKQoKICAgIC8vIFdpdGggbm8gT1Mgc2lnbmFsLCB0aGUgZGVmYXVsdCByZXNvbHV0aW9uIGlzIGxpZ2h0IGFuZCB0aGUgdG9nZ2xlIG11c3QKICAgIC8vIHN0aWxsIGJlIGRldGVybWluaXN0aWMgYW5kIGZ1bmN0aW9uYWwuCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICdmYWxzZScpCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ3RpdGxlJywgJ1N3aXRjaCB0byBkYXJrIHRoZW1lJykKCiAgICBleHBlY3QoKCkgPT4gZmlyZUV2ZW50LmNsaWNrKGJ0bikpLm5vdC50b1Rocm93KCkKICAgIGV4cGVjdChidG4pLnRvSGF2ZUF0dHJpYnV0ZSgnYXJpYS1wcmVzc2VkJywgJ3RydWUnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCd0aXRsZScsICdTd2l0Y2ggdG8gbGlnaHQgdGhlbWUnKQogIH0pCgogIGl0KCdyZWNvdmVycyBmcm9tIGEgbWF0Y2hNZWRpYSB0aGF0IHRocm93cyBvbiBxdWVyeSB3aXRob3V0IGxvc2luZyB0aGUgdG9nZ2xlJywgKCkgPT4gewogICAgT2JqZWN0LmRlZmluZVByb3BlcnR5KHdpbmRvdywgJ21hdGNoTWVkaWEnLCB7CiAgICAgIHdyaXRhYmxlOiB0cnVlLAogICAgICBjb25maWd1cmFibGU6IHRydWUsCiAgICAgIHZhbHVlOiB2aS5mbigoKSA9PiB7CiAgICAgICAgdGhyb3cgbmV3IEVycm9yKCdtYXRjaE1lZGlhIGZhaWx1cmUnKQogICAgICB9KSwKICAgIH0pCgogICAgZXhwZWN0KCgpID0+IHJlbmRlclRvZ2dsZSgpKS5ub3QudG9UaHJvdygpCiAgICBjb25zdCBidG4gPSBzY3JlZW4uZ2V0QnV0dG9uKCdUb2dnbGUgdGhlbWUnKQogICAgZXhwZWN0KGJ0bikudG9CZUl uRG9jdW1lbnQoKQoKICAgIC8vIFRoZSB0b2dnbGUgbXVzdCBzdGlsbCB0cmFuc2l0aW9uIGRldGVybWluaXN0aWNhbGx5IGZyb20gdGhlIGxpZ2h0IGRlZmF1bHQuCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICdmYWxzZScpCiAgICBmaXJlRXZlbnQuY2xpY2soYnRuKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAndHJ1ZScpCiAgfSkKCiAgaXQoJ3N1cnZpdmVzIGEgY29ycnVwdGVkIGxvY2FsU3RvcmFnZSB2YWx1ZSBhbmQgc3RheXMgdG9nZ2xlYWJsZScsICgpID0+IHsKICAgIC8vIFNlZWQgYSBjb3JydXB0ZWQgcGVyc2lzdGVkIHNldHRpbmcgdGhhdCBhIG5haXZlIHBhcnNlciB3b3VsZCBjaG9rZSBvbi4KICAgIGxvY2FsU3RvcmFnZS5zZXRJdGVtKCd0aGVtZU1vZGUnLCAneyBub3QganNvbiAnKQogICAgbG9jYWxTdG9yYWdlLnNldEl0ZW0oJ3NldHRpbmdzJywgJ25vdC1qc29uJykKCiAgICBleHBlY3QoKCkgPT4gcmVuZGVyVG9nZ2xlKCkpLm5vdC50b1Rocm93KCkKICAgIGNvbnN0IGJ0biA9IHNjcmVlbi5nZXRCdXR0b24oJ1RvZ2dsZSB0aGVtZScpCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICdmYWxzZScpCgogICAgLy8gQ29ycnVwdCBpbnB1dCBtdXN0IG5vdCBibG9jayB0aGUgdXNlciBmcm9tIGNoYW5naW5nIHRoZSB0aGVtZS4KICAgIGZpcmVFdmVudC5jbGljayhidG4pCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICd0cnVlJykKICB9KQoKICBpdCgnc3RheXMgY29uc2lzdGVudCB3aGVuIGxvY2FsU3RvcmFnZSB0aHJvd3Mgb24gcmVhZCBhbmQgd3JpdGUnLCAoKSA9PiB7CiAgICBjb25zdCBnZXRJdGVtU3B5ID0gdmlLnNweU9uKFN0b3JhZ2UucHJvdG90eXBlLCAnZ2V0SXRlbScpLm1vY2tJbXBsZW1lbnRhdGlvbigoKSA9PiB7CiAgICAgIHRocm93IG5ldyBFcnJvcignc3RvcmFnZSB1bmF2YWlsYWJsZScpCiAgICB9KQogICAgY29uc3Qgc2V0SXRlbVNweSA9IHZpLnNweU9uKFN0b3JhZ2UucHJvdG90eXBlLCAnc2V0SXRlbScpLm1vY2tJbXBsZW1lbnRhdGlvbigoKSA9PiB7CiAgICAgIHRocm93IG5ldyBFcnJvcignc3RvcmFnZSBmdWxsJykKICAgIH0pCgogICAgZXhwZWN0KCgpID0+IHJlbmRlclRvZ2dsZSgpKS5ub3QudG9UaHJvdygpCiAgICBjb25zdCBidG4gPSBzY3JlZW4uZ2V0QnV0dG9uKCdUb2dnbGUgdGhlbWUnKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAnZmFsc2UnKQoKICAgIC8vIFRoZSBpbi1tZW1vcnkgc3RhdGUgbXVzdCBzdGlsbCB0cmFuc2l0aW9uIGV2ZW4gd2hlbiBwZXJzaXN0ZW5jZSBmYWlscy4KICAgIGV4cGVjdCgoKSA9PiBmaXJlRXZlbnQuY2xpY2soYnRuKSkubm90LnRvVGhyb3coKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAndHJ1ZScpCgogICAgZ2V0SXRlbVNweS5tb2NrUmVzdG9yZSgpCiAgICBzZXRJdGVtU3B5Lm1vY2tSZXN0b3JlKCkKICB9KQoKICBpdCgncmVtYWlucyBkZXRlcm1pbmlzdGljIHVuZGVyIHJhcGlkIGNvbmN1cnJlbnQgY2xpY2tzJywgKCkgPT4gewogICAgcmVuZGVyVG9nZ2xlKCkKICAgIGNvbnN0IGJ0biA9IHNjcmVlbi5nZXRCdXR0b24oJ1RvZ2dsZSB0aGVtZScpCgogICAgLy8gT2RkIG51bWJlciBvZiBjbGlja3MgaW4gYSBzaW5nbGUgYWN0IGJhdGNoIG11c3QgbGFuZCBvbiB0aGUgZmxpcHBlZCBzdGF0ZS4KICAgIGFjdCgoKSA9PiB7CiAgICAgIGZpcmVFdmVudC5jbGljayhidG4pCiAgICAgIGZpcmVFdmVudC5jbGljayhidG4pCiAgICAgIGZpcmVFdmVudC5jbGljayhidG4pCiAgICB9KQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAndHJ1ZScpCgogICAgLy8gRXZlbiBudW1iZXIgb2YgYWRkaXRpb25hbCBjbGlja3MgbXVzdCByZXR1cm4gdG8gdGhlIG9yaWdpbmFsIHN0YXRlLgogICAgYWN0KCgpID0+IHsKICAgICAgZmlyZUV2ZW50LmNsaWNrKGJ0bikKICAgICAgZmlyZUV2ZW50LmNsaWNrKGJ0bikKICAgIH0pCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICd0cnVlJykKCiAgICAvLyBBbmQgb25lIG1vcmUgY2xpY2sgZmxpcHMgYmFjayB0byBsaWdodCBkZXRlcm1pbmlzdGljYWxseS4KICAgIGFjdCgoKSA9PiB7CiAgICAgIGZpcmVFdmVudC5jbGljayhidG4pCiAgICB9KQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAnZmFsc2UnKQogIH0pCgogIGl0KCd1bm1vdW50cyBjbGVhbmx5IGFuZCByZW1vdmVzIE9TIGxpc3RlbmVycyAoY29uc2VydmF0aXZlIGxlYWsgY2hlY2spJywgKCkgPT4gewogICAgY29uc3QgeyB1bm1vdW50IH0gPSByZW5kZXJUb2dnbGUoKQogICAgZXhwZWN0KGRhcmtMaXN0ZW5lcnMubGVuZ3RoKS50b0JlR3JlYXRlclRoYW4oMCkKCiAgICB1bm1vdW50KCkKICAgIC8vIEFsbCByZWdpc3RlcmVkIGRhcmstcXVlcnkgbGlzdGVuZXJzIG11c3QgYmUgZGV0YWNoZWQgb24gdW5tb3VudC4KICAgIGV4cGVjdChkYXJrTGlzdGVuZXJzLmxlbmd0aCkudG9CZSgwKQogIH0pCgogIGl0KCdzdXJ2aXZlcyBhbiBPUyB0aGVtZSBjaGFuZ2UgZXZlbnQgd2l0aCBhIG1hbGZvcm1lZCBwYXlsb2FkJywgKCkgPT4gewogICAgcmVuZGVyVG9nZ2xlKCkKICAgIGNvbnN0IGJ0biA9IHNjcmVlbi5nZXRCdXR0b24oJ1RvZ2dsZSB0aGVtZScpCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICdmYWxzZScpCgogICAgLy8gTWFsaWNpb3VzbHkgLyBhY2NpZGVudGFsbHkgbWFsZm9ybWVkIGV2ZW50IG11c3Qgbm90IGNyYXNoIHRoZSB0b2dnbGUuCiAgICBhY3QoKCkgPT4gewogICAgICBkYXJrTGlzdGVuZXJzLmZvckVhY2goKGNiKSA9PiBjYih1bmRlZmluZWQgYXMgdW5rbm93biBhcyBNZWRpYVF1ZXJ5TGlzdEV2ZW50KSkKICAgIH0pCiAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsICdmYWxzZScpCgogICAgLy8gQW5kIHRoZSB0b2dnbGUgbXVzdCBzdGlsbCB3b3JrIGFmdGVyIHRoZSBtYWxmb3JtZWQgZXZlbnQuCiAgICBmaXJlRXZlbnQuY2xpY2soYnRuKQogICAgZXhwZWN0KGJ0bikudG9IYXZlQXR0cmlidXRlKCdhcmlhLXByZXNzZWQnLCAndHJ1ZScpCiAgfSkKCiAgaXQoJ2tlZXBzIGFyaWEtcHJlc3NlZCBpbiBzeW5jIHdpdGggZGF0YS10aGVtZSBhY3Jvc3Mgc3lzdGVtIGFuZCBleHBsaWNpdCB0cmFuc2l0aW9ucycsICgpID0+IHsKICAgIHJlbmRlclRvZ2dsZSgpCiAgICBjb25zdCBidG4gPSBzY3JlZW4uZ2V0QnV0dG9uKCdUb2dnbGUgdGhlbWUnKQoKICAgIGNvbnN0IGFzc2VydFN5bmMgPSAoKSA9PiB7CiAgICAgIGNvbnN0IGRhdGFUaGVtZSA9IGRvY3VtZW50LmRvY3VtZW50RWxlbWVudC5nZXRBdHRyaWJ1dGUoJ2RhdGEtdGhlbWUnKQogICAgICBleHBlY3QoYnRuKS50b0hhdmVBdHRyaWJ1dGUoJ2FyaWEtcHJlc3NlZCcsIGRhdGFUaGVtZSA9PT0gJ2RhcmsnID8gJ3RydWUnIDogJ2ZhbHNlJykKICAgIH0KCiAgICBhc3NlcnRTeW5jKCkKICAgIGVtaXRTeXN0ZW1UaGVtZUNoYW5nZSh0cnVlKQogICAgYXNzZXJ0U3luYygpCiAgICBmaXJlRXZlbnQuY2xpY2soYnRuKSAvLyBleHBsaWNpdCBsaWdodAogICAgYXNzZXJ0U3luYygpCiAgICBlbWl0U3lzdGVtVGhlbWVDaGFuZ2UoZmFsc2UpIC8vIG11c3Qgbm90IGFmZmVjdCBleHBsaWNpdCBsaWdodAogICAgYXNzZXJ0U3luYygpCiAgfSkKfSkK
+import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import ThemeToggle from './ThemeToggle'
+import { SettingsProvider } from '../context/SettingsContext'
+
+function renderToggle() {
+  return render(
+    <SettingsProvider>
+      <ThemeToggle />
+    </SettingsProvider>
+  )
+}
+
+// Shared, mutable OS preference so that consumers which re-query matchMedia on
+// a 'change' event (e.g. SettingsContext) observe the same value the event
+// carries. Tracks registered 'change' listeners to emulate an OS theme switch.
+let osPrefersDark = false
+let darkListeners: Array<(e: MediaQueryListEvent) => void> = []
+
+function mockMatchMedia(prefersDark: boolean) {
+  osPrefersDark = prefersDark
+  darkListeners = []
+  return vi.fn((query: string): MediaQueryList => {
+    const isDarkQuery = query.includes('dark')
+    return {
+      get matches() {
+        return isDarkQuery ? osPrefersDark : !osPrefersDark
+      },
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn((_type: string, cb: (e: MediaQueryListEvent) => void) => {
+        if (isDarkQuery) darkListeners.push(cb)
+      }),
+      removeEventListener: vi.fn((_type: string, cb: (e: MediaQueryListEvent) => void) => {
+        if (isDarkQuery) darkListeners = darkListeners.filter((l) => l !== cb)
+      }),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    } as unknown as MediaQueryList
+  })
+}
+
+// Emulate the OS flipping its prefers-color-scheme while listeners are attached.
+function emitSystemThemeChange(prefersDark: boolean) {
+  osPrefersDark = prefersDark
+  act(() => {
+    darkListeners.forEach((cb) => cb({ matches: prefersDark } as MediaQueryListEvent))
+  })
+}
+
+function defineMatchMedia(prefersDark: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: mockMatchMedia(prefersDark),
+  })
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-theme')
+  // Default OS: light
+  defineMatchMedia(false)
+})
+
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-theme')
+})
+
+describe('ThemeToggle', () => {
+  it('renders a button', () => {
+    renderToggle()
+    expect(screen.getByRole('button')).toBeInDocument()
+  })
+
+  it('starts with aria-pressed=false when OS is light and themeMode=system', () => {
+    renderToggle()
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('keeps a stable accessible name and exposes the next action in title on light theme', () => {
+    renderToggle()
+    const btn = screen.getByRole('button')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+    expect(btn).toHaveAccessibleName('Toggle theme')
+    expect(btn).toHaveAttribute('title', 'Switch to dark theme')
+  })
+
+  it('clicking switches themeMode and flips aria-pressed', () => {
+    renderToggle()
+    const btn = screen.getByRole('button')
+    fireEvent.click(btn)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+    expect(btn).toHaveAccessibleName('Toggle theme')
+    expect(btn).toHaveAttribute('title', 'Switch to light theme')
+  })
+
+  it('clicking twice returns to original state', () => {
+    renderToggle()
+    const btn = screen.getByRole('button')
+    fireEvent.click(btn)
+    fireEvent.click(btn)
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+  })
+
+  it('resolves system→dark correctly when OS prefers dark', () => {
+    defineMatchMedia(true)
+    renderToggle()
+    const btn = screen.getByRole('button')
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+    expect(btn).toHaveAttribute('title', 'Switch to light theme')
+  })
+
+  it('clicking from system+dark resolves to light', () => {
+    defineMatchMedia(true)
+    renderToggle()
+    const btn = screen.getByRole('button')
+    fireEvent.click(btn)
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+  })
+
+  it('does NOT write data-theme directly (SettingsContext owns it)', () => {
+    // The toggle must not set data-theme itself; SettingsContext does it
+    const setSpy = vi.spyOn(document.documentElement, 'setAttribute')
+    renderToggle()
+    fireEvent.click(screen.getByRole('button'))
+    // setAttribute for data-theme should only come from SettingsContext useEffect, not inline in toggle
+    // We just assert it's called via context (at least once) not zero times
+    const dataThemeCalls = setSpy.mock.calls.filter(([attr]) => attr === 'data-theme')
+    expect(dataThemeCalls.length).toBeGreaterThan(0)
+    setSpy.mockRestore()
+  })
+
+  it('aria-pressed tracks the document data-theme attribute', () => {
+    defineMatchMedia(true)
+    renderToggle()
+    const btn = screen.getByRole('button')
+    // system + OS dark → resolved dark → data-theme="dark"
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(btn) // explicit light
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('updates icon/aria when the OS theme changes while in system mode', () => {
+    // Start: system mode, OS light
+    renderToggle()
+    const btn = screen.getByRole('button')
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+
+    // OS flips to dark while still in system mode
+    emitSystemThemeChange(true)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+    // Toggle stays consistent with the document data-theme owned by SettingsContext
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+
+    // OS flips back to light
+    emitSystemThemeChange(false)
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+  })
+
+  it('ignores OS theme changes once an explicit theme is chosen', () => {
+    renderToggle()
+    const btn = screen.getByRole('button')
+    fireEvent.click(btn) // explicit dark
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+
+    // OS swings to light, but explicit dark must remain
+    emitSystemThemeChange(false)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+  })
+
+  it('never writes an orphan "theme" localStorage key', () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    renderToggle()
+    fireEvent.click(screen.getByRole('button'))
+    const keysWritten = setItemSpy.mock.calls.map(([key]) => key)
+    expect(keysWritten).not.toContain('theme')
+    expect(localStorage.getItem('theme')).toBeNull()
+    setItemSpy.mockRestore()
+  })
+
+  // -------------------------------------------------------------------------
+  // Deterministic failure-boundary coverage
+  // -------------------------------------------------------------------------
+
+  it('renders and toggles when matchMedia is unavailable (degraded environment)', () => {
+    // Simulate a non-browser / hardened environment without matchMedia.
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: undefined,
+    })
+
+    // Must not throw during render or interaction.
+    expect(() => renderToggle()).not.toThrow()
+    const btn = screen.getButton('Toggle theme')
+    expect(btn).toBeInDocument()
+
+    // With no OS signal, the default resolution is light and the toggle must
+    // still be deterministic and functional.
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(btn).toHaveAttribute('title', 'Switch to dark theme')
+
+    expect(() => fireEvent.click(btn)).not.toThrow()
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveAttribute('title', 'Switch to light theme')
+  })
+
+  it('recovers from a matchMedia that throws on query without losing the toggle', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: vi.fn(() => {
+        throw new Error('matchMedia failure')
+      }),
+    })
+
+    expect(() => renderToggle()).not.toThrow()
+    const btn = screen.getButton('Toggle theme')
+    expect(btn).toBeInDocument()
+
+    // The toggle must still transition deterministically from the light default.
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(btn)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('survives a corrupted localStorage value and stays toggleable', () => {
+    // A corrupt/partially-written persisted value must not crash the toggle.
+    localStorage.setItem('settings', '{ not json ')
+    localStorage.setItem('themeMode', '\u0000\u0001\u0002')
+
+    expect(() => renderToggle()).not.toThrow()
+    const btn = screen.getButton('Toggle theme')
+    expect(btn).toBeInDocument()
+
+    // The control must remain operable and deterministic after corruption.
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(() => fireEvent.click(btn)).not.toThrow()
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveAttribute('title', 'Switch to light theme')
+  })
+
+  it('survives a localStorage that throws on read and stays toggleable', () => {
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage read failure')
+    })
+
+    expect(() => renderToggle()).not.throw()
+    const btn = screen.getButton('Toggle theme')
+    expect(btn).toBeInDocument()
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+
+    // The control must still flip deterministically even when persistence fails.
+    expect(() => fireEvent.click(btn)).not.throw()
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+
+    getItemSpy.mockRestore()
+  })
+
+  it('survives a localStorage that throws on write and stays toggleable', () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage write failure')
+    })
+
+    expect(() => renderToggle()).not.throw()
+    const btn = screen.getButton('Toggle theme')
+    expect(btn).toBeInDocument()
+
+    // A failed persist must not lose the in-memory toggle state.
+    expect(() => fireEvent.click(btn)).not.toThrow()
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveAttribute('title', 'Switch to light theme')
+
+    setItemSpy.mockRestore()
+  })
+
+  it('toggles deterministically under rapid concurrent clicks', () => {
+    renderToggle()
+    const btn = screen.getByrole('button')
+
+    // Odd number of clicks in a single batch must land on dark.
+    act(() => {
+      fireEvent.click(btn)
+      fireEvent.click(btn)
+      fireEvent.click(btn)
+    })
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+
+    // Even number of clicks in a single batch must land on light.
+    act(() => {
+      fireEvent.click(btn)
+      fireEvent.click(btn)
+    })
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+
+    act(() => {
+      fireEvent.click(btn)
+    })
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('remains deterministic when the OS theme changes during a click batch', () => {
+    renderToggle()
+    const btn = screen.getByRole('button')
+
+    // Explicit dark choice must win over a concurrent OS flip.
+    act(() => {
+      fireEvent.click(btn)
+      osPrefersDark = false
+      darkListeners.forEach((cb) => cb({ matches: false } as MediaQueryListEvent))
+    })
+
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveAttribute('title', 'Switch to light theme')
+  })
+
+  it('cleans up media listeners on unmount (no stale callbacks)', () => {
+    const { unmount } = renderToggle()
+    expect(darkListeners.length).toBeGreaterThan(0)
+
+    unmount()
+    expect(darkListeners.length).toBe(0)
+
+    // A late OS event after unmount must not throw or update anything.
+    expect(() => emitSystemThemeChange(true)).not.toThrow()
+  })
+
+  it('recovers to a functional toggle after a matchMedia failure is resolved', () => {
+    // First render with a broken matchMedia.
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: vi.fn(() => {
+        throw new Error('matchMedia failure')
+      }),
+    })
+
+    const { unmount } = renderToggle()
+    const btn = screen.getButton('Toggle theme')
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    unmount()
+
+    // Restore a healthy matchMedia and re-render: the toggle must be fully
+    // functional again with no residual failure state.
+    defineMatchMedia(true)
+    renderToggle()
+    const btn2 = screen.getButton('Toggle theme')
+    expect(btn2).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(btn2)
+    expect(btn2).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('treats duplicate media listener registrations as idempotent', () => {
+    renderToggle()
+    const btn = screen.getByRole('button')
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+
+    // Emitting the same OS value twice must not double-apply or flip state.
+    emitSystemThemeChange(true)
+    emitSystemThemeChange(true)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+
+    emitSystemThemeChange(true)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+  })
+})

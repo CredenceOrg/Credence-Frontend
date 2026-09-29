@@ -8,6 +8,8 @@ const DARK_QUERY = '(prefers-color-scheme: dark)'
 
 export type Theme = 'light' | 'dark'
 
+export type ThemeToggleState = 'idle' | 'loading' | 'error' | 'stale' | 'permission-denied'
+
 function isValidTheme(value: unknown): value is Theme {
   return value === 'light' || value === 'dark'
 }
@@ -16,7 +18,7 @@ function isValidTheme(value: unknown): value is Theme {
  * Safely read the persisted theme.
  *
  * Invariants:
-* - Never throws. Storage may be disabled (private mode, SecurityError,
+ * - Never throws. Storage may be disabled (private mode, SecurityError,
  *   QuotaExceededError, etc.) or contain arbitrary corrupted data.
  * - Returns `undefined` for any value that is not exactly 'light' | 'dark'.
  *   Corrupt / injected values are never propagated into the DOM or state.
@@ -91,8 +93,25 @@ function MoonIcon() {
   )
 }
 
+function SpinnerIcon() {
+  return (
+    <svg
+      className="theme-toggle__spinner"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M10 2a8 8 0 1 1-8 8" />
+    </svg>
+  )
+}
+
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(resolveTheme)
+  const [state, setState] = useState<ThemeToggleState>('idle')
   // Tracks whether the user has explicitly chosen a theme during this mount.
   // While false, OS preference changes are honored; once true, they are ignored
   // so an explicit choice is never silently overwritten.
@@ -100,6 +119,16 @@ export default function ThemeToggle() {
   // Guards against out-of-order / duplicate async writes from a rapid
   // succession of toggles or OS events: only the latest commit is applied.
   const writeGeneration = useRef(0)
+  // Tracks whether the component is still mounted so async continuations
+  // cannot commit state after unmount (stale commit guard).
+  const isMounted = useRef(true)
+
+  useEffect(() => {
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
 
   // Single source of truth for applying a theme to the document and storage.
   // Idempotent: repeated calls with the same theme are no-ops.
@@ -177,23 +206,78 @@ export default function ThemeToggle() {
     return () => window.removeEventListener(THEME_CHANGE_EVENT, handleExternal)
   }, [commitTheme])
 
+  /**
+   * Commit an explicit theme change with deterministic failure-boundary
+   * handling.
+   *
+   * Invariants:
+   * - The in-memory theme is always committed, even if persistence or DOM
+   *   writes fail, so the toggle never gets stuck or loses user intent.
+   * - A persistence failure is surfaced as a non-fatal 'error' state that
+   *   self-recovers on the next successful commit (retry-safe).
+   * - A DOM write failure is surfaced as 'permission-denied' without
+   *   exposing the underlying error message.
+   * - Only the latest generation may mutate the DOM / storage, so concurrent
+   *   or out-of-order commits cannot produce an inconsistent result.
+   */
+  const commitExplicitTheme = useCallback((nextTheme: Theme) => {
+    const generation = ++writeGeneration.current
+    if (!isMounted.current) return
+
+    // Always commit the in-memory theme first: the toggle must remain
+    // responsive even when external systems are degraded.
+    setTheme(nextTheme)
+
+    let domFailed = false
+    try {
+      document.documentElement.dataset.theme = nextTheme
+    } catch {
+      domFailed = true
+    }
+
+    let persistFailed = false
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+    } catch {
+      persistFailed = true
+    }
+
+    // Only the latest generation may mutate the visible failure state.
+    if (generation !== writeGeneration.current) return
+
+    if (domFailed) {
+      setState('permission-denied')
+      return
+    }
+    if (persistFailed) {
+      setState('error')
+      return
+    }
+    setState('idle')
+  }, [])
+
   const toggleTheme = () => {
     hasExplicitChoice.current = true
-    commitTheme(theme === 'light' ? 'dark' : 'light')
+    commitExplicitTheme(theme === 'light' ? 'dark' : 'light')
   }
 
   const nextTheme = theme === 'light' ? 'dark' : 'light'
+  const isLoading = state === 'loading'
+  const isDisabled = isLoading
 
   return (
     <button
       type="button"
       className="theme-toggle"
-      onClick={toggleTheme}
+      onClick=toggleTheme
+      disabled={isDisabled}
+      data-state={state}
+      aria-busy={isLoading ? 'true' : undefined}
       aria-label={`Switch to ${nextTheme} mode`}
       aria-pressed={theme === 'dark'}
-      title={`Switch to ${nextTheme} mode}`
+      title={`Switch to ${nextTheme} mode}`}
     >
-      {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+      {isLoading ? <SpinnerIcon /> : theme === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>
   )
 }

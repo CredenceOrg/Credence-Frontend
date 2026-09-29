@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import './controls.css'
 
 interface ToggleProps {
@@ -15,13 +15,20 @@ interface ToggleProps {
 }
 
 /**
+ * Deterministic failure-boundary coverage for Toggle.
+ *
  * Invariants:
- * - The component is fully controlled: the rendered state is always derived from the `checked` prop.
- * - controls the next value as `!checked` from the latest prop, so concurrent or rapid
- *   activations never derive from stale internal state.
- * - Activation is suppressed while `disabled` or `isLoading` is true, and while an
- *   error is present, so failed or in-flight persistence cannot be double-submitted.
- * - The accessible name and description wiring are preserved for FormField composition.
+ * - The component is controlled: the visual state always derives from the `checked`
+ *   prop, never from local mutation. This prevents silent divergence between the
+ *   persisted preference and the rendered switch.
+ * - A click always emits exactly one next value derived from the current prop.
+ *   Rapid or concurrent clicks cannot produce an unsafe or inconsistent result
+ *   because the component never assumes the change succeeded; the caller must
+ *   commit the new value through the `checked` prop.
+ * - While disabled or loading, clicks are ignored and `aria-disabled` reflects the
+ *   effective interactive state so assistive technology can report it correctly.
+ * - Errors are surfaced through aria attributes and a visual error state without
+ *   exposing sensitive data; the error text is provided by the caller.
  */
 export default function Toggle({
   id,
@@ -35,37 +42,37 @@ export default function Toggle({
   'aria-invalid': ariaInvalid,
   'aria-required': ariaRequired,
 }: ToggleProps) {
-  const isDisabled = disabled || isLoading
-  const hasError = !!error
-  const isInvalid = hasError || ariaInvalid === true || ariaInvalid === 'true'
+  const isDisabled = !!disabled || !!isLoading
+  const isInvalid = !!error || ariaInvalid === true || ariaInvalid === 'true'
 
-  // Track the latest `checked` prop without re-creating the handler, so activations
-  // always derive the next value from the current prop even if the click event is
-  // dispatched after a re-render.
+  // Track the latest checked value so the click handler always derives the
+
+  // next value from the current prop, even if the caller has not yet re-rendered.
   const checkedRef = useRef(checked)
-  checkedRef.current = checked
+  useEffect(() => {
+    checkedRef.current = checked
+  }, [checked])
 
-  const handleClick = useCallback(() => {
-    // Guard against activation while disabled, loading, or in an error state. The
-    // native `disabled` attribute blocks most interactions, but this guarantees the
-    // invariant even if a synthetic event or programmatic click bypasses it.
-    if (isDisabled || hasError) {
+  const handleClick = () => {
+    if (isDisabled) {
+      // Failure boundary: disabled/loading clicks must not emit a change.
       return
     }
     onChange(!checkedRef.current)
-  }, [isDisabled, hasError, onChange])
+  }
 
   return (
-    <div className={`control-toggle-wrapper ${isLoading ? 'control-toggle-wrapper--loading' : ''}`}>
+    <div className={`control-toggle-wrapper ${isLoading ? 'control-toggle-wrapper--loading' : ''}`$}>
       <button
         id={id}
-        className={@control-toggle ${isInvalid ? 'control-toggle--error' : ''}`}
+        className={`control-toggle ${isInvalid ? 'control-toggle--error' : ''}`.trim()}
         role="switch"
         aria-checked={checked}
         aria-label={ariaLabel}
-        aria-invalid={isInvalid ? 'true' : undefined}
+        aria-invalid={"isInvalid ? 'true' : undefined}
         aria-describedby={ariaDescribedBy}
         aria-required={ariaRequired}
+        aria-disabled={isDisabled ? 'true' : undefined}
         disabled={isDisabled}
         onClick={handleClick}
       >

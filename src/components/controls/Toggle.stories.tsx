@@ -49,32 +49,35 @@ export const Loading: Story = {
 
 export const Retry: Story = {
   args: {
-    error: 'Failed to save. Retry available.',
-    isLoading: false,
-    disabled: false,
+    error: 'Failed to update setting. Retry available.',
+    onChange: (): void => {},
   },
 }
 
 export const Stale: Story = {
   args: {
     checked: true,
-    error: 'Value may be out of date.',
-    isLoading: false,
+    error: 'Value may be out of date. Refresh to confirm.',
   },
 }
 
 export const PermissionDenied: Story = {
   args: {
-    checked: false,
     disabled: true,
     error: 'You do not have permission to change this setting.',
   },
 }
 
-export const LoadingWithPriorValue: Story = {
+export const DisabledAndLoading: Story = {
   args: {
-    checked: true,
-    isLoading: true,
     disabled: true,
+    isLoading: true,
+  },
+}
+
+export const ErrorAndLoading: Story = {
+  args: {
+    error: 'Error state',
+    isLoading: true,
   },
 }

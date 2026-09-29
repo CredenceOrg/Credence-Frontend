@@ -124,6 +124,10 @@
   cursor: not-allowed;
 }
 
+.control-toggle--error {
+  border-color: var(--credence-color-danger-border) !important;
+}
+
 .control-toggle[aria-busy='true'] {
   cursor: progress;
 }
@@ -131,19 +135,26 @@
 .control-toggle[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
 .control-toggle[data-stale='true'] {
-  border-style: dashed;
+  border-color: var(--credence-color-warning-border, var(--credence-color-danger-border));
 }
 
 .control-toggle[data-permission-denied='true'] {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
-.control-toggle--error {
-  border-color: var(--credence-color-danger-border) !important;
+.control-toggle__error {
+  display: block;
+  margin-top: var(--credence-space-1);
+  color: var(--credence-color-danger-text, var(--credence-color-danger-border));
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-xs, var(--credence-font-size-sm));
+  line-height: var(--credence-line-height-tight);
 }
 
 .control-toggle-spinner {

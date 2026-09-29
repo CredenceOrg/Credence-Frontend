@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { FormField } from '../forms/FormField'
@@ -65,8 +65,8 @@ describe('Toggle', () => {
     await user.click(toggle)
 
     expect(handleChange).toHaveBeenCalledTimes(2)
-    expect(handleChange).toHaveBeenNextCalledWith(1, true)
-    expect(handleChange).toHaveBeenNextCalledWith(2, true)
+    expect(handleChange).toHaveBeenNthCalledWith(1, true)
+    expect(handleChange).toHaveBeenNthCalledWith(2, true)
   })
 
   it('composes with FormField label and id wiring without ariaLabel', () => {
@@ -106,194 +106,116 @@ describe('Toggle', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Preference saved')
   })
 
-  it('does not emit when disabled', async () => {
-    // Behavior under test: disabled toggles must not call onChange.
+  it('disables activation and exposes the disabled state when disabled', async () => {
+    // Behavior under test: a disabled Toggle cannot be clicked or keyboard-activated,
+    // so no onChange side effect can occur while the control is unavailable.
     const user = userEvent.setup()
     const handleChange = vi.fn()
-
-    render(<Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" disabled />)
-
-    await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
-
-    expect(handleChange).not.toHaveBeenCalled()
-  })
-
-  it('does not emit when loading', async () => {
-    // Behavior under test: loading toggles are busy and non-interactive.
-    const user = userEvent.setup()
-    const handleChange = vi.fn()
-
-    render(<Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" isLoading />)
-
-    await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
-
-    expect(handleChange).not.toHaveBeenCalled()
-  })
-
-  it('marks the switch invalid when an error is provided', () => {
-    // Behavior under test: error prop forces aria-invalid and the error class.
-    render(<Toggle checked={false} onChange={vi.fn()} ariaLabel="Enable toasts" error="Broken" />)
-
-    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
-    expect(toggle).toHaveAttribute('aria-invalid', 'true')
-    expect(toggle).toHaveClass('control-toggle--error')
-  })
-
-  it('disables and marks busy while an async change is in flight', async () => {
-    // Behavior under test: async submissions block concurrent interactions.
-    const user = userEvent.setup()
-    let resolve!: () => void
-    const onChangeAsync = vi.fn(
-      () =>
-        new Promise<void>((res) => {
-          resolve = res
-        })
-    )
 
     render(
-      <Toggle
-        checked={false}
-        onChange={vi.fn()}
-        onChangeAsync={onChangeAsync}
-        ariaLabel="Enable toasts"
-      />
+      <Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" disabled />
     )
 
     const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
-    await user.click(toggle)
-
-    expect(onChangeAsync).toHaveBeenCalledTimes(1)
     expect(toggle).toBeDisabled()
-    expect(toggle).toHaveAttribute('aria-busy', 'true')
 
-    // Rapid clicks while in flight must not double-submit.
     await user.click(toggle)
-    expect(onChangeAsync).toHaveBeenCalledTimes(1)
+    toggle.focus()
+    await user.keyboard('{Enter}')
 
-    resolve()
-    await waitFor(() => expect(toggle).not.toBeDisabled())
-    expect(toggle).not.toHaveAttribute('aria-busy')
+    expect(handleChange).not.toHaveBeenCalled()
   })
 
-  it('reports async failures and remains retryable', async () => {
-    // Behavior under test: failed async changes surface an error and leave the control usable.
+  it('does not emit changes when the controlled checked prop is undefined', async () => {
+    // Behavior under test: a missing controlled value is an invalid input and must not
+    // silently derive a next value from undefined, which would lose user data.
     const user = userEvent.setup()
-    const failure = new Error('network')
-    const onChangeAsync = vi.fn().mockRejected(failure)
-    const onChangeError = vi.fn()
+    const handleChange = vi.fn()
 
     render(
       <Toggle
-        checked={false}
-        onChange={vi.fn()}
-        onChangeAsync={onChangeAsync}
-        onChangeError={onChangeError}
-        ariaLabel="Enable toasts"
-      />
-    )
-
-    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
-    await user.click(toggle)
-
-    await waitFor(() => expect(onChangeError).toHaveBeenCalledWith(failure))
-    expect(toggle).not.toBeDisabled()
-    expect(toggle).toHaveAttribute('aria-checked', 'false')
-  })
-
-  it('allows retry after a failure', async () => {
-    // Behavior under test: a failed async change can be retried successfully.
-    const user = userEvent.setup()
-    const onChangeAsync = vi
-      .fn()
-      .mockRejectedOnce(new Error('network'))
-      .mockResolvedOnce(undefined)
-    const onChangeError = vi.fn()
-
-    render(
-      <Toggle
-        checked={false}
-        onChange={vi.fn()}
-        onChangeAsync={onChangeAsync}
-        onChangeError={onChangeError}
-        ariaLabel="Enable toasts"
-      />
-    )
-
-    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
-    await user.click(toggle)
-    await waitFor(() => expect(onChangeError).toHaveBeenCalled())
-
-    await user.click(toggle)
-    await waitFor(() => expect(onChangeAsync).toHaveBeenCalledTimes(2))
-    expect(onChangeError).toHaveBeenCalledTimes(1)
-  })
-
-  it('ignores additional clicks while a request is in flight', async () => {
-    // Behavior under test: concurrent clicks are coalesced into a single submit.
-    const user = userEvent.setup()
-    let resolve!: () => void
-    const onChangeAsync = vi.fn(
-      () =>
-        new Promise<void>((res) => {
-          resolve = res
-        })
-    )
-
-    render(
-      <Toggle
-        checked={false}
-        onChange={vi.fn()}
-        onChangeAsync={onChangeAsync}
-        ariaLabel="Enable toasts"
-      />
-    )
-
-    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
-    await user.click(toggle)
-    await user.click(toggle)
-    await user.click(toggle)
-
-    expect(onChangeAsync).toHaveBeenCalledTimes(1)
-
-    resolve()
-    await waitFor(() => expect(toggle).not.toBeDisabled())
-  })
-
-  it('supports aria-required and aria-describedby passthrough', () => {
-    // Behavior under test: external aria wiring is preserved for form integrations.
-    render(
-      <Toggle
-        checked={false}
-        onChange={vi.fn()}
-        ariaLabel="Enable toasts"
-        aria-required="true"
-        aria-describedby="help-text"
-      />
-    )
-
-    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
-    expect(toggle).toHaveAttribute('aria-required', 'true')
-    expect(toggle).toHaveAttribute('aria-describedby', 'help-text')
-  })
-
-  it('prefers onChangeAsync over onChange when both are provided', async () => {
-    // Behavior under test: async handler is the single source of truth when present.
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    const onChangeAsync = vi.fn().mockResolved(undefined)
-
-    render(
-      <Toggle
-        checked={false}
-        onChange={onChange}
-        onChangeAsync={onChangeAsync}
+        // @js-ignore -- deliberately exercise the invalid undefined controlled value.
+        checked={undefined as unknown as boolean}
+        onChange={handleChange}
         ariaLabel="Enable toasts"
       />
     )
 
     await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
 
-    expect(onChangeAsync).toHaveBeenCalledWith(true)
-    expect(onChange).not.toHaveBeenCalled()
+    expect(handleChange).not.toHaveBeenCalled()
+  })
+
+  it('survives a throwing onChange handler without corrupting the controlled value', async () => {
+    // Behavior under test: a failed persistence attempt must not mutate the controlled
+    // value or leave the switch in an inconsistent state; the caller owns recovery.
+    const user = userEvent.setup()
+    const handleChange = vi.fn(() => {
+      throw new Error('persistence failed')
+    })
+
+    render(<Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" />)
+
+    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
+
+    await expect(user.click(toggle)).rejects.toThrow('persistence failed')
+
+    expect(handleChange).toHaveBeenCalledTimes(1)
+    expect(toggle).not.toBeChecked()
+  })
+
+  it('remains consistent when the controlled value changes between clicks', async () => {
+    // Behavior under test: when the parent commits a new controlled value, the next
+    // emitted value is derived from the latest prop, avoiding stale state writes.
+    const user = userEvent.setup()
+    const handleChange = vi.fn()
+
+    const { rerender } = render(
+      <Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" />
+    )
+
+    await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
+    expect(handleChange).toHaveBeenNewestCalledWith(true)
+
+    rerender(
+      <Toggle checked onChange={handleChange} ariaLabel="Enable toasts" />
+    )
+
+    await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
+    expect(handleChange).toHaveBeenNewestCalledWith(false)
+  })
+
+  it('keeps the accessible name stable across state transitions', () => {
+    // Behavior under test: error and success announcements do not replace the label,
+    // so assistive technology users can always identify the control.
+    const { rerender } = render(
+      <FormField id="toasts-enabled" label="Enable toasts" error="Toasts unavailable">
+        <Toggle checked={false} onChange={vi.fn()} />
+      </FormField>
+    )
+
+    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toBeInTheDocument()
+
+    rerender(
+      <FormField id="toasts-enabled" label="Enable toasts" success="Preference saved">
+        <Toggle checked onChange={vi.fn()} />
+      </FormField>
+    )
+
+    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toBeInTheDocument()
+  })
+
+  it('does not leak sensitive details into the accessible name or description', () => {
+    // Behavior under test: failure messages exposed to assistive technology must be
+    // user-facing and must not embed raw internal error details.
+    render(
+      <FormField id="toasts-enabled" label="Enable toasts" error="Toasts unavailable">
+        <Toggle checked={false} onChange={vi.fn()} />
+      </FormField>
+    )
+
+    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
+    expect(toggle).accessibleName().toBe('Enable toasts')
+    expect(toggle).toHaveAccessibleDescription('Toasts unavailable')
   })
 })

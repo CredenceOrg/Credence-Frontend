@@ -107,4 +107,67 @@ describe('BackToTop', () => {
       fireEvent.click(screen.getByRole('button', { name: /back to top/i }))
     ).not.toThrow()
   })
+
+  describe('handleClick failure boundaries and regressions', () => {
+    it('aborts execution when window.scrollTo throws', () => {
+      setVisible(true)
+
+      const main = document.createElement('main')
+      main.id = 'main-content'
+      const heading = document.createElement('h1')
+      main.appendChild(heading)
+      document.body.appendChild(main)
+
+      render(<BackToTop />)
+      const error = new Error('scrollTo failure')
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+        throw error
+      })
+
+      const focusSpy = vi.spyOn(heading, 'focus')
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const errorHandler = (e: ErrorEvent) => {
+        if (e.error === error) {
+          e.preventDefault()
+        }
+      }
+      window.addEventListener('error', errorHandler)
+
+      fireEvent.click(screen.getByRole('button', { name: /back to top/i }))
+
+      expect(focusSpy).not.toHaveBeenCalled()
+
+      window.removeEventListener('error', errorHandler)
+      consoleSpy.mockRestore()
+    })
+
+    it('handles repeated invocation without side effects', () => {
+      setVisible(true)
+
+      const main = document.createElement('main')
+      main.id = 'main-content'
+      const heading = document.createElement('h1')
+      main.appendChild(heading)
+      document.body.appendChild(main)
+
+      render(<BackToTop />)
+
+      const setAttributeSpy = vi.spyOn(heading, 'setAttribute')
+      const focusSpy = vi.spyOn(heading, 'focus')
+
+      const button = screen.getByRole('button', { name: /back to top/i })
+
+      fireEvent.click(button)
+      expect(window.scrollTo).toHaveBeenCalledTimes(1)
+      expect(setAttributeSpy).toHaveBeenCalledTimes(1)
+      expect(focusSpy).toHaveBeenCalledTimes(1)
+
+      fireEvent.click(button)
+      expect(window.scrollTo).toHaveBeenCalledTimes(2)
+      // setAttribute shouldn't be called again since tabindex is already set
+      expect(setAttributeSpy).toHaveBeenCalledTimes(1)
+      expect(focusSpy).toHaveBeenCalledTimes(2)
+    })
+  })
 })

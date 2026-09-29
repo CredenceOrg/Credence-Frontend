@@ -42,6 +42,7 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
    * ```
    */
   amountFields?: ApiAmountFields
+  /**
    * When provided, the request is only dispatched if the active identity
    * epoch matches this value at call time **and** when the response arrives.
    * A mismatch at either point causes the promise to reject with
@@ -126,6 +127,7 @@ export class ApiAmountError extends ApiError {
   }
 }
 
+/**
  * Thrown by `apiFetch` when a session identity conflict is detected.
  *
  * A conflict is detected in two places:

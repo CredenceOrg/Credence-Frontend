@@ -152,6 +152,15 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
   const prefersReducedMotion = useReducedMotion()
 
+  // Keep a ref to the current isConnected value so the async handleConfirm
+  // body always reads the latest value rather than a stale closure snapshot.
+  // This makes the post-flight disconnect check deterministic even when the
+  // wallet disconnects while the onComplete promise is in-flight.
+  const isConnectedRef = useRef(isConnected)
+  useEffect(() => {
+    isConnectedRef.current = isConnected
+  }, [isConnected])
+
   const [step, setStep] = useState<number>(BOND_FLOW_MIN_STEP)
   const [amount, setAmount] = useState('')
   const [duration, setDuration] = useState<number | null>(null)
@@ -418,7 +427,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     }
 
     // ─── Validation: wallet connection ───
-    if (!isConnected) {
+    if (!isConnectedRef.current) {
       setConfirmError('Wallet disconnected. Reconnect your wallet and try again.')
       correlationIdRef.current = correlationIdRef.current || createCorrelationId()
       recordAudit('BOND_CREATE_REJECTED', 'WALLET_DISCONNECTED')
@@ -473,9 +482,9 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
 
       // ─── Post-flight check: wallet still connected? ───
       // The user may have disconnected while the async operation was in-flight.
-      // If so, discard the result and show an error rather than silently
-      // committing a success state with a stale wallet.
-      if (!isConnected) {
+      // isConnectedRef.current always holds the latest value from the most
+      // recent render, so this check is not affected by closure staleness.
+      if (!isConnectedRef.current) {
         const discardMessage =
           'Wallet disconnected during bond creation. Result discarded. Please reconnect and retry.'
         setConfirmError(discardMessage)
@@ -830,7 +839,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             disabled={!acknowledged || submitting}
             className="createBondFlow__navButton createBondFlow__confirmButton"
           >
-            {submitting ? 'Creating Bond…' : 'Confirm &amp; Create Bond'}
+            {submitting ? 'Creating Bond…' : 'Confirm & Create Bond'}
           </Button>
         )}
 

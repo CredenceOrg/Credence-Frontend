@@ -1,4 +1,4 @@
-import { render, screen, within, act } from '@testing-library/react'
+import { render, screen, within, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import Toast, { type ToastSeverity } from './Toast'
@@ -201,7 +201,7 @@ describe('Toast', () => {
       vi.advanceTimersByTime(1000)
       expect(onDismiss).toHaveBeenCalledTimes(1)
 
-      const button = screen.getByRole('button', { name: 'Dismis info notification' })
+      const button = screen.getByRole('button', { name: 'Dismiss info notification' })
       act(() => {
         button.click()
       })
@@ -217,7 +217,7 @@ describe('Toast', () => {
       const { onDismiss } = renderToast('danger', 'Sticky toast', 0)
       const toast = screen.getByRole('alert')
 
-      expect(screen.queryButton('progressbar')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
 
       fireEvent.mouseEnter(toast)
       fireEvent.mouseLeave(toast)

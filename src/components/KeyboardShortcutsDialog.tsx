@@ -43,8 +43,17 @@ function sanitizeShortcuts(shortcuts: KeyboardShortcut[]): KeyboardShortcut[] {
   return result
 }
 
-/** Groups an array of shortcuts by their `group` field, preserving insertion order. */
-function groupShortcuts(shortcuts: KeyboardShortcut[]): Map<string, KeyboardShortcut[]> {
+/**
+ * Groups an array of shortcuts by their `group` field, preserving insertion
+ * order of both the groups and the entries within each group.
+ *
+ * Failure-boundary contract (issue #1144): the input is expected to come from
+ * {@link sanitizeShortcuts}, so every entry is well-formed. The function is a
+ * pure transformation: it never mutates the input array, never drops entries,
+ * and returns groups in first-appearance order so repeated calls with equal
+ * inputs produce structurally equal maps (deterministic rendering order).
+ */
+export function groupShortcuts(shortcuts: KeyboardShortcut[]): Map<string, KeyboardShortcut[]> {
   const map = new Map<string, KeyboardShortcut[]>()
   for (const shortcut of shortcuts) {
     const existing = map.get(shortcut.group)

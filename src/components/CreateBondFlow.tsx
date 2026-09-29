@@ -39,7 +39,6 @@ import {
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { formatUsdc } from '../lib/format'
 import { LoadingSkeleton } from './states'
-import { computeBondSlashBreakdown, calcUnlockDate } from '../lib/bondPenalty'
 
 import './CreateBondFlow.css'
 
@@ -149,18 +148,11 @@ function logRefusedTransition(direction: 'Back' | 'Next', step: number): void {
 
 export default function CreateBondFlow({ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
   const { addToast } = useToast()
-  const { isConnected, connect } = useWallet()
+  const { isConnected } = useWallet()
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
   const [step, setStep] = useState<number>(BOND_FLOW_MIN_STEP)
-  const { isConnected } = useWallet()
-  const {
-    balance,
-    status: balanceStatus,
-    refetch: refetchBalance,
-  } = useUsdcBalance()
   const prefersReducedMotion = useReducedMotion()
 
-  const [step, setStep] = useState(1)
   const [amount, setAmount] = useState('')
   const [duration, setDuration] = useState<number | null>(null)
   const [error, setError] = useState('')
@@ -295,10 +287,9 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
 
   const handleNext = () => {
     const currentStep = stepRef.current
-    if (currentStep === BOND_FLOW_STEP_AMOUNT) {
     if (submittingRef.current) return
 
-    if (step === 1) {
+    if (currentStep === BOND_FLOW_STEP_AMOUNT) {
       if (!amount || Number(amount) <= 0) {
         setError('Please enter a valid amount greater than 0.')
         return
@@ -404,7 +395,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     recordAudit('BOND_CREATE_REQUESTED')
 
     try {
-      const result = await onComplete?.()
+      const result = (await onComplete?.()) ?? undefined
       recordAudit('BOND_CREATE_COMMITTED', undefined, result)
       addToast('success', 'Bond created successfully.')
       safeReset()
@@ -447,7 +438,6 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   // Step indicator
   // ---------------------------------------------------------------------------
 
-  const stepIndicatorTransition = prefersReducedMotion ? 'none' : 'background 0.2s ease'
   const durationButtonTransition = prefersReducedMotion ? 'none' : 'all 0.2s ease'
 
   const StepIndicator = () => (
@@ -466,16 +456,6 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
           />
         )
       )}
-    <div className="createBondFlow__stepIndicator" aria-label={`Step ${step} of 4`}>
-      {[1, 2, 3, 4].map((i) => (
-        <div
-          key={i}
-          className={['createBondFlow__stepBar', i <= step ? 'createBondFlow__stepBar--active' : '']
-            .filter(Boolean)
-            .join(' ')}
-          style={{ transition: stepIndicatorTransition }}
-        />
-      ))}
     </div>
   )
 
@@ -513,15 +493,6 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             ) : balanceStatus === 'loading' ? (
               <LoadingSkeleton variant="text" rows={1} width="12rem" />
             ) : balanceStatus === 'error' ? (
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.875rem',
-                }}
-              >
-                <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
               <span className="createBondFlow__balanceErrorRow">
                 <span className="createBondFlow__balanceText" role="alert" style={{ color: 'var(--credence-color-danger)' }}>
                   Could not load balance.

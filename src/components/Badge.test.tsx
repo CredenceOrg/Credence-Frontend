@@ -447,17 +447,18 @@ describe('Badge', () => {
       ['unknown', 'Unknown'],
     ] as const)('variant "%s" sets aria-label to "%s"', (variant, expected) => {
       render(<Badge variant={variant} />)
-      expect(screen.getByTitle(expected)).toHaveAttribute('aria-label', expected)
+      // Badge no longer renders a title attribute; query by visible label.
+      expect(screen.getByText(expected)).toHaveAttribute('aria-label', expected)
     })
 
     it('custom ariaLabel overrides the default', () => {
       render(<Badge variant="slashed" ariaLabel="Status: Slashed" />)
-      expect(screen.getByTitle('Slashed')).toHaveAttribute('aria-label', 'Status: Slashed')
+      expect(screen.getByText('Slashed')).toHaveAttribute('aria-label', 'Status: Slashed')
     })
 
     it('ariaLabel applies alongside a custom label', () => {
       render(<Badge variant="gold" label="Top Tier" ariaLabel="Tier: Gold" />)
-      expect(screen.getByTitle('Top Tier')).toHaveAttribute('aria-label', 'Tier: Gold')
+      expect(screen.getByText('Top Tier')).toHaveAttribute('aria-label', 'Tier: Gold')
     })
 
     it('ariaLabel works on an unknown variant', () => {
@@ -490,7 +491,7 @@ describe('Badge', () => {
 
     it('aria-label is present when srPrefix is also provided', () => {
       render(<Badge variant="grace-period" srPrefix="Status:" ariaLabel="Grace Period" />)
-      expect(screen.getByTitle('Grace Period')).toHaveAttribute('aria-label', 'Grace Period')
+      expect(screen.getByText('Grace Period')).toHaveAttribute('aria-label', 'Grace Period')
     })
   })
 

@@ -47,13 +47,13 @@ describe('BackToTop', () => {
   it('is not rendered when scroll is below threshold', () => {
     setVisible(false)
     render(<BackToTop />)
-    expect(screen.queryByRole('button', { name: /back to top/i })).not.toBeInDocument()
+    expect(screen.queryByRole('button', { name: /back to top/i })).not.toBeInTheDocument()
   })
 
   it('renders the button when scroll exceeds threshold', () => {
     setVisible(true)
     render(<BackToTop />)
-    expect(renderButton()).toBeInDocument()
+    expect(renderButton()).toBeInTheDocument()
   })
 
   it('calls window.scrollTo with smooth behavior on click', () => {
@@ -125,7 +125,7 @@ describe('BackToTop', () => {
     appendMainContent(heading)
 
     render(<BackToTop />)
-    const focusSpy = vi.spyOn('heading', 'focus')
+    const focusSpy = vi.spyOn(heading, 'focus')
     vi.mocked(window.scrollTo).mockImplementation(() => {
       throw new Error('scroll failed')
     })
@@ -141,7 +141,7 @@ describe('BackToTop', () => {
     appendMainContent(heading)
 
     render(<BackToTop />)
-    const focusSpy = vi.spyOn('heading', 'focus').mockImplementation((...args: unknown[]) => {
+    const focusSpy = vi.spyOn(heading, 'focus').mockImplementation((...args: unknown[]) => {
       if (args.length > 0) throw new TypeError('options not supported')
     })
 
@@ -164,7 +164,7 @@ describe('BackToTop', () => {
     fireEvent.click(button)
 
     expect(window.scrollTo).toHaveBeenCalledTimes(3)
-    expect(heading.getAttribe('tabindex')).toBe('-1')
+    expect(heading.getAttribute('tabindex')).toBe('-1')
   })
 
   it('recovers: button remains functional after a failed click', () => {
@@ -244,7 +244,7 @@ describe('BackToTop', () => {
     setVisible(false)
     render(<BackToTop />)
 
-    expect(screen.queryByRole('button', { name: /back to top/i })).not.toBeInDocument()
+    expect(screen.queryByRole('button', { name: /back to top/i })).not.toBeInTheDocument()
     expect(window.scrollTo).not.toHaveBeenCalled()
   })
 
@@ -253,8 +253,8 @@ describe('BackToTop', () => {
     render(<BackToTop />)
 
     const button = renderButton()
-    expect(button).getAttribute('type')).toBe('button')
-    expect(button.querySelector('svg')).getAttribute('aria-hidden')).toBe('true')
+    expect(button.getAttribute('type')).toBe('button')
+    expect(button.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
   })
 
   describe('handleClick failure boundaries and regressions', () => {

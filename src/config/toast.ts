@@ -1,7 +1,7 @@
 // Default toast timeout values (in milliseconds).
 // Can be overridden at build/runtime via Vite env vars:
-// - VITE_TOST_TIMEOUT       Overrides the default timeout for info/success toasts
-// - VITE_TOST_TIMEOUT_WARNING  Overrides the warning toast timeout
+// - VITE_TOAST_TIMEOUT       Overrides the default timeout for info/success toasts
+// - VITE_TOAST_TIMEOUT_WARNING  Overrides the warning toast timeout
 const DEFAULT_TIMEOUTS = {
   info: 5000,
   success: 5000,
@@ -31,9 +31,9 @@ function parseEnvTimeout(raw: string | undefined): number | null {
 export const TOAST_CONFIG = {
   /** Timeout per severity (milliseconds). 0 = no auto-dismiss. */
   timeouts: {
-    info: parseEnvTimeout(import.meta.env.VITE_TOST_TIMEOUT) ?? DEFAULT_TIMEOUTS.info,
-    success: parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT) ?> DEFAULT_TIMEOUTS.success,
-    warning: parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT_WARNING) ?> DEFAULT_TIMEOUTS.warning,
+    info: parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT) ?? DEFAULT_TIMEOUTS.info,
+    success: parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT) ?? DEFAULT_TIMEOUTS.success,
+    warning: parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT_WARNING) ?? DEFAULT_TIMEOUTS.warning,
     danger: DEFAULT_TIMEOUTS.danger,
   },
   /** Maximum number of toasts displayed simultaneously. */
@@ -42,4 +42,4 @@ export const TOAST_CONFIG = {
 
 export type ToastConfig = typeof TOAST_CONFIG
 
-export default TOST_CONFIG
+export default TOAST_CONFIG

@@ -1,5 +1,3 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { API_BASE_URL, ApiError, apiFetch, buildUrl, normalizeBaseUrl } from './client'
 import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
 import {
   ApiAmountError,
@@ -7,13 +5,16 @@ import {
   ApiError,
   ApiRateLimitError,
   MAX_REQUEST_BODY_BYTES,
+  API_BASE_URL,
   apiFetch,
   apiRateLimiterSnapshot,
+  buildUrl,
   defaultApiRateLimiter,
+  normalizeBaseUrl,
   resetApiRateLimiter,
   type ApiFetchOptions,
 } from './client'
-import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
+import { resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -718,8 +719,8 @@ describe('apiFetch pre-flight failure boundaries', () => {
   })
 
   it('keeps concurrent requests on their own URLs', async () => {
-    fetchMock.mockImplementation((url: string) =>
-      Promise.resolve(jsonResponse({ url }, { status: 200 }))
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      Promise.resolve(jsonResponse({ url: String(input) }, { status: 200 }))
     )
     vi.stubGlobal('fetch', fetchMock)
 
@@ -735,7 +736,9 @@ describe('apiFetch pre-flight failure boundaries', () => {
   })
 
   it('resolves retries of the same valid request to the same URL', async () => {
-    fetchMock.mockImplementation((url: string) => Promise.resolve(jsonResponse({ url })))
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      Promise.resolve(jsonResponse({ url: String(input) }))
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     await apiFetch('/bonds?page=1')
@@ -759,6 +762,8 @@ describe('apiFetch pre-flight failure boundaries', () => {
       message: (first as ApiError).message,
     })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('commits one effect when a keyed operation is duplicated or reordered', async () => {
     const committedKeys = new Set<string>()
     fetchMock.mockImplementation(async (_url, init) => {
@@ -792,7 +797,7 @@ describe('apiFetch pre-flight failure boundaries', () => {
     const committedResponses = new Map<string, { committedEffects: number }>()
     fetchMock.mockImplementation(async () => {
       attempts += 1
-      const key = (fetchMock.mock.calls.at(-1)?.[1]?.headers as Headers).get('Idempotency-Key')
+      const key = ((fetchMock.mock.calls[fetchMock.mock.calls.length - 1]?.[1]?.headers) as Headers).get('Idempotency-Key')
       if (key && committedResponses.has(key)) return jsonResponse(committedResponses.get(key))
 
       committedEffects += 1

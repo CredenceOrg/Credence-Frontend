@@ -43,8 +43,8 @@ describe('Layout Integration', () => {
 
   it('renders skip link and main branding', () => {
     renderLayout()
-    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInDocument()
-    expect(screen.getByRole('link', { name: /^credence$/i })).toBeInDocument()
+    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^credence$/i })).toBeInTheDocument()
   })
 
   it('renders keyboard shortcuts button with accessible name', () => {
@@ -56,7 +56,7 @@ describe('Layout Integration', () => {
 
   it('renders theme toggle button', () => {
     renderLayout()
-    expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInDocument()
+    expect(screen.getByRole('button', { name: /switch to .* mode/i })).toBeInTheDocument()
   })
 
   it('renders desktop navigation links', () => {
@@ -152,7 +152,7 @@ describe('Layout Integration', () => {
 
   it('renders BottomNav inside the layout', () => {
     renderLayout()
-    expect(screen.getByRole('navigation', { name: /bottom navigation/i })).toBeInDocument()
+    expect(screen.getByRole('navigation', { name: /bottom navigation/i })).toBeInTheDocument()
   })
 
   it('BottomNav contains the 5 primary route tabs', () => {
@@ -185,8 +185,8 @@ describe('Layout boundary and recovery conditions', () => {
         </Routes>
       </MemoryRouter>
     )
-    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInDocument()
-    expect(screen.getByText('Not Found')).toBeInDocument()
+    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInTheDocument()
+    expect(screen.getByText('Not Found')).toBeInTheDocument()
   })
 
   it('dismisses install prompt and persists the decision', () => {
@@ -199,17 +199,17 @@ describe('Layout boundary and recovery conditions', () => {
       window.dispatchEvent(event)
     })
 
-    const dismissButton = screen.getButtonBy(/dismiss/i)
-    expect(dismissButton).toBeInDocument()
+    const dismissButton = screen.getByRole('button', { name: /dismiss/i })
+    expect(dismissButton).toBeInTheDocument()
     fireEvent.click(dismissButton)
 
     // The prompt must be removed and the decision persisted.
-    expect(screen.queryByText(/install this app/i)).not.toBeInDocument()
-    expect(window.localStorage.getItem('credence:install-prompt-handled')).toBeTruthy()
+    expect(screen.queryByText(/install this app/i)).not.toBeInTheDocument()
+    expect(window.sessionStorage.getItem('credence:install-prompt-handled')).toBe('handled')
   })
 
   it('does not re-show the install prompt after it has been handled', () => {
-    window.localStorage.setItem('credence:install-prompt-handled', '1')
+    window.sessionStorage.setItem('credence:install-prompt-handled', 'handled')
     renderLayout()
 
     act(() => {
@@ -217,7 +217,7 @@ describe('Layout boundary and recovery conditions', () => {
       window.dispatchEvent(event)
     })
 
-    expect(screen.queryByText(/install this app/i)).not.toBeInDocument()
+    expect(screen.queryByText(/install this app/i)).not.toBeInTheDocument()
   })
 
   it('recovers mobile nav state when the drawer is closed and reopened', () => {
@@ -257,7 +257,7 @@ describe('Layout boundary and recovery conditions', () => {
     fireEvent.keyDown(document, { key: 'k', ctrlKey: true })
 
     // The launcher is expected to render a dialog when opened.
-    expect(screen.getByRole('dialog')).toBeInDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('recovers from a failed install prompt event without losing the layout', () => {
@@ -268,7 +268,7 @@ describe('Layout boundary and recovery conditions', () => {
       window.dispatchEvent(new Event('beforeinstallprompt'))
     })
 
-    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInDocument()
-    expect(screen.getByRole('navigation', { name: /bottom navigation/i })).toBeInDocument()
+    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: /bottom navigation/i })).toBeInTheDocument()
   })
 })

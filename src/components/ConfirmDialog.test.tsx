@@ -398,20 +398,38 @@ describe('ConfirmDialog', () => {
     })
   })
 
-  describe('forwardRef', () => {
-    it('forwards ref to the dialog element', () => {
-      const ref = createRef<HTMLElement>()}
-      render(
+  describe('focus return (returnFocusRef contract)', () => {
+    it('accepts a returnFocusRef for focus restoration on close', () => {
+      const trigger = document.createElement('button')
+      document.body.appendChild(trigger)
+      trigger.focus()
+      const returnFocusRef = createRef<HTMLElement>()
+      ;(returnFocusRef as React.MutableRefObject<HTMLElement | null>).current = trigger
+
+      const { rerender } = render(
         <ConfirmDialog
           open
           title="Withdraw Bond"
           breakdown={defaultBreakdown}
           onConfirm={vi.fn()}
           onCancel={vi.fn()}
-          ref={ref}
+          returnFocusRef={returnFocusRef}
         />
       )
-      expect(ref.current).toBe(screen.getByRole('dialog'))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+      rerender(
+        <ConfirmDialog
+          open={false}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+          returnFocusRef={returnFocusRef}
+        />
+      )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      document.body.removeChild(trigger)
     })
   })
 
@@ -502,7 +520,7 @@ describe('ConfirmDialog', () => {
     it('recovers from a rejected onConfirm and allows a retry', async () => {
       const user = userEvent.setup()
       const onConfirm = vi.fn()
-      onConfirm.mockRejectedOnce(new Error('transaction failed'))
+      onConfirm.mockRejectedValueOnce(new Error('transaction failed'))
       const onCancel = vi.fn()
       render(
         <ConfirmDialog
@@ -520,7 +538,7 @@ describe('ConfirmDialog', () => {
       expect(onConfirm).toHaveBeenCalledOnce()
       // Retry after failure must be possible and still gated by the input.
       await user.click(button)
-      expect(onConfirm).toHaveBeenCalledTwices()
+      expect(onConfirm).toHaveBeenCalledTimes(2)
     })
 
     it('keeps the input value intact when the dialog stays open across a rerender', () => {

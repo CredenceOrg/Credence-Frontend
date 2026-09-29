@@ -2,8 +2,24 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import KeyboardShortcutsDialog, { formatModifierKey } from './KeyboardShortcutsDialog'
-import { KEYBOARD_SHORTCUTS } from '../data/keyboardShortcuts'
+import KeyboardShortcutsDialog, {
+  formatModifierKey,
+  groupShortcuts,
+} from './KeyboardShortcutsDialog'
+import { KEYBOARD_SHORTCUTS, type KeyboardShortcut } from '../data/keyboardShortcuts'
+
+/**
+ * Loads a fresh copy of the dialog module with a replaced shortcut registry so
+ * the empty-registry failure path (module-level GROUPED === empty map) can be
+ * exercised without mutating the shared module state.
+ */
+async function loadDialogWithShortcuts(shortcuts: KeyboardShortcut[]) {
+  vi.resetModules()
+  vi.doMock('../data/keyboardShortcuts', () => ({
+    KEYBOARD_SHORTCUTS: shortcuts,
+  }))
+  return import('./KeyboardShortcutsDialog')
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -503,31 +519,36 @@ describe('KeyboardShortcutsDialog — recovery and idempotency', () => {
 
 describe('KeyboardShortcutsDialog — timing boundaries', () => {
   it('does not throw when requestAnimationFrame is unavailable', () => {
-    const originalRaf = window.requestAnimationFrame
-    // @ts-expect-error — simulate missing rAF for boundary coverage
-    delete window.requestAnimationFrame
-    expect(() => {
-      renderDialog({ open: true })
-    }).not.toThrow()
-    window.requestAnimationFrame = originalRaf
+    // Stub (rather than delete/reassign) so the shared beforeEach spy is
+    // preserved and restored by afterEach's restoreAllMocks().
+    vi.stubGlobal('requestAnimationFrame', undefined)
+    try {
+      expect(() => {
+        renderDialog({ open: true })
+      }).not.toThrow()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('does not throw when requestAnimationFrame invokes callback asynchronously', () => {
-    const originalRaf = window.requestAnimationFrame
     const callbacks: FrameRequestCallback[] = []
-    window.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
       callbacks.push(cb)
       return callbacks.length
-    }) as typeof window.requestAnimationFrame
-
-    expect(() => {
-      renderDialog({ open: true })
-      act(() => {
-        callbacks.forEach((cb) => cb(0))
-      })
-    }).not.toThrow()
-
-    window.requestAnimationFrame = originalRaf
+    })
+    try {
+      expect(() => {
+        renderDialog({ open: true })
+        act(() => {
+          callbacks.forEach((cb) => cb(0))
+        })
+      }).not.toThrow()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('handles rapid Escape presses without losing onClose calls', async () => {
@@ -705,5 +726,187 @@ describe('KeyboardShortcutsDialog — observability', () => {
     const { onClose, unmount } = renderDialog()
     unmount()
     expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// groupShortcuts — deterministic failure-boundary coverage (issue #1144)
+// ---------------------------------------------------------------------------
+
+describe('groupShortcuts — grouping invariants', () => {
+  const base: KeyboardShortcut = { group: 'General', label: 'A', keys: ['G'] }
+
+  it('groups entries by their group field', () => {
+    const map = groupShortcuts([
+      { group: 'General', label: 'A', keys: ['G'] },
+      { group: 'Appearance', label: 'B', keys: ['T'] },
+      { group: 'General', label: 'C', keys: ['Esc'] },
+    ])
+    expect(map.size).toBe(2)
+    expect(map.get('General')).toHaveLength(2)
+    expect(map.get('Appearance')).toHaveLength(1)
+  })
+
+  it('preserves first-appearance order of groups', () => {
+    const map = groupShortcuts([
+      { group: 'B', label: 'x', keys: ['1'] },
+      { group: 'A', label: 'y', keys: ['2'] },
+      { group: 'C', label: 'z', keys: ['3'] },
+    ])
+    expect(Array.from(map.keys())).toEqual(['B', 'A', 'C'])
+  })
+
+  it('preserves insertion order within each group', () => {
+    const map = groupShortcuts([
+      { group: 'G', label: 'third', keys: ['3'] },
+      { group: 'G', label: 'first', keys: ['1'] },
+      { group: 'G', label: 'second', keys: ['2'] },
+    ])
+    expect(map.get('G')!.map((s) => s.label)).toEqual(['third', 'first', 'second'])
+  })
+
+  it('is deterministic: equal inputs produce equal groups across repeated calls', () => {
+    const input = [base, { group: 'General', label: 'B', keys: ['K'] }]
+    const first = groupShortcuts(input)
+    const second = groupShortcuts(input)
+    expect(Array.from(first.entries())).toEqual(Array.from(second.entries()))
+  })
+
+  it('does not mutate the input array', () => {
+    const input = [base, { group: 'Other', label: 'X', keys: ['O'] }]
+    const snapshot = [...input]
+    groupShortcuts(input)
+    expect(input).toEqual(snapshot)
+  })
+
+  it('returns an empty map for an empty array', () => {
+    expect(groupShortcuts([]).size).toBe(0)
+  })
+
+  it('keeps entries intact (no data loss through grouping)', () => {
+    const entries: KeyboardShortcut[] = [
+      { group: 'G1', label: 'a', keys: ['1'] },
+      { group: 'G2', label: 'b', keys: ['2'] },
+      { group: 'G1', label: 'c', keys: ['3'] },
+    ]
+    const map = groupShortcuts(entries)
+    const total = Array.from(map.values()).reduce((sum, list) => sum + list.length, 0)
+    expect(total).toBe(entries.length)
+    // References preserved, not copies, so no silent cloning divergence.
+    expect(map.get('G1')![0]).toBe(entries[0])
+    expect(map.get('G2')![0]).toBe(entries[1])
+  })
+
+  it('handles a single entry and a large number of groups without degradation', () => {
+    expect(groupShortcuts([base]).size).toBe(1)
+    const many = Array.from({ length: 500 }, (_, i) => ({
+      group: `G${i}`,
+      label: `L${i}`,
+      keys: [String(i)],
+    }))
+    const map = groupShortcuts(many)
+    expect(map.size).toBe(500)
+    expect(map.get('G499')).toHaveLength(1)
+  })
+
+  it('matches the grouping used by the rendered dialog', () => {
+    renderDialog()
+    const headings = document.querySelectorAll('.shortcuts-dialog__group-heading')
+    const groups = new Set(Array.from(headings).map((h) => h.textContent))
+    // Every rendered heading must be a group of the sanitized registry.
+    expect(groups.size).toBeGreaterThan(0)
+    // And must be a subset of the groups produced by groupShortcuts on the registry.
+    const grouped = groupShortcuts(KEYBOARD_SHORTCUTS)
+    for (const heading of groups) {
+      expect(grouped.has(heading as string)).toBe(true)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// KeyboardShortcutsDialog — additional failure-boundary coverage (issue #1146)
+// ---------------------------------------------------------------------------
+
+describe('KeyboardShortcutsDialog — failure-boundary regressions', () => {
+  it('renders the empty-state status region when the shortcut registry is empty', async () => {
+    const { default: FreshDialog } = await loadDialogWithShortcuts([])
+    render(<FreshDialog open onClose={() => {}} />)
+    const empty = document.querySelector('.shortcuts-dialog__empty')
+    expect(empty).not.toBeNull()
+    expect(screen.getByRole('status')).toHaveTextContent('No keyboard shortcuts are available.')
+  })
+
+  it('keeps the close affordance reachable even with no shortcuts', async () => {
+    const { default: FreshDialog } = await loadDialogWithShortcuts([])
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<FreshDialog open onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: /close keyboard shortcuts/i }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the focus trap intact with an empty registry', () => {
+    return loadDialogWithShortcuts([]).then(({ default: FreshDialog }) => {
+      render(<FreshDialog open onClose={() => {}} />)
+      const dialog = screen.getByRole('dialog')
+      const closeButton = screen.getByRole('button', { name: /close keyboard shortcuts/i })
+      closeButton.focus()
+      expect(dialog.contains(document.activeElement)).toBe(true)
+    })
+  })
+
+  it('survives onClose throwing during Escape without corrupting the trap', async () => {
+    // Suppress only the expected uncaught-error report from jsdom.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const reported: unknown[] = []
+    const onUncaught = (event: Event) => {
+      reported.push((event as ErrorEvent).error ?? (event as ErrorEvent).message)
+    }
+    window.addEventListener('error', onUncaught)
+
+    const onClose = vi.fn(() => {
+      throw new Error('parent state update failed')
+    })
+    render(<KeyboardShortcutsDialog open onClose={onClose} />)
+
+    try {
+      screen.getByRole('dialog').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+      )
+
+      // The consumer-supplied onClose ran, its rejection surfaced through the
+      // uncaught-error channel (never silently swallowed), and the dialog
+      // remains mounted — no partial teardown that would strand focus.
+      expect(onClose).toHaveBeenCalledOnce()
+      expect(reported).toHaveLength(1)
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    } finally {
+      window.removeEventListener('error', onUncaught)
+      consoleError.mockRestore()
+    }
+  })
+
+  it('renders every key of every shortcut as its own kbd element', () => {
+    renderDialog()
+    for (const shortcut of KEYBOARD_SHORTCUTS) {
+      const row = screen.getByText(shortcut.label).closest('li')
+      expect(row).not.toBeNull()
+      const kbds = row!.querySelectorAll('.shortcuts-dialog__kbd')
+      expect(kbds.length).toBe(shortcut.keys.length)
+    }
+  })
+
+  it('join order of aria-label matches key order (readable announcement)', () => {
+    renderDialog()
+    const row = screen.getByText('Open keyboard shortcuts help').closest('li')!
+    const keysSpan = row.querySelector('.shortcuts-dialog__keys')
+    expect(keysSpan?.getAttribute('aria-label')).toBe('Shift + ?')
+  })
+
+  it('has no duplicate group headings (grouped map keys are unique)', () => {
+    renderDialog()
+    const headings = document.querySelectorAll('.shortcuts-dialog__group-heading')
+    const texts = Array.from(headings).map((h) => h.textContent)
+    expect(new Set(texts).size).toBe(texts.length)
   })
 })

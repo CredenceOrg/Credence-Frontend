@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import './Badge.css'
 import TooltipOnOverflow from './TooltipOnOverflow'
 
@@ -57,14 +56,9 @@ export default function Badge({ variant, label, className = '', srPrefix, ariaLa
     (normalizedVariant === 'unknown' ? DEFAULT_LABELS.unknown : DEFAULT_LABELS[normalizedVariant])
   const accessibleLabel = ariaLabel ?? displayLabel
 
-  const title =
-    normalizedVariant === 'unknown' && variant.toLowerCase() !== 'unknown'
-      ? undefined
-      : displayLabel
-
   return (
     <TooltipOnOverflow content={displayLabel}>
-      <span className={`badge badge--${normalizedVariant} ${className}`.trim()}>
+      <span className={`badge badge--${normalizedVariant} ${className}`.trim()} aria-label={accessibleLabel}>
         {srPrefix && <span className="sr-only">{srPrefix} </span>}
         {displayLabel}
       </span>

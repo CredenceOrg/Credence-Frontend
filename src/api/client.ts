@@ -68,6 +68,8 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
  * - `http_error` — the server answered with a non-2xx status.
  */
 export type ApiErrorCode = 'invalid_request_url' | 'network_error' | 'http_error'
+
+/**
  * Declaration of decimal amount fields for a request body.
  *
  * - `string[]`: field names validated with the default USDC rules.
@@ -88,9 +90,11 @@ export class ApiError extends Error {
   readonly payload: unknown
   /**
    * Optional classification. `undefined` for `ApiError`s constructed by legacy
-   * call sites, so existing three-argument construction keeps working.
+   * call sites, so existing three-argument construction keeps working. Accepts
+   * both transport-level codes and amount-validation codes so the
+   * {@link ApiAmountError} subtype stays assignable.
    */
-  readonly code?: ApiErrorCode
+  readonly code?: ApiErrorCode | ApiAmountErrorCode
 
   constructor(status: number, message: string, payload?: unknown, code?: ApiErrorCode) {
     super(message)
@@ -281,6 +285,45 @@ export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
  */
 export function normalizeBaseUrl(value: string): string {
   const trimmed = typeof value === 'string' ? value.trim() : ''
+  if (!trimmed || trimmed === '/') {
+    return ''
+  }
+
+  // `//host` and `/\host` are resolved by fetch as protocol-relative URLs, so
+  // keeping them would send every API request — including Authorization
+  // headers — to a foreign origin. Fail closed instead.
+  if (trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
+    return rejectBaseUrl()
+  }
+
+  if (trimmed.startsWith('/')) {
+    if (trimmed.includes('?') || trimmed.includes('#')) {
+      return rejectBaseUrl()
+    }
+    return trimmed.replace(/\/+$/, '')
+  }
+
+  // Anything else must be an explicit absolute http(s) URL. This rejects
+  // scheme-less typos (`api.example.com`, which fetch would resolve as a
+  // same-origin *path* and silently 404) and dangerous schemes
+  // (`javascript:`, `data:`, `blob:`, `file:`).
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return rejectBaseUrl()
+  }
+
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    return rejectBaseUrl()
+  }
+  if (parsed.search || parsed.hash) {
+    return rejectBaseUrl()
+  }
+
+  return trimmed.replace(/\/+$/, '')
+}
+
 type ReplayEntry = {
   fingerprint: string
   promise: Promise<unknown>
@@ -371,47 +414,6 @@ export function apiRateLimiterSnapshot(): Readonly<{
  */
 export function resetApiRateLimiter(): void {
   defaultApiRateLimiter.reset()
-}
-
-function normalizeBaseUrl(value: string): string {
-  const trimmed = value.trim()
-  if (!trimmed || trimmed === '/') {
-    return ''
-  }
-
-  // `//host` and `/\host` are resolved by fetch as protocol-relative URLs, so
-  // keeping them would send every API request — including Authorization
-  // headers — to a foreign origin. Fail closed instead.
-  if (trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
-    return rejectBaseUrl()
-  }
-
-  if (trimmed.startsWith('/')) {
-    if (trimmed.includes('?') || trimmed.includes('#')) {
-      return rejectBaseUrl()
-    }
-    return trimmed.replace(/\/+$/, '')
-  }
-
-  // Anything else must be an explicit absolute http(s) URL. This rejects
-  // scheme-less typos (`api.example.com`, which fetch would resolve as a
-  // same-origin *path* and silently 404) and dangerous schemes
-  // (`javascript:`, `data:`, `blob:`, `file:`).
-  if (!/^https?:\/\//i.test(trimmed)) {
-    return rejectBaseUrl()
-  }
-
-  let parsed: URL
-  try {
-    parsed = new URL(trimmed)
-  } catch {
-    return rejectBaseUrl()
-  }
-  if (parsed.search || parsed.hash) {
-    return rejectBaseUrl()
-  }
-
-  return trimmed.replace(/\/+$/, '')
 }
 
 /**
@@ -539,9 +541,6 @@ function normalizeApiPath(path: string): string {
  */
 export function buildUrl(path: string, baseUrl: string = API_BASE_URL): string {
   return `${normalizeBaseUrl(baseUrl)}${normalizeApiPath(path)}`
-function buildUrl(path: string): string {
-  const normalizedPath = path.startsWith('/') ? path : '/' + path
-  return '' + API_BASE_URL + normalizedPath
 }
 
 function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unknown> | unknown[] {
@@ -633,7 +632,6 @@ function applyAmountFields(
   return wireBody
 }
 
-function buildHeaders(headers: HeadersInit | undefined, hasJsonBody: boolean): Headers {
 function buildHeaders(
   headers: HeadersInit | undefined,
   hasJsonBody: boolean,
@@ -733,7 +731,7 @@ function replayConflict(key: string): ApiError {
  * make a permanent fault look like a transient one worth retrying.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, skipRateLimit, amountFields, ...init } = options
+  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } = options
 
   // Exact-amount gate: validate and canonicalize declared amount fields
   // BEFORE any state change. An invalid amount must never consume
@@ -741,26 +739,21 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   // caller's body object.
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
-  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, ...init } = options
-  const hasJsonBody = isJsonBody(body)
 
   // Pre-flight: deterministic, request-independent failures.
   const url = buildUrl(path)
-  const requestHeaders = buildHeaders(headers, hasJsonBody)
-  const requestBody = hasJsonBody ? JSON.stringify(body) : body
-  // Validate input size before expensive operations. Serializing an oversized
-  // body is wasted work and could exhaust memory or downstream resources.
-  if (hasJsonBody) {
-    const serialized = JSON.stringify(body)
-    if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
-      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
-    }
-  }
-
-  const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
+  const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (wireBody ?? undefined)
   const correlationId = generateCorrelationId('api-fetch')
   const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
   const method = (init.method || 'GET').toUpperCase()
+
+  // Validate input size before expensive operations. Serializing an oversized
+  // body is wasted work and could exhaust memory or downstream resources.
+  if (hasJsonBody) {
+    if (new TextEncoder().encode(serializedBody as string).byteLength > MAX_REQUEST_BODY_BYTES) {
+      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: (serializedBody as string).length })
+    }
+  }
 
   if (idempotencyKey !== undefined) {
     const normalizedKey = idempotencyKey.trim()
@@ -771,7 +764,6 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
 
     const existing = replayEntries.get(normalizedKey)
-    const url = buildUrl(path)
     const fingerprint = requestFingerprint(url, { ...init, method }, serializedBody, requestHeaders)
 
     if (existing) {
@@ -854,10 +846,6 @@ async function apiFetchWithoutReplay<T>(
   try {
     response = await fetch(url, {
       ...init,
-      headers: requestHeaders,
-      body: requestBody,
-      headers: buildHeaders(headers, hasJsonBody),
-      body: hasJsonBody ? JSON.stringify(wireBody) : wireBody,
       headers,
       body: serializedBody,
     })
@@ -872,14 +860,13 @@ async function apiFetchWithoutReplay<T>(
       throw error
     }
     const message = error instanceof Error ? error.message : 'Network request failed'
-    throw new ApiError(0, message, error, 'network_error')
     emitWalletSessionEvent('action_failed', {
       address: null,
       network: null,
       correlationId: ctx.correlationId,
       metadata: { path: ctx.path, method: ctx.method, status: 0, message },
     })
-    throw new ApiError(0, message, error)
+    throw new ApiError(0, message, error, 'network_error')
   }
 
   // Post-flight identity epoch check.
@@ -899,12 +886,6 @@ async function apiFetchWithoutReplay<T>(
   const payload = await parseResponse(response)
 
   if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      errorMessage(response.status, payload),
-      payload,
-      'http_error'
-    )
     const message = errorMessage(response.status, payload)
     emitWalletSessionEvent('action_failed', {
       address: null,
@@ -912,7 +893,7 @@ async function apiFetchWithoutReplay<T>(
       correlationId: ctx.correlationId,
       metadata: { path: ctx.path, method: ctx.method, status: response.status, message },
     })
-    throw new ApiError(response.status, message, payload)
+    throw new ApiError(response.status, message, payload, 'http_error')
   }
 
   emitWalletSessionEvent('action_succeeded', {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './ThemeToggle.css'
 
 const THEME_STORAGE_KEY = 'theme'
-const THEME_CHANNEL_EVENT = 'theme-change'
+const THEME_CHANGE_EVENT = 'theme-change'
 
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
@@ -191,7 +191,7 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={`Switch to ${nextTheme} mode`}
       aria-pressed={theme === 'dark'}
-      title={`Switch to ${nextTheme} mode}`
+      title={`Switch to ${nextTheme} mode`}
     >
       {theme === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>

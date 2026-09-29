@@ -268,7 +268,7 @@ describe('accessibility', () => {
 // --- Paste button ---
 describe('paste button', () => {
   it('reads clipboard, trims whitespace, and calls onChange', async () => {
-    clipboardReadTextMock.mockResolvedValue(``  ${VALID_KEY}  `)
+    clipboardReadTextMock.mockResolvedValue(`  ${VALID_KEY}  `)
     const onChange = vi.fn()
     render(<AddressInput id="addr" value="" onChange={onChange} />)
 
@@ -282,7 +282,7 @@ describe('paste button', () => {
   })
 
   it('focuses input as fallback when clipboard access throws', async () => {
-    clipboardReadTextMock.mockRejected(new DOMException('denied', 'NotAllowedError'))
+    clipboardReadTextMock.mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
     render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
 
     const input = screen.getByRole('textbox')
@@ -346,7 +346,7 @@ describe('echo display respects addressDisplay setting', () => {
   })
 
   it('shows friendly address when addressDisplay is "friendly"', async () => {
-    const text = await renderAndTriggerEcho('the friendly')
+    const text = await renderAndTriggerEcho('friendly')
     // formatAddressForDisplay falls back to truncated form until on-chain names exist
     expect(text).toBe(
       `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
@@ -419,7 +419,7 @@ describe('boundary and recovery', () => {
 
     expect(onChange).toHaveBeenCalledWith('first-paste')
     expect(onChange).toHaveBeenCalledWith(VALID_KEY)
-    expect(onChange).mockCalls.length).toBe(2)
+    expect(onChange.mock.calls.length).toBe(2)
   })
 
   it('treats a whitespace-only clipboard result as empty without losing the existing value', async () => {
@@ -462,7 +462,7 @@ describe('boundary and recovery', () => {
   it('renders an empty echo for a zero-length value without throwing', () => {
     expect(() =>
       render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
-    ).toNotThrow()
+    ).not.toThrow()
     expect(screen.queryByText('Recognized:')).toBeNull()
   })
 

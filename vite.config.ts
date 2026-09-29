@@ -36,6 +36,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: [
+        'src/api/client.ts',
         'src/components/AddressInput.tsx',
         'src/components/Badge.tsx',
         'src/hooks/useLocalStorage.ts',
@@ -44,6 +45,7 @@ export default defineConfig({
       ],
       reporter: ['text', 'lcov'],
       thresholds: {
+        'src/api/client.ts': { lines: 100, branches: 100, functions: 100, statements: 100 },
         'src/components/AddressInput.tsx': { lines: 90, branches: 90 },
         'src/components/Badge.tsx': { branches: 95 },
         'src/hooks/useLocalStorage.ts': { lines: 95, branches: 95 },

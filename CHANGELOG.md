@@ -14,9 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `src/lib/penalty.ts`: extracted `BondStatus`, `MockBond`, `getPenaltyRate`, and `computeWithdrawBreakdown` into a shared module, making the penalty math the single source of truth for Bond.tsx and ConfirmDialog.
 - `src/lib/penalty.test.ts`: unit tests for all penalty rates and breakdown arithmetic (active/grace-period/locked, zero-penalty path, fractional amounts).
+- `ApiError.code` (`src/api/client.ts`): optional `invalid_request_url | network_error | http_error` classification on `ApiError`, so callers can tell a permanent programming fault from a retryable network blip. Additive — existing three-argument `ApiError` construction is unchanged.
+- `buildUrl` and `normalizeBaseUrl` exported from `src/api/client.ts` so the URL failure boundaries are directly testable. `import.meta.env` is inlined at build time, so `VITE_API_BASE_URL` cannot be stubbed from a test.
+- `src/api/client.test.ts`: failure-boundary coverage for URL building (224 tests), gated at 100% statements/branches/functions/lines in `vite.config.ts`.
+
+### Security
+- `buildUrl` now rejects origin-relative paths (`//host`, `///bonds`) and backslash paths (`/\host`, `/a\..\b`). The WHATWG URL parser resolves all of these to a **different origin**, so they previously turned an in-app path into a cross-origin request carrying default headers and cookies. Empty, non-string, control-character, and fragment-containing paths are now rejected with a typed `ApiError` instead of being silently rewritten by the URL parser (for example `/bonds\nx` collapsing to `/bondsx`, or `/bonds#other` fetching a different resource).
+- `normalizeBaseUrl` fails closed to same-origin for a scheme-relative, scheme-less, non-http(s), unparseable, or query/fragment-carrying `VITE_API_BASE_URL`, instead of silently sending every API request to another host. The rejected value is never echoed to the console because a base URL may embed credentials.
 
 ### Changed
 - `Bond.tsx`: imports penalty helpers from `src/lib/penalty.ts`; `slashBannerBreakdown` is now memoized with `useMemo` to avoid recomputing on unrelated renders.
+- `apiFetch` resolves the URL, builds headers, and serializes the body **before** entering the network `try` block. A caller mistake (bad path, invalid header, circular body) is no longer re-wrapped as a retryable `status: 0` network error.
 
 ## [1.0.0] - 2026-04-28
 

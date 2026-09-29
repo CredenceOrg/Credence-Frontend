@@ -13,7 +13,7 @@ import {
   resetApiRateLimiter,
   type ApiFetchOptions,
 } from './client'
-import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
+import { resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -759,6 +759,8 @@ describe('apiFetch pre-flight failure boundaries', () => {
       message: (first as ApiError).message,
     })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('commits one effect when a keyed operation is duplicated or reordered', async () => {
     const committedKeys = new Set<string>()
     fetchMock.mockImplementation(async (_url, init) => {
@@ -864,7 +866,9 @@ describe('apiFetch pre-flight failure boundaries', () => {
   it('rejects JSON bodies exceeding MAX_REQUEST_BODY_BYTES before fetching', async () => {
     const oversizedPayload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES + 1) }
 
-    await expect(apiFetch('/upload', { method: 'POST', body: oversizedPayload })).rejects.toMatchObject({
+    await expect(
+      apiFetch('/upload', { method: 'POST', body: oversizedPayload })
+    ).rejects.toMatchObject({
       name: 'ApiBodyTooLargeError',
       status: 413,
     } satisfies Partial<ApiBodyTooLargeError>)
@@ -878,7 +882,9 @@ describe('apiFetch pre-flight failure boundaries', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const payload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES - 100) }
-    await expect(apiFetch('/upload', { method: 'POST', body: payload })).resolves.toEqual({ ok: true })
+    await expect(apiFetch('/upload', { method: 'POST', body: payload })).resolves.toEqual({
+      ok: true,
+    })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 

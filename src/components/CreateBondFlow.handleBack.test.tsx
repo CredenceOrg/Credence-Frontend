@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+
 /**
  * @file CreateBondFlow.handleBack.test.tsx
  * @description Failure-boundary coverage for `handleBack` in `CreateBondFlow.tsx`.
@@ -15,9 +15,9 @@
  * - concurrency: several Back presses batched into one React update
  * - regression: focus management, entered-data retention, consent invalidation,
  *   and no user data leaking into the refusal diagnostic
+ * - failure-boundary: deterministic coverage for handleNext transitions
  */
 
-import React from 'react'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -50,10 +50,6 @@ vi.mock('./ToastProvider', () => ({
 
 vi.mock('../hooks/useReducedMotion', () => ({
   useReducedMotion: vi.fn(() => false),
-}))
-
-vi.mock('../lib/createBondFlowSteps', () => ({
-  BOND_FLOW_STEP_COUNT: 4,
 }))
 
 /** Wallet address used by the mocked context; asserted against log leakage. */
@@ -466,5 +462,206 @@ describe('handleBack – regression coverage', () => {
 
     expectOnStep(1)
     expect(screen.getByPlaceholderText('0')).toHaveValue('')
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// handleNext – deterministic failure-boundary coverage
+// ---------------------------------------------------------------------------
+
+describe('handleNext – success path', () => {
+  it('advances exactly one step from step 1 with a valid amount', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    expectOnStep(1)
+
+    const input = screen.getByPlaceholderText('0')
+    await user.clear(input)
+    await user.type(input, '1000')
+    await user.click(nextButton())
+
+    expectOnStep(2)
+    expect(screen.getByText(/Step 2: Choose Lock Duration/i)).toBeInTheDocument()
+  })
+
+  it('advances from step 2 to step 3 with a valid duration', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await goToStep(2)
+
+    await user.click(screen.getByRole('button', { name: /^30 Days$/i }))
+    await user.click(nextButton())
+
+    expectOnStep(3)
+    expect(screen.getByText(/Step 3: Review Terms/i)).toBeInTheDocument()
+  })
+
+  it('advances from step 3 to step 4', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await goToStep(3)
+
+    await user.click(nextButton())
+
+    expectOnStep(4)
+    expect(confirmButton()).toBeInTheDocument()
+  })
+})
+
+describe('handleNext – rejection is an inert no-op', () => {
+  it('rejects an empty amount and stays on step 1', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+
+    await user.click(nextButton())
+
+    expectOnStep(1)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+  })
+
+  it('rejects a zero amount and stays on step 1', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+
+    const input = screen.getByPlaceholderText('0')
+    await user.clear(input)
+    await user.type(input, '0')
+    await user.click(nextButton())
+
+    expectOnStep(1)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+  })
+
+  it('rejects an amount exceeding the wallet balance', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+
+    const input = screen.getByPlaceholderText('0')
+    await user.clear(input)
+    await user.type(input, '999999')
+    await user.click(nextButton())
+
+    expectOnStep(1)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+  })
+
+  it('rejects advancing from step 2 without a duration selected', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await goToStep(2)
+
+    await user.click(nextButton())
+
+    expectOnStep(2)
+    expect(screen.getByText(/select a lock duration/i)).toBeInTheDocument()
+  })
+
+  it('keeps the confirm button disabled until consent is acknowledged', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await goToStep(4)
+
+    expect(confirmButton()).toBeDisabled()
+    expect(screen.getByRole('checkbox')).not.toBeChecked()
+  })
+})
+
+describe('handleNext – boundary and concurrency', () => {
+  it('does not advance past the final step', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await goToStep(4)
+
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(confirmButton())
+
+    expect(currentStepLabel()).toMatch(/^Step [1-4] of 4$/)
+  })
+
+  it('applies two Next presses batched into one update as two advances', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await goToStep(2)
+    await user.click(screen.getByRole('button', { name: /^30 Days$/i }))
+
+    const next = nextButton()
+    await act(async () => {
+      next.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      next.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expectOnStep(4)
+  })
+
+  it('never renders an out-of-range step label under a burst of Next presses', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await goToStep(3)
+
+    const next = nextButton()
+    await act(async () => {
+      for (let i = 0; i < 5; i += 1) {
+        next.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      }
+    })
+
+    expect(currentStepLabel()).toMatch(/^Step [1-4] of 4$/)
+  })
+
+  it('applies Next then Back in dispatch order as a round trip', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await goToStep(2)
+    expectOnStep(2)
+
+    const next = nextButton()
+    const back = backButton()
+    await act(async () => {
+      next.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      back.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expectOnStep(2)
+  })
+})
+
+describe('handleNext – observability and data safety', () => {
+  it('does not leak the wallet address or amount into validation errors', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+
+    const input = screen.getByPlaceholderText('0')
+    await user.clear(input)
+    await user.type(input, '0')
+    await user.click(nextButton())
+
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent ?? '').not.toContain(TEST_ADDRESS)
+  })
+
+  it('preserves entered amount after a rejected Next', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+
+    const input = screen.getByPlaceholderText('0')
+    await user.clear(input)
+    await user.type(input, '250')
+    await user.click(nextButton())
+    await user.click(nextButton())
+
+    expect(screen.getByPlaceholderText('0')).toHaveValue('250.00')
+  })
+
+  it('does not call onComplete when Next is used before the confirm step', async () => {
+    const user = userEvent.setup()
+    const onComplete = vi.fn()
+    renderFlow({ onComplete })
+    await goToStep(3)
+
+    await user.click(nextButton())
+
+    expect(onComplete).not.toHaveBeenCalled()
+    expect(addToast).not.toHaveBeenCalled()
   })
 })

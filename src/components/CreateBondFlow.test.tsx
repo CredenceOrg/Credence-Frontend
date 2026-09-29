@@ -12,9 +12,9 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { useState } from 'react'
 import CreateBondFlow from './CreateBondFlow'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { computeBondSlashBreakdown, getPenaltyRateForDuration } from '../lib/bondPenalty'
 
 vi.mock('../hooks/useReducedMotion', () => ({
   useReducedMotion: vi.fn(() => false),
@@ -83,7 +83,6 @@ async function reachStep3(amount: string, durationDays: 30 | 90 | 180 = 30) {
 // ---------------------------------------------------------------------------
 // Unit tests: computeBondSlashBreakdown (imported via lib)
 // ---------------------------------------------------------------------------
-import { computeBondSlashBreakdown, getPenaltyRateForDuration } from '../lib/bondPenalty'
 import { formatUsdc } from '../lib/format'
 
 describe('formatUsdc', () => {
@@ -107,6 +106,7 @@ describe('formatUsdc', () => {
 describe('getPenaltyRateForDuration', () => {
   it('returns 0.2 for 30-day lock', () => {
     expect(getPenaltyRateForDuration(30)).toBe(0.2)
+    expect(getPenaltyRateForDuration(30)).toBe(0.2)
   })
 
   it('returns 0.15 for 90-day lock', () => {
@@ -115,11 +115,13 @@ describe('getPenaltyRateForDuration', () => {
 
   it('returns 0.1 for 180-day lock', () => {
     expect(getPenaltyRateForDuration(180)).toBe(0.1)
+    expect(getPenaltyRateForDuration(180)).toBe(0.1)
   })
 
   it('falls back to 0.2 (conservative) for unknown durations', () => {
     expect(getPenaltyRateForDuration(60)).toBe(0.2)
     expect(getPenaltyRateForDuration(0)).toBe(0.2)
+    expect(getPenaltyRateForDuration(365)).toBe(0.2)
     expect(getPenaltyRateForDuration(365)).toBe(0.2)
   })
 })
@@ -128,6 +130,7 @@ describe('computeBondSlashBreakdown', () => {
   it('computes 20% penalty for 30-day lock on 1,000 USDC', () => {
     const bd = computeBondSlashBreakdown(1000, 30)
     expect(bd.penaltyPercent).toBe(20)
+    expect(bd.penaltyUsdc).toBe(200)
     expect(bd.penaltyUsdc).toBe(200)
     expect(bd.resultingUsdc).toBe(800)
     expect(bd.bondAmount).toBe('1,000 USDC')
@@ -139,12 +142,14 @@ describe('computeBondSlashBreakdown', () => {
     const bd = computeBondSlashBreakdown(1000, 90)
     expect(bd.penaltyPercent).toBe(15)
     expect(bd.penaltyUsdc).toBe(150)
+    expect(bd.penaltyUsdc).toBe(150)
     expect(bd.resultingUsdc).toBe(850)
   })
 
   it('computes 10% penalty for 180-day lock on 1,000 USDC', () => {
     const bd = computeBondSlashBreakdown(1000, 180)
     expect(bd.penaltyPercent).toBe(10)
+    expect(bd.penaltyUsdc).toBe(100)
     expect(bd.penaltyUsdc).toBe(100)
     expect(bd.resultingUsdc).toBe(900)
   })
@@ -153,6 +158,7 @@ describe('computeBondSlashBreakdown', () => {
     const bd = computeBondSlashBreakdown(1_000_000, 30)
     expect(bd.penaltyUsdc).toBe(200_000)
     expect(bd.resultingUsdc).toBe(800_000)
+    expect(bd.resultingUsdc).toBe(800_000)
     expect(bd.resultingBalance).toBe('800,000 USDC')
   })
 
@@ -160,11 +166,13 @@ describe('computeBondSlashBreakdown', () => {
     const bd = computeBondSlashBreakdown(100.5, 30)
     expect(bd.penaltyUsdc).toBeCloseTo(20.1, 5)
     expect(bd.resultingUsdc).toBeCloseTo(80.4, 5)
+    expect(bd.resultingUsdc).toBeCloseTo(80.4, 5)
   })
 
   it('handles minimum non-zero amount (0.01 USDC)', () => {
     const bd = computeBondSlashBreakdown(0.01, 30)
     expect(bd.penaltyUsdc).toBeCloseTo(0.002, 5)
+    expect(bd.resultingUsdc).toBeCloseTo(0.008, 5)
     expect(bd.resultingUsdc).toBeCloseTo(0.008, 5)
   })
 })
@@ -177,11 +185,13 @@ describe('CreateBondFlow – step navigation', () => {
   it('renders step 1 by default', () => {
     renderFlow()
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
   })
 
   it('shows error when trying to advance from step 1 with no amount', () => {
     renderFlow()
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
     expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
   })
 
@@ -191,6 +201,7 @@ describe('CreateBondFlow – step navigation', () => {
     await user.type(screen.getByPlaceholderText('0'), '0')
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
+    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
   })
 
   it('advances to step 2 with a valid amount', async () => {
@@ -198,6 +209,7 @@ describe('CreateBondFlow – step navigation', () => {
     renderFlow()
     await user.type(screen.getByPlaceholderText('0'), '500')
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByText(/Step 2: Choose Lock Duration/i)).toBeInTheDocument()
     expect(screen.getByText(/Step 2: Choose Lock Duration/i)).toBeInTheDocument()
   })
 
@@ -208,6 +220,7 @@ describe('CreateBondFlow – step navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     expect(screen.getByText(/select a lock duration/i)).toBeInTheDocument()
+    expect(screen.getByText(/select a lock duration/i)).toBeInTheDocument()
   })
 
   it('goes back from step 2 to step 1', async () => {
@@ -217,11 +230,13 @@ describe('CreateBondFlow – step navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     fireEvent.click(screen.getByRole('button', { name: /back/i }))
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
   })
 
   it('cancel resets the flow to step 1', async () => {
     await reachStep3('1000', 30)
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
   })
 })
@@ -236,6 +251,7 @@ describe('CreateBondFlow – focus management', () => {
     // useEffect fires after render; wait for the heading to receive focus
     const heading = await screen.findByRole('heading', { name: /Step 1: Enter Bond Amount/i })
     expect(document.activeElement).toBe(heading)
+    expect(document.activeElement).toBe(heading)
   })
 
   it('moves focus to the step 2 heading when advancing from step 1', async () => {
@@ -245,11 +261,13 @@ describe('CreateBondFlow – focus management', () => {
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     const heading = await screen.findByRole('heading', { name: /Step 2: Choose Lock Duration/i })
     expect(document.activeElement).toBe(heading)
+    expect(document.activeElement).toBe(heading)
   })
 
   it('moves focus to the step 3 heading when advancing from step 2', async () => {
     await reachStep3('1000', 30)
     const heading = await screen.findByRole('heading', { name: /Step 3: Review Terms/i })
+    expect(document.activeElement).toBe(heading)
     expect(document.activeElement).toBe(heading)
   })
 
@@ -257,6 +275,7 @@ describe('CreateBondFlow – focus management', () => {
     await reachStep3('1000', 30)
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     const heading = await screen.findByRole('heading', { name: /Step 4: Confirm Bond/i })
+    expect(document.activeElement).toBe(heading)
     expect(document.activeElement).toBe(heading)
   })
 
@@ -267,6 +286,7 @@ describe('CreateBondFlow – focus management', () => {
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     fireEvent.click(screen.getByRole('button', { name: /back/i }))
     const heading = await screen.findByRole('heading', { name: /Step 1: Enter Bond Amount/i })
+    expect(document.activeElement).toBe(heading)
     expect(document.activeElement).toBe(heading)
   })
 })
@@ -279,15 +299,18 @@ describe('CreateBondFlow – step 3 review', () => {
   it('renders the step 3 heading', async () => {
     await reachStep3('1000', 30)
     expect(screen.getByText(/Step 3: Review Terms/i)).toBeInTheDocument()
+    expect(screen.getByText(/Step 3: Review Terms/i)).toBeInTheDocument()
   })
 
   it('shows bond amount row', async () => {
     await reachStep3('1000', 30)
     expect(screen.getByTestId('review-bond-amount')).toHaveTextContent('1,000 USDC')
+    expect(screen.getByTestId('review-bond-amount')).toHaveTextContent('1,000 USDC')
   })
 
   it('shows duration row', async () => {
     await reachStep3('1000', 30)
+    expect(screen.getByTestId('review-duration')).toHaveTextContent('30 Days')
     expect(screen.getByTestId('review-duration')).toHaveTextContent('30 Days')
   })
 
@@ -296,15 +319,18 @@ describe('CreateBondFlow – step 3 review', () => {
     const unlockDate = screen.getByTestId('review-unlock-date')
     // Should contain a year (not empty)
     expect(unlockDate.textContent).toMatch(/\d{4}/)
+    expect(unlockDate.textContent).toMatch(/\d{4}/)
   })
 
   it('shows the warning banner about early withdrawal', async () => {
     await reachStep3('1000', 30)
     expect(screen.getByText(/Early withdrawal — slash exposure/i)).toBeInTheDocument()
+    expect(screen.getByText(/Early withdrawal — slash exposure/i)).toBeInTheDocument()
   })
 
   it('shows "If you withdraw early" section label', async () => {
     await reachStep3('1000', 30)
+    expect(screen.getByText(/if you withdraw early/i)).toBeInTheDocument()
     expect(screen.getByText(/if you withdraw early/i)).toBeInTheDocument()
   })
 
@@ -313,15 +339,18 @@ describe('CreateBondFlow – step 3 review', () => {
   it('shows correct 20% penalty label for 30-day bond of 1000 USDC', async () => {
     await reachStep3('1000', 30)
     expect(screen.getByText(/slash penalty \(20%\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/slash penalty \(20%\)/i)).toBeInTheDocument()
   })
 
   it('shows correct penalty deduction for 30-day, 1000 USDC', async () => {
     await reachStep3('1000', 30)
     expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('200 USDC')
+    expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('200 USDC')
   })
 
   it('shows correct resulting balance for 30-day, 1000 USDC', async () => {
     await reachStep3('1000', 30)
+    expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('800 USDC')
     expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('800 USDC')
   })
 
@@ -330,6 +359,7 @@ describe('CreateBondFlow – step 3 review', () => {
     expect(screen.getByText(/slash penalty \(15%\)/i)).toBeInTheDocument()
     expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('150 USDC')
     expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('850 USDC')
+    expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('850 USDC')
   })
 
   it('shows 10% penalty for 180-day bond of 1000 USDC', async () => {
@@ -337,11 +367,13 @@ describe('CreateBondFlow – step 3 review', () => {
     expect(screen.getByText(/slash penalty \(10%\)/i)).toBeInTheDocument()
     expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('100 USDC')
     expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('900 USDC')
+    expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('900 USDC')
   })
 
   it('shows correct numbers for a large amount (10,000 USDC, 30 days)', async () => {
     await reachStep3('10000', 30)
     expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('2,000 USDC')
+    expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('8,000 USDC')
     expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('8,000 USDC')
   })
 
@@ -350,6 +382,7 @@ describe('CreateBondFlow – step 3 review', () => {
     expect(screen.getByText(/slash penalty \(10%\)/i)).toBeInTheDocument()
     // 10% of 1 = 0.1; resulting = 0.9
     expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('0.1 USDC')
+    expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('0.9 USDC')
     expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('0.9 USDC')
   })
 })
@@ -375,6 +408,7 @@ describe('CreateBondFlow – review recomputes after editing', () => {
     // Confirm initial breakdown
     expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('200 USDC')
     expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('800 USDC')
+    expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('800 USDC')
 
     // Go back to step 1 and change amount
     fireEvent.click(screen.getByRole('button', { name: /back/i })) // → step 2
@@ -389,6 +423,7 @@ describe('CreateBondFlow – review recomputes after editing', () => {
     fireEvent.click(screen.getByRole('button', { name: /next/i })) // → step 3 (duration persists)
 
     expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('100 USDC')
+    expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('400 USDC')
     expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('400 USDC')
   })
 
@@ -417,6 +452,7 @@ describe('CreateBondFlow – review recomputes after editing', () => {
     expect(screen.getByText(/slash penalty \(10%\)/i)).toBeInTheDocument()
     expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('100 USDC')
     expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('900 USDC')
+    expect(screen.getByTestId('review-resulting-balance')).toHaveTextContent('900 USDC')
   })
 })
 
@@ -433,10 +469,12 @@ describe('CreateBondFlow – step 4 confirm', () => {
   it('renders step 4 heading', async () => {
     await reachStep4()
     expect(screen.getByText(/Step 4: Confirm Bond/i)).toBeInTheDocument()
+    expect(screen.getByText(/Step 4: Confirm Bond/i)).toBeInTheDocument()
   })
 
   it('confirm button is disabled without acknowledgement', async () => {
     await reachStep4()
+    expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).toBeDisabled()
   })
 
@@ -446,6 +484,7 @@ describe('CreateBondFlow – step 4 confirm', () => {
     const checkbox = screen.getByRole('checkbox')
     await user.click(checkbox)
     expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).not.toBeDisabled()
   })
 
   it('fires toast and resets to step 1 after confirmation', async () => {
@@ -453,6 +492,7 @@ describe('CreateBondFlow – step 4 confirm', () => {
     await reachStep4()
     await user.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: /Confirm & Create Bond/i }))
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
   })
 })
@@ -471,6 +511,7 @@ describe('CreateBondFlow – transition gating under prefers-reduced-motion', ()
     const stepIndicator = screen.getByLabelText(/Step 1 of 4/i)
     const bars = stepIndicator.querySelectorAll('div')
     expect(bars[0].style.transition).toBe('background 0.2s ease')
+    expect(bars[0].style.transition).toBe('background 0.2s ease')
 
     // Advance to step 2 to check duration buttons
     const amountInput = screen.getByPlaceholderText('0')
@@ -478,6 +519,7 @@ describe('CreateBondFlow – transition gating under prefers-reduced-motion', ()
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
 
     const button = screen.getByRole('button', { name: /30 Days/i })
+    expect(button.style.transition).toBe('all 0.2s ease')
     expect(button.style.transition).toBe('all 0.2s ease')
   })
 
@@ -490,6 +532,7 @@ describe('CreateBondFlow – transition gating under prefers-reduced-motion', ()
     const stepIndicator = screen.getByLabelText(/Step 1 of 4/i)
     const bars = stepIndicator.querySelectorAll('div')
     expect(bars[0].style.transition).toBe('none')
+    expect(bars[0].style.transition).toBe('none')
 
     // Advance to step 2 to check duration buttons
     const amountInput = screen.getByPlaceholderText('0')
@@ -497,6 +540,7 @@ describe('CreateBondFlow – transition gating under prefers-reduced-motion', ()
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
 
     const button = screen.getByRole('button', { name: /30 Days/i })
+    expect(button.style.transition).toBe('none')
     expect(button.style.transition).toBe('none')
   })
 })
@@ -514,6 +558,7 @@ describe('CreateBondFlow – reset failure boundaries', () => {
     // Back on step 1 with a cleared amount field
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText('0')).toHaveValue('')
+    expect(screen.getByPlaceholderText('0')).toHaveValue('')
 
     // Advancing without input must re-trigger validation (no stale state)
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
@@ -524,6 +569,7 @@ describe('CreateBondFlow – reset failure boundaries', () => {
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     expect(screen.getByText(/select a lock duration/i)).toBeInTheDocument()
+    expect(screen.getByText(/select a lock duration/i)).toBeInTheDocument()
   })
 
   it('cancel from step 4 clears acknowledgement so confirm is gated again', async () => {
@@ -531,6 +577,7 @@ describe('CreateBondFlow – reset failure boundaries', () => {
     await reachStep3('1000', 30)
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     await user.click(screen.getByRole('checkbox'))
+    expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).not.toBeDisabled()
     expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).not.toBeDisabled()
 
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
@@ -543,6 +590,7 @@ describe('CreateBondFlow – reset failure boundaries', () => {
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Confirm & Create Bond/i })).toBeDisabled()
   })
 
   it('repeated cancel is idempotent and does not corrupt state', async () => {
@@ -551,6 +599,7 @@ describe('CreateBondFlow – reset failure boundaries', () => {
     fireEvent.click(cancel)
     fireEvent.click(cancel)
     fireEvent.click(cancel)
+    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText('0')).toHaveValue('')
   })
@@ -564,110 +613,6 @@ describe('CreateBondFlow – reset failure boundaries', () => {
 
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText('0')).toHaveValue('')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Deterministic failure-boundary coverage for handleNext
-// ---------------------------------------------------------------------------
-
-describe('CreateBondFlow – handleNext failure boundaries', () => {
-  it('rejects whitespace-only amount without advancing', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-    const amountInput = screen.getByPlaceholderText('0')
-    await user.type(amountInput, '   ')
-    fireEvent.click(screen.getByRole('button', { name: /next/i }))
-    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
-    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
-  })
-
-  it('rejects non-numeric amount without advancing', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-    const amountInput = screen.getByPlaceholderText('0')
-    await user.type(amountInput, 'abc')
-    fireEvent.click(screen.getByRole('button', { name: /next/i }))
-    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
-    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
-  })
-
-  it('rejects negative amount without advancing', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-    const amountInput = screen.getByPlaceholderText('0')
-    await user.type(amountInput, '-100')
-    fireEvent.click(screen.getByRole('button', { name: /next/i }))
-    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
-    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
-  })
-
-  it('rejects amount exceeding available balance', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-    const amountInput = screen.getByPlaceholderText('0')
-    await user.type(amountInput, '999999999')
-    fireEvent.click(screen.getByRole('button', { name: /next/i }))
-    // Should either show an error or remain on step 1
-    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
-  })
-
-  it('does not advance past step 4 on repeated next clicks', async () => {
-    const user = userEvent.setup()
-    await reachStep3('1000', 30)
-    fireEvent.click(screen.getByRole('button', { name: /next/i }))
-    expect(screen.getByText(/Step 4: Confirm Bond/i)).toBeInTheDocument()
-    // Next button should not exist or should be disabled on step 4
-    const nextButtons = screen.queryAllByRole('button', { name: /next/i })
-    nextButtons.forEach((btn) => {
-      if (!(btn as HTMLButtonElement).disabled) {
-        fireEvent.click(btn)
-      }
-    })
-    expect(screen.getByText(/Step 4: Confirm Bond/i)).toBeInTheDocument()
-  })
-
-  it('repeated next clicks on step 1 with valid amount advance only once', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-    await user.type(screen.getByPlaceholderText('0'), '500')
-    const next = screen.getByRole('button', { name: /next/i })
-    fireEvent.click(next)
-    fireEvent.click(next)
-    // Should be on step 2, not step 3
-    expect(screen.getByText(/Step 2: Choose Lock Duration/i)).toBeInTheDocument()
-  })
-
-  it('back from step 1 is a no-op and preserves amount', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-    await user.type(screen.getByPlaceholderText('0'), '500')
-    const backButtons = screen.queryAllByRole('button', { name: /back/i })
-    backButtons.forEach((btn) => fireEvent.click(btn))
-    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('0')).toHaveValue('500')
-  })
-
-  it('cancel during step 2 clears duration selection deterministically', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-    await user.type(screen.getByPlaceholderText('0'), '500')
-    fireEvent.click(screen.getByRole('button', { name: /next/i }))
-    fireEvent.click(screen.getByRole('button', { name: /30 Days/i }))
-    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
-    expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText('0')).toHaveValue('')
-  })
-
-  it('handleNext is idempotent for the same valid input across retries', async () => {
-    const user = userEvent.setup()
-    renderFlow()
-    await user.type(screen.getByPlaceholderText('0'), '1000')
-    fireEvent.click(screen.getByRole('button', { name: /next/i }))
-    fireEvent.click(screen.getByRole('button', { name: /back/i }))
-    // Amount must persist across back navigation
-    expect(screen.getByPlaceholderText('0')).toHaveValue('1000')
-    fireEvent.click(screen.getByRole('button', { name: /next/i }))
-    expect(screen.getByText(/Step 2: Choose Lock Duration/i)).toBeInTheDocument()
   })
 })

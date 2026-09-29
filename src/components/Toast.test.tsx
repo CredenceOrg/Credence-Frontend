@@ -1,4 +1,4 @@
-import { render, screen, within, act } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import Toast, { type ToastSeverity } from './Toast'
@@ -201,7 +201,7 @@ describe('Toast', () => {
       vi.advanceTimersByTime(1000)
       expect(onDismiss).toHaveBeenCalledTimes(1)
 
-      const button = screen.getByRole('button', { name: 'Dismis info notification' })
+      const button = screen.getByRole('button', { name: 'Dismiss info notification' })
       act(() => {
         button.click()
       })
@@ -217,7 +217,7 @@ describe('Toast', () => {
       const { onDismiss } = renderToast('danger', 'Sticky toast', 0)
       const toast = screen.getByRole('alert')
 
-      expect(screen.queryButton('progressbar')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
 
       fireEvent.mouseEnter(toast)
       fireEvent.mouseLeave(toast)
@@ -226,5 +226,126 @@ describe('Toast', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  describe('focus/blur boundaries', () => {
+    it('pauses the countdown while focused and resumes on focus-out', () => {
+      vi.useFakeTimers()
+      try {
+        const { onDismiss } = renderToast('info', 'Focus toast', 5000)
+        const toast = screen.getByRole('status')
+
+        fireEvent.focusIn(toast)
+        vi.advanceTimersByTime(10000)
+        expect(onDismiss).not.toHaveBeenCalled()
+
+        fireEvent.focusOut(toast)
+        vi.advanceTimersByTime(5000)
+        expect(onDismiss).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('stays paused when focus moves to an element inside the toast', () => {
+      vi.useFakeTimers()
+      try {
+        const { onDismiss } = renderToast('info', 'Nested focus', 5000)
+        const toast = screen.getByRole('status')
+        const dismissButton = screen.getByRole('button', { name: 'Dismiss info notification' })
+
+        fireEvent.focusIn(toast)
+        // relatedTarget is inside the toast, so focus has not genuinely left.
+        fireEvent.focusOut(toast, { relatedTarget: dismissButton })
+        vi.advanceTimersByTime(10000)
+        expect(onDismiss).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not restart the countdown when focused after dismissal', () => {
+      vi.useFakeTimers()
+      try {
+        const { onDismiss } = renderToast('info', 'Dismissed focus', 1000)
+        const toast = screen.getByRole('status')
+
+        vi.advanceTimersByTime(1000)
+        expect(onDismiss).toHaveBeenCalledTimes(1)
+
+        fireEvent.focusIn(toast)
+        vi.advanceTimersByTime(10000)
+        expect(onDismiss).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
+  describe('failure boundaries and recovery', () => {
+    it('does not restart the countdown when hovered after a manual dismissal', () => {
+      vi.useFakeTimers()
+      try {
+        const { onDismiss } = renderToast('info', 'Manual dismiss', 5000)
+        const toast = screen.getByRole('status')
+
+        fireEvent.click(screen.getByRole('button', { name: 'Dismiss info notification' }))
+        expect(onDismiss).toHaveBeenCalledTimes(1)
+
+        fireEvent.mouseEnter(toast)
+        vi.advanceTimersByTime(10000)
+        expect(onDismiss).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('treats a negative duration as non-auto-dismissible and renders no progress bar', () => {
+      vi.useFakeTimers()
+      try {
+        const { onDismiss } = renderToast('warning', 'Negative duration', -1)
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+
+        vi.advanceTimersByTime(10000)
+        expect(onDismiss).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('advances the progress indicator below 100% before dismissal', () => {
+      vi.useFakeTimers()
+      try {
+        renderToast('info', 'Progress toast', 1000)
+        const progressBar = screen.getByRole('progressbar', { name: /time remaining/i })
+        expect(progressBar).toHaveAttribute('aria-valuenow', '100')
+
+        act(() => {
+          vi.advanceTimersByTime(500)
+        })
+        expect(Number(progressBar.getAttribute('aria-valuenow'))).toBeLessThan(100)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('dismisses exactly once even when hover-resume is followed by a dismiss click', () => {
+      vi.useFakeTimers()
+      try {
+        const { onDismiss } = renderToast('info', 'Recovery toast', 5000)
+        const toast = screen.getByRole('status')
+        const dismissButton = screen.getByRole('button', { name: 'Dismiss info notification' })
+
+        fireEvent.mouseEnter(toast)
+        fireEvent.mouseLeave(toast)
+        fireEvent.click(dismissButton)
+        fireEvent.mouseEnter(toast)
+
+        vi.advanceTimersByTime(10000)
+        expect(onDismiss).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 })

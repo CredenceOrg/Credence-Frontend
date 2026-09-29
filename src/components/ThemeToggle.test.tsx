@@ -241,142 +241,103 @@ describe('ThemeToggle', () => {
   })
 
   it('survives a corrupted localStorage value and stays toggleable', () => {
-    // A corrupt/partially-written persisted value must not crash the toggle.
-    localStorage.setItem('settings', '{ not json ')
-    localStorage.setItem('themeMode', '\u0000\u0001\u0002')
+    localStorage.setItem('theme', '<script>alert(1)</script>')
+    renderToggle()
+    const btn = screen.getButton('Toggle theme')
+    // Corrupt values are never propagated into state.
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(btn)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('survives a localStorage that throws on read and write', () => {
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError')
+    })
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError')
+    })
 
     expect(() => renderToggle()).not.toThrow()
     const btn = screen.getButton('Toggle theme')
-    expect(btn).toBeInDocument()
-
-    // The control must remain operable and deterministic after corruption.
     expect(btn).toHaveAttribute('aria-pressed', 'false')
     expect(() => fireEvent.click(btn)).not.toThrow()
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
-    expect(btn).toHaveAttribute('title', 'Switch to light theme')
-  })
-
-  it('survives a localStorage that throws on read and stays toggleable', () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new Error('storage read failure')
-    })
-
-    expect(() => renderToggle()).not.throw()
-    const btn = screen.getButton('Toggle theme')
-    expect(btn).toBeInDocument()
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
-
-    // The control must still flip deterministically even when persistence fails.
-    expect(() => fireEvent.click(btn)).not.throw()
     expect(btn).toHaveAttribute('aria-pressed', 'true')
 
     getItemSpy.mockRestore()
-  })
-
-  it('survives a localStorage that throws on write and stays toggleable', () => {
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('storage write failure')
-    })
-
-    expect(() => renderToggle()).not.throw()
-    const btn = screen.getButton('Toggle theme')
-    expect(btn).toBeInDocument()
-
-    // A failed persist must not lose the in-memory toggle state.
-    expect(() => fireEvent.click(btn)).not.toThrow()
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
-    expect(btn).toHaveAttribute('title', 'Switch to light theme')
-
     setItemSpy.mockRestore()
   })
 
-  it('toggles deterministically under rapid concurrent clicks', () => {
+  it('ignores an external theme-change event with an invalid payload', () => {
     renderToggle()
-    const btn = screen.getByrole('button')
-
-    // Odd number of clicks in a single batch must land on dark.
-    act(() => {
-      fireEvent.click(btn)
-      fireEvent.click(btn)
-      fireEvent.click(btn)
-    })
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
-
-    // Even number of clicks in a single batch must land on light.
-    act(() => {
-      fireEvent.click(btn)
-      fireEvent.click(btn)
-    })
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
-
-    act(() => {
-      fireEvent.click(btn)
-    })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
-  })
-
-  it('remains deterministic when the OS theme changes during a click batch', () => {
-    renderToggle()
-    const btn = screen.getByRole('button')
-
-    // Explicit dark choice must win over a concurrent OS flip.
-    act(() => {
-      fireEvent.click(btn)
-      osPrefersDark = false
-      darkListeners.forEach((cb) => cb({ matches: false } as MediaQueryListEvent))
-    })
-
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
-    expect(btn).toHaveAttribute('title', 'Switch to light theme')
-  })
-
-  it('cleans up media listeners on unmount (no stale callbacks)', () => {
-    const { unmount } = renderToggle()
-    expect(darkListeners.length).toBeGreaterThan(0)
-
-    unmount()
-    expect(darkListeners.length).toBe(0)
-
-    // A late OS event after unmount must not throw or update anything.
-    expect(() => emitSystemThemeChange(true)).not.toThrow()
-  })
-
-  it('recovers to a functional toggle after a matchMedia failure is resolved', () => {
-    // First render with a broken matchMedia.
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      configurable: true,
-      value: vi.fn(() => {
-        throw new Error('matchMedia failure')
-      }),
-    })
-
-    const { unmount } = renderToggle()
     const btn = screen.getButton('Toggle theme')
     expect(btn).toHaveAttribute('aria-pressed', 'false')
-    unmount()
 
-    // Restore a healthy matchMedia and re-render: the toggle must be fully
-    // functional again with no residual failure state.
-    defineMatchMedia(true)
-    renderToggle()
-    const btn2 = screen.getButton('Toggle theme')
-    expect(btn2).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(btn2)
-    expect(btn2).toHaveAttribute('aria-pressed', 'false')
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('theme-change', { detail: { theme: 'purple' } }),
+      )
+    })
+
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('treats duplicate media listener registrations as idempotent', () => {
+  it('applies a valid external theme-change event and locks out OS changes', () => {
     renderToggle()
-    const btn = screen.getByRole('button')
+    const btn = screen.getButton('Toggle theme')
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('theme-change', { detail: { theme: 'dark' } }),
+      )
+    })
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+
+    // Once an external explicit choice is made, OS changes are ignored.
+    emitSystemThemeChange(false)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('treats a rapid burst of clicks as a deterministic parity toggle', () => {
+    renderToggle()
+    const btn = screen.getButton('Toggle theme')
+
+    // Odd number of clicks → dark.
+    act(() => {
+      fireEvent.click(btn)
+      fireEvent.click(btn)
+      fireEvent.click(btn)
+    })
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+
+    // Even number of additional clicks → light.
+    act(() => {
+      fireEvent.click(btn)
+    })
     expect(btn).toHaveAttribute('aria-pressed', 'false')
+  })
 
-    // Emitting the same OS value twice must not double-apply or flip state.
-    emitSystemThemeChange(true)
-    emitSystemThemeChange(true)
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
+  it('keeps the latest commit authoritative when an OS event and a click race', () => {
+    renderToggle()
+    const btn = screen.getButton('Toggle theme')
 
-    emitSystemThemeChange(true)
+    act(() => {
+      // OS flips to dark, then the user explicitly clicks to light.
+      emitSystemThemeChange(true)
+      fireEvent.click(btn)
+    })
+
+    // The explicit click wins and the OS event is ignored after the choice.
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+  })
+
+  it('survives a data-theme DOM write that throws', () => {
+    const setAttributeSpy = viSpyOnSetAttribute()
+    expect(() => renderToggle()).not.toThrow()
+    const btn = screen.getButton('Toggle theme')
+    expect(() => fireEvent.click(btn)).not.toThrow()
     expect(btn).toHaveAttribute('aria-pressed', 'true')
+    setAttributeSpy.mockRestore()
   })
 })

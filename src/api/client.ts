@@ -68,6 +68,8 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
  * - `http_error` — the server answered with a non-2xx status.
  */
 export type ApiErrorCode = 'invalid_request_url' | 'network_error' | 'http_error'
+
+/**
  * Declaration of decimal amount fields for a request body.
  *
  * - `string[]`: field names validated with the default USDC rules.
@@ -252,8 +254,6 @@ function replaceControlCharacters(value: string): string {
   return result
 }
 
-export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
-
 /**
  * Normalizes the configured API base URL.
  *
@@ -281,6 +281,65 @@ export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
  */
 export function normalizeBaseUrl(value: string): string {
   const trimmed = typeof value === 'string' ? value.trim() : ''
+  if (!trimmed || trimmed === '/') {
+    return ''
+  }
+
+  // `//host` and `/\host` are resolved by fetch as protocol-relative URLs, so
+  // keeping them would send every API request — including Authorization
+  // headers — to a foreign origin. Fail closed instead.
+  if (trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
+    return rejectBaseUrl()
+  }
+
+  if (trimmed.startsWith('/')) {
+    if (trimmed.includes('?') || trimmed.includes('#')) {
+      return rejectBaseUrl()
+    }
+    return trimmed.replace(/\/+$/, '')
+  }
+
+  // Anything else must be an explicit absolute http(s) URL. This rejects
+  // scheme-less typos (`api.example.com`, which fetch would resolve as a
+  // same-origin *path* and silently 404) and dangerous schemes
+  // (`javascript:`, `data:`, `blob:`, `file:`).
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return rejectBaseUrl()
+  }
+
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    return rejectBaseUrl()
+  }
+  if (parsed.search || parsed.hash) {
+    return rejectBaseUrl()
+  }
+
+  return trimmed.replace(/\/+$/, '')
+}
+
+/**
+ * Reports an unusable `VITE_API_BASE_URL` and yields the same-origin fallback.
+ *
+ * The offending value is deliberately **not** echoed: a base URL may embed
+ * credentials (`https://user:token@host`) and the value is already visible in
+ * the operator's own `.env` file. Only the classification is logged.
+ */
+function rejectBaseUrl(): '' {
+  if (IS_DEV) {
+    console.warn(
+      '[api] VITE_API_BASE_URL is not a supported API base. Expected an empty value, ' +
+        'a root-relative prefix (e.g. "/api"), or an absolute http(s) origin. ' +
+        'Falling back to same-origin requests.'
+    )
+  }
+  return ''
+}
+
+export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
+
 type ReplayEntry = {
   fingerprint: string
   promise: Promise<unknown>
@@ -371,65 +430,6 @@ export function apiRateLimiterSnapshot(): Readonly<{
  */
 export function resetApiRateLimiter(): void {
   defaultApiRateLimiter.reset()
-}
-
-function normalizeBaseUrl(value: string): string {
-  const trimmed = value.trim()
-  if (!trimmed || trimmed === '/') {
-    return ''
-  }
-
-  // `//host` and `/\host` are resolved by fetch as protocol-relative URLs, so
-  // keeping them would send every API request — including Authorization
-  // headers — to a foreign origin. Fail closed instead.
-  if (trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
-    return rejectBaseUrl()
-  }
-
-  if (trimmed.startsWith('/')) {
-    if (trimmed.includes('?') || trimmed.includes('#')) {
-      return rejectBaseUrl()
-    }
-    return trimmed.replace(/\/+$/, '')
-  }
-
-  // Anything else must be an explicit absolute http(s) URL. This rejects
-  // scheme-less typos (`api.example.com`, which fetch would resolve as a
-  // same-origin *path* and silently 404) and dangerous schemes
-  // (`javascript:`, `data:`, `blob:`, `file:`).
-  if (!/^https?:\/\//i.test(trimmed)) {
-    return rejectBaseUrl()
-  }
-
-  let parsed: URL
-  try {
-    parsed = new URL(trimmed)
-  } catch {
-    return rejectBaseUrl()
-  }
-  if (parsed.search || parsed.hash) {
-    return rejectBaseUrl()
-  }
-
-  return trimmed.replace(/\/+$/, '')
-}
-
-/**
- * Reports an unusable `VITE_API_BASE_URL` and yields the same-origin fallback.
- *
- * The offending value is deliberately **not** echoed: a base URL may embed
- * credentials (`https://user:token@host`) and the value is already visible in
- * the operator's own `.env` file. Only the classification is logged.
- */
-function rejectBaseUrl(): '' {
-  if (IS_DEV) {
-    console.warn(
-      '[api] VITE_API_BASE_URL is not a supported API base. Expected an empty value, ' +
-        'a root-relative prefix (e.g. "/api"), or an absolute http(s) origin. ' +
-        'Falling back to same-origin requests.'
-    )
-  }
-  return ''
 }
 
 /**
@@ -539,9 +539,6 @@ function normalizeApiPath(path: string): string {
  */
 export function buildUrl(path: string, baseUrl: string = API_BASE_URL): string {
   return `${normalizeBaseUrl(baseUrl)}${normalizeApiPath(path)}`
-function buildUrl(path: string): string {
-  const normalizedPath = path.startsWith('/') ? path : '/' + path
-  return '' + API_BASE_URL + normalizedPath
 }
 
 function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unknown> | unknown[] {
@@ -633,11 +630,10 @@ function applyAmountFields(
   return wireBody
 }
 
-function buildHeaders(headers: HeadersInit | undefined, hasJsonBody: boolean): Headers {
 function buildHeaders(
   headers: HeadersInit | undefined,
   hasJsonBody: boolean,
-  correlationId: string
+  correlationId?: string
 ): Headers {
   const nextHeaders = new Headers(headers)
   if (!nextHeaders.has('Accept')) {
@@ -646,24 +642,77 @@ function buildHeaders(
   if (hasJsonBody && !nextHeaders.has('Content-Type')) {
     nextHeaders.set('Content-Type', 'application/json')
   }
-  if (!nextHeaders.has('X-Correlation-ID')) {
+  if (correlationId && !nextHeaders.has('X-Correlation-ID')) {
     nextHeaders.set('X-Correlation-ID', correlationId)
   }
   return nextHeaders
 }
 
-async function parseResponse(response: Response): Promise<unknown> {
-  if (response.status === 204) {
+/**
+ * Safely parses an HTTP response into a typed JSON value, text, or undefined.
+ *
+ * Deterministic failure-boundary invariants:
+ *  1. Empty content statuses (204 No Content, 205 Reset Content, 304 Not Modified)
+ *     always return `undefined` immediately without attempting to read the body stream.
+ *  2. Responses with empty or whitespace-only bodies return `undefined` instead
+ *     of throwing a syntax error.
+ *  3. JSON recognition: Matches `application/json`, `application/*+json`,
+ *     and `text/json` (case-insensitive) in the Content-Type header, or valid
+ *     JSON-like object/array payloads.
+ *  4. Body stream safety: Reads `response.text()` first. If network cuts or the stream
+ *     is aborted mid-read, rethrows `AbortError` or raises a deterministic `network_error`.
+ *  5. Malformed/Partial JSON:
+ *     - If `response.ok` is false (e.g. 4xx/5xx error responses), malformed JSON does not
+ *       crash; the raw text body is preserved and returned as payload, ensuring callers
+ *       have full diagnostic information without silent data loss.
+ *     - If `response.ok` is true (2xx), but the JSON is malformed, throws an `ApiError`
+ *       with classification `http_error` and a redacted diagnostic message.
+ *  6. Safe data representation: Valid JSON primitives like `false`, `0`, `""`, and `null`
+ *     are preserved as their parsed values and not accidentally coerced to `undefined`.
+ */
+export async function parseResponse(response: Response): Promise<unknown> {
+  if (response.status === 204 || response.status === 205 || response.status === 304) {
     return undefined
   }
 
-  const contentType = response.headers.get('content-type') || ''
-  if (contentType.includes('application/json')) {
-    return response.json()
+  let text: string
+  try {
+    text = await response.text()
+  } catch (error) {
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
+      throw error
+    }
+    const message = error instanceof Error ? error.message : 'Failed to read response body'
+    throw new ApiError(response.status || 0, message, error, 'network_error')
   }
 
-  const text = await response.text()
-  return text || undefined
+  const trimmed = text.trim()
+  if (!trimmed) {
+    return undefined
+  }
+
+  const contentType = (response.headers.get('content-type') || '').toLowerCase()
+  const isJsonHeader =
+    contentType.includes('application/json') ||
+    contentType.includes('+json') ||
+    contentType.includes('text/json')
+
+  const looksLikeJson =
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'))
+
+  if (isJsonHeader || looksLikeJson) {
+    try {
+      return JSON.parse(text)
+    } catch (err) {
+      if (!response.ok) {
+        return trimmed
+      }
+      throw err
+    }
+  }
+
+  return trimmed
 }
 
 function errorMessage(status: number, payload: unknown): string {
@@ -671,9 +720,9 @@ function errorMessage(status: number, payload: unknown): string {
     payload &&
     typeof payload === 'object' &&
     'message' in payload &&
-    typeof payload.message === 'string'
+    typeof (payload as { message: unknown }).message === 'string'
   ) {
-    return payload.message
+    return (payload as { message: string }).message
   }
   if (typeof payload === 'string' && payload.trim()) {
     return payload
@@ -733,7 +782,8 @@ function replayConflict(key: string): ApiError {
  * make a permanent fault look like a transient one worth retrying.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, skipRateLimit, amountFields, ...init } = options
+  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } =
+    options
 
   // Exact-amount gate: validate and canonicalize declared amount fields
   // BEFORE any state change. An invalid amount must never consume
@@ -741,23 +791,19 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   // caller's body object.
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
-  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, ...init } = options
-  const hasJsonBody = isJsonBody(body)
 
-  // Pre-flight: deterministic, request-independent failures.
-  const url = buildUrl(path)
-  const requestHeaders = buildHeaders(headers, hasJsonBody)
-  const requestBody = hasJsonBody ? JSON.stringify(body) : body
   // Validate input size before expensive operations. Serializing an oversized
   // body is wasted work and could exhaust memory or downstream resources.
   if (hasJsonBody) {
-    const serialized = JSON.stringify(body)
+    const serialized = JSON.stringify(wireBody)
     if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
       throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
     }
   }
 
-  const serializedBody = hasJsonBody ? JSON.stringify(body) : (body ?? undefined)
+  const serializedBody = hasJsonBody
+    ? JSON.stringify(wireBody)
+    : ((wireBody as BodyInit) ?? undefined)
   const correlationId = generateCorrelationId('api-fetch')
   const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
   const method = (init.method || 'GET').toUpperCase()
@@ -854,10 +900,6 @@ async function apiFetchWithoutReplay<T>(
   try {
     response = await fetch(url, {
       ...init,
-      headers: requestHeaders,
-      body: requestBody,
-      headers: buildHeaders(headers, hasJsonBody),
-      body: hasJsonBody ? JSON.stringify(wireBody) : wireBody,
       headers,
       body: serializedBody,
     })
@@ -872,14 +914,13 @@ async function apiFetchWithoutReplay<T>(
       throw error
     }
     const message = error instanceof Error ? error.message : 'Network request failed'
-    throw new ApiError(0, message, error, 'network_error')
     emitWalletSessionEvent('action_failed', {
       address: null,
       network: null,
       correlationId: ctx.correlationId,
       metadata: { path: ctx.path, method: ctx.method, status: 0, message },
     })
-    throw new ApiError(0, message, error)
+    throw new ApiError(0, message, error, 'network_error')
   }
 
   // Post-flight identity epoch check.
@@ -899,12 +940,6 @@ async function apiFetchWithoutReplay<T>(
   const payload = await parseResponse(response)
 
   if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      errorMessage(response.status, payload),
-      payload,
-      'http_error'
-    )
     const message = errorMessage(response.status, payload)
     emitWalletSessionEvent('action_failed', {
       address: null,
@@ -912,7 +947,7 @@ async function apiFetchWithoutReplay<T>(
       correlationId: ctx.correlationId,
       metadata: { path: ctx.path, method: ctx.method, status: response.status, message },
     })
-    throw new ApiError(response.status, message, payload)
+    throw new ApiError(response.status, message, payload, 'http_error')
   }
 
   emitWalletSessionEvent('action_succeeded', {

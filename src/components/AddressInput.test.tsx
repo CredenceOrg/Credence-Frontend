@@ -268,7 +268,7 @@ describe('accessibility', () => {
 // --- Paste button ---
 describe('paste button', () => {
   it('reads clipboard, trims whitespace, and calls onChange', async () => {
-    clipboardReadTextMock.mockResolvedValue(``  ${VALID_KEY}  `)
+    clipboardReadTextMock.mockResolvedValue(`  ${VALID_KEY}  `)
     const onChange = vi.fn()
     render(<AddressInput id="addr" value="" onChange={onChange} />)
 
@@ -282,7 +282,7 @@ describe('paste button', () => {
   })
 
   it('focuses input as fallback when clipboard access throws', async () => {
-    clipboardReadTextMock.mockRejected(new DOMException('denied', 'NotAllowedError'))
+    clipboardReadTextMock.mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
     render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
 
     const input = screen.getByRole('textbox')
@@ -306,10 +306,14 @@ describe('paste button', () => {
 
     await user.click(input)
     // Paste with stellar: prefix and a suspicious non-ASCII character
-    await user.paste(`stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H${SUSPICIOUS_ZERO_WIDTH}`)
+    await user.paste(
+      `stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H${SUSPICIOUS_ZERO_WIDTH}`
+    )
 
     // The value should be updated without "stellar:"
-    expect(input).toHaveValue(`GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H${SUSPICIOUS_ZERO_WIDTH}`)
+    expect(input).toHaveValue(
+      `GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H${SUSPICIOUS_ZERO_WIDTH}`
+    )
 
     // And it should show a warning
     const alert = screen.getByRole('alert')
@@ -359,20 +363,13 @@ describe('boundary and recovery', () => {
   it('recovers from an invalid external error once the value is corrected', async () => {
     const user = userEvent.setup()
     const { rerender } = render(
-      <AddressInput
-        id="addr"
-        value=""
-        onChange={vi.fn()}
-        error="Address is required"
-      />
+      <AddressInput id="addr" value="" onChange={vi.fn()} error="Address is required" />
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent('Address is required')
 
     // Simulate the parent clearing the external error and providing a valid value
-    rerender(
-      <AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />
-    )
+    rerender(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
 
     await user.click(screen.getByRole('textbox'))
     await user.tab()
@@ -402,9 +399,7 @@ describe('boundary and recovery', () => {
 
   it('keeps the latest paste result when clipboard resolves after a second click', async () => {
     const onChange = vi.fn()
-    clipboardReadTextMock
-      .mockResolvedValueOnce('  first-paste  ')
-      .mockResolvedValueOnce(VALID_KEY)
+    clipboardReadTextMock.mockResolvedValueOnce('  first-paste  ').mockResolvedValueOnce(VALID_KEY)
 
     render(<AddressInput id="addr" value="" onChange={onChange} />)
 
@@ -460,9 +455,7 @@ describe('boundary and recovery', () => {
   })
 
   it('renders an empty echo for a zero-length value without throwing', () => {
-    expect(() =>
-      render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
-    ).not.toThrow()
+    expect(() => render(<AddressInput id="addr" value="" onChange={vi.fn()} />)).not.toThrow()
     expect(screen.queryByText('Recognized:')).toBeNull()
   })
 
@@ -676,27 +669,34 @@ describe('handleFocus deterministic failure-boundary coverage', () => {
       return callCount === 1 ? p1 : p2
     })
 
-    render(
-      <AddressInput
-        id="addr"
-        value="GSTART"
-        onChange={onChange}
-        onFocusRequest={onFocusRequest}
-      />
+    const { rerender } = render(
+      <AddressInput id="addr" value="GSTART" onChange={onChange} onFocusRequest={onFocusRequest} />
     )
     const input = screen.getByRole('textbox')
 
     // Initial focus triggers p1
     fireEvent.focus(input)
+    expect(onFocusRequest).toHaveBeenCalledTimes(1)
 
-    // User triggers retry / second focus after p1 starts
+    // User types new address and re-focuses, initiating second request p2
+    fireEvent.change(input, { target: { value: 'GNEW' } })
+    rerender(
+      <AddressInput id="addr" value="GNEW" onChange={onChange} onFocusRequest={onFocusRequest} />
+    )
+    fireEvent.focus(input)
+    expect(onFocusRequest).toHaveBeenCalledTimes(2)
+
+    // Resolve p2 first
     await act(async () => {
       resolveP2('GSECOND_RESOLVED')
+      await p2
     })
+    expect(onChange).toHaveBeenCalledWith('GSECOND_RESOLVED')
 
-    // Resolve p1 after p2
+    // Now resolve p1 afterwards
     await act(async () => {
       resolveP1('GFIRST_STALE')
+      await p1
     })
 
     // Stale p1 must not overwrite the latest state
@@ -705,18 +705,13 @@ describe('handleFocus deterministic failure-boundary coverage', () => {
 
   it('clears focus error on manual user typing without losing input', async () => {
     const onFocusRequest = vi.fn().mockRejectedValue(new Error('Focus failed'))
-    let val = 'GSTART'
+    let val = ''
     const onChange = vi.fn((next: string) => {
       val = next
     })
 
     const { rerender } = render(
-      <AddressInput
-        id="addr"
-        value={val}
-        onChange={onChange}
-        onFocusRequest={onFocusRequest}
-      />
+      <AddressInput id="addr" value={val} onChange={onChange} onFocusRequest={onFocusRequest} />
     )
     const input = screen.getByRole('textbox')
 
@@ -727,11 +722,13 @@ describe('handleFocus deterministic failure-boundary coverage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Focus failed')
 
     // Typing should clear the error alert
-    fireEvent.change(input, { target: { value: 'GSTART_TYPED' } })
+    await act(async () => {
+      fireEvent.change(input, { target: { value: VALID_KEY } })
+    })
     rerender(
       <AddressInput
         id="addr"
-        value="GSTART_TYPED"
+        value={VALID_KEY}
         onChange={onChange}
         onFocusRequest={onFocusRequest}
       />
@@ -740,4 +737,3 @@ describe('handleFocus deterministic failure-boundary coverage', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 })
-

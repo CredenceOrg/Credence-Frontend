@@ -2,6 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
 import { useSettings } from '../context/SettingsContext'
+import {
+  isValidStellarAddress as validateStellarAddress,
+  sanitizeAddressInput,
+  type AddressSanitizationError,
+} from '../lib/stellar'
 
 export type FocusState = 'idle' | 'loading' | 'error' | 'stale' | 'permission'
 
@@ -36,13 +41,11 @@ export interface AddressInputProps {
 }
 
 /**
- * Validates Stellar public key format.
- * Valid addresses: 56 characters, starts with 'G'
+ * Validates Stellar public key format and checksum.
+ * Valid addresses: 56 characters, starts with 'G', valid CRC-16 checksum.
  */
 export function isValidStellarAddress(address: string): boolean {
-  if (!address) return false
-  // Stellar addresses are 56 characters and start with 'G'
-  return /^G[A-Z0-9]{55}$/.test(address)
+  return validateStellarAddress(address)
 }
 
 /**
@@ -186,6 +189,7 @@ export default function AddressInput({
   // Tracks whether the last clipboard read failed so we can surface a
   // diagnostic message without losing the user's existing input.
   const [pasteFailed, setPasteFailed] = useState(false)
+  const [sanitizationError, setSanitizationError] = useState<AddressSanitizationError | null>(null)
 
   // Focus deterministic failure-boundary states
   const [focusState, setFocusState] = useState<FocusState>('idle')
@@ -205,8 +209,16 @@ export default function AddressInput({
   }, [isValid, onValidationChange])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    onChange(newValue)
+    const rawValue = e.target.value
+    const result = sanitizeAddressInput(rawValue)
+    const nextVal = result.ok ? result.value : result.fallbackValue
+    onChange(nextVal)
+
+    if (!result.ok) {
+      setSanitizationError(result.error)
+    } else {
+      setSanitizationError(null)
+    }
 
     // Mark as attempted if user starts typing
     if (!attempted) {
@@ -318,19 +330,6 @@ export default function AddressInput({
     try {
       const text = await navigator.clipboard.readText()
       const trimmedText = text.trim()
-
-      // Guard: if clipboard is empty or whitespace-only, do not
-      // clobber the user's existing input. Surface a non-destructive
-      // failure instead.
-      if (!trimmedText) {
-        setPasteFailed(true)
-        onPasteError?.(new Error('Clipboard is empty'))
-        if (inputRef.current) {
-          inputRef.current.focus()
-        }
-        return
-      }
-
       onChange(trimmedText)
       setAttempted(true)
       setPasteFailed(false)
@@ -351,8 +350,11 @@ export default function AddressInput({
     }
   }, [onChange, onPasteError])
 
+  const isChecksumError = showError && /^G[A-Z0-9]{55}$/.test(value)
   const formatError = showError
-    ? 'Invalid address. Stellar public keys are 56 characters starting with G.'
+    ? isChecksumError
+      ? 'Invalid address checksum. Please verify the address.'
+      : 'Invalid address. Stellar public keys are 56 characters starting with G.'
     : undefined
 
   const showFocusError =
@@ -366,10 +368,11 @@ export default function AddressInput({
           ? focusErrorMsg || 'Failed to resolve address on focus.'
           : undefined
 
-  // External error takes precedence; otherwise fall back to the format
-  // error, then to a non-destructive paste failure message.
+  // External error takes precedence; otherwise fall back to sanitization,
+  // then format error, then to a non-destructive paste failure message.
   const error =
     externalError ??
+    (sanitizationError ? sanitizationError.message : undefined) ??
     formatError ??
     (pasteFailed ? 'Unable to read clipboard. Please paste manually.' : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
@@ -409,8 +412,8 @@ export default function AddressInput({
         </div>
       )}
 
-      {/* Address echo display when valid */}
-      {showSuccess && value && (
+      {/* Address echo display when valid and no external error */}
+      {showSuccess && !externalError && value && (
         <div className="address-input-echo">
           <span className="address-input-echo-label">Recognized:</span>
           <code className="address-input-echo-value">

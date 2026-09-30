@@ -181,7 +181,7 @@ export default function AddressInput({
     onValidationChange?.(isValid)
   }, [isValid, onValidationChange])
 
-  const handleChange = (eRect.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     onChange(newValue)
 

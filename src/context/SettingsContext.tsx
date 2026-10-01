@@ -102,6 +102,8 @@ type PersistedSettings = {
 
 const STORAGE_KEY = 'credence:settings'
 const LEGACY_THEME_KEY = 'theme'
+/** OS media query that carries the dark-mode preference (see ThemeToggle.tsx). */
+const SYSTEM_DARK_QUERY = '(prefers-color-scheme: dark)'
 
 const VALID_THEMES: ThemeMode[] = ['light', 'dark', 'system']
 
@@ -391,27 +393,73 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Apply theme to document and keep it in sync with the system preference.
+  //
+  // Failure boundaries mirror `getSystemPrefersDark()` in
+  // `src/components/ThemeToggle.tsx`. The guard is kept local rather than
+  // imported: this module must not depend on components (the Settings tests
+  // module-mock `../components/ThemeToggle`, which would strip the named
+  // export). Invariants: the read never throws, a failed read resolves to
+  // `'light'` without touching the persisted `themeMode`, and a failed
+  // subscription degrades to "no live OS updates" instead of crashing the
+  // tree — so a hostile/absent `matchMedia` cannot wipe the user's theme.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const root = window.document.documentElement
 
+    // `matchMedia` is absent in SSR and in some non-browser test environments, and
+    // a third-party shim can throw. Treat every one of those as "OS prefers
+    // light" so `system` mode degrades to a usable light theme instead of
+    // crashing the whole app shell. `ThemeToggle` applies the same fallback so
+    // the button and the document never disagree.
+    const readSystemPrefersDark = (): boolean => {
+      if (typeof window.matchMedia !== 'function') return false
+      try {
+        return Boolean(window.matchMedia('(prefers-color-scheme: dark)')?.matches)
+      } catch {
+        return false
+      }
+    }
+
     const apply = () => {
       if (themeMode === 'system') {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        root.setAttribute('data-theme', isDark ? 'dark' : 'light')
+        root.setAttribute('data-theme', readSystemPrefersDark() ? 'dark' : 'light')
       } else {
         root.setAttribute('data-theme', themeMode)
       }
+    }
+
+    const apply = () => {
+      root.setAttribute(
+        'data-theme',
+        themeMode === 'system' ? (systemPrefersDark() ? 'dark' : 'light') : themeMode
+      )
     }
 
     apply()
 
     if (themeMode !== 'system') return
 
-    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    if (typeof window.matchMedia !== 'function') return
+
+    let mql: MediaQueryList
+    try {
+      mql = window.matchMedia('(prefers-color-scheme: dark)')
+    } catch {
+      return
+    }
+    if (!mql) return
+
     const handler = () => apply()
-    mql.addEventListener?.('change', handler)
-    return () => mql.removeEventListener?.('change', handler)
+    // Older Safari exposes only the deprecated listener API.
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', handler)
+      return () => mql.removeEventListener?.('change', handler)
+    }
+    if (typeof mql.addListener === 'function') {
+      mql.addListener(handler)
+      return () => mql.removeListener?.(handler)
+    }
+    return
   }, [themeMode])
 
   const retryPersist = async () => {

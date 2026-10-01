@@ -48,6 +48,15 @@
   border-color: var(--credence-color-danger-border) !important;
 }
 
+/* Error text renders below the control. The wrapper is an inline-block, so the
+   message needs its own line rather than sitting beside the select. */
+.control-select__error {
+  display: block;
+  margin-top: var(--credence-space-1);
+  font-size: 0.875rem;
+  color: var(--credence-color-danger-text);
+}
+
 .control-select-spinner {
   position: absolute;
   right: var(--credence-space-8);
@@ -126,6 +135,35 @@
 
 .control-toggle--error {
   border-color: var(--credence-color-danger-border) !important;
+}
+
+.control-toggle[aria-busy='true'] {
+  cursor: progress;
+}
+
+.control-toggle[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.control-toggle[data-stale='true'] {
+  border-color: var(--credence-color-warning-border, var(--credence-color-danger-border));
+}
+
+.control-toggle[data-permission-denied='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.control-toggle__error {
+  display: block;
+  margin-top: var(--credence-space-1);
+  color: var(--credence-color-danger-text, var(--credence-color-danger-border));
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-xs, var(--credence-font-size-sm));
+  line-height: var(--credence-line-height-tight);
 }
 
 .control-toggle-spinner {

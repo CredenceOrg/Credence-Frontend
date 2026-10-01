@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import TrustGauge, { pointsToNextTier, getProgressPercentage } from './TrustGauge'
 import type { TrustTier } from '../lib/tier'
-import { TIERS } from '../lib/tiers'
+import { MAX_SCORE, TIERS } from '../lib/tiers'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
 // Default the reduced-motion hook to "no preference" so existing assertions
@@ -95,6 +95,44 @@ describe('getProgressPercentage', () => {
     expect(getProgressPercentage(499)).toCloseTo(49.9)
   })
 
+  // --- Failure-boundary coverage (#1170) -----------------------------------
+  //
+  // Legacy behavior pinned `getProgressPercentage(-100)` as -10 (no lower
+  // clamp, callers were required to pre-normalize). That contract let a
+  // corrupted score leak a NaN or negative width into the gauge's CSS custom
+  // properties, so the function is now total: every numeric input is clamped
+  // through `normalizeScore` into [0, 100]. The assertions below are the
+  // regression suite for that migration path — the previous negative-output
+  // behavior is intentionally NOT preserved (it was the failure mode).
+  describe('failure boundaries', () => {
+    it.each([
+      ['NaN', NaN, 0],
+      ['+Infinity (fails closed: non-finite never grants max trust)', Infinity, 0],
+      ['-Infinity', -Infinity, 0],
+      ['negative below minimum', -100, 0],
+      ['negative-zero', -0, 0],
+      ['overflow above maximum', 1000.5, 100],
+    ] as const)('clamps %s to %i', (_label, input, expected) => {
+      expect(getProgressPercentage(input)).toBe(expected)
+    })
+
+    it('maps the minimum and maximum inclusive boundaries to 0 and 100', () => {
+      expect(getProgressPercentage(0)).toBe(0)
+      expect(getProgressPercentage(MAX_SCORE)).toBe(100)
+    })
+
+    it('is deterministic: duplicate calls with the same input yield identical output', () => {
+      const results = Array.from({ length: 5 }, () => getProgressPercentage(-100))
+      expect(results).toEqual([0, 0, 0, 0, 0])
+    })
+
+    it('does not mutate global state across interleaved valid and invalid calls', () => {
+      expect(getProgressPercentage(500)).toBe(50)
+      expect(getProgressPercentage(NaN)).toBe(0)
+      expect(getProgressPercentage(500)).toBe(50)
+      expect(getProgressPercentage(Infinity)).toBe(0)
+      expect(getProgressPercentage(-50)).toBe(0)
+    })
   it('returns a negative value for negative score (no lower clamp)', () => {
     // getProgressPercentage only clamps at 100; callers must supply score >= 0
     expect(getProgressPercentage(-100)).toCloseTo(-10)
@@ -286,6 +324,131 @@ describe('TrustGauge – prefers-reduced-motion gating', () => {
   })
 })
 
+// --- Failure-boundary coverage for the component (#1170) ------------------
+//
+// The component is the authoritative failure boundary between raw,
+// possibly-corrupted scores and the rendered gauge. These tests pin the
+// invariants: invalid scores are deterministically clamped into the declared
+// ARIA range, out-of-range inputs never emit audit commits, the parity marker
+// stays honest, and a valid score after an invalid one recovers with no stale
+// state and a monotonic audit sequence.
+describe('TrustGauge failure boundaries', () => {
+  const auditRoot = (container: HTMLElement) => container.firstElementChild as HTMLElement
+
+  it('renders clamped values through aria-valuenow, score display, and progress width for invalid scores', () => {
+    const invalidScores = [NaN, Infinity, -Infinity, -100] as const
+
+    invalidScores.forEach((score) => {
+      const { container, unmount } = render(<TrustGauge score={score} tier="bronze" />)
+
+      const progressbar = screen.getByRole('progressbar')
+      expect(progressbar).toHaveAttribute('aria-valuenow', '0')
+      expect(progressbar).toHaveAttribute('aria-valuemin', '0')
+      expect(progressbar).toHaveAttribute('aria-valuemax', '1000')
+      expect(screen.getByText('0')).toBeInTheDocument()
+
+      const progress = container.querySelector('.trust-gauge__progress') as HTMLElement | null
+      expect(progress).not.toBeNull()
+      expect(progress!.style.getPropertyValue('--progress-width')).toBe('0%')
+
+      unmount()
+    })
+  })
+
+  it('clamps overflow above the maximum to 1000 / 100%', () => {
+    const { container } = render(<TrustGauge score={1001} tier="platinum" />)
+
+    const progressbar = screen.getByRole('progressbar')
+    expect(progressbar).toHaveAttribute('aria-valuenow', '1000')
+    expect(progressbar).toHaveAttribute('aria-valuemax', '1000')
+
+    const progress = container.querySelector('.trust-gauge__progress') as HTMLElement | null
+    expect(progress!.style.getPropertyValue('--progress-width')).toBe('100%')
+  })
+
+  it('does not emit an audit commit for out-of-range scores and keeps parity honest', () => {
+    const onCommit = vi.fn()
+    const { container } = render(<TrustGauge score={-50} tier="bronze" onCommit={onCommit} />)
+
+    // Untrusted scores must never enter the audit stream.
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
+
+    // Diagnostics remain truthful: the rendered root reports the committed
+    // (clamped) score, never the raw invalid prop.
+    expect(auditRoot(container)).toHaveAttribute('data-score', '0')
+    expect(auditRoot(container)).toHaveAttribute('data-audit-parity', 'match')
+  })
+
+  it('recovers fully when a valid score follows an invalid one (no stale state)', () => {
+    const onCommit = vi.fn()
+    const { container, rerender } = render(
+      <TrustGauge score={NaN} tier="bronze" onCommit={onCommit} />
+    )
+
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
+    expect(onCommit).not.toHaveBeenCalled()
+
+    // Recovery: the clamped-invalid mount never seeds the audit baseline, so
+    // the first valid score commits as the first authoritative observation —
+    // with sequence 1 and NO previousScore/previousTier inheritance.
+    rerender(<TrustGauge score={300} tier="silver" onCommit={onCommit} />)
+
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '300')
+    expect(screen.getByText('200 points to gold')).toBeInTheDocument()
+    expect(onCommit).toHaveBeenCalledTimes(1)
+    expect(onCommit).toHaveBeenCalledWith(
+      expect.objectContaining({ score: 300, tier: 'silver', sequence: 1 })
+    )
+    const commit = onCommit.mock.calls[0][0] as {
+      previousScore?: number
+      previousTier?: TrustTier
+    }
+    expect(commit.previousScore).toBeUndefined()
+    expect(commit.previousTier).toBeUndefined()
+    expect(auditRoot(container)).toHaveAttribute('data-audit-parity', 'match')
+  })
+
+  it('does not commit the invalid interlude between two valid scores (dedupe stays anchored to the seeded baseline)', () => {
+    const onCommit = vi.fn()
+    const { rerender } = render(<TrustGauge score={100} tier="bronze" onCommit={onCommit} />)
+
+    // Mount with a valid score seeds the audit baseline without committing.
+    expect(onCommit).not.toHaveBeenCalled()
+
+    // Invalid interlude: rendered output clamps to 0, and the audit stream
+    // sees nothing.
+    rerender(<TrustGauge score={Infinity} tier="bronze" onCommit={onCommit} />)
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
+    expect(onCommit).not.toHaveBeenCalled()
+
+    // The next valid score returns to the seeded baseline values, which the
+    // dedupe logic still holds — so no commit fires (already-observed state).
+    rerender(<TrustGauge score={100} tier="bronze" onCommit={onCommit} />)
+    expect(onCommit).not.toHaveBeenCalled()
+
+    // A genuinely new valid state commits with a monotonic sequence.
+    rerender(<TrustGauge score={400} tier="silver" onCommit={onCommit} />)
+    expect(onCommit).toHaveBeenCalledTimes(1)
+    const sequences = onCommit.mock.calls.map((call) => (call[0] as { sequence: number }).sequence)
+    expect(sequences).toEqual([1])
+  })
+
+  it('is deterministic: identical invalid props always render identical output', () => {
+    const results = [NaN, -100, Infinity, NaN, -100, Infinity].map((score) => {
+      const { container, unmount } = render(<TrustGauge score={score} tier="bronze" />)
+      const value = screen.getByRole('progressbar').getAttribute('aria-valuenow')
+      const width = (
+        container.querySelector('.trust-gauge__progress') as HTMLElement | null
+      )?.style.getPropertyValue('--progress-width')
+      unmount()
+      return `${value}:${width}`
+    })
+
+    // Same input class -> identical rendered output, regardless of call order.
+    expect(results[0]).toBe(results[3]) // NaN twice
+    expect(results[1]).toBe(results[4]) // -100 twice
+    expect(results[2]).toBe(results[5]) // Infinity twice
 // --- Deterministic failure-boundary coverage ---
 //
 // The following tests pin down the exact behavior of `pointsToNextTier` at

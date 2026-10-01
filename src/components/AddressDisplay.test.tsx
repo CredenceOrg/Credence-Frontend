@@ -262,7 +262,245 @@ describe('AddressDisplay', () => {
       fireEvent.click(btn)
 
       expect(mockCopy).toHaveBeenCalledWith(LONG_ADDR)
+      expect(mockAddToast).not.toHaveBeenCalledWith('success', expect.any(String))
+    })
+  })
+
+  // --- Failure-boundary tests ---
+
+  describe('handleCopy failure boundaries', () => {
+    // ── copy() returns false (clipboard unavailable / permission silent-deny) ──
+
+    it('shows a warning toast when copy() returns false', async () => {
+      mockCopy.mockResolvedValue(false)
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy address' }))
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          'warning',
+          'Could not copy address — please copy it manually',
+        )
+      })
+    })
+
+    it('does not show a success toast when copy() returns false', async () => {
+      mockCopy.mockResolvedValue(false)
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy address' }))
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalled()
+      })
+      expect(mockAddToast).not.toHaveBeenCalledWith('success', expect.any(String))
+    })
+
+    // ── copy() throws DOMException NotAllowedError (explicit permission denial) ──
+
+    it('shows a danger toast with a permission message when copy() throws NotAllowedError', async () => {
+      const permissionError = new DOMException('Permission denied', 'NotAllowedError')
+      mockCopy.mockRejectedValue(permissionError)
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy address' }))
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          'danger',
+          'Clipboard access was denied — check your browser permissions',
+        )
+      })
+    })
+
+    it('does not show a success or warning toast when copy() throws NotAllowedError', async () => {
+      const permissionError = new DOMException('Permission denied', 'NotAllowedError')
+      mockCopy.mockRejectedValue(permissionError)
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy address' }))
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledTimes(1)
+      })
+      expect(mockAddToast).not.toHaveBeenCalledWith('success', expect.any(String))
+      expect(mockAddToast).not.toHaveBeenCalledWith('warning', expect.any(String))
+    })
+
+    // ── copy() throws a generic Error (unexpected runtime failure) ──
+
+    it('shows a generic danger toast when copy() throws an unexpected Error', async () => {
+      mockCopy.mockRejectedValue(new Error('Unexpected clipboard failure'))
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy address' }))
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith('danger', 'Failed to copy address')
+      })
+    })
+
+    it('shows a generic danger toast when copy() throws a non-Error value (string)', async () => {
+      mockCopy.mockRejectedValue('something broke')
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy address' }))
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith('danger', 'Failed to copy address')
+      })
+    })
+
+    it('shows a generic danger toast when copy() throws a non-Error DOMException (e.g. AbortError)', async () => {
+      const abortError = new DOMException('Aborted', 'AbortError')
+      mockCopy.mockRejectedValue(abortError)
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy address' }))
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith('danger', 'Failed to copy address')
+      })
+    })
+
+    // ── Empty address — copy should be a silent no-op ──
+
+    it('does not call copy() when the address is empty', async () => {
+      render(<AddressDisplay address="" />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy address' }))
+
+      // Wait a tick to flush any accidental async work
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(mockCopy).not.toHaveBeenCalled()
       expect(mockAddToast).not.toHaveBeenCalled()
+    })
+
+    it('does not call copy() when the address is whitespace-only', async () => {
+      // truncateAddress receives "   " — copy() would receive it, but the guard fires first
+      render(<AddressDisplay address="   " />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy address' }))
+
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(mockCopy).not.toHaveBeenCalled()
+      expect(mockAddToast).not.toHaveBeenCalled()
+    })
+
+    // ── Concurrent clicks — second click while first is in-flight must be a no-op ──
+
+    it('ignores a second click while a copy operation is already in-flight', async () => {
+      // Simulate a slow clipboard operation
+      let resolveFirst!: (v: boolean) => void
+      const firstCopy = new Promise<boolean>((res) => {
+        resolveFirst = res
+      })
+      mockCopy.mockReturnValueOnce(firstCopy)
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      const btn = screen.getByRole('button', { name: 'Copy address' })
+
+      // First click — starts the async operation
+      fireEvent.click(btn)
+      // Second click — should be suppressed while the first is pending
+      fireEvent.click(btn)
+
+      // Only one copy() invocation should have been made
+      expect(mockCopy).toHaveBeenCalledTimes(1)
+
+      // Resolve the first and confirm the toast fires once
+      resolveFirst(true)
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledTimes(1)
+        expect(mockAddToast).toHaveBeenCalledWith('success', 'Address copied to clipboard')
+      })
+    })
+
+    it('allows a new copy after the previous in-flight operation completes', async () => {
+      mockCopy.mockResolvedValue(true)
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      const btn = screen.getByRole('button', { name: 'Copy address' })
+
+      // First copy
+      fireEvent.click(btn)
+      await waitFor(() => expect(mockAddToast).toHaveBeenCalledTimes(1))
+
+      // Second copy — now that the first has resolved the guard is clear
+      fireEvent.click(btn)
+      await waitFor(() => expect(mockAddToast).toHaveBeenCalledTimes(2))
+
+      expect(mockCopy).toHaveBeenCalledTimes(2)
+    })
+
+    // ── Button is disabled while copying is in-flight ──
+
+    it('disables the copy button while the operation is in-flight', async () => {
+      let resolveFirst!: (v: boolean) => void
+      const firstCopy = new Promise<boolean>((res) => {
+        resolveFirst = res
+      })
+      mockCopy.mockReturnValueOnce(firstCopy)
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      const btn = screen.getByRole('button', { name: 'Copy address' })
+      expect(btn).not.toBeDisabled()
+
+      fireEvent.click(btn)
+
+      // Button must be disabled while copying
+      expect(btn).toBeDisabled()
+      expect(btn).toHaveAttribute('aria-busy', 'true')
+
+      resolveFirst(true)
+      await waitFor(() => expect(btn).not.toBeDisabled())
+      expect(btn).toHaveAttribute('aria-busy', 'false')
+    })
+
+    // ── Guard is always released even when copy() throws ──
+
+    it('re-enables the button after a thrown exception so the user can retry', async () => {
+      mockCopy.mockRejectedValue(new Error('boom'))
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      const btn = screen.getByRole('button', { name: 'Copy address' })
+
+      fireEvent.click(btn)
+
+      // After the rejection resolves, the button must no longer be disabled
+      await waitFor(() => {
+        expect(btn).not.toBeDisabled()
+        expect(btn).toHaveAttribute('aria-busy', 'false')
+      })
+    })
+
+    it('re-enables the button after copy() returns false so the user can retry', async () => {
+      mockCopy.mockResolvedValue(false)
+
+      render(<AddressDisplay address={LONG_ADDR} />)
+
+      const btn = screen.getByRole('button', { name: 'Copy address' })
+
+      fireEvent.click(btn)
+
+      await waitFor(() => {
+        expect(btn).not.toBeDisabled()
+        expect(btn).toHaveAttribute('aria-busy', 'false')
+      })
     })
   })
 

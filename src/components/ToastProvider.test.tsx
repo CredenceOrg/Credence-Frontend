@@ -227,6 +227,7 @@ describe('ToastProvider normal lifecycles', () => {
     fireEvent.click(screen.getByText('Add Info'))
     expect(container.querySelector('.toast')).toHaveTextContent('Info Message')
 
+// autoDismiss is 5s
     act(() => {
       vi.advanceTimersByTime(4999)
     })
@@ -514,6 +515,223 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
       vi.advanceTimersByTime(1001)
     })
     expect(toastMessages(container)).toEqual(['second'])
+  })
+
+  // --------------------------------------------------------------------------
+  // Deterministic failure-boundary coverage
+  // --------------------------------------------------------------------------
+
+  it('rejects invalid toast types and empty messages without crashing', () => {
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    // Empty message should not produce a toast
+    act(() => {
+      // @ts-expect-error -- deliberately invalid input to exercise rejection
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ; (window as any).__toastAddToast?.('info', '')
+    })
+    expect(container.querySelectorAll('.toast').length).toBe(0)
+  })
+
+  it('recovers cleanly after a thrown toast and continues accepting valid toasts', () => {
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    // Add a valid toast first
+    fireEvent.click(screen.getByText('Add Info'))
+    expect(container.querySelectorAll('.toast').length).toBe(1)
+
+    // Attempt an invalid toast type; should not throw or corrupt state
+    act(() => {
+      // @ts-expect-error -- deliberately invalid type
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ; (window as any).__toastAddToast?.('not-a-type', 'Bad')
+    })
+
+    // State still holds the original toast and accepts new ones
+    expect(container.querySelectorAll('.toast').length).toBe(1)
+    fireEvent.click(screen.getByText('Add Danger'))
+    expect(container.querySelectorAll('.toast').length).toBe(2)
+  })
+
+  it('keeps duplicate toasts independent and deterministic', () => {
+    vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+      ...baseMockSettings,
+      autoDismiss: 'off',
+    } as ReturnType<typeof SettingsContextModule.useSettings>)
+
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByText('Add Info'))
+    fireEvent.click(screen.getByText('Add Info'))
+
+    expect(container.querySelectorAll('.toast--info').length).toBe(2)
+  })
+
+  it('removing all toasts is idempotent and safe when empty', () => {
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    // Remove all when nothing is present should not throw
+    fireEvent.click(screen.getByText('Remove All'))
+    expect(container.querySelectorAll('.toast').length).toBe(0)
+
+    // Add one, remove all twice in a row
+    fireEvent.click(screen.getByText('Add Info'))
+    fireEvent.click(screen.getByText('Remove All'))
+    fireEvent.click(screen.getByText('Remove All'))
+    expect(container.querySelectorAll('.toast').length).toBe(0)
+  })
+
+  it('clears aria-live announcements after toasts are removed', () => {
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByText('Add Info'))
+    expect(container.querySelector('.sr-only[aria-live="polite"]')).toHaveTextContent(
+      'Info Message'
+    )
+
+    fireEvent.click(screen.getByText('Remove All'))
+    expect(container.querySelector('.sr-only[aria-live="polite"]')).toHaveTextContent('')
+  })
+
+  it('toggling toastsEnabled off then on again keeps behavior deterministic', () => {
+    const { rerender, container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    // Disable
+    vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+      ...baseMockSettings,
+      toastsEnabled: false,
+    } as ReturnType<typeof SettingsContextModule.useSettings>)
+    rerender(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+    fireEvent.click(screen.getByText('Add Info'))
+    expect(container.querySelectorAll('.toast').length).toBe(0)
+
+    // Re-enable
+    vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+      ...baseMockSettings,
+      toastsEnabled: true,
+    } as ReturnType<typeof SettingsContextModule.useSettings>)
+    rerender(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+    fireEvent.click(screen.getByText('Add Info'))
+    expect(container.querySelectorAll('.toast').length).toBe(1)
+  })
+
+  it('unmounting the provider with pending timers does not leak or throw', () => {
+    const { unmount } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByText('Add Info'))
+    unmount()
+
+    // Advancing timers after unmount must not trigger state updates or throw
+    expect(() => {
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+    }).not.toThrow()
+  })
+
+  it('handles concurrent adds and removall without losing valid toasts', () => {
+    vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+      ...baseMockSettings,
+      autoDismiss: 'off',
+    } as ReturnType<typeof SettingsContextModule.useSettings>)
+
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    // Interleave adds and a removal in a single act to simulate concurrent events
+    act(() => {
+      fireEvent.click(screen.getByText('Add Info'))
+      fireEvent.click(screen.getByText('Add Danger'))
+      fireEvent.click(screen.getByText('Add Info'))
+    })
+
+    expect(container.querySelectorAll('.toast').length).toBe(3)
+
+    // Remove all and immediately add another in the same act
+    act(() => {
+      fireEvent.click(screen.getByText('Remove All'))
+      fireEvent.click(screen.getByText('Add Info'))
+    })
+
+    expect(container.querySelectorAll('.toast').length).toBe(1)
+    expect(container.querySelector('.toast--info')).toHaveTextContent('Info Message')
+  })
+
+  it('does not auto-dismiss danger toasts even when autoDismiss is a valid duration', () => {
+    vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+      ...baseMockSettings,
+      autoDismiss: '1s',
+    } as ReturnType<typeof SettingsContextModule.useSettings>)
+
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByText('Add Danger'))
+    act(() => {
+      vi.advanceTimersByTime(10000)
+    })
+    expect(container.querySelector('.toast--danger')).toHaveTextContent('Danger Message')
+  })
+
+  it('treats malformed autoDismiss as no auto-dismiss without losing the toast', () => {
+    vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+      ...baseMockSettings,
+      autoDismiss: 'not-a-duration',
+    } as ReturnType<typeof SettingsContextModule.useSettings>)
+
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByText('Add Info'))
+    act(() => {
+      vi.advanceTimersByTime(100000)
+    })
+    expect(container.querySelector('.toast--info')).toHaveTextContent('Info Message')
   })
 })
 
@@ -1508,5 +1726,29 @@ describe('ToastProvider error recovery', () => {
     expect(toastMessages(replacement.container)).toEqual(['recovered'])
 
     consoleErrorSpy.mockRestore()
+  })
+
+  it('silences non-danger toasts when quiet hours wrap around midnight', () => {
+    // 23:00 is inside 22:00–07:00 and the default window wraps around midnight
+    const { container } = renderWithQuietHours()
+    fireEvent.click(screen.getByText('Add Info'))
+    expect(container.querySelector('.toast')).not.toBeInTheDocument()
+  })
+
+  it('treats malformed quiet hours times as non-silencing when enabled', () => {
+    const { container } = renderWithQuietHours({
+      quietHoursStart: 'not-a-time',
+      quietHoursEnd: '',
+    })
+    fireEvent.click(screen.getByText('Add Info'))
+    expect(container.querySelector('.toast--info')).toBeInTheDocument()
+  })
+
+  it('still announces danger toasts during quiet hours even when toasts are disabled', () => {
+    // Danger toasts are safety-critical and must not be silenced by the
+    // general toastsEnabled flag.
+    const { container } = renderWithQuietHours({ toastsEnabled: false })
+    fireEvent.click(screen.getByText('Add Danger'))
+    expect(container.querySelector('.toast--danger')).toBeInTheDocument()
   })
 })

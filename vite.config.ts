@@ -42,7 +42,12 @@ export default defineConfig({
       // drive wallet-gated flows without a browser extension installed. Unset for
       // `npm run dev` and production builds, which always use the real package.
       ...(process.env.E2E_MOCK_WALLET === 'true'
-        ? { '@stellar/freighter-api': path.resolve(__dirname, './tests/mocks/freighter-api.mock.ts') }
+        ? {
+            '@stellar/freighter-api': path.resolve(
+              __dirname,
+              './tests/mocks/freighter-api.mock.ts'
+            ),
+          }
         : {}),
     },
   },
@@ -61,7 +66,10 @@ export default defineConfig({
     pool: 'forks',
     setupFiles: ['./src/test-setup.ts'],
     alias: {
-      '@stellar/freighter-api': path.resolve(__dirname, './src/test/__mocks__/freighter-api.stub.ts'),
+      '@stellar/freighter-api': path.resolve(
+        __dirname,
+        './src/test/__mocks__/freighter-api.stub.ts'
+      ),
     },
     server: {
       deps: {
@@ -76,6 +84,8 @@ export default defineConfig({
         'src/components/AmountInput.tsx',
         'src/components/Badge.tsx',
         'src/components/BackToTop.tsx',
+        'src/components/controls/Select.tsx',
+        'src/components/controls/Toggle.tsx',
         'src/hooks/useLocalStorage.ts',
         'src/hooks/useReducedMotion.ts',
         'src/lib/bondPenalty.ts',
@@ -88,11 +98,38 @@ export default defineConfig({
         // AmountInput owns the money-entry failure surface (loading / error /
         // stale / permission + retry) and its concurrency guard, so it is held at
         // full coverage to keep the state machine from silently losing a branch.
-        'src/components/AmountInput.tsx': { lines: 100, branches: 100, functions: 100, statements: 100 },
+        'src/components/AmountInput.tsx': {
+          lines: 100,
+          branches: 100,
+          functions: 100,
+          statements: 100,
+        },
         'src/components/Badge.tsx': { branches: 95 },
         // BackToTop guards every DOM/window call in its click handler, so each
         // catch arm is a reachable branch that must stay covered.
-        'src/components/BackToTop.tsx': { lines: 100, branches: 100, functions: 100, statements: 100 },
+        'src/components/BackToTop.tsx': {
+          lines: 100,
+          branches: 100,
+          functions: 100,
+          statements: 100,
+        },
+        // Select owns the keyboard/pointer option-picking and its blur/close
+        // recovery paths, so it is held at full coverage.
+        'src/components/controls/Select.tsx': {
+          lines: 100,
+          branches: 100,
+          functions: 100,
+          statements: 100,
+        },
+        // Toggle owns its error/loading announcement surface and the id
+        // derivation that keeps its error node from colliding with FormField's,
+        // so it is held at full coverage.
+        'src/components/controls/Toggle.tsx': {
+          lines: 100,
+          branches: 100,
+          functions: 100,
+          statements: 100,
+        },
         'src/hooks/useLocalStorage.ts': { lines: 95, branches: 95 },
         'src/hooks/useReducedMotion.ts': { branches: 90 },
         'src/lib/bondPenalty.ts': { lines: 95, branches: 95, functions: 95 },

@@ -15,7 +15,10 @@ interface FormFieldErrorBoundaryState {
   error: Error | null
 }
 
-export class FormFieldErrorBoundary extends Component<FormFieldErrorBoundaryProps, FormFieldErrorBoundaryState> {
+export class FormFieldErrorBoundary extends Component<
+  FormFieldErrorBoundaryProps,
+  FormFieldErrorBoundaryState
+> {
   state: FormFieldErrorBoundaryState = { hasError: false, error: null }
 
   static getDerivedStateFromError(error: Error): FormFieldErrorBoundaryState {
@@ -34,7 +37,12 @@ export class FormFieldErrorBoundary extends Component<FormFieldErrorBoundaryProp
           <FormError id={this.props.errorId ? `${this.props.errorId}-boundary` : undefined}>
             An unexpected error occurred rendering this field.
           </FormError>
-          <button type="button" onClick={this.handleRetry} className="form-field-retry-btn" aria-label="Retry loading field">
+          <button
+            type="button"
+            onClick={this.handleRetry}
+            className="form-field-retry-btn"
+            aria-label="Retry loading field"
+          >
             Retry
           </button>
         </div>
@@ -119,7 +127,7 @@ interface FormFieldProps {
    * Suppressed when `error` is set (error takes precedence).
    */
   success?: string
-  
+
   /** Indicates the field is waiting for an asynchronous operation. */
   loading?: boolean
   /** Indicates the field's value may be out of date. */
@@ -144,9 +152,7 @@ export function FormField({
   error,
   success,
   loading = false,
-  stale = false,
   permission,
-  onRetry,
   srOnlyLabel = false,
   required = false,
   className,
@@ -162,9 +168,16 @@ export function FormField({
   const presentHint = resolveMessage(hint)
   const presentError = resolveMessage(error)
   const presentSuccess = resolveMessage(success)
+  const permissionMessage =
+    permission === true
+      ? 'Permission required.'
+      : typeof permission === 'string'
+        ? resolveMessage(permission)
+        : undefined
 
   const hintId = presentHint ? `${id}-hint` : undefined
   const errorId = presentError ? `${id}-error` : undefined
+  const permissionId = permissionMessage ? `${id}-permission` : undefined
   // Error wins over success so invalid fields never announce a success message.
   const successMessage = presentError ? undefined : presentSuccess
   const successId = successMessage ? `${id}-success` : undefined
@@ -193,7 +206,7 @@ export function FormField({
           {presentHint}
         </span>
       )}
-      
+
       {permissionMessage && (
         <span id={permissionId} className="form-permission" role="status">
           {permissionMessage}
@@ -202,7 +215,12 @@ export function FormField({
 
       {React.cloneElement(control, {
         id,
-        'aria-describedby': mergeDescribedBy(existingDescribedBy, [hintId, errorId, successId]),
+        'aria-describedby': mergeDescribedBy(existingDescribedBy, [
+          hintId,
+          permissionId,
+          errorId,
+          successId,
+        ]),
         'aria-invalid': presentError ? 'true' : control.props['aria-invalid'],
         'aria-required': required ? 'true' : control.props['aria-required'],
       })}

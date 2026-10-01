@@ -255,33 +255,23 @@ export function resetApiRateLimiter(): void {
  * reach the module-load path that computes {@link API_BASE_URL}.
  */
 export function normalizeBaseUrl(value: string): string {
-  const trimmed = typeof value === 'string' ? value.trim() : ''
+  if (typeof value !== 'string') return ''
+  const trimmed = value.trim()
   if (!trimmed || trimmed === '/') {
     return ''
   }
-
-  // `//host` and `/\host` are resolved by fetch as protocol-relative URLs, so
-  // keeping them would send every API request — including Authorization
-  // headers — to a foreign origin. Fail closed instead.
   if (trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
     return rejectBaseUrl()
   }
-
   if (trimmed.startsWith('/')) {
     if (trimmed.includes('?') || trimmed.includes('#')) {
       return rejectBaseUrl()
     }
     return trimmed.replace(/\/+$/, '')
   }
-
-  // Anything else must be an explicit absolute http(s) URL. This rejects
-  // scheme-less typos (`api.example.com`, which fetch would resolve as a
-  // same-origin *path* and silently 404) and dangerous schemes
-  // (`javascript:`, `data:`, `blob:`, `file:`).
   if (!/^https?:\/\//i.test(trimmed)) {
     return rejectBaseUrl()
   }
-
   let parsed: URL
   try {
     parsed = new URL(trimmed)
@@ -291,10 +281,8 @@ export function normalizeBaseUrl(value: string): string {
   if (parsed.search || parsed.hash) {
     return rejectBaseUrl()
   }
-
   return trimmed.replace(/\/+$/, '')
 }
-
 type ReplayEntry = {
   fingerprint: string
   promise: Promise<unknown>
@@ -626,7 +614,8 @@ function replayConflict(key: string): ApiError {
  * make a permanent fault look like a transient one worth retrying.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } = options
+  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } =
+    options
 
   // Exact-amount gate: validate and canonicalize declared amount fields
   // BEFORE any state change. An invalid amount must never consume
@@ -635,8 +624,15 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
 
-  // Pre-flight: deterministic, request-independent failures.
-  const url = buildUrl(path)
+  // Validate input size before expensive operations. Serializing an oversized
+  // body is wasted work and could exhaust memory or downstream resources.
+  if (hasJsonBody) {
+    const serialized = JSON.stringify(wireBody)
+    if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
+      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
+    }
+  }
+
   const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (wireBody ?? undefined)
   const correlationId = generateCorrelationId('api-fetch')
   const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
@@ -732,7 +728,7 @@ async function apiFetchWithoutReplay<T>(
   try {
     response = await fetch(url, {
       ...init,
-      headers,
+      headers: requestHeaders,
       body: serializedBody,
     })
   } catch (error) {

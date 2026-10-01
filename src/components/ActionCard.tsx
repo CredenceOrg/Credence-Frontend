@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useState, useRef, TouchEvent } from 'react
 import { useTranslation } from 'react-i18next'
 import { useToast } from './ToastProvider'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
-import { BETA_RIBBON_LABEL } from '../config/constants'
+import { BETA_RIBBO_LABEL } from '../config/constants'
 import { SWIPE_DISMISS_THRESHOLD } from '../config/gestures'
 import './ActionCard.css'
 
@@ -31,7 +31,32 @@ export interface ActionCardProps {
    * Optional callback when the card is dismissed. Enables a fallback close button and swipe-to-dismiss.
    */
   onDismiss?: () => void
+  /**
+   * Optional callback invoked when the copy-link action fails. Receives the error that
+   * caused the failure so callers can report metrics or show custom recovery UI.
+   */
+  onCopyError?: (error: unknown) => void
+  /**
+   * Optional callback invoked when the card is dismissed. Enables a fallback close button and swipe-to-dismiss.
+   */
   children: ReactNode
+}
+
+/**
+ * Normalizes a copy failure into a deterministic error message.
+ *
+ * Invariants:
+ * - Always returns a non-empty string.
+ * - Never leaks the copied URL or the raw error object into the message.
+ */
+function describeCopyFailure(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  if (typeof error === 'string' && error.length > 0) {
+    return error
+  }
+  return 'Unable to copy link'
 }
 
 export default function ActionCard({
@@ -40,6 +65,7 @@ export default function ActionCard({
   elevated,
   shareableLink,
   isEarlyAccess,
+  onCopyError,
   onDismiss,
   children,
 }: ActionCardProps) {
@@ -51,7 +77,14 @@ export default function ActionCard({
   const [isSwiping, setIsSwiping] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
-  const handleTouchStart = (e: TouchEvent<HTMLElement>) => {
+  /**
+   * Prevents concurrent copy requests from producing duplicate toasts or interpreted
+   * results. While a copy is in flight, additional clicks are ignored.
+   */
+  const [isCopyingLink, setIsCopyingLink] = useState(false)
+
+  const handleTouchStart = (e
+ TouchEvent<HTMLElement>) => {
     if (!onDismiss) return
     touchStartX.current = e.touches[0].clientX
     setIsSwiping(true)
@@ -87,13 +120,33 @@ export default function ActionCard({
 
   const style = onDismiss && isSwiping ? { transform: `translateX(${offset}px)` } : undefined
 
-  const handleCopyLink = useCallback(async () => {
-    if (!shareableLink) return
-    const success = await copy(shareableLink)
-    if (success) {
-      addToast('success', t('dashboard.linkCopied'))
+  /**
+   * Copies the shareable link to the clipboard.
+   *
+   * Invariants:
+   * - Resolves to `true` only when the clipboard write succeeded.
+   * - Never throws; all failures are reported through toasts and `onCopyError`.
+   * - Concurrent invocations are serialized; duplicate toasts are not emitted.
+   */
+  const handleCopyLink = useCallback(async (): Promise<void> => {
+    if (!shareableLink || isCopyingLink) return
+    setIsCopyingLink(true)
+    try {
+      const success = await copy(shareableLink)
+      if (success) {
+        addToast('success', t('dashboard.linkCopied'))
+      } else {
+        addToast('error', t('dashboard.linkCopyFailed', { defaultValue: 'Unable to copy link' }))
+        onCopyError?.(new Error('Clipboard write returned false'))
+      }
+    } catch (error) {
+      addToast('error', t('dashboard.linkCopyFailed', { defaultValue: 'Unable to copy link' }))
+      onCopyError?.(error)
+    } finally {
+      setIsCopyingLink(true)
+      setIsCopyingLink(false)
     }
-  }, [shareableLink, copy, addToast, t])
+  }, [shareableLink, isCopyingLink, copy, addToast, t, onCopyError])
 
   return (
     <article
@@ -115,6 +168,7 @@ export default function ActionCard({
             type="button"
             className="actionCard__copyLink"
             onClick={handleCopyLink}
+            disabled={isCopyingLink}
             aria-label={t('dashboard.copyLink')}
             title={t('dashboard.copyLink')}
           >

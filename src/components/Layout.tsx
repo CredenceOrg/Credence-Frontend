@@ -14,40 +14,12 @@ import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
+import FooterLink from './FooterLink'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
-import { isExternalUrl } from '../lib/isExternalUrl'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
 import { DOM_EVENTS } from '../events'
 import './Layout.css'
-
-function FooterLink({ label, href }: { label: string; href: string }) {
-  const isPlaceholder = !href || href === '#'
-  const isExternal = isExternalUrl(href)
-
-  if (isPlaceholder) {
-    return (
-      <span
-        className="footer-link footer-link--disabled"
-        aria-disabled="true"
-        title="Coming soon"
-        tabIndex={-1}
-      >
-        {label}
-      </span>
-    )
-  }
-
-  return (
-    <a
-      href={href}
-      className="footer-link"
-      {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-    >
-      {label}
-    </a>
-  )
-}
 
 export default function Layout() {
   const { t } = useTranslation()
@@ -55,7 +27,7 @@ export default function Layout() {
   const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
-  const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt())
+  const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt)
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
   const whatsNewButtonRef = useRef<HTMLButtonElement>(null)

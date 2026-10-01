@@ -347,6 +347,192 @@ describe('Badge', () => {
     })
   })
 
+  describe('input sanitization and security', () => {
+    describe('XSS prevention in label', () => {
+      it('escapes HTML in custom label to prevent XSS', () => {
+        render(<Badge variant="gold" label="<script>alert('xss')</script>" />)
+        const badge = document.querySelector('.badge')
+        // React automatically escapes HTML, script tag won't execute
+        expect(badge?.textContent).toContain("<script>alert('xss')</script>")
+        // No actual script element should exist
+        expect(document.querySelector('script')).toBeNull()
+      })
+
+      it('escapes HTML entities in label', () => {
+        render(<Badge variant="gold" label='Test & "quotes" <tags>' />)
+        const badge = document.querySelector('.badge')
+        // React escapes these automatically
+        expect(badge?.textContent).toContain('Test & "quotes" <tags>')
+      })
+
+      it('removes control characters from label', () => {
+        // First verify the string actually contains control characters
+        const testLabel = "Test\x00\x01\x1FLabel"
+        expect(testLabel.charCodeAt(4)).toBe(0) // \x00 at position 4
+        
+        render(<Badge variant="gold" label={testLabel} />)
+        const badge = document.querySelector('.badge')
+        // Control characters should be stripped, leaving only "TestLabel"
+        const actual = badge?.textContent || ''
+        // Debug: log the actual character codes
+        if (actual !== 'TestLabel') {
+          console.log('Actual text:', actual)
+          console.log('Char codes:', Array.from(actual).map(c => c.charCodeAt(0)))
+        }
+        expect(actual).toBe('TestLabel')
+      })
+
+      it('enforces maximum label length', () => {
+        const longLabel = 'a'.repeat(300)
+        render(<Badge variant="gold" label={longLabel} />)
+        const badge = document.querySelector('.badge')
+        // Should be truncated to 200 chars
+        expect(badge?.textContent?.length).toBeLessThanOrEqual(200)
+      })
+    })
+
+    describe('XSS prevention in srPrefix', () => {
+      it('escapes HTML in srPrefix', () => {
+        render(<Badge variant="gold" srPrefix="<img src=x onerror=alert(1)>" />)
+        const srSpan = document.querySelector('.sr-only')
+        // React automatically escapes, no actual img element
+        expect(srSpan?.textContent).toContain('<img src=x onerror=alert(1)>')
+        expect(document.querySelector('img')).toBeNull()
+      })
+
+      it('removes control characters from srPrefix', () => {
+        render(<Badge variant="gold" srPrefix="Status:\x00\x7F" />)
+        expect(document.querySelector('.sr-only')).toHaveTextContent('Status:')
+      })
+    })
+
+    describe('XSS prevention in ariaLabel', () => {
+      it('escapes HTML in ariaLabel', () => {
+        render(<Badge variant="gold" ariaLabel="<script>alert(1)</script>" />)
+        const badge = document.querySelector('.badge')
+        const ariaLabel = badge?.getAttribute('aria-label')
+        // React escapes attributes automatically
+        expect(ariaLabel).toContain('<script>alert(1)</script>')
+        expect(document.querySelector('script')).toBeNull()
+      })
+    })
+
+    describe('CSS injection prevention in className', () => {
+      it('removes dangerous characters from className', () => {
+        render(<Badge variant="gold" className="safe-class{background:red}onload=alert(1)" />)
+        const badge = document.querySelector('.badge')
+        // Special characters should be stripped
+        expect(badge?.className).not.toContain('{')
+        expect(badge?.className).not.toContain('}')
+        expect(badge?.className).not.toContain('=')
+      })
+
+      it('allows only safe className characters', () => {
+        render(<Badge variant="gold" className="my-class_123 another" />)
+        const badge = document.querySelector('.badge')
+        expect(badge).toHaveClass('my-class_123')
+        expect(badge).toHaveClass('another')
+      })
+
+      it('collapses consecutive spaces in className', () => {
+        render(<Badge variant="gold" className="class1    class2" />)
+        const badge = document.querySelector('.badge')
+        expect(badge?.className).toContain('class1 class2')
+        expect(badge?.className).not.toMatch(/\s{2,}/)
+      })
+
+      it('enforces maximum className length', () => {
+        const longClassName = 'a'.repeat(600)
+        render(<Badge variant="gold" className={longClassName} />)
+        const badge = document.querySelector('.badge')
+        // Should be truncated to 500 chars max
+        const classNames = badge?.className.split(' ') || []
+        const totalLength = classNames.join(' ').length
+        expect(totalLength).toBeLessThan(550) // badge-- classes + truncated custom
+      })
+    })
+
+    describe('null and undefined handling', () => {
+      it('handles null variant gracefully', () => {
+        render(<Badge variant={null as any} />)
+        expect(document.querySelector('.badge--unknown')).not.toBeNull()
+      })
+
+      it('handles undefined variant gracefully', () => {
+        render(<Badge variant={undefined as any} />)
+        expect(document.querySelector('.badge--unknown')).not.toBeNull()
+      })
+
+      it('handles null label gracefully', () => {
+        render(<Badge variant="gold" label={null as any} />)
+        expect(screen.getByText('Gold')).toBeInTheDocument()
+      })
+
+      it('handles undefined label gracefully', () => {
+        render(<Badge variant="gold" label={undefined} />)
+        expect(screen.getByText('Gold')).toBeInTheDocument()
+      })
+
+      it('handles null className gracefully', () => {
+        render(<Badge variant="gold" className={null as any} />)
+        const badge = document.querySelector('.badge')
+        expect(badge).toHaveClass('badge')
+        expect(badge).toHaveClass('badge--gold')
+      })
+
+      it('handles null srPrefix gracefully', () => {
+        render(<Badge variant="gold" srPrefix={null as any} />)
+        expect(document.querySelector('.sr-only')).toBeNull()
+      })
+
+      it('handles null ariaLabel gracefully', () => {
+        render(<Badge variant="gold" ariaLabel={null as any} />)
+        const badge = document.querySelector('.badge')
+        expect(badge?.getAttribute('aria-label')).toBe('Gold')
+      })
+    })
+
+    describe('type coercion and boundary cases', () => {
+      it('coerces number variant to unknown', () => {
+        render(<Badge variant={123 as any} />)
+        expect(document.querySelector('.badge--unknown')).not.toBeNull()
+      })
+
+      it('coerces object variant to unknown', () => {
+        render(<Badge variant={{} as any} />)
+        expect(document.querySelector('.badge--unknown')).not.toBeNull()
+      })
+
+      it('handles whitespace-only label', () => {
+        render(<Badge variant="gold" label="   " />)
+        expect(screen.getByText('Gold')).toBeInTheDocument()
+      })
+
+      it('handles whitespace-only className', () => {
+        render(<Badge variant="gold" className="   " />)
+        const badge = document.querySelector('.badge')
+        expect(badge?.className).toBe('badge badge--gold')
+      })
+
+      it('handles whitespace-only srPrefix', () => {
+        render(<Badge variant="gold" srPrefix="   " />)
+        expect(document.querySelector('.sr-only')).toBeNull()
+      })
+
+      it('handles very long variant string', () => {
+        const longVariant = 'a'.repeat(1000)
+        render(<Badge variant={longVariant} />)
+        // Should normalize to unknown
+        expect(document.querySelector('.badge--unknown')).not.toBeNull()
+      })
+
+      it('handles unicode characters in label', () => {
+        render(<Badge variant="gold" label="🏆 Winner 中文" />)
+        expect(screen.getByText(/Winner/)).toBeInTheDocument()
+      })
+    })
+  })
+
   describe('label override', () => {
     it('renders the custom label instead of the default', () => {
       render(<Badge variant="gold" label="Top tier" />)
@@ -447,17 +633,17 @@ describe('Badge', () => {
       ['unknown', 'Unknown'],
     ] as const)('variant "%s" sets aria-label to "%s"', (variant, expected) => {
       render(<Badge variant={variant} />)
-      expect(screen.getByTitle(expected)).toHaveAttribute('aria-label', expected)
+      expect(document.querySelector('.badge')).toHaveAttribute('aria-label', expected)
     })
 
     it('custom ariaLabel overrides the default', () => {
       render(<Badge variant="slashed" ariaLabel="Status: Slashed" />)
-      expect(screen.getByTitle('Slashed')).toHaveAttribute('aria-label', 'Status: Slashed')
+      expect(document.querySelector('.badge')).toHaveAttribute('aria-label', 'Status: Slashed')
     })
 
     it('ariaLabel applies alongside a custom label', () => {
       render(<Badge variant="gold" label="Top Tier" ariaLabel="Tier: Gold" />)
-      expect(screen.getByTitle('Top Tier')).toHaveAttribute('aria-label', 'Tier: Gold')
+      expect(document.querySelector('.badge')).toHaveAttribute('aria-label', 'Tier: Gold')
     })
 
     it('ariaLabel works on an unknown variant', () => {
@@ -490,7 +676,7 @@ describe('Badge', () => {
 
     it('aria-label is present when srPrefix is also provided', () => {
       render(<Badge variant="grace-period" srPrefix="Status:" ariaLabel="Grace Period" />)
-      expect(screen.getByTitle('Grace Period')).toHaveAttribute('aria-label', 'Grace Period')
+      expect(document.querySelector('.badge')).toHaveAttribute('aria-label', 'Grace Period')
     })
   })
 

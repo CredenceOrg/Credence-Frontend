@@ -42,3 +42,28 @@
   outline: 2px solid var(--credence-color-primary);
   outline-offset: 2px;
 }
+
+.address-display--stale {
+  opacity: 0.6;
+}
+
+.address-display__error-msg {
+  color: var(--credence-color-error);
+  font-size: var(--credence-font-size-sm);
+  font-family: var(--credence-font-family-mono);
+}
+
+.address-display__retry-btn {
+  background: transparent;
+  border: 1px solid var(--credence-color-error);
+  color: var(--credence-color-error);
+  border-radius: var(--credence-radius-sm);
+  padding: 0 var(--credence-space-1);
+  font-size: var(--credence-font-size-xs);
+  cursor: pointer;
+}
+
+.address-display__retry-btn:hover {
+  background-color: var(--credence-color-error-light);
+}
+

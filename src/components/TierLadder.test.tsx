@@ -14,6 +14,19 @@ vi.mock('./Badge', () => ({
   ),
 }))
 
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+/** Render and return a stable reference to the panel element. */
+function renderAndGetPanel(props: React.ComponentProps<typeof TierLadder> = {}) {
+  render(<TierLadder {...props} />)
+  const button = screen.getByRole('button', { name: /how trust is earned/i })
+  const panelId = button.getAttribute('aria-controls')!
+  const panel = document.getElementById(panelId)!
+  return { button, panel }
+}
+
+// ─── Original baseline tests ─────────────────────────────────────────────────
+
 describe('TierLadder Component', () => {
   it('renders the visually hidden semantic heading for screen readers', () => {
     render(<TierLadder />)

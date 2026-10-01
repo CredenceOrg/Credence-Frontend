@@ -14,17 +14,14 @@ export interface TierDefinition {
   benefits: string[]
 }
 
-/** Protocol tier ladder built from the canonical TIERS source */
-export const TIER_LADDER: TierDefinition[] = TIER_ORDER.map((id) => {
-  const t = TIERS[id]
-  return {
-    id: t.id,
-    label: t.label,
-    scoreMin: t.min,
-    scoreMax: t.max,
-    benefits: t.benefits,
-  }
-})
+/**
+ * Runtime validation error types for tier data.
+ * `code` is stable for deterministic handling in tests and UI.
+ */
+export type TierValidationError = {
+  code: 'DUPLICATE_ID' | 'MISSING_TIER' | 'INVALID_RANGE' | 'UNEXPECTED_NULL_MAX'
+  message: string
+}
 
 /**
  * Deterministically formats the score threshold range for a given tier definition.
@@ -231,7 +228,7 @@ export default function TierLadder({
         >
           <path
             fillRule="evenodd"
-            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 0 010-1.414z"
             clipRule="evenodd"
           />
         </svg>

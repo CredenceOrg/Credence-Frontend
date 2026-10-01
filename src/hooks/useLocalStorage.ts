@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 
 /**
  * Reads the stored value for `key` from localStorage.
@@ -17,6 +17,28 @@ export function resolveStoredValue<T>(key: string, initialValue: T): T {
   }
 }
 
+export const safeStorage = {
+  getItem: <T>(key: string): { ok: boolean; result?: T; error?: Error } => {
+    if (typeof window === 'undefined') return { ok: false, error: new Error('SSR') }
+    try {
+      const raw = window.localStorage.getItem(key)
+      if (raw === null) return { ok: true, result: undefined }
+      return { ok: true, result: JSON.parse(raw) as T }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err : new Error(String(err)) }
+    }
+  },
+  setItem: <T>(key: string, value: T): { ok: boolean; error?: Error } => {
+    if (typeof window === 'undefined') return { ok: false, error: new Error('SSR') }
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value))
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err : new Error(String(err)) }
+    }
+  }
+}
+
 /**
  * Writes `value` to localStorage under `key`.
  * Silently no-ops when `window` is undefined (SSR) or the write fails (quota, etc.).
@@ -32,28 +54,81 @@ export function writeToStorage<T>(key: string, value: T): void {
   }
 }
 
+export type LocalStorageMeta = {
+  error: Error | null
+  loading: boolean
+  stale: boolean
+  permissionGranted: boolean
+  retry: () => void
+}
+
 /**
  * Persists a typed value to localStorage and exposes it as React state.
  *
  * @template T - The type of the stored value.
  * @param key - The localStorage key to read from and write to.
  * @param initialValue - Fallback used when the key is absent or the stored JSON is corrupt.
- * @returns A `[value, setValue]` tuple; `setValue` writes through to localStorage synchronously.
+ * @returns A `[value, setValue, meta]` tuple; `setValue` writes through to localStorage synchronously.
  *
  * SSR-safe: reads and writes skip when `window` is undefined (server rendering).
  * Falsy-but-valid stored values (`false`, `0`, `""`, `null`) are returned as-is and are
  * never replaced by `initialValue`.
  */
-export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T) => void] {
+
+export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T) => void, LocalStorageMeta] {
   const [storedValue, setStoredValue] = useState<T>(() => resolveStoredValue(key, initialValue))
+  const [error, setError] = useState<Error | null>(null)
+  const [permissionGranted, setPermissionGranted] = useState(true)
+
+  useEffect(() => {
+    const listener = (e: StorageEvent) => {
+      if (e.key === key) {
+        setStoredValue(resolveStoredValue(key, initialValue))
+      }
+    }
+    window.addEventListener('storage', listener)
+    return () => window.removeEventListener('storage', listener)
+  }, [key, initialValue])
 
   const setValue = useCallback(
     (value: T) => {
       setStoredValue(value)
-      writeToStorage(key, value)
+      if (typeof window === 'undefined') return
+      try {
+        window.localStorage.setItem(key, JSON.stringify(value))
+        setError(null)
+        setPermissionGranted(true)
+        window.dispatchEvent(new StorageEvent('storage', { key }))
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err)
+          if (err.name === 'SecurityError') {
+             setPermissionGranted(false)
+          }
+        } else {
+          setError(new Error(String(err)))
+        }
+      }
     },
     [key]
   )
 
-  return [storedValue, setValue]
+  const retry = useCallback(() => {
+    setError(null)
+    setPermissionGranted(true)
+    setValue(storedValue)
+  }, [setValue, storedValue])
+
+  return [
+    storedValue,
+    setValue,
+    {
+      error,
+      loading: false,
+      stale: false,
+      permissionGranted,
+      retry,
+    }
+  ]
 }
+

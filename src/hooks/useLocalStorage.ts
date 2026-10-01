@@ -17,6 +17,28 @@ export function resolveStoredValue<T>(key: string, initialValue: T): T {
   }
 }
 
+export const safeStorage = {
+  getItem: <T>(key: string): { ok: boolean; result?: T; error?: Error } => {
+    if (typeof window === 'undefined') return { ok: false, error: new Error('SSR') }
+    try {
+      const raw = window.localStorage.getItem(key)
+      if (raw === null) return { ok: true, result: undefined }
+      return { ok: true, result: JSON.parse(raw) as T }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err : new Error(String(err)) }
+    }
+  },
+  setItem: <T>(key: string, value: T): { ok: boolean; error?: Error } => {
+    if (typeof window === 'undefined') return { ok: false, error: new Error('SSR') }
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value))
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err : new Error(String(err)) }
+    }
+  }
+}
+
 /**
  * Writes `value` to localStorage under `key`.
  * Silently no-ops when `window` is undefined (SSR) or the write fails (quota, etc.).

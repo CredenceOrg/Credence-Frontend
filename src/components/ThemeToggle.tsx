@@ -1,8 +1,62 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './ThemeToggle.css'
 
+const THEME_STORAGE_KEY = 'theme'
+const THEME_CHANNEL_EVENT = 'theme-change'
+
+const DARK_QUERY = '(prefers-color-scheme: dark)'
+
 export type Theme = 'light' | 'dark'
 
+function isValidTheme(value: unknown): value is Theme {
+  return value === 'light' || value === 'dark'
+}
+
+/**
+ * Safely read the persisted theme.
+ *
+ * Invariants:
+ * - Never throws. Storage may be disabled (private mode, SecurityError,
+ *   QuotaExceededError, etc.) or contain arbitrary corrupted data.
+ * - Returns `undefined` for any value that is not exactly 'light' | 'dark'.
+ *   Corrupt / injected values are never propagated into the DOM or state.
+ */
+export function readPersistedTheme(): Theme | undefined {
+  if (typeof window === 'undefined') return undefined
+  try {
+    const saved = window.localStorage.getItem(THEME_STORAGE_KEY)
+    return isValidTheme(saved) ? saved : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Safely persist the theme. Failures are swallowed so a quota/security
+ * error never breaks the toggle or loses the in-memory state.
+ */
+export function persistTheme(theme: Theme): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  } catch {
+    // Persistence is best-effort; the in-memory theme remains authoritative.
+  }
+}
+
+function readOSPreference(): Theme {
+  if (typeof window === 'undefined') return 'light'
+  try {
+    if (typeof window.matchMedia !== 'function') return 'light'
+    return window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light'
+  } catch {
+    return 'light'
+  }
+}
+
+function resolveTheme(): Theme {
+  return readPersistedTheme() ?? readOSPreference()
+}
 function SunIcon() {
   return (
     <svg
@@ -36,35 +90,16 @@ function MoonIcon() {
   )
 }
 
-/**
- * Resolves the initial theme from persisted state and the OS preference.
- *
- * Invariants:
- * - Never throws: any storage/media failure falls back to a deterministic 'light'.
- * - Only the exact values 'light'/'dark' are accepted from storage; anything else
- *   is treated as absent (corrupted/tampered state cannot latch an invalid theme).
- */
-export function resolveInitialTheme(): Theme {
-  if (typeof window === 'undefined') {
-    return 'light'
-  }
-
-  try {
-    const saved = window.localStorage.getItem('theme')
-    if (saved === 'light' || saved === 'dark') return saved
-  } catch {
-    // Storage can throw (disabled cookies, private mode, quota). Fall through to OS.
-  }
-
-  try {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  } catch {
-    return 'light'
-  }
-}
-
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(resolveInitialTheme)
+
+  // Tracks whether the user has explicitly chosen a theme during this mount.
+  // While false, OS preference changes are honored; once true, they are ignored
+  // so an explicit choice is never silently overwritten.
+  const hasExplicitChoice = useRef(false)
+  // Guards against out-of-order / duplicate async writes from a rapid
+  // succession of toggles or OS events: only the latest commit is applied.
+  const writeGeneration = useRef(0)
 
   // Tracks whether the most recent toggle attempt was applied to the document.
   // Used to give the button a deterministic, diagnosable error state without
@@ -72,8 +107,28 @@ export default function ThemeToggle() {
   const [error, setError] = useState<string | null>(null)
   const lastAppliedRef = useRef<Theme | null>(null)
 
+  // Single source of truth for applying a theme to the document and storage.
+  // Idempotent: repeated calls with the same theme are no-ops.
+  const commitTheme = useCallback((nextTheme: Theme) => {
+    const generation = ++writeGeneration.current
+    setTheme((prev) => {
+      if (prev === nextTheme) return prev
+      // Apply to the document only for the latest commited generation.
+      if (generation === writeGeneration.current) {
+        try {
+          document.documentElement.dataset.theme = nextTheme
+        } catch {
+          // DOM writes are best-effort; state remains consistent.
+        }
+        persistTheme(nextTheme)
+      }
+      return nextTheme
+    })
+  }, [])
+
+  // Keep the document in sync with the current theme on every commit.
   useEffect(() => {
-    try {
+try {
       document.documentElement.dataset.theme = theme
       lastAppliedRef.current = theme
       setError(null)
@@ -90,13 +145,9 @@ export default function ThemeToggle() {
     }
   }, [theme])
 
-  /**
-   * Deterministic toggle. Computes the next theme from the current value and applies
-   * it exactly once per click, even under concurrent/rapid re-entrant clicks.
-   */
-  const handleClick = useCallback(() => {
-    setTheme((current) => (current === 'light' ? 'dark' : 'light'))
-  }, [])
+const toggleTheme = useCallback(() => {
+  setTheme((current) => (current === 'light' ? 'dark' : 'light'))
+}, [])
 
   const nextTheme: Theme = theme === 'light' ? 'dark' : 'light'
   const hasError = error !== null

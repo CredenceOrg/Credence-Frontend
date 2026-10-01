@@ -90,6 +90,10 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
 
   const isHoveredRef = useRef(false)
   const isFocusedRef = useRef(false)
+  // Tracks whether the toast has already been dismissed. Once true, all
+  // timer and progress transitions become no-ops so a concurrent hover/focus
+  // event cannot resurect a dead timer or double-dismiss.
+  const isDismissedRef = useRef(false)
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -114,13 +118,19 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
 
   const startTimer = useCallback(() => {
     // Bypassed for danger severity or autoDismiss='off'
+    if (isDismissedRef.current) return
     if (durationMs <= 0 || remainingTimeRef.current <= 0) return
     clearTimer()
     lastResumeTimeRef.current = Date.now()
     timerRef.current = window.setTimeout(() => {
+      if (isDismissedRef.current) return
+      isDismissedRef.current = true
+      clearTimer()
+      setProgress(0)
       onDismiss(toast.id)
     }, remainingTimeRef.current)
     progressTimerRef.current = window.setInterval(() => {
+      if (isDismissedRef.current) return
       if (lastResumeTimeRef.current === null) return
 
       const elapsed = Date.now() - lastResumeTimeRef.current
@@ -138,6 +148,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
   }, [durationMs, onDismiss, toast.id, clearTimer, updateProgress])
 
   const pauseTimer = useCallback(() => {
+    if (isDismissedRef.current) return
     if (durationMs <= 0) return
     clearTimer()
     if (lastResumeTimeRef.current !== null) {
@@ -149,6 +160,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
   }, [durationMs, clearTimer, updateProgress])
 
   const updateTimerState = useCallback(() => {
+    if (isDismissedRef.current) return
     if (isHoveredRef.current || isFocusedRef.current) {
       pauseTimer()
     } else {
@@ -163,26 +175,39 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
   }, [startTimer, clearTimer])
 
   const handleMouseEnter = () => {
+    // Deterministic failure boundary: a hover that arrives after the toast has
+    // already been dismissed must not restart the countdown or re-emit onDismiss.
+    if (isDismissedRef.current) return
     isHoveredRef.current = true
     updateTimerState()
   }
 
   const handleMouseLeave = () => {
+    if (isDismissedRef.current) return
     isHoveredRef.current = false
     updateTimerState()
   }
 
   const handleFocus = () => {
+    if (isDismissedRef.current) return
     isFocusedRef.current = true
     updateTimerState()
   }
 
   const handleBlur = (e: React.FocusEvent) => {
+    if (isDismissedRef.current) return
     // Only resume if focus has genuinely left the toast's bounding box
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       isFocusedRef.current = false
       updateTimerState()
     }
+  }
+
+  const handleDismiss = () => {
+    if (isDismissedRef.current) return
+    isDismissedRef.current = true
+    clearTimer()
+    onDismiss(toast.id)
   }
 
   return (
@@ -222,7 +247,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
         <span className="toast__message">{toast.message}</span>
         {toast.txHash && (
           <div className="toast__action">
-            <span className="toast__tx-hash">{truncateAddress(toast.txHash)}</span>
+            <span className="toast__tw-hash">{truncateAddress(toast.txHash)}</span>
             <a
               href={explorerUrl(toast.network ?? 'public', toast.txHash)}
               target="_blank"
@@ -252,7 +277,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       <button
         type="button"
         className="toast__dismiss"
-        onClick={() => onDismiss(toast.id)}
+        onClick={handleDismiss}
         aria-label={`Dismiss ${toast.severity} notification`}
       >
         <svg

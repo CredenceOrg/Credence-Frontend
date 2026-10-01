@@ -41,10 +41,17 @@ export default function Select({
         aria-describedby={ariaDescribedBy}
         aria-required={ariaRequired}
         disabled={isDisabled}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          // The native `disabled` attribute blocks pointer and keyboard input,
+          // but a synthetic change event (form reset replay, programmatic
+          // dispatch, some screen readers) can still reach this handler. Guard
+          // so a disabled or loading control can never emit a selection.
+          if (isDisabled) return
+          onChange(e.target.value)
+        }}
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
+        {options.map((o, i) => (
+          <option key={`${o.value}::${i}`} value={o.value}>
             {o.label}
           </option>
         ))}

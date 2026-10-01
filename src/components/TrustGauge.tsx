@@ -31,6 +31,16 @@ export interface TrustGaugeProps {
   score: number
   /** Current tier */
   tier: TrustTier
+  /** Whether the gauge data is currently loading */
+  isLoading?: boolean
+  /** Any error encountered while fetching the gauge data */
+  error?: Error | string | null
+  /** Callback to retry loading data */
+  onRetry?: () => void
+  /** Whether the displayed data might be stale (e.g. background refresh) */
+  isStale?: boolean
+  /** Whether the user has permission to view the gauge. Defaults to true. */
+  isPermitted?: boolean
   /** Optional audit correlation identifier included in commit events. */
   correlationId?: string
   /** Called after a committed score/tier transition with a versioned audit record. */
@@ -39,6 +49,16 @@ export interface TrustGaugeProps {
   className?: string
   /** Optional ID for accessibility */
   id?: string
+  /** Indicates if the gauge data is currently loading */
+  isLoading?: boolean
+  /** Any error that occurred while fetching or updating the gauge */
+  error?: Error | null
+  /** Callback to retry fetching or updating the gauge */
+  onRetry?: () => void
+  /** Indicates if the displayed data is stale */
+  isStale?: boolean
+  /** Indicates if the user has permission to view the gauge */
+  hasPermission?: boolean
 }
 
 /**
@@ -116,18 +136,59 @@ export function tierFromScore(score: number): TrustTier {
 }
 
 /**
+ * Resolve the canonical tier for a score, tolerating invalid input.
+ *
+ * Invariants:
+ * - Non-finite scores are treated as 0 (bronze) rather than throwing.
+ * - The returned tier is always a member of TIER_ORDER.
+ * - The result is deterministic for any numeric input.
+ */
+function resolveTier(score: number): TrustTier {
+  return tierFromScore(score)
+}
+
+/**
+ * Resolve the canonical score, tolerating invalid input.
+ *
+ * Invariants:
+ * - Non-finite scores collapse to 0.
+ * - The result is always within [0, MAX_SCORE].
+ * - The result is deterministic for any numeric input.
+ */
+function resolveScore(score: number): number {
+  return normalizeScore(score)
+}
+
+/**
  * Calculate points remaining to reach the next tier
  * @param score Current score
  * @param tier Current tier
  * @returns Points needed to reach next tier (0 if at platinum)
  */
 export function pointsToNextTier(score: number, tier: TrustTier): number {
-  const tierIndex = TIER_INDEX_MAP[tier]
+  // Guard against unknown tier values at runtime (defensive against
+  // callers passing values outside the TrustTier union, e.g. from
+  // deserialized payloads). Fall back to the tier derived from the
+  // normalized score so the result stays deterministic and safe.
+  const safeTier: TrustTier =
+    tier in TIER_INDEX_MAP ? tier : resolveTier(score)
+  const tierIndex = TIER_INDEX_MAP[safeTier]
   if (tierIndex === TIER_ORDER.length - 1) {
     return 0
   }
   const nextTier = TIER_ORDER[tierIndex + 1]
-  return Math.max(0, TIERS[nextTier].min - score)
+  // Normalize the score before computing the delta so invalid inputs
+  // (NaN, Infinity, negative, overflow) cannot produce NaN/negative
+  // results or leak out-of-range values into the UI.
+  const normalizedScore = resolveScore(score)
+  const nextTierMin = TIERS[nextTier].min
+  const delta = nextTierMin - normalizedScore
+  // Clamp to [0, nextTierMin] so the result is always a non-negative
+  // integer within the tier band, regardless of input.
+  if (!Number.isFinite(delta)) {
+    return nextTierMin
+  }
+  return Math.min(Math.max(0, delta), nextTierMin)
 }
 
 /**
@@ -136,16 +197,31 @@ export function pointsToNextTier(score: number, tier: TrustTier): number {
  * @returns Percentage (0-100)
  */
 export function getProgressPercentage(score: number): number {
-  return Math.min((score / MAX_SCORE) * 100, 100)
+  const normalized = normalizeScore(score)
+  const pct = (normalized / MAX_SCORE) * 100
+  if (!Number.isFinite(pct)) {
+    return 0
+  }
+  return Math.min(Math.max(pct, 0), 100)
 }
 
 export default function TrustGauge({
   score,
   tier,
+  isLoading = false,
+  error = null,
+  onRetry,
+  isStale = false,
+  isPermitted = true,
   className = '',
   id = 'trust-gauge',
   correlationId,
   onCommit,
+  isLoading = false,
+  error = null,
+  onRetry,
+  isStale = false,
+  hasPermission = true,
 }: TrustGaugeProps) {
   const prefersReducedMotion = useReducedMotion()
   const reducedMotionTransition = prefersReducedMotion ? 'none' : undefined
@@ -202,16 +278,58 @@ export default function TrustGauge({
     }
   }, [resolvedScore, resolvedTier])
 
+  const stateClasses = [
+    isLoading ? 'trust-gauge--loading' : '',
+    error ? 'trust-gauge--error' : '',
+    isStale ? 'trust-gauge--stale' : '',
+    !hasPermission ? 'trust-gauge--unauthorized' : ''
+  ].filter(Boolean).join(' ')
+
   return (
     <div
-      className={`trust-gauge ${className}`}
+      className={`trust-gauge ${className} ${stateClasses}`.trim()}
       id={id}
       data-audit-version={TRUST_SCORE_EVENT_VERSION}
       data-audit-parity={tierMismatch ? 'mismatch' : 'match'}
       data-score={resolvedScore}
       data-tier={resolvedTier}
       data-correlation-id={correlationId ?? id}
+      data-state-loading={isLoading}
+      data-state-error={!!error}
+      data-state-stale={isStale}
+      data-state-permitted={isPermitted}
+      aria-busy={isLoading}
+      aria-invalid={!!error}
     >
+      {!hasPermission && (
+        <div className="trust-gauge__overlay trust-gauge__overlay--permission" role="alert">
+          <p>You do not have permission to view this data.</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="trust-gauge__overlay trust-gauge__overlay--error" role="alert">
+          <p>Error: {error.message}</p>
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="trust-gauge__retry-button">
+              Retry
+            </button>
+          )}
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="trust-gauge__overlay trust-gauge__overlay--loading" aria-busy="true" role="status">
+          <span className="trust-gauge__spinner" />
+          <span className="trust-gauge__loading-text">Loading...</span>
+        </div>
+      )}
+
+      {isStale && !isLoading && !error && (
+        <div className="trust-gauge__banner trust-gauge__banner--stale" role="status">
+          Data may be out of date
+        </div>
+      )}
       {/* Accessible heading and description */}
       <div className="trust-gauge__header">
         <h3 className="trust-gauge__title">Trust Score Gauge</h3>
@@ -220,9 +338,54 @@ export default function TrustGauge({
         </p>
       </div>
 
-      {/* Main gauge container */}
-      <div
-        className="trust-gauge__container"
+      {!isPermitted ? (
+        <div className="trust-gauge__permission-denied" role="alert">
+          <svg className="trust-gauge__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <p>You do not have permission to view this trust score.</p>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="trust-gauge__error-banner" role="alert">
+              <svg className="trust-gauge__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span className="trust-gauge__error-message">
+                {error instanceof Error ? error.message : error}
+              </span>
+              {onRetry && (
+                <button type="button" className="trust-gauge__retry-button" onClick={onRetry}>
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
+
+          {isStale && !error && (
+            <div className="trust-gauge__stale-banner" role="status">
+              <svg className="trust-gauge__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span>Displaying offline or cached data.</span>
+            </div>
+          )}
+
+          <div className={`trust-gauge__content-wrapper ${isLoading ? 'trust-gauge__content-wrapper--loading' : ''} ${isStale ? 'trust-gauge__content-wrapper--stale' : ''}`}>
+            {isLoading && (
+              <div className="trust-gauge__loading-overlay" role="status" aria-label="Loading">
+                <div className="trust-gauge__spinner" />
+              </div>
+            )}
+            
+            {/* Main gauge container */}
+            <div
+              className="trust-gauge__container"
         role="progressbar"
         tabIndex={0}
         aria-live="polite"
@@ -356,6 +519,9 @@ export default function TrustGauge({
           })}
         </ul>
       </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

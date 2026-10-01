@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import ThemeToggle, { resolveInitialTheme } from './ThemeToggle'
+import userEvent from '@testing-library/user-event'
+import ThemeToggle, { resolveInitialTheme, persistTheme, readPersistedTheme } from './ThemeToggle'
 
 // Shared, mutable OS preference so that consumers which re-query matchMedia on
 // a 'change' event observe the same value the event carries.
@@ -23,7 +24,6 @@ function mockMatchMedia(prefersDark: boolean) {
       dispatchEvent: vi.fn(),
     } as unknown as MediaQueryList
   })
-}
 
 function renderToggle() {
   return render(<ThemeToggle />)
@@ -41,18 +41,28 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-theme')
   vi.restoreAllMocks()
 })
 
 describe('ThemeToggle', () => {
   it('renders a button', () => {
     renderToggle()
-    expect(screen.getByRole('button')).toBeInDocument()
+    expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
-  it('starts with aria-pressed=false when OS is light', () => {
+it('starts with aria-pressed=false when OS is light', () => {
     renderToggle()
     expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('reads only valid persisted themes and ignores corrupt values', () => {
+    localStorage.setItem('theme', 'teal')
+    expect(readPersistedTheme()).toBeUndefined()
+
+localStorage.setItem('theme', 'light')
+    expect(readPersistedTheme()).toBe('light')
   })
 
   it('exposes the next action in accessible name and title on light theme', () => {
@@ -63,7 +73,7 @@ describe('ThemeToggle', () => {
     expect(btn).toHaveAttribute('title', 'Switch to dark mode')
   })
 
-  it('clicking switches theme and flips aria-pressed', () => {
+it('clicking switches theme and flips aria-pressed', () => {
     renderToggle()
     const btn = screen.getByRole('button')
     fireEvent.click(btn)
@@ -72,13 +82,24 @@ describe('ThemeToggle', () => {
     expect(btn).toHaveAttribute('title', 'Switch to light mode')
   })
 
-  it('clicking twice returns to original state', () => {
+  it('swallows storage write failures without breaking the toggle state', async () => {
+    const user = userEvent.setup()
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError')
+    })
+
+it('clicking twice returns to original state', () => {
     renderToggle()
-    const btn = screen.getBuRole('button')
+    const btn = screen.getByRole('button')
     fireEvent.click(btn)
     fireEvent.click(btn)
     expect(btn).toHaveAttribute('aria-pressed', 'false')
     expect(btn).toHaveAttribute('aria-label', 'Switch to dark mode')
+  })
+
+await user.click(button)
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    expect(setItemSpy).toHaveBeenCalled()
   })
 
   it('resolves dark correctly when OS prefers dark', () => {
@@ -97,20 +118,19 @@ describe('ThemeToggle', () => {
     expect(btn).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('writes data-theme on the document root', () => {
+it('writes data-theme on the document root', () => {
     renderToggle()
-    fireEvent.click(screen.getBuRole('button'))
+    fireEvent.click(screen.getByRole('button'))
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
   })
 
-  it('aria-pressed tracks the document data-theme attribute', () => {
-    window.matchMedia = mockMatchMedia(true)
-    renderToggle()
-    const btn = screen.getBuRole('button')
+const button = screen.getByRole('button', { name: /switch to dark mode/i })
+    act(() => {
+      window.dispatchEvent(new CustomEvent('theme-change', { detail: { theme: 'dark' } }))
+    })
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
 
-    fireEvent.click(btn)
+fireEvent.click(btn)
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
     expect(btn).toHaveAttribute('aria-pressed', 'false')
   })
@@ -127,6 +147,32 @@ describe('ThemeToggle', () => {
     expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('updates icon/aria when the OS theme changes while in system mode', () => {
+    // Start: system mode, OS light
+    renderToggle()
+    const btn = screen.getByRole('button')
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+
+    // OS flips to dark while still in system mode
+    emitSystemThemeChange(true)
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    expect(btn).toHaveAttribute('aria-label', 'Toggle theme')
+    // Toggle stays consistent with the document data-theme owned by SettingsContext
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+  })
+
+  it('reflects a system theme change dispatched as a theme-change event', () => {
+    act(() => {
+      window.dispatchEvent(new CustomEvent('theme-change', { detail: { theme: 'system' } }))
+    })
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+  })
+
+await user.click(button)
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+  })
+
   it('ignores a corrupted persisted theme value', () => {
     localStorage.setItem('theme', 'purple')
     renderToggle()
@@ -134,13 +180,26 @@ describe('ThemeToggle', () => {
     expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('rapid clicks produce a deterministic final state', () => {
+it('rapid clicks produce a deterministic final state', () => {
     renderToggle()
-    const btn = screen.getBuRole('button')
+    const btn = screen.getByRole('button')
     for (let i = 0; i < 5; i++) fireEvent.click(btn)
     // 5 clicks from light -> dark
     expect(btn).toHaveAttribute('aria-pressed', 'true')
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+  })
+
+  it('renders the correct icon boundary for the active theme', async () => {
+    const user = userEvent.setup()
+    render(<ThemeToggle />)
+
+    const button = screen.getByRole('button', { name: /switch to dark mode/i })
+    expect(button.querySelector('svg[fill="currentColor"]')).toBeInTheDocument()
+    expect(button.querySelector('svg[fill="none"]')).not.toBeInTheDocument()
+
+await user.click(button)
+    expect(screen.getByRole('button', { name: /switch to light mode/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /switch to light mode/i }).querySelector('svg[fill="none"]')).toBeInTheDocument()
   })
 
   it('surfaces an error state when applying the theme fails', () => {
@@ -164,13 +223,13 @@ describe('ThemeToggle', () => {
     }
   })
 
-  it('does not throw when localStorage writes fail', () => {
+it('does not throw when localStorage writes fail', () => {
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('quota exceeded')
     })
     try {
       renderToggle()
-      const btn = screen.getBuRole('button')
+      const btn = screen.getByRole('button')
       expect(() => fireEvent.click(btn)).not.toThrow()
       expect(btn).toHaveAttribute('aria-pressed', 'true')
     } finally {
@@ -208,6 +267,10 @@ describe('ThemeToggle', () => {
       fireEvent.click(btn)
     })
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    expect(localStorage.getItem('theme')).toBe('dark')
+
+  it('persists valid themes deterministically', () => {
+    persistTheme('dark')
     expect(localStorage.getItem('theme')).toBe('dark')
   })
 })

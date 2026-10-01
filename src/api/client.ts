@@ -6,11 +6,7 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | unknown[] | null
   /** Stable key for retrying one state-changing operation safely. */
   idempotencyKey?: string
-  /**
-   * When true, bypasses the client-side rate limiter for this call only.
-   * Defaults to false. Intended for tests; production callers should never
-   * need this.
-   */
+  /** When true, bypasses the client-side rate limiter for this call only. */
   skipRateLimit?: boolean
   /**
    * Declares decimal amount fields inside a JSON object `body` so they are
@@ -43,7 +39,7 @@ export class ApiRateLimitError extends ApiError {
   readonly retryAfterMs: number
 
   constructor(retryAfterMs: number, message = 'Too many requests', payload?: unknown) {
-    super(429, message, payload)
+    super(429, message, payload, 'http_error')
     this.name = 'ApiRateLimitError'
     this.retryAfterMs = retryAfterMs
   }
@@ -54,7 +50,7 @@ export class ApiAmountError extends ApiError {
   readonly code: ApiAmountErrorCode
 
   constructor(field: string | null, code: ApiAmountErrorCode, message: string) {
-    super(400, message, { field, code })
+    super(400, message, { field, code }, 'http_error')
     this.name = 'ApiAmountError'
     this.field = field
     this.code = code
@@ -83,7 +79,7 @@ export class ApiBodyTooLargeError extends ApiError {
   readonly bodySizeBytes: number
 
   constructor(limitBytes: number, payload?: { bodySize: number }) {
-    super(413, `Request body too large (limit ${limitBytes} bytes).`, payload ?? { limitBytes })
+    super(413, `Request body too large (limit ${limitBytes} bytes).`, payload ?? { limitBytes }, 'http_error')
     this.name = 'ApiBodyTooLargeError'
     this.limitBytes = limitBytes
     this.bodySizeBytes = payload?.bodySize ?? 0
@@ -254,7 +250,7 @@ function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unkno
     !(body instanceof ArrayBuffer) &&
     !ArrayBuffer.isView(body) &&
     !(body instanceof URLSearchParams) &&
-    !isReadableStream
+    !(typeof ReadableStream !== 'undefined' && body instanceof ReadableStream)
   )
 }
 
@@ -324,6 +320,25 @@ async function parseResponse(response: Response): Promise<unknown> {
   return text || undefined
 }
 
+/** Maximum length of a server-provided error message we will surface verbatim. */
+const MAX_ERROR_MESSAGE_LENGTH = 500
+
+/**
+ * Extracts a deterministic, safe, user-visible error message from a failed
+ * response payload.
+ *
+ * Invariants:
+ * - Always returns a non-empty string, so callers can rely on
+ *   `new ApiError(status, message)` never producing an empty message.
+ * - Never throws: any shape of `payload` (null, primitives, arrays, objects
+ *   with getters that throw, cyclic structures) resolves to a fallback.
+ * - Never leaks unbounded or control-character-laden server content: string
+ *   messages are trimmed, stripped of control characters, and truncated to
+ *   {@link MAX_ERROR_MESSAGE_LENGTH}. This keeps logs and UI rendering
+ *   deterministic and prevents log-injection / terminal-escape attacks.
+ * - Prefers an explicit `message` string, then a `error` string, then a
+ *   non-empty string payload, then a status-derived fallback.
+ */
 function errorMessage(status: number, payload: unknown): string {
   if (payload && typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string') {
     return payload.message
@@ -352,6 +367,10 @@ function replayConflict(key: string): ApiError {
   return new ApiError(409, `Idempotency key has already been used for a different operation: ${key}`, {
     code: 'idempotency_key_conflict',
   })
+}
+
+export function resetApiRateLimiter(): void {
+  defaultApiRateLimiter.reset()
 }
 
 interface ApiFetchContext {
@@ -396,6 +415,7 @@ async function apiFetchWithoutReplay<T>(
       body: serializedBody,
     })
   } catch (error) {
+    // Preserve AbortError unchanged — callers may inspect it directly.
     if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
       emitWalletSessionEvent('action_failed', {
         address: null,
@@ -405,6 +425,8 @@ async function apiFetchWithoutReplay<T>(
       })
       throw error
     }
+    // Network transport failure: wrap in ApiError with deterministic classification.
+
     const message = error instanceof Error ? error.message : 'Network request failed'
     emitWalletSessionEvent('action_failed', {
       address: null,

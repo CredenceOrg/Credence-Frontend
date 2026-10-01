@@ -6,38 +6,83 @@ import TooltipOnOverflow from './TooltipOnOverflow'
 import './AddressDisplay.css'
 
 export interface AddressDisplayProps {
-  address: string
+  address?: string | null
   className?: string
   showCopyButton?: boolean
+  isLoading?: boolean
+  error?: Error | string | null
+  onRetry?: () => void
+  isStale?: boolean
+  hasPermission?: boolean
 }
 
 export default function AddressDisplay({
   address,
   className = '',
   showCopyButton = true,
+  isLoading = false,
+  error = null,
+  onRetry,
+  isStale = false,
+  hasPermission = true,
 }: AddressDisplayProps) {
   const { copy, copied } = useCopyToClipboard()
   const { addToast } = useToast()
   const [isHovered, setIsHovered] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
 
+  if (error) {
+    const errorMessage = typeof error === 'string' ? error : error.message
+    return (
+      <div className={`address-display address-display--error ${className}`}>
+        <span className="address-display__error-msg">Error: {errorMessage}</span>
+        {onRetry && (
+          <button type="button" className="address-display__retry-btn" onClick={onRetry}>
+            Retry
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className={`address-display address-display--loading ${className}`} aria-busy="true">
+        <span className="address-display__address">Loading...</span>
+      </div>
+    )
+  }
+
+  if (!hasPermission) {
+    return (
+      <div className={`address-display address-display--no-permission ${className}`}>
+        <span className="address-display__address" title="Address hidden">
+          ••••••••••••••••••••••••••••••••••••••••
+        </span>
+      </div>
+    )
+  }
+
+  const safeAddress = address || ''
+
   const handleCopy = async () => {
-    const success = await copy(address)
+    if (!safeAddress) return
+    const success = await copy(safeAddress)
     if (success) {
       addToast('success', 'Address copied to clipboard')
     }
   }
 
   const showFull = isHovered || isFocused
-  const displayText = showFull ? address : truncateAddress(address)
+  const displayText = showFull ? safeAddress : truncateAddress(safeAddress)
 
   return (
-    <div className={`address-display ${className}`}>
-      <TooltipOnOverflow content={address} forceShow>
+    <div className={`address-display ${isStale ? 'address-display--stale' : ''} ${className}`}>
+      <TooltipOnOverflow content={safeAddress} forceShow>
         <code
           className="address-display__address"
           tabIndex={0}
-          title={address}
+          title={safeAddress}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onFocus={() => setIsFocused(true)}
@@ -46,7 +91,7 @@ export default function AddressDisplay({
           {displayText}
         </code>
       </TooltipOnOverflow>
-      {showCopyButton && (
+      {showCopyButton && safeAddress && (
         <button
           type="button"
           className="address-display__copy-btn"

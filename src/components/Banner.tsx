@@ -71,15 +71,35 @@ export default function Banner({
   action,
   returnFocusRef,
 }: BannerProps) {
-  const isUrgent = severity === 'incident' || severity === 'warn'
+  // Normalize severity to prevent undefined access if coerced/invalid
+  const normalizedSeverity = (
+    typeof severity === 'string' && Object.prototype.hasOwnProperty.call(ICONS, severity)
+      ? severity
+      : 'info'
+  ) as BannerSeverity
+
+  const isUrgent = normalizedSeverity === 'incident' || normalizedSeverity === 'warn'
   const dismissBtnRef = useRef<HTMLButtonElement>(null)
 
   const handleDismiss = useCallback(() => {
     // Return focus to caller-supplied ref, or document.body as fallback
     const target = returnFocusRef?.current ?? document.body
-    onDismiss?.()
-    // Defer so the banner unmounts first
-    requestAnimationFrame(() => target.focus())
+    
+    try {
+      onDismiss?.()
+    } finally {
+      // Defer so the banner unmounts first, ensuring focus is returned
+      // even if onDismiss throws (fixes keyboard trap on error).
+      requestAnimationFrame(() => {
+        if (target && typeof target.focus === 'function') {
+          try {
+            target.focus()
+          } catch {
+            // Ignore focus errors
+          }
+        }
+      })
+    }
   }, [onDismiss, returnFocusRef])
 
   const handleKeyDown = useCallback(
@@ -96,13 +116,13 @@ export default function Banner({
     <div
       className={[
         'banner',
-        `banner--${severity}`,
+        `banner--${normalizedSeverity}`,
         dismissible ? 'banner--dismissible' : 'banner--persistent',
       ].join(' ')}
       role={isUrgent ? 'alert' : 'status'}
-      aria-label={`${SEVERITY_LABEL[severity]} banner`}
+      aria-label={`${SEVERITY_LABEL[normalizedSeverity]} banner`}
     >
-      <span className="banner__icon">{ICONS[severity]}</span>
+      <span className="banner__icon">{ICONS[normalizedSeverity]}</span>
 
       <div className="banner__body">
         {title && <p className="banner__title">{title}</p>}

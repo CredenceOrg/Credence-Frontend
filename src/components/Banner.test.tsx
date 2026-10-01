@@ -6,7 +6,7 @@ import Banner from './Banner'
 import type { BannerSeverity } from './Banner'
 
 // Stub requestAnimationFrame to execute synchronously so focus-return assertions
-// don't need timer flushing — the deferred focus() runs inline during the test.
+// don't need timer flushing â€” the deferred focus() runs inline during the test.
 describe('Banner', () => {
   beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -19,27 +19,27 @@ describe('Banner', () => {
     vi.unstubAllGlobals()
   })
 
-  // ── role mapping ──────────────────────────────────────────────────────────
+  // â”€â”€ role mapping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('role mapping', () => {
     it.each<[BannerSeverity, 'alert' | 'status']>([
       ['incident', 'alert'],
       ['warn', 'alert'],
       ['info', 'status'],
-    ])('severity "%s" → role="%s"', (severity, role) => {
+    ])('severity "%s" â†’ role="%s"', (severity, role) => {
       render(<Banner severity={severity}>Message</Banner>)
       expect(screen.getByRole(role)).toBeInTheDocument()
     })
   })
 
-  // ── aria-label ────────────────────────────────────────────────────────────
+  // â”€â”€ aria-label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('aria-label', () => {
     it.each<[BannerSeverity, string]>([
       ['info', 'Information banner'],
       ['warn', 'Warning banner'],
       ['incident', 'Incident banner'],
-    ])('severity "%s" → aria-label="%s"', (severity, label) => {
+    ])('severity "%s" â†’ aria-label="%s"', (severity, label) => {
       render(<Banner severity={severity}>Message</Banner>)
       // getByRole with name option asserts both the role and accessible name
       const isUrgent = severity === 'incident' || severity === 'warn'
@@ -47,7 +47,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── dismiss button visibility ─────────────────────────────────────────────
+  // â”€â”€ dismiss button visibility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('dismiss button', () => {
     it('is absent when dismissible is omitted', () => {
@@ -85,7 +85,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── focus return on dismiss ───────────────────────────────────────────────
+  // â”€â”€ focus return on dismiss â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('focus return on dismiss', () => {
     it('returns focus to returnFocusRef.current after dismiss', () => {
@@ -121,7 +121,7 @@ describe('Banner', () => {
     it('returns focus to document.body when returnFocusRef.current is null', () => {
       // A ref whose current is still null (element not yet mounted to a DOM node)
       const ref = React.createRef<HTMLButtonElement>()
-      // Intentionally don't attach ref to any element — current stays null
+      // Intentionally don't attach ref to any element â€” current stays null
       render(
         <Banner severity="info" dismissible returnFocusRef={ref}>
           Message
@@ -134,7 +134,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── Escape key handling ───────────────────────────────────────────────────
+  // â”€â”€ Escape key handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('Escape key on dismiss button', () => {
     it('triggers dismissal when Escape is pressed on the dismiss button', () => {
@@ -179,7 +179,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── action rendering ──────────────────────────────────────────────────────
+  // â”€â”€ action rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('action rendering', () => {
     it('renders an <a> with the given href', () => {
@@ -218,12 +218,12 @@ describe('Banner', () => {
     it('renders no action element when action prop is omitted', () => {
       render(<Banner severity="info">Message</Banner>)
       expect(screen.queryByRole('link')).not.toBeInTheDocument()
-      // Only the dismiss button (if any) would be a button — there is none here either
+      // Only the dismiss button (if any) would be a button â€” there is none here either
       expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
 
-  // ── optional title ────────────────────────────────────────────────────────
+  // â”€â”€ optional title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('title', () => {
     it('renders the title when provided', () => {
@@ -237,16 +237,16 @@ describe('Banner', () => {
 
     it('omits the title element when title is not provided', () => {
       render(<Banner severity="info">Message</Banner>)
-      // No <p class="banner__title"> — nothing with that text
+      // No <p class="banner__title"> â€” nothing with that text
       expect(screen.queryByText('Heads up')).not.toBeInTheDocument()
     })
   })
 
-  // ── external link security ────────────────────────────────────────────────
+  // â”€â”€ external link security â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // isExternalUrl drives whether Banner adds target="_blank" rel="noopener noreferrer".
   // jsdom sets window.location.origin to "null" by default, so any absolute
-  // http/https URL is cross-origin from jsdom's perspective — no extra mocking needed.
+  // http/https URL is cross-origin from jsdom's perspective â€” no extra mocking needed.
 
   describe('external link security', () => {
     it('adds target="_blank" and rel="noopener noreferrer" for a cross-origin https URL', () => {
@@ -294,7 +294,7 @@ describe('Banner', () => {
     })
 
     it('does not add target or rel for a mailto: href (isExternalUrl returns true, but mailto is not an http/https origin)', () => {
-      // mailto: → isExternalUrl returns true, so the component DOES set target/rel.
+      // mailto: â†’ isExternalUrl returns true, so the component DOES set target/rel.
       // We test what the component actually does rather than what we might wish it did:
       // the banner applies target/rel whenever isExternalUrl says true, including mailto:.
       render(
@@ -303,13 +303,13 @@ describe('Banner', () => {
         </Banner>
       )
       const link = screen.getByRole('link', { name: /contact/i })
-      // isExternalUrl('mailto:...') returns true → component sets target/rel
+      // isExternalUrl('mailto:...') returns true â†’ component sets target/rel
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
 
     it('does not set target or rel for a javascript: href (isExternalUrl returns false)', () => {
-      // javascript: is blocked by isExternalUrl → treated as internal → no target/rel.
+      // javascript: is blocked by isExternalUrl â†’ treated as internal â†’ no target/rel.
       // This is the security-critical path: a javascript: action href must never
       // result in a new browsing context or relaxed referrer policy.
       render(
@@ -335,7 +335,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── CSS class composition ─────────────────────────────────────────────────
+  // â”€â”€ CSS class composition â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('CSS class composition', () => {
     it('always includes the base "banner" class', () => {
@@ -377,7 +377,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── icon rendering by severity ────────────────────────────────────────────
+  // â”€â”€ icon rendering by severity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('icon rendering by severity', () => {
     it.each<BannerSeverity>(['info', 'warn', 'incident'])(
@@ -408,7 +408,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── children / content rendering ─────────────────────────────────────────
+  // â”€â”€ children / content rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('children rendering', () => {
     it('renders plain text children', () => {
@@ -475,7 +475,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── dismiss idempotency and recovery ──────────────────────────────────────
+  // â”€â”€ dismiss idempotency and recovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('dismiss idempotency and recovery', () => {
     it('calls onDismiss exactly once even when the dismiss button is clicked multiple times rapidly', () => {
@@ -492,9 +492,9 @@ describe('Banner', () => {
       fireEvent.click(btn)
       fireEvent.click(btn)
 
-      // Banner is a controlled component — it does not gate multiple calls.
+      // Banner is a controlled component â€” it does not gate multiple calls.
       // Each click WILL fire onDismiss; the parent is responsible for unmounting.
-      // This test locks in the current contract: three clicks → three calls.
+      // This test locks in the current contract: three clicks â†’ three calls.
       expect(onDismiss).toHaveBeenCalledTimes(3)
     })
 
@@ -562,7 +562,7 @@ describe('Banner', () => {
         </Banner>
       )
 
-      // Banner calls requestAnimationFrame — with it stubbed to undefined the
+      // Banner calls requestAnimationFrame â€” with it stubbed to undefined the
       // component will throw a TypeError at runtime. We verify the component
       // does NOT silently corrupt state before the throw, and that onDismiss
       // was already invoked (it is called before rAF).
@@ -589,7 +589,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── action button edge cases ──────────────────────────────────────────────
+  // â”€â”€ action button edge cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('action button edge cases', () => {
     it('renders action button with correct type="button" to avoid accidental form submission', () => {
@@ -666,7 +666,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── title edge cases ──────────────────────────────────────────────────────
+  // â”€â”€ title edge cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('title edge cases', () => {
     it('renders title inside the banner__title element', () => {
@@ -696,7 +696,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── full prop combination smoke tests ─────────────────────────────────────
+  // â”€â”€ full prop combination smoke tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   describe('full prop combination smoke tests', () => {
     it('renders a fully-loaded incident banner without errors', () => {
@@ -749,10 +749,10 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 1: e.preventDefault() on Escape ──────────────────────────────────
+  // â”€â”€ GAP 1: e.preventDefault() on Escape â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // handleKeyDown calls e.preventDefault() before handleDismiss() when the key
-  // is Escape. Previous tests only asserted onDismiss was called — they never
+  // is Escape. Previous tests only asserted onDismiss was called â€” they never
   // verified that the event's default action was suppressed.  An unsuppressed
   // Escape can close modals or trigger other browser-level handlers when the
   // banner is used inside an overlay.
@@ -783,7 +783,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 2: action.href + action.onClick together — onClick is silently ignored ──
+  // â”€â”€ GAP 2: action.href + action.onClick together â€” onClick is silently ignored â”€â”€
   //
   // When action.href is provided the component renders an <a>.  The action.onClick
   // field is NOT spread onto the link, so a caller who passes both expects onClick
@@ -809,12 +809,12 @@ describe('Banner', () => {
         </Banner>
       )
       fireEvent.click(screen.getByRole('link', { name: /link/i }))
-      // The <a> element has no onClick handler — the prop is silently unused
+      // The <a> element has no onClick handler â€” the prop is silently unused
       expect(onClick).not.toHaveBeenCalled()
     })
   })
 
-  // ── GAP 3: sr-only span inside dismiss button ─────────────────────────────
+  // â”€â”€ GAP 3: sr-only span inside dismiss button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // The dismiss button has aria-label="Dismiss banner" AND a visually-hidden
   // <span class="sr-only"> with the same text.  getByRole queries match on
@@ -834,7 +834,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 4: dismiss button type="button" ───────────────────────────────────
+  // â”€â”€ GAP 4: dismiss button type="button" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // The action button's type="button" is tested, but the dismiss button's is not.
   // Without type="button" a button inside a <form> defaults to type="submit",
@@ -854,7 +854,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 5: Escape on action elements does not trigger dismissal ───────────
+  // â”€â”€ GAP 5: Escape on action elements does not trigger dismissal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // handleKeyDown is wired only to the dismiss button element.  Action links and
   // action buttons must not accidentally dismiss the banner when Escape is pressed
@@ -895,7 +895,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 6: banner__body wrapper structural integrity ──────────────────────
+  // â”€â”€ GAP 6: banner__body wrapper structural integrity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // The title, content, and action are all rendered inside a banner__body <div>.
   // Tests query into the body's children but never assert the wrapper itself exists,
@@ -934,18 +934,18 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 7: isExternalUrl boundary cases at the Banner level ──────────────
+  // â”€â”€ GAP 7: isExternalUrl boundary cases at the Banner level â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // isExternalUrl has its own unit tests, but the Banner-level tests only cover
   // https://, http://, relative paths, mailto:, javascript:, and #.
   // ftp:// and malformed strings are meaningful cases because:
-  //   - ftp:// is cross-origin but NOT http/https → isExternalUrl returns false
-  //     → the link must NOT get target/_blank (user stays in same context)
-  //   - A malformed href that cannot be parsed → isExternalUrl returns false
-  //     → no target/_blank, link still renders
+  //   - ftp:// is cross-origin but NOT http/https â†’ isExternalUrl returns false
+  //     â†’ the link must NOT get target/_blank (user stays in same context)
+  //   - A malformed href that cannot be parsed â†’ isExternalUrl returns false
+  //     â†’ no target/_blank, link still renders
 
-  describe('external link security — additional href schemes', () => {
-    it('does not add target/rel for an ftp:// href (not http/https — no opener risk)', () => {
+  describe('external link security â€” additional href schemes', () => {
+    it('does not add target/rel for an ftp:// href (not http/https â€” no opener risk)', () => {
       render(
         <Banner severity="info" action={{ label: 'FTP', href: 'ftp://files.example.com' }}>
           Message
@@ -958,7 +958,7 @@ describe('Banner', () => {
 
     it('does not add target/rel for a malformed href that fails URL parsing', () => {
       render(
-        // A string with a space makes new URL() throw → isExternalUrl returns false
+        // A string with a space makes new URL() throw â†’ isExternalUrl returns false
         <Banner severity="info" action={{ label: 'Bad', href: 'ht tp://bad url' }}>
           Message
         </Banner>
@@ -969,7 +969,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 8: requestAnimationFrame is actually invoked ─────────────────────
+  // â”€â”€ GAP 8: requestAnimationFrame is actually invoked â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // Focus-return tests verify the outcome (the element has focus) but don't
   // assert the mechanism.  If the implementation swapped rAF for setTimeout the
@@ -1013,7 +1013,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 9: onDismiss throwing — documents focus-return failure mode ───────
+  // â”€â”€ GAP 9: onDismiss throwing â€” documents focus-return failure mode â”€â”€â”€â”€â”€â”€â”€
   //
   // onDismiss() is called BEFORE requestAnimationFrame(() => target.focus()).
   // If onDismiss throws, execution never reaches the rAF call, so focus is
@@ -1021,8 +1021,8 @@ describe('Banner', () => {
   // This test documents the current behaviour as a contract so it cannot regress
   // silently, and makes the failure mode visible to future maintainers.
 
-  describe('onDismiss throwing — focus-return failure mode', () => {
-    it('propagates the thrown error and focus is NOT returned to returnFocusRef when onDismiss throws', () => {
+  describe('onDismiss throwing â€” focus-return failure mode', () => {
+    it('propagates the thrown error but focus IS returned to returnFocusRef when onDismiss throws', () => {
       const ref = React.createRef<HTMLButtonElement>()
       const throwingDismiss = vi.fn(() => {
         throw new Error('dismiss failed')
@@ -1047,16 +1047,16 @@ describe('Banner', () => {
       // onDismiss was called (it threw)
       expect(throwingDismiss).toHaveBeenCalledOnce()
 
-      // Focus was NOT returned — rAF never ran because onDismiss threw first
-      expect(screen.getByRole('button', { name: 'Target' })).not.toHaveFocus()
+      // Focus MUST be returned - rAF is scheduled in a finally block
+      expect(screen.getByRole('button', { name: 'Target' })).toHaveFocus()
     })
   })
 
-  // ── GAP 10: falsy but renderable children ────────────────────────────────
+  // â”€â”€ GAP 10: falsy but renderable children â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // The existing children suite covers null, empty string, numeric 42, and rich
   // nodes.  React 18 has distinct rendering behaviour for false (renders nothing,
-  // like null) and 0 (renders the string "0" — a common footgun).  undefined
+  // like null) and 0 (renders the string "0" â€” a common footgun).  undefined
   // also renders nothing but is semantically different from null.
 
   describe('falsy children edge cases', () => {
@@ -1081,7 +1081,7 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 11: title with HTML/XSS characters rendered as plain text ─────────
+  // â”€â”€ GAP 11: title with HTML/XSS characters rendered as plain text â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // React renders string props as text nodes, not innerHTML, so
   // <script>alert(1)</script> in title must appear as literal characters, not
@@ -1129,11 +1129,11 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 12: returnFocusRef.current pointing to a non-focusable element ────
+  // â”€â”€ GAP 12: returnFocusRef.current pointing to a non-focusable element â”€â”€â”€â”€
   //
   // The component calls target.focus() unconditionally.  All existing ref tests
   // use natively-focusable <button> elements.  A ref to a plain <div> (not
-  // focusable unless tabIndex is set) still receives the focus() call — the
+  // focusable unless tabIndex is set) still receives the focus() call â€” the
   // component must not gate on element type.
 
   describe('returnFocusRef on non-focusable element', () => {
@@ -1167,12 +1167,12 @@ describe('Banner', () => {
     })
   })
 
-  // ── GAP 13: Space/Enter on dismiss button (native button activation) ──────
+  // â”€â”€ GAP 13: Space/Enter on dismiss button (native button activation) â”€â”€â”€â”€â”€â”€
   //
   // handleKeyDown only handles Escape with a custom listener.  Space and Enter
-  // activate <button> elements natively — the browser fires a synthetic click
+  // activate <button> elements natively â€” the browser fires a synthetic click
   // event, which calls handleDismiss via onClick.  userEvent simulates this full
-  // browser-level key → click dispatch chain, confirming the dismiss path works
+  // browser-level key â†’ click dispatch chain, confirming the dismiss path works
   // via keyboard without relying solely on direct fireEvent.click().
 
   describe('dismiss button keyboard activation (Space / Enter)', () => {

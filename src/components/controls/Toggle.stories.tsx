@@ -7,6 +7,7 @@ const meta: Meta<typeof Toggle> = {
   tags: ['autodocs'],
   argTypes: {
     onChange: { action: 'changed' },
+    onRetry: { action: 'retried' },
   },
   args: {
     checked: false,
@@ -41,8 +42,31 @@ export const Disabled: Story = {
   },
 }
 
+export const DisabledWithReason: Story = {
+  args: {
+    checked: false,
+    disabled: true,
+    disabledReason: 'Ask an admin to enable advanced settlement',
+  },
+}
+
 export const Loading: Story = {
   args: {
     isLoading: true,
+  },
+}
+
+export const Stale: Story = {
+  args: {
+    checked: true,
+    isStale: true,
+  },
+}
+
+export const RetryableError: Story = {
+  args: {
+    checked: false,
+    error: 'Could not save your setting',
+    onRetry: () => {},
   },
 }

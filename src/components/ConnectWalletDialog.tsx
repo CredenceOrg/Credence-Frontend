@@ -23,10 +23,20 @@ export interface ConnectWalletDialogProps {
  *
  * - Portal-rendered into document.body.
  * - Focus is trapped inside while open; returned to returnFocusRef on close.
- * - Escape and backdrop click close the modal.
+ * - Escape and backdrop click close the modal **unless a connection is in flight**
+ *   (`isConnecting === true`). Dismissing mid-connection would orphan the async
+ *   request and leave the wallet in an indeterminate state, so the interaction is
+ *   silently ignored while Freighter is resolving — consistent with the Cancel
+ *   button being disabled during the same window.
  * - Body scroll is locked while open.
  * - Entrance animation is suppressed when prefers-reduced-motion: reduce is set.
  * - Auto-closes when the wallet connects successfully.
+ *
+ * Invariants:
+ * - `onClose` is never called while `isConnecting` is true (backdrop, Escape, or
+ *   auto-close paths).
+ * - Auto-close fires at most once per connection event (guarded by `open` check in
+ *   the effect dependency array).
  */
 export default function ConnectWalletDialog({
   open,
@@ -40,12 +50,26 @@ export default function ConnectWalletDialog({
   const dialogRef = useRef<HTMLDivElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
 
-  // Auto-close when wallet connects successfully
+  // Guard: do not close while a connection request is in flight. Dismissing
+  // mid-connection would orphan the async Freighter request and could leave
+  // the wallet hook in an inconsistent connecting state. The Cancel button is
+  // already disabled for the same reason; the Escape handler must honour the
+  // same invariant so keyboard and pointer paths are treated identically.
+  const handleClose = useCallback(() => {
+    if (isConnecting) return
+    onClose()
+  }, [isConnecting, onClose])
+
+  // Auto-close when wallet connects successfully.
+  // The isConnecting flag will be false by the time isConnected becomes true
+  // (the connect() flow sets isConnecting=false in its finally block before
+  // committing address state), so handleClose's guard is never the active
+  // constraint here — but we call it anyway to keep all close paths uniform.
   useEffect(() => {
     if (isConnected && open) {
-      onClose()
+      handleClose()
     }
-  }, [isConnected, open, onClose])
+  }, [isConnected, open, handleClose])
 
   useScrollPreserver({ isActive: open })
 
@@ -54,13 +78,14 @@ export default function ConnectWalletDialog({
     isActive: open,
     initialFocusRef: cancelRef,
     returnFocusRef,
-    onEscape: onClose,
+    onEscape: handleClose,
   })
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      onClose()
-    }
+    // Guard: ignore clicks on child elements that have bubbled up.
+    if (event.target !== event.currentTarget) return
+    // Guard: do not close while a connection request is in flight (see handleClose).
+    handleClose()
   }
 
   const handleConnect = useCallback(() => {
@@ -126,7 +151,7 @@ export default function ConnectWalletDialog({
             ref={cancelRef}
             type="button"
             variant="secondary"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isConnecting}
           >
             Cancel

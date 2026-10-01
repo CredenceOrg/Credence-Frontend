@@ -9,12 +9,23 @@ const DEFAULT_TIMEOUTS = {
   danger: 0,
 } as const
 
+/**
+ * Parse an environment variable timeout value deterministically.
+ *
+ * Returns a non-negative integer millisecond value when the input is a
+ * valid, non-empty numeric string. Returns null for any invalid input
+ * (undefined, empty, NaN, Infinity, negative, or non-numeric) so callers
+ * can fall back to a known-safe default. This is the failure boundary for
+ * configuration inputs.
+ */
 function parseEnvTimeout(raw: string | undefined): number | null {
-  if (!raw) return null
+  if (raw === undefined || raw === null) return null
   const trimmed = raw.trim()
   if (!trimmed) return null
   const parsed = Number(trimmed)
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : null
+  if (!Number.isFinite(parsed)) return null
+  if (parsed < 0) return null
+  return Math.round(parsed)
 }
 
 export const TOAST_CONFIG = {

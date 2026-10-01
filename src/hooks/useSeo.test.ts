@@ -283,3 +283,82 @@ describe('useSeo', () => {
     })
   })
 })
+
+describe('useSeo boundary and recovery', () => {
+  it('restores the absence of a content attribute on a pre-existing meta tag', () => {
+    const existing = document.createElement('meta')
+    existing.setAttribute('name', 'description')
+    document.head.appendChild(existing)
+    expect(existing.hasAttribute('content')).toBe(false)
+
+    const { unmount } = renderHook(() => useSeo({ title: 'Bond', description: 'Route desc' }))
+    expect(getMetaDescription()!.getAttribute('content')).toBe('Route desc')
+
+    unmount()
+
+    // The tag existed without a content attribute before the hook ran, so
+    // cleanup must remove the attribute rather than leave the route value.
+    expect(getMetaDescription()).not.toBeNull()
+    expect(getMetaDescription()!.hasAttribute('content')).toBe(false)
+  })
+
+  it('manages only the first description tag and leaves duplicates untouched', () => {
+    const first = document.createElement('meta')
+    first.setAttribute('name', 'description')
+    first.setAttribute('content', 'first')
+    const second = document.createElement('meta')
+    second.setAttribute('name', 'description')
+    second.setAttribute('content', 'second')
+    document.head.append(first, second)
+
+    const { unmount } = renderHook(() => useSeo({ title: 'Bond', description: 'route' }))
+
+    expect(first.getAttribute('content')).toBe('route')
+    expect(second.getAttribute('content')).toBe('second')
+
+    unmount()
+
+    expect(first.getAttribute('content')).toBe('first')
+    expect(second.getAttribute('content')).toBe('second')
+  })
+
+  it('preserves a very long title literally', () => {
+    const longTitle = 'A'.repeat(300)
+    renderHook(() => useSeo({ title: longTitle }))
+    expect(document.title).toBe(`${longTitle} ${BRAND_SUFFIX}`)
+  })
+
+  it('writes description content as an attribute, never as parsed markup', () => {
+    const payload = '<script>window.__pwned = true</script>'
+    renderHook(() => useSeo({ title: 'Bond', description: payload }))
+
+    expect(getMetaDescription()?.getAttribute('content')).toBe(payload)
+    const injected = Array.from(document.querySelectorAll('script')).some((s) =>
+      (s.textContent ?? '').includes('__pwned')
+    )
+    expect(injected).toBe(false)
+  })
+
+  it('re-captures the previous title on a fresh mount after unmount', () => {
+    document.title = 'First Previous'
+    const first = renderHook(() => useSeo({ title: 'Bond' }))
+    first.unmount()
+    expect(document.title).toBe('First Previous')
+
+    document.title = 'Second Previous'
+    const second = renderHook(() => useSeo({ title: 'Bond' }))
+    second.unmount()
+    expect(document.title).toBe('Second Previous')
+  })
+
+  it('applies the brand suffix when brandSuffix toggles back to true', () => {
+    const { rerender } = renderHook(
+      ({ brandSuffix }: { brandSuffix: boolean }) => useSeo({ title: 'Bond', brandSuffix }),
+      { initialProps: { brandSuffix: false } }
+    )
+    expect(document.title).toBe('Bond')
+
+    rerender({ brandSuffix: true })
+    expect(document.title).toBe(`Bond ${BRAND_SUFFIX}`)
+  })
+})

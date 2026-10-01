@@ -53,6 +53,11 @@
   border-color: var(--credence-color-amber-500, #f59e0b);
 }
 
+.theme-toggle[data-state='retrying'] {
+  border-color: var(--credence-color-amber-500, #f59e0b);
+  border-style: dotted;
+}
+
 .theme-toggle__icon {
   width: var(--credence-theme-toggle-size);
   height: var(--credence-theme-toggle-size);

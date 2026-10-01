@@ -8,7 +8,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion'
 // Default the reduced-motion hook to "no preference" so existing assertions
 // (and any new ones that don't override it) keep behaving as before.
 vi.mock('../hooks/useReducedMotion', () => ({
-  useReducedMotion: vi.fn() => false,
+  useReducedMotion: vi.fn(() => false),
 }))
 
 // --- pointsToNextTier ---
@@ -88,11 +88,11 @@ describe('getProgressPercentage', () => {
   })
 
   it('returns 24.9 for score=249', () => {
-    expect(getProgressPercentage(249)).toBloseTo(24.9)
+    expect(getProgressPercentage(249)).toBeCloseTo(24.9)
   })
 
   it('returns 49.9 for score=499', () => {
-    expect(getProgressPercentage(499)).toCloseTo(49.9)
+    expect(getProgressPercentage(499)).toBeCloseTo(49.9)
   })
 
   // --- Failure-boundary coverage (#1170) -----------------------------------
@@ -135,7 +135,7 @@ describe('getProgressPercentage', () => {
     })
   it('returns a negative value for negative score (no lower clamp)', () => {
     // getProgressPercentage only clamps at 100; callers must supply score >= 0
-    expect(getProgressPercentage(-100)).toCloseTo(-10)
+    expect(getProgressPercentage(-100)).toBeCloseTo(-10)
   })
 })
 

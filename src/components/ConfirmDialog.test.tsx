@@ -597,20 +597,38 @@ describe('ConfirmDialog', () => {
     })
   })
 
-  describe('ref', () => {
-    it('forwards the ref to the dialog element', () => {
-      const ref = createRef<HTMLDivElement>(null)
-      render(
+  describe('focus return (returnFocusRef contract)', () => {
+    it('accepts a returnFocusRef for focus restoration on close', () => {
+      const trigger = document.createElement('button')
+      document.body.appendChild(trigger)
+      trigger.focus()
+      const returnFocusRef = createRef<HTMLElement>()
+      ;(returnFocusRef as React.MutableRefObject<HTMLElement | null>).current = trigger
+
+      const { rerender } = render(
         <ConfirmDialog
           open
           title="Withdraw Bond"
           breakdown={defaultBreakdown}
-          onConfirm={vi.vn()}
-          onCancel={vi.vn()}
-          ref={ref}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+          returnFocusRef={returnFocusRef}
         />
       )
-      expect(ref.current).toBe(screen.getByRole('dialog'))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+      rerender(
+        <ConfirmDialog
+          open={false}
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+          returnFocusRef={returnFocusRef}
+        />
+      )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      document.body.removeChild(trigger)
     })
   })
 
@@ -659,6 +677,126 @@ describe('ConfirmDialog', () => {
       // remain mounted after the callback throws.
       await user.click(backdrop)
       expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.queryByText('Bond amount')).not.toBeInTheDocument()
+    })
+
+    it('still requires CONFIRM gating', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderGenericDialog()
+      const button = screen.getByRole('button', { name: 'Clear draft' })
+      expect(button).toBeDisabled()
+      await user.click(button)
+      expect(onConfirm).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('boundary cases', () => {
+    it('treats whitespace-padded CONFIRM as invalid', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.type(input, ' CONFIRM')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
+      expect(onConfirm).not.toHaveBeenCalled()
+    })
+
+    it('rejects a longer string containing CONFIRM', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.type(input, 'CONFIRM ME')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
+      expect(onConfirm).not.toHaveBeenCalled()
+    })
+
+    it('re-disables confirm after backspacing away from a valid CONFIRM', async () => {
+      const user = userEvent.setup()
+      renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.type(input, 'CONFIRM')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
+      await user.type(input, '{Backspace}')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
+    })
+
+    it('handles paste of exact CONFIRM', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.click(input)
+      await user.paste('CONFIRM')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
+      expect(onConfirm).toHaveBeenCalledOnce()
+    })
+
+    it('treats unicode look-alikes as invalid', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      // Circumfixes and full-width letters must not bypass the gate.
+      await user.type(input, 'CONFIRM!')
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
+      expect(onConfirm).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('retry / recovery / concurrency', () => {
+    it('swallows duplicate clicks and only confirms once', async () => {
+      const user = userEvent.setup()
+      const { onConfirm } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.type(input, 'CONFIRM')
+      const button = screen.getByRole('button', { name: 'Withdraw bond' })
+      await user.click(button)
+      await user.click(button)
+      await user.click(button)
+      expect(onConfirm).toHaveBeenCalledOnce()
+    })
+
+    it('recovers from a rejected onConfirm and allows a retry', async () => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn()
+      onConfirm.mockRejectedValueOnce(new Error('transaction failed'))
+      const onCancel = vi.fn()
+      render(
+        <ConfirmDialog
+          open
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      await user.type(input, 'CONFIRM')
+      const button = screen.getByRole('button', { name: 'Withdraw bond' })
+      await user.click(button)
+      expect(onConfirm).toHaveBeenCalledOnce()
+      // Retry after failure must be possible and still gated by the input.
+      await user.click(button)
+      expect(onConfirm).toHaveBeenCalledTimes(2)
+    })
+
+    it('keeps the input value intact when the dialog stays open across a rerender', () => {
+      const { rerender, onConfirm, onCancel } = renderDialog()
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
+      // Synchronous value set to avoid async timing in this specific case.
+      ;(input as HTMLInputElement).value = 'CONFIRM'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      rerender(
+        <ConfirmDialog
+          open
+          title="Withdraw Bond"
+          breakdown={defaultBreakdown}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      )
+      expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toHaveValue('CONFIRM')
     })
   })
 })

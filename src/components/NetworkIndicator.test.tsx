@@ -7,16 +7,13 @@ vi.mock('../context/SettingsContext', () => ({
   useSettings: vi.fn(),
 }))
 
-/** Build a minimal-but-valid SettingsState cast for the indicator's needs. */
-const asSettingsState = (network: string) => ({ network }) as unknown as SettingsState
+function mockNetwork(network: unknown) {
+  vi.mocked(useSettings).mockReturnValue({
+    network: network as 'public',
+  } as Partial<SettingsState> as SettingsState)
+}
 
-afterEach(() => {
-  vi.mocked(useSettings).mockReset()
-})
-
-// --- Happy-path rendering ---------------------------------------------------
-
-describe('NetworkIndicator happy paths', () => {
+describe('NetworkIndicator — deterministic failure boundaries', () => {
   it('renders "Mainnet" pill for public network', () => {
     vi.mocked(useSettings).mockReturnValue(asSettingsState('public'))
     render(<NetworkIndicator />)
@@ -56,114 +53,101 @@ describe('NetworkIndicator boundary coverage', () => {
     expect(screen.getByLabelText('Active network: Unknown')).toBeInTheDocument()
   })
 
-  it('marks the fallback with the unknown badge variant for styling safety', () => {
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('staking'))
-    const { container } = render(<NetworkIndicator />)
+  // ---------------------------------------------------------------------------
+  // Deterministic failure-boundary coverage (issue #1151)
+  // The `network` value comes from persisted settings, so a hostile or legacy
+  // payload can hold anything. The indicator must degrade to the `unknown`
+  // variant without throwing, and without ever rendering an unlabelled or
+  // otherwise unrecognizable pill for untrusted input.
+  // ---------------------------------------------------------------------------
 
-    const badge = container.querySelector('.badge') as HTMLElement | null
-    expect(badge).not.toBeNull()
-    // Badge normalizes unrecognized variants to `badge--unknown` so an
-    // unexpected network id cannot select an unintended CSS variant class.
-    expect(badge!.className).toContain('badge--unknown')
-    expect(badge!.className).not.toContain('badge--active')
-  })
-
-  it('isolates duplicate instances: one corrupted value cannot leak into another', () => {
-    vi.mocked(useSettings)
-      .mockReturnValueOnce(asSettingsState('public'))
-      .mockReturnValueOnce(asSettingsState('MALFORMED'))
-
-    render(
-      <>
-        <NetworkIndicator />
-        <NetworkIndicator />
-      </>
-    )
-
-    // Each instance resolves its own state; the corrupted one does not
-    // poison the healthy sibling's label.
-    expect(screen.getByText('Mainnet')).toBeInTheDocument()
+  it.each([
+    ['empty string', ''],
+    ['null', null],
+    ['undefined', undefined],
+    ['number', 42],
+    ['object', { malicious: true }],
+    ['array', ['public']],
+    ['case-mismatched string', 'PUBLIC'],
+    ['whitespace-only string', '   '],
+    ['path-like injection string', 'public"><img src=x onerror=alert(1)>'],
+  ])('degrades to Unknown for %s network value', (_name, value) => {
+    mockNetwork(value)
+    render(<NetworkIndicator />)
     expect(screen.getByText('Unknown')).toBeInTheDocument()
+    expect(screen.getByLabelText('Active network: Unknown')).toBeInTheDocument()
+    // Badge must normalize hostile input to the safe `unknown` variant class.
+    expect(document.querySelector('.badge--unknown')).not.toBeNull()
   })
 
-  it('keeps the aria-label in exact lockstep with the visible label', () => {
-    const cases: Array<[string, string]> = [
-      ['public', 'Active network: Mainnet'],
-      ['test', 'Active network: Testnet'],
-      ['malformed', 'Active network: Unknown'],
-    ]
-
-    cases.forEach(([network, expectedAria]) => {
-      vi.mocked(useSettings).mockReturnValue(asSettingsState(network))
-      const { unmount } = render(<NetworkIndicator />)
-      expect(screen.getByLabelText(expectedAria)).toBeInTheDocument()
-      unmount()
-    })
-  })
-})
-
-// --- Recovery / state-transition coverage (#1210) ----------------------------
-//
-// Settings can round-trip through localStorage hydration, a corrupt payload,
-// or a network switch. The indicator must recover to the authoritative value
-// with no stale label, and transitions must be idempotent for duplicates.
-
-describe('NetworkIndicator recovery and state transitions', () => {
-  it('recovers from a stale/unknown value when the authoritative value arrives', () => {
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('corrupt-payload'))
+  it('keeps its public interface stable across consecutive renders with different inputs', () => {
+    // Same render root, changing context value: every transition must produce
+    // a deterministic, complete aria label (no stale or partial output).
     const { rerender } = render(<NetworkIndicator />)
-    expect(screen.getByText('Unknown')).toBeInTheDocument()
 
-    // Authoritative value arrives (e.g. after re-hydration or user switch).
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('test'))
+    mockNetwork('public')
+    vi.mocked(useSettings).mockReturnValue({ network: 'public' } as SettingsState)
     rerender(<NetworkIndicator />)
+    expect(screen.getByLabelText('Active network: Mainnet')).toBeInTheDocument()
 
-    expect(screen.getByText('Testnet')).toBeInTheDocument()
-    expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
+    mockNetwork('test')
+    rerender(<NetworkIndicator />)
     expect(screen.getByLabelText('Active network: Testnet')).toBeInTheDocument()
-  })
 
-  it('downgrades back to Unknown if the value becomes invalid again (no stale Mainnet)', () => {
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('public'))
-    const { rerender } = render(<NetworkIndicator />)
-    expect(screen.getByText('Mainnet')).toBeInTheDocument()
-
-    vi.mocked(useSettings).mockReturnValue(asSettingsState(''))
+    mockNetwork(undefined)
     rerender(<NetworkIndicator />)
-
-    expect(screen.getByText('Unknown')).toBeInTheDocument()
-    expect(screen.queryByText('Mainnet')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Unknown')).toBeInTheDocument()
   })
 
-  it('treats duplicate transitions to the same value as idempotent', () => {
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('public'))
-    const { rerender } = render(<NetworkIndicator />)
-    expect(screen.getByText('Mainnet')).toBeInTheDocument()
-
-    // Re-render with the same value twice — output must stay stable.
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('public'))
-    rerender(<NetworkIndicator />)
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('public'))
-    rerender(<NetworkIndicator />)
-
-    expect(screen.getAllByText('Mainnet')).toHaveLength(1)
-    expect(screen.getByLabelText('Active network: Mainnet')).toBeInTheDocument()
+  it('is deterministic: the same input always yields the same label and variant', () => {
+    for (const [input, expected] of [
+      ['public', 'Mainnet'],
+      ['test', 'Testnet'],
+      ['garbage', 'Unknown'],
+    ] as const) {
+      mockNetwork(input)
+      const { unmount } = render(<NetworkIndicator />)
+      expect(screen.getByLabelText(`Active network: ${expected}`)).toBeInTheDocument()
+      unmount()
+    }
   })
 
-  it('cycles public → test → public without accumulating stale DOM', () => {
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('public'))
-    const { rerender, container } = render(<NetworkIndicator />)
+  it('never renders an empty or whitespace-only label for any input class', () => {
+    const inputs: unknown[] = ['', '  ', null, undefined, 0, false, [], {}, Symbol('x')]
+    for (const input of inputs) {
+      mockNetwork(input)
+      const { unmount } = render(<NetworkIndicator />)
+      const label = document.querySelector('.networkIndicator .badge')
+      expect(label).not.toBeNull()
+      expect(label?.textContent?.trim().length ?? 0).toBeGreaterThan(0)
+      unmount()
+    }
+  })
 
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('test'))
-    rerender(<NetworkIndicator />)
-    expect(screen.getByText('Testnet')).toBeInTheDocument()
+  it('exposes exactly one badge and one aria label (no duplicated nodes on re-render)', () => {
+    mockNetwork('public')
+    const { rerender } = render(<NetworkIndicator />)
+    for (let i = 0; i < 5; i++) rerender(<NetworkIndicator />)
+    expect(screen.getAllByLabelText('Active network: Mainnet')).toHaveLength(1)
+    expect(screen.getAllByText('Mainnet')).toHaveLength(1)
+  })
 
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('public'))
-    rerender(<NetworkIndicator />)
+  it('badge variant normalization rejects prototype pollution keys', () => {
+    // Badge lowercases the variant and looks it up in DEFAULT_LABELS. A hostile
+    // value such as "constructor" must not resolve to an inherited property
+    // and produce a labelled variant class.
+    mockNetwork('constructor')
+    render(<NetworkIndicator />)
+    expect(screen.getByText('Unknown')).toBeInTheDocument()
+    expect(document.querySelector('.badge--unknown')).not.toBeNull()
+    expect(document.querySelector('.badge--constructor')).toBeNull()
+  })
 
-    const badges = container.querySelectorAll('.badge')
-    expect(badges).toHaveLength(1)
-    expect(screen.getByText('Mainnet')).toBeInTheDocument()
+  it('renders correctly when the settings context provider itself is unavailable', () => {
+    // useSettings has a default context value; ensure the component still
+    // renders deterministically rather than crashing the app shell.
+    vi.mocked(useSettings).mockReturnValue({} as SettingsState)
+    expect(() => render(<NetworkIndicator />)).not.toThrow()
+    expect(screen.getByLabelText('Active network: Unknown')).toBeInTheDocument()
   })
 })

@@ -4,7 +4,7 @@ import { useSettings } from '../context/SettingsContext'
 import { logWarn } from '../lib/log'
 
 const THEME_STORAGE_KEY = 'theme'
-const THEME_CHANNEL_EVENT = 'theme-change'
+const THEME_CHANGE_EVENT = 'theme-change'
 
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
@@ -362,7 +362,7 @@ export function subscribeSystemPrefersDark(
       onClick={toggleTheme}
       aria-label="Toggle theme"
       aria-pressed={theme === 'dark'}
-      title={`Switch to ${nextTheme} theme`}
+      title={`Switch to ${nextTheme} mode`}
     >
       {resolved === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>

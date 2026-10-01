@@ -169,16 +169,8 @@ export default function AddressInput({
   }, [isValid, onValidationChange])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value
-    const sanitized = sanitizeAddressInput(rawValue)
-    const cleanValue = sanitized.ok ? sanitized.value : sanitized.fallbackValue
-    onChange(cleanValue)
-
-    if (!sanitized.ok) {
-      setWarning(sanitized.error.message)
-    } else {
-      setWarning(undefined)
-    }
+    const newValue = e.target.value
+    onChange(newValue)
 
     // Mark as attempted if user starts typing
     if (!attempted) {

@@ -478,7 +478,9 @@ describe('boundary and recovery', () => {
   })
 
   it('renders an empty echo for a zero-length value without throwing', () => {
-    expect(() => render(<AddressInput id="addr" value="" onChange={vi.fn()} />)).not.toThrow()
+    expect(() =>
+      render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
+    ).not.toThrow()
     expect(screen.queryByText('Recognized:')).toBeNull()
   })
 

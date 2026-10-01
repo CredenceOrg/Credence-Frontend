@@ -41,7 +41,13 @@ export type ApiAmountErrorCode = AmountErrorCode | 'INVALID_BODY' | 'MISSING'
 export class ApiError extends Error {
   readonly status: number
   readonly payload: unknown
-  readonly code?: ApiErrorCode
+  /**
+   * Optional classification. `undefined` for `ApiError`s constructed by legacy
+   * call sites, so existing three-argument construction keeps working. Accepts
+   * both transport-level codes and amount-validation codes so the
+   * {@link ApiAmountError} subtype stays assignable.
+   */
+  readonly code?: ApiErrorCode | ApiAmountErrorCode
 
   constructor(status: number, message: string, payload?: unknown, code?: ApiErrorCode) {
     super(message)
@@ -289,6 +295,98 @@ export function normalizeBaseUrl(value: string): string {
   return trimmed.replace(/\/+$/, '')
 }
 
+type ReplayEntry = {
+  fingerprint: string
+  promise: Promise<unknown>
+}
+
+const replayEntries = new Map<string, ReplayEntry>()
+
+// ── Identity epoch ──────────────────────────────────────────────────────────
+//
+// A monotonic counter advanced on every session boundary (connect, disconnect,
+// expiry, reconnect, account change). Callers capture the current epoch with
+// `getIdentityEpoch()` and pass it to `apiFetch` via the `identityEpoch`
+// option; the client checks it both before dispatching and when the response
+// arrives, rejecting with `ApiSessionConflictError` and discarding stale
+// results so no partial state leaks across sessions.
+let _identityEpoch = 0
+
+/** Returns the current identity epoch counter. */
+export function getIdentityEpoch(): number {
+  return _identityEpoch
+}
+
+/** Advances the identity epoch by 1 and returns the new value. */
+export function advanceIdentityEpoch(): number {
+  _identityEpoch += 1
+  return _identityEpoch
+}
+
+/**
+ * Advances the identity epoch, or sets it to an explicit value when one is
+ * given. Session-boundary callers (disconnect / expiry / reconnect / account
+ * change) use this to record the newly active identity epoch.
+ */
+export function setIdentityEpoch(epoch?: number): number {
+  _identityEpoch = epoch ?? _identityEpoch + 1
+  return _identityEpoch
+}
+
+/** Resets the identity epoch to 0. Test-only. */
+export function resetIdentityEpoch(): void {
+  _identityEpoch = 0
+}
+
+/**
+ * Process-wide default rate limiter consulted by `apiFetch`.
+ *
+ * Built once at module init from environment overrides on top of
+ * {@link DEFAULT_API_RATE_LIMIT}. Exposed (read-only via {@link
+ * apiRateLimiterSnapshot}) so tests can inspect current configuration and
+ * tear down bucket state via {@link resetApiRateLimiter}.
+ */
+const rateLimitOverrides = readApiRateLimitOverrides({
+  VITE_API_RATE_LIMIT_MAX: env?.VITE_API_RATE_LIMIT_MAX,
+  VITE_API_RATE_LIMIT_WINDOW_MS: env?.VITE_API_RATE_LIMIT_WINDOW_MS,
+  VITE_API_RATE_LIMIT_ENABLED: env?.VITE_API_RATE_LIMIT_ENABLED,
+})
+
+export const defaultApiRateLimiter = new ApiRateLimiter({
+  maxRequests: rateLimitOverrides.maxRequests ?? DEFAULT_API_RATE_LIMIT.maxRequests,
+  windowMs: rateLimitOverrides.windowMs ?? DEFAULT_API_RATE_LIMIT.windowMs,
+  enabled: rateLimitOverrides.enabled ?? DEFAULT_API_RATE_LIMIT.enabled,
+})
+
+/**
+ * Read-only snapshot of the active rate-limiter configuration.
+ *
+ * The returned object is deep-frozen at runtime — callers cannot mutate it
+ * through the type system or at language level.
+ */
+export function apiRateLimiterSnapshot(): Readonly<{
+  maxRequests: number
+  windowMs: number
+  enabled: boolean
+}> {
+  const cfg = defaultApiRateLimiter.config
+  return Object.freeze({
+    maxRequests: cfg.maxRequests,
+    windowMs: cfg.windowMs,
+    enabled: cfg.enabled,
+  })
+}
+
+/**
+ * Resets the process-wide default limiter to an empty window.
+ *
+ * Intended for tests that call `apiFetch` repeatedly and would otherwise
+ * saturate the bucket. Not for production use.
+ */
+export function resetApiRateLimiter(): void {
+  defaultApiRateLimiter.reset()
+}
+
 /**
  * Reports an unusable `VITE_API_BASE_URL` and yields the same-origin fallback.
  *
@@ -528,7 +626,7 @@ function replayConflict(key: string): ApiError {
  * make a permanent fault look like a transient one worth retrying.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, idempotencyKey, skipRateLimit, amountFields, identityEpoch, ...init } = options
+  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } = options
 
   // Exact-amount gate: validate and canonicalize declared amount fields
   // BEFORE any state change. An invalid amount must never consume
@@ -538,19 +636,19 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const hasJsonBody = isJsonBody(wireBody)
 
   // Pre-flight: deterministic, request-independent failures.
-  // Validate input size before expensive operations. Serializing an oversized
-  // body is wasted work and could exhaust memory or downstream resources.
-  if (hasJsonBody) {
-    const serialized = JSON.stringify(wireBody)
-    if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
-      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
-    }
-  }
-
-  const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (body ?? undefined)
+  const url = buildUrl(path)
+  const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (wireBody ?? undefined)
   const correlationId = generateCorrelationId('api-fetch')
   const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
   const method = (init.method || 'GET').toUpperCase()
+
+  // Validate input size before expensive operations. Serializing an oversized
+  // body is wasted work and could exhaust memory or downstream resources.
+  if (hasJsonBody) {
+    if (new TextEncoder().encode(serializedBody as string).byteLength > MAX_REQUEST_BODY_BYTES) {
+      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: (serializedBody as string).length })
+    }
+  }
 
   if (idempotencyKey !== undefined) {
     const normalizedKey = idempotencyKey.trim()

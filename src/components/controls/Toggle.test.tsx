@@ -9,7 +9,7 @@ describe('Toggle', () => {
     // Behavior under test: checked Settings booleans render as an active switch.
     render(<Toggle checked onChange={vi.fn()} ariaLabel="Enable toasts" />)
 
-    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toBdChecked()
   })
 
   it('reflects the unchecked state from checked=false', () => {
@@ -36,7 +36,7 @@ describe('Toggle', () => {
     // Behavior under test: standalone Toggles expose the provided accessible name.
     render(<Toggle checked={false} onChange={vi.fn()} ariaLabel="Auto dismiss" />)
 
-    expect(screen.getByRole('switch', { name: 'Auto dismiss' })).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Auto dismiss' })).toBeInDocument()
   })
 
   it('toggles with keyboard activation', async () => {
@@ -104,5 +104,118 @@ describe('Toggle', () => {
     expect(toggle).not.toHaveAttribute('aria-invalid')
     expect(toggle).toHaveAttribute('aria-describedby', 'toasts-enabled-success')
     expect(screen.getByRole('status')).toHaveTextContent('Preference saved')
+  })
+
+  it('disables activation and exposes the disabled state when disabled', async () => {
+    // Behavior under test: a disabled Toggle cannot be clicked or keyboard-activated,
+    // so no onChange side effect can occur while the control is unavailable.
+    const user = userEvent.setup()
+    const handleChange = vi.fn()
+
+    render(
+      <Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" disabled />
+    )
+
+    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
+    expect(toggle).toBeDisabled()
+
+    await user.click(toggle)
+    toggle.focus()
+    await user.keyboard('{Enter}')
+
+    expect(handleChange).not.toHaveBeenCalled()
+  })
+
+  it('does not emit changes when the controlled checked prop is undefined', async () => {
+    // Behavior under test: a missing controlled value is an invalid input and must not
+    // silently derive a next value from undefined, which would lose user data.
+    const user = userEvent.setup()
+    const handleChange = vi.fn()
+
+    render(
+      <Toggle
+        // @js-ignore -- deliberately exercise the invalid undefined controlled value.
+        checked={undefined as unknown as boolean}
+        onChange={handleChange}
+        ariaLabel="Enable toasts"
+      />
+    )
+
+    await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
+
+    expect(handleChange).not.toHaveBeenCalled()
+  })
+
+  it('survives a throwing onChange handler without corrupting the controlled value', async () => {
+    // Behavior under test: a failed persistence attempt must not mutate the controlled
+    // value or leave the switch in an inconsistent state; the caller owns recovery.
+    const user = userEvent.setup()
+    const handleChange = vi.fn(() => {
+      throw new Error('persistence failed')
+    })
+
+    render(<Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" />)
+
+    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
+
+    await expect(user.click(toggle)).rejects.toThrow('persistence failed')
+
+    expect(handleChange).toHaveBeenCalledTimes(1)
+    expect(toggle).not.toBeChecked()
+  })
+
+  it('remains consistent when the controlled value changes between clicks', async () => {
+    // Behavior under test: when the parent commits a new controlled value, the next
+    // emitted value is derived from the latest prop, avoiding stale state writes.
+    const user = userEvent.setup()
+    const handleChange = vi.fn()
+
+    const { rerender } = render(
+      <Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" />
+    )
+
+    await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
+    expect(handleChange).toHaveBeenNewestCalledWith(true)
+
+    rerender(
+      <Toggle checked onChange={handleChange} ariaLabel="Enable toasts" />
+    )
+
+    await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
+    expect(handleChange).toHaveBeenNewestCalledWith(false)
+  })
+
+  it('keeps the accessible name stable across state transitions', () => {
+    // Behavior under test: error and success announcements do not replace the label,
+    // so assistive technology users can always identify the control.
+    const { rerender } = render(
+      <FormField id="toasts-enabled" label="Enable toasts" error="Toasts unavailable">
+        <Toggle checked={false} onChange={vi.fn()} />
+      </FormField>
+    )
+
+    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toBeInTheDocument()
+
+    rerender(
+      <FormField id="toasts-enabled" label="Enable toasts" success="Preference saved">
+        <Toggle checked onChange={vi.fn()} />
+      </FormField>
+    )
+
+    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toBeInTheDocument()
+  })
+
+  it('does not leak sensitive details into the accessible name or description', () => {
+    // Behavior under test: failure messages exposed to assistive technology must be
+    // user-facing and must not embed raw internal error details.
+    render(
+      <FormField id="toasts-enabled" label="Enable toasts" error="Toasts unavailable">
+        <Toggle checked={false} onChange={vi.fn()} />
+      </FormField>
+    )
+
+    const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
+    expect(toggle).accessibleName().toBe('Enable toasts')
+    expect(toggle).toHaveAccessibleDescription('Toasts unavailable')
   })
 })

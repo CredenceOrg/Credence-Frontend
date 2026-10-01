@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import NetworkIndicator from './NetworkIndicator'
 import { useSettings, type SettingsState } from '../context/SettingsContext'
@@ -15,28 +15,40 @@ function mockNetwork(network: unknown) {
 
 describe('NetworkIndicator — deterministic failure boundaries', () => {
   it('renders "Mainnet" pill for public network', () => {
-    vi.mocked(useSettings).mockReturnValue({
-      network: 'public',
-    } as Partial<SettingsState> as SettingsState)
+    vi.mocked(useSettings).mockReturnValue(asSettingsState('public'))
     render(<NetworkIndicator />)
     expect(screen.getByText('Mainnet')).toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Mainnet')).toBeInTheDocument()
   })
 
   it('renders "Testnet" pill for test network', () => {
-    vi.mocked(useSettings).mockReturnValue({
-      network: 'test',
-    } as Partial<SettingsState> as SettingsState)
+    vi.mocked(useSettings).mockReturnValue(asSettingsState('test'))
     render(<NetworkIndicator />)
     expect(screen.getByText('Testnet')).toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Testnet')).toBeInTheDocument()
   })
+})
 
-  it('renders "Unknown" pill for unknown network', () => {
-    vi.mocked(useSettings).mockReturnValue({
-      network: 'other' as unknown as 'public',
-    } as Partial<SettingsState> as SettingsState)
+// --- Boundary coverage (#1210) ----------------------------------------------
+//
+// The indicator is a failure boundary between an untrusted, possibly stale or
+// malformed `network` value from settings persistence and the rendered pill.
+// The contract: any value that is not exactly 'public' or 'test' degrades to a
+// deterministic, safe "Unknown" state — never a crash, never a partial label.
+
+describe('NetworkIndicator boundary coverage', () => {
+  it.each([
+    ['empty string', ''],
+    ['whitespace only', '   '],
+    ['casing mismatch', 'Public'],
+    ['trailing garbage', 'public '],
+    ['arbitrary unknown id', 'staking'],
+    ['type-confused value', 42],
+  ] as const)('degrades %s to the deterministic Unknown state', (_label, network) => {
+    vi.mocked(useSettings).mockReturnValue(asSettingsState(network as string))
     render(<NetworkIndicator />)
+
+    // Label, badge text, and aria-label all agree on the fallback.
     expect(screen.getByText('Unknown')).toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Unknown')).toBeInTheDocument()
   })

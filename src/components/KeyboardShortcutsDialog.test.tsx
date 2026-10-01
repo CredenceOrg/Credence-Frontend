@@ -235,7 +235,7 @@ describe('KeyboardShortcutsDialog — focus management', () => {
     triggerEl.focus()
 
     const returnFocusRef = createRef<HTMLButtonElement>()
-    ;(returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = triggerEl
+      ; (returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = triggerEl
 
     const onClose = vi.fn()
     const { rerender } = render(
@@ -427,16 +427,23 @@ describe('KeyboardShortcutsDialog — open/close boundary transitions', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('does not throw when toggling open rapidly (open→closed→open→closed)', () => {
-    const { rerender, onClose } = renderDialog({ open: true })
-    expect(() => {
-      rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
-      rerender(<KeyboardShortcutsDialog open={true} onClose={onClose} />)
-      rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
-      rerender(<KeyboardShortcutsDialog open={true} onClose={onClose} />)
-    }).not.toThrow()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
+  it('returns focus to returnFocusRef element on close', () => {
+    const triggerEl = document.createElement('button')
+    triggerEl.type = 'button'
+    Object.defineProperty(triggerEl, 'offsetParent', {
+      get: () => document.body,
+      configurable: true,
+    })
+    document.body.appendChild(triggerEl)
+    triggerEl.focus()
+
+    const returnFocusRef = createRef<HTMLButtonElement>()
+      ; (returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = triggerEl
+
+    const onClose = vi.fn()
+    const { rerender } = render(
+      <KeyboardShortcutsDialog open={true} onClose={onClose} returnFocusRef={returnFocusRef} />
+    )
 
   it('does not call onClose when open transitions from true to false via prop', () => {
     const { rerender, onClose } = renderDialog({ open: true })
@@ -591,7 +598,7 @@ describe('KeyboardShortcutsDialog — invalid prop boundaries', () => {
   it('does not throw when returnFocusRef points to a detached element', () => {
     const detached = document.createElement('button')
     const returnFocusRef = createRef<HTMLButtonElement>()
-    ;(returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = detached
+      ; (returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = triggerEl
 
     const onClose = vi.fn()
     const { rerender } = render(

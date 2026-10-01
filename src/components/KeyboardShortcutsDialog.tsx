@@ -128,7 +128,12 @@ export default function KeyboardShortcutsDialog({
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
-      handleClose()
+      try {
+        handleClose()
+      } catch (error) {
+        console.error('KeyboardShortcutsDialog: Error closing dialog from backdrop', error)
+        throw error
+      }
     }
   }
 

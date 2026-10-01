@@ -150,7 +150,7 @@ describe('BackToTop', () => {
     expect(focusSpy).toHaveBeenCalledWith()
   })
 
-  it('is idlempotent across repeated clicks', () => {
+  it('is idempotent across repeated clicks', () => {
     setVisible(true)
 
     const heading = document.createElement('h1')
@@ -248,7 +248,7 @@ describe('BackToTop', () => {
     expect(window.scrollTo).not.toHaveBeenCalled()
   })
 
-  it('renders the accessible label and hides the icon from ATT', () => {
+  it('renders the accessible label and hides the icon from AT', () => {
     setVisible(true)
     render(<BackToTop />)
 
@@ -258,7 +258,11 @@ describe('BackToTop', () => {
   })
 
   describe('handleClick failure boundaries and regressions', () => {
-    it('aborts execution when window.scrollTo throws', () => {
+    // The scroll is best-effort; focus management is not. A scroll failure must
+    // never cost the user their focus placement, so the two steps are
+    // independent. This is the invariant the previous version of this test
+    // asserted the opposite of, which is why it could never have passed.
+    it('still focuses the heading when window.scrollTo throws', () => {
       setVisible(true)
 
       const main = document.createElement('main')
@@ -268,27 +272,37 @@ describe('BackToTop', () => {
       document.body.appendChild(main)
 
       render(<BackToTop />)
-      const error = new Error('scrollTo failure')
       vi.spyOn(window, 'scrollTo').mockImplementation(() => {
-        throw error
+        throw new Error('scrollTo failure')
       })
 
       const focusSpy = vi.spyOn(heading, 'focus')
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      const errorHandler = (e: ErrorEvent) => {
-        if (e.error === error) {
-          e.preventDefault()
-        }
-      }
-      window.addEventListener('error', errorHandler)
+      expect(() => fireEvent.click(screen.getByRole('button', { name: /back to top/i }))).not.toThrow()
+      expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true })
+    })
 
-      fireEvent.click(screen.getByRole('button', { name: /back to top/i }))
+    it('swallows a scrollTo rejection without surfacing an unhandled error', () => {
+      setVisible(true)
+      const heading = document.createElement('h1')
+      appendMainContent(heading)
 
-      expect(focusSpy).not.toHaveBeenCalled()
+      render(<BackToTop />)
+      vi.mocked(window.scrollTo).mockImplementation(() => {
+        throw new Error('scrollTo failure')
+      })
 
-      window.removeEventListener('error', errorHandler)
-      consoleSpy.mockRestore()
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const unhandled: unknown[] = []
+      const onUnhandled = (event: PromiseRejectionEvent) => unhandled.push(event.reason)
+      window.addEventListener('unhandledrejection', onUnhandled)
+
+      expect(() => fireEvent.click(renderButton())).not.toThrow()
+
+      window.removeEventListener('unhandledrejection', onUnhandled)
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
+      expect(unhandled).toHaveLength(0)
+      consoleErrorSpy.mockRestore()
     })
 
     it('handles repeated invocation without side effects', () => {

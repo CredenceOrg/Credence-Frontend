@@ -2,9 +2,14 @@ import { describe, it, expect, beforeEach, beforeAll, afterEach, vi } from 'vite
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import Layout from './Layout'
+import ErrorBoundary from './ErrorBoundary'
+import { INSTALL_PROMPT_SESSION_KEY } from '../config/installPrompt'
 
 // Mock matchMedia for JSDOM
 beforeAll(() => {
+  // jsdom does not implement scroll positioning (BackToTop / skip link).
+  window.scrollTo = vi.fn() as unknown as typeof window.scrollTo
+
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query) => ({
@@ -167,6 +172,7 @@ describe('Layout boundary and recovery conditions', () => {
   beforeEach(() => {
     document.body.style.overflow = ''
     window.localStorage.clear()
+    window.sessionStorage.clear()
   })
 
   afterEach(() => {

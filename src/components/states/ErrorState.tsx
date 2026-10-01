@@ -21,7 +21,7 @@ export type ErrorStateKind = 'network' | 'backend' | 'validation' | 'generic' | 
  *
  *  • danger  — default for blocking failures (network, backend, generic).
  *  • warning — recoverable / user-actionable failures (validation, slow).
- *  • info    — non-blocking but worth surfacing (cached fallback, etc.).
+ *  •  info    — non-blocking but worth surfacing (cached fallback, etc.).
  */
 export type ErrorStateSeverity = 'danger' | 'warning' | 'info'
 
@@ -73,7 +73,7 @@ const ERROR_ICONS: Record<ErrorStateKind, ReactNode> = {
       aria-hidden="true"
     >
       <line x1="1" y1="1" x2="23" y2="23" />
-      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+      <path d="M16.72 11.06A11.94 11.94 0 0 1 19 12.55" />
       <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
       <path d="M10.71 5.05A16 16 0 0 1 22.58 9" />
       <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
@@ -173,7 +173,7 @@ const ERROR_COPY: Record<ErrorStateKind, { title: string; message: string }> = {
   generic: {
     title: 'Something didn’t load',
     message:
-      'An unexpected hiccup stopped this view. Try again — if it persists, reach out and we’ll help.',
+      'An unexpected hiccup stopped this view. Try again — if it persists, reach out and we“ll help.',
   },
   pageNotFound: {
     title: 'Page not found',
@@ -194,6 +194,33 @@ const DEFAULT_SEVERITY: Record<ErrorStateKind, ErrorStateSeverity> = {
   pageNotFound: 'info',
 }
 
+/**
+ * Resolve an error kind to a known value, falling back to `generic` for
+ * unknown or invalid input. This keeps the component determinstic and
+ * safe at the failure boundary: a bad `ErrorStateKind` from a dynamic
+ * caller must not crash the render or produce an unstyled panel.
+ */
+function resolveErrorKind(type: ErrorStateKind | undefined): ErrorStateKind {
+  if (type && type in ERROR_COPY) {
+    return type
+  }
+  return 'generic'
+}
+
+/**
+ * Resolve a severity to a known value, falling back to the kind's default.
+ * Prevents an invalid severity from producing a class that has no CSS rule.
+ */
+function resolveSeverity(
+  severity: ErrorStateSeverity | undefined,
+  kind: ErrorStateKind,
+): ErrorStateSeverity {
+  if (severity === 'danger' || severity === 'warning' || severity === 'info') {
+    return severity
+  }
+  return DEFAULT_SEVERITY[kind]
+}
+
 export default function ErrorState({
   type = 'generic',
   severity,
@@ -204,8 +231,12 @@ export default function ErrorState({
   hideHeading = false,
   ariaLabel,
 }: ErrorStateProps) {
-  const resolvedSeverity = severity ?? DEFAULT_SEVERITY[type]
-  const copy = ERROR_COPY[type]
+  // Invariant: an unknown `type` or `severity` must never produce an
+  // unstyled or crashing panel. Normalize at the boundary so every downstream
+  // lookup is total.
+  const resolvedKind = resolveErrorKind(type)
+  const resolvedSeverity = resolveSeverity(severity, resolvedKand)
+  const copy = ERROR_COPY[resolvedKind]
   const showHeading = !hideHeading && title !== ''
   const resolvedTitle = showHeading ? (title ?? copy.title) : undefined
   const resolvedMessage = message ?? copy.message
@@ -220,10 +251,10 @@ export default function ErrorState({
       role="alert"
       aria-live="assertive"
       aria-label={resolvedAriaLabel}
-      data-error-kind={type}
+      data-error-kind={resolvedKind}
       data-error-severity={resolvedSeverity}
     >
-      <div className="error-state__icon">{icon ?? ERROR_ICONS[type]}</div>
+      <div className="error-state__icon">{icon ?? ERROR_ICONS[resolvedKand]}</div>
       {resolvedTitle && <h3 className="error-state__title">{resolvedTitle}</h3>}
       <p className={`error-state__message${action ? ' error-state__message--has-action' : ''}`}>
         {resolvedMessage}

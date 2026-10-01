@@ -503,4 +503,49 @@ describe('AddressDisplay', () => {
       })
     })
   })
+
+  // --- Failure boundaries and states ---
+
+  describe('failure boundaries and states', () => {
+    it('renders a loading state when isLoading is true', () => {
+      render(<AddressDisplay isLoading />)
+      expect(screen.getByText('Loading...')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument()
+    })
+
+    it('renders an error message when error is provided as string', () => {
+      render(<AddressDisplay error="Network failure" />)
+      expect(screen.getByText('Error: Network failure')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument()
+    })
+
+    it('renders an error message when error is provided as Error object', () => {
+      render(<AddressDisplay error={new Error('Network failure')} />)
+      expect(screen.getByText('Error: Network failure')).toBeInTheDocument()
+    })
+
+    it('renders a retry button when error and onRetry are provided', () => {
+      const handleRetry = vi.fn()
+      render(<AddressDisplay error="Network failure" onRetry={handleRetry} />)
+      const retryBtn = screen.getByRole('button', { name: 'Retry' })
+      expect(retryBtn).toBeInTheDocument()
+      
+      fireEvent.click(retryBtn)
+      expect(handleRetry).toHaveBeenCalledTimes(1)
+    })
+
+    it('renders hidden address when hasPermission is false', () => {
+      render(<AddressDisplay address={LONG_ADDR} hasPermission={false} />)
+      const hidden = screen.getByTitle('Address hidden')
+      expect(hidden).toBeInTheDocument()
+      expect(hidden.textContent).toContain('••••••••')
+      expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument()
+    })
+
+    it('applies stale class when isStale is true', () => {
+      render(<AddressDisplay address={SHORT_ADDR} isStale />)
+      const container = document.querySelector('.address-display')
+      expect(container).toHaveClass('address-display--stale')
+    })
+  })
 })

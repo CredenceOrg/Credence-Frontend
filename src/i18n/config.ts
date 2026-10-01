@@ -5,7 +5,6 @@ import LanguageDetector from 'i18next-browser-languagedetector'
 import { DEFAULT_LOCALE_CONFIG, getDefaultLocale } from '../config/i18n'
 import en from './locales/en.json'
 import { handleLanguageChanged, setPreviousLng } from './localeBreadcrumb'
-import { DEFAULT_LOCALE_CONFIG } from '../config/i18n'
 
 const defaultLocale = getDefaultLocale()
 
@@ -33,6 +32,8 @@ i18n.on('languageChanged', (lng) => {
 
 const initialLanguage = i18n.language || 'en'
 setPreviousLng(initialLanguage)
-document.documentElement.lang = initialLanguage
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = initialLanguage
+}
 
 export default i18n

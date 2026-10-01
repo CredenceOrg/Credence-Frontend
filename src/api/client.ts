@@ -397,6 +397,7 @@ function applyAmountFields(
   return wireBody
 }
 
+
 function buildHeaders(
   headers: HeadersInit | undefined,
   hasJsonBody: boolean,
@@ -490,27 +491,9 @@ function replayConflict(key: string): ApiError {
  * make a permanent fault look like a transient one worth retrying.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-const {
-    body,
-    headers,
-    idempotencyKey,
-    skipRateLimit,
-    amountFields,
-    identityEpoch,
-    ...init
-  } = options
-
-  // Exact-amount gate: validate and canonicalize declared amount fields
-  // BEFORE any state change. An invalid amount must never consume
-  // rate-limit budget or reach the network, and must never mutate the
-  // caller's body object.
-  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } =
-    options
+  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } = options
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
-const correlationId = generateCorrelationId('api-fetch')
-  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, ...init } = options
-  const hasJsonBody = isJsonBody(body)
 
   // Pre-flight: deterministic, request-independent failures.
   const url = buildUrl(path)

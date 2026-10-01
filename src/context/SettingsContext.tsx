@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { createTypedCustomEvent, SETTINGS_EVENTS } from '../events/schema'
-import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useLocalStorage, safeStorage } from '../hooks/useLocalStorage'
 import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
 
 type ThemeMode = 'light' | 'dark' | 'system'
@@ -26,6 +26,44 @@ export interface SettingsPayload {
 export interface SettingsState {
   themeMode: ThemeMode
   network: NetworkOption
+  addressDisplay: AddressDisplayOption
+  toastsEnabled: boolean
+  autoDismiss: AutoDismissOption
+  quietHoursEnabled: boolean
+  quietHoursStart: string
+  quietHoursEnd: string
+  setThemeMode: (m: ThemeMode) => void
+  setNetwork: (n: NetworkOption) => void
+  setAddressDisplay: (s: AddressDisplayOption) => void
+  setToastsEnabled: (b: boolean) => void
+  setAutoDismiss: (s: AutoDismissOption) => void
+  setQuietHoursEnabled: (b: boolean) => void
+  setQuietHoursStart: (value: string) => void
+  setQuietHoursEnd: (value: string) => void
+  /**
+   * Persist settings. Pass an explicit payload to save immediately (avoids the
+   * stale-state race when called right after the individual setters); omit it to
+   * persist the current context state.
+   */
+  saveSettings: (next?: SettingsPayload) => void
+  resetToDefaults: () => void
+  cancelSettings: () => void
+  hasUnsavedChanges: boolean
+  /**
+   * Indicates whether the provider can persist data to localStorage.
+   */
+  canPersist: boolean
+  /**
+   * The last error encountered while reading or writing settings, if any.
+   */
+  lastError: Error | null
+  /**
+   * Retry persisting the most recent settings after a failure.
+   */
+  retryPersist: () => Promise<void>
+}
+
+
   addressDisplay: AddressDisplayOption
   toastsEnabled: boolean
   autoDismiss: AutoDismissOption
@@ -94,6 +132,9 @@ const defaultState: SettingsState = {
   resetToDefaults: () => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
+  canPersist: true,
+  lastError: null,
+  retryPersist: async () => {},
 }
 
 const SettingsContext = createContext<SettingsState>(defaultState)
@@ -143,11 +184,26 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   // Migrate legacy 'theme' key before useLocalStorage reads from storage.
   useMigrateLegacyTheme()
 
-  // Single localStorage read — replaces five individual JSON.parse calls on every mount.
-  const [persistedSettingsRaw, setPersistedSettings] = useLocalStorage<PersistedSettings>(
-    STORAGE_KEY,
-    defaultPersistedSettings
+  const initialStorage = safeStorage.getItem<PersistedSettings>(STORAGE_KEY)
+  const [persistedSettingsRaw, setPersistedSettingsRaw] = useState<PersistedSettings>(
+    initialStorage.ok && initialStorage.result ? initialStorage.result : defaultPersistedSettings
   )
+  const [canPersist, setCanPersist] = useState(true)
+  const [lastError, setLastError] = useState<Error | null>(initialStorage.error || null)
+  const [persistedVersion, setPersistedVersion] = useState(0)
+  
+  const setPersistedSettings = (value: PersistedSettings) => {
+    setPersistedSettingsRaw(value)
+    const { ok, error } = safeStorage.setItem(STORAGE_KEY, value)
+    if (ok) {
+      setCanPersist(true)
+      setLastError(null)
+      setPersistedVersion(v => v + 1)
+    } else {
+      setCanPersist(false)
+      setLastError(error || new Error('Unknown write error'))
+    }
+  }
 
   // Validation helpers for persisted values
   const VALID_NETWORKS: NetworkOption[] = ['public', 'test']
@@ -410,6 +466,31 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [themeMode])
 
+  const retryPersist = async () => {
+    const payload = {
+      themeMode,
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
+    }
+    const currentVersion = persistedVersion
+    const { ok, error } = safeStorage.setItem(STORAGE_KEY, payload)
+    if (ok) {
+      setCanPersist(true)
+      setLastError(null)
+      if (currentVersion === persistedVersion) {
+        setPersistedVersion(v => v + 1)
+      }
+    } else {
+      setCanPersist(false)
+      setLastError(error || new Error('Unknown write error'))
+    }
+  }
+
   const value: SettingsState = {
     themeMode,
     network,
@@ -431,7 +512,28 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     resetToDefaults,
     cancelSettings,
     hasUnsavedChanges,
+    canPersist,
+    lastError,
+    retryPersist,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>
+}
+
+export function SettingsErrorBoundary({ children }: { children: React.ReactNode }) {
+  const { lastError, retryPersist, canPersist } = useSettings()
+
+  if (lastError || !canPersist) {
+    return (
+      <div className="settings-error-banner" style={{ padding: '1rem', background: '#fee', color: '#c00', border: '1px solid #c00', borderRadius: '4px', margin: '1rem 0' }}>
+        <h3>Settings could not be saved.</h3>
+        <p>{lastError?.message || 'Storage quota exceeded or permission denied.'}</p>
+        <button onClick={() => { void retryPersist() }} style={{ marginTop: '0.5rem', padding: '0.5rem 1rem' }}>
+          Retry
+        </button>
+      </div>
+    )
+  }
+
+  return <>{children}</>
 }

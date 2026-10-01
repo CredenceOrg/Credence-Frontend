@@ -449,6 +449,127 @@ describe('ActivityTimeline', () => {
     })
   })
 
+  describe('failure-boundary coverage', () => {
+    it('falls back to the sample activity when items is omitted', () => {
+      render(<ActivityTimeline />)
+      expect(screen.getAllByRole('listitem')).toHaveLength(5)
+    })
+
+    it('keeps every panel collapsed on first render', () => {
+      render(
+        <ActivityTimeline
+          items={[makeItem({ id: 'a', title: 'Alpha' }), makeItem({ id: 'b', title: 'Beta' })]}
+        />
+      )
+      for (const button of screen.getAllByRole('button', { name: /show details/i })) {
+        expect(button).toHaveAttribute('aria-expanded', 'false')
+      }
+      expect(screen.queryByText('Actor:')).toBeNull()
+    })
+
+    it('expands only one row at a time', async () => {
+      const user = userEvent.setup()
+      render(
+        <ActivityTimeline
+          items={[makeItem({ id: 'a', title: 'Alpha' }), makeItem({ id: 'b', title: 'Beta' })]}
+        />
+      )
+
+      const [firstButton] = screen.getAllByRole('button', { name: /show details/i })
+      await user.click(firstButton)
+      expect(document.getElementById('details-a')).toBeInTheDocument()
+
+      // Expanding the sibling must collapse the previously expanded row so no
+      // two partial-detail panels are ever open at once. After the first
+      // expansion only the sibling still reads "Show details".
+      const [secondButton] = screen.getAllByRole('button', { name: /show details/i })
+      await user.click(secondButton)
+      expect(document.getElementById('details-a')).toBeNull()
+      expect(document.getElementById('details-b')).toBeInTheDocument()
+    })
+
+    it('ignores Escape when no panel is expanded', () => {
+      render(<ActivityTimeline items={[makeItem({ id: 'a' })]} />)
+
+      const section = screen.getByRole('region', { name: /activity and attestations/i })
+      fireEvent.keyDown(section, { key: 'Escape' })
+
+      const button = screen.getByRole('button', { name: /show details/i })
+      expect(button).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByText('Actor:')).toBeNull()
+    })
+
+    it('does not handle Escape when onSelect delegates to a drawer', () => {
+      const onSelect = vi.fn()
+      render(<ActivityTimeline items={[makeItem({ id: 'a' })]} onSelect={onSelect} />)
+
+      const section = screen.getByRole('region', { name: /activity and attestations/i })
+      fireEvent.keyDown(section, { key: 'Escape' })
+
+      // The inline path stays inert; the drawer owns its own focus trap.
+      expect(screen.getByRole('button', { name: /view details/i })).toBeInTheDocument()
+      expect(onSelect).not.toHaveBeenCalled()
+    })
+
+    it('ignores unrelated key presses on the disclosure button', async () => {
+      const user = userEvent.setup()
+      render(<ActivityTimeline items={[makeItem({ id: 'a' })]} />)
+
+      const button = screen.getByRole('button', { name: /show details/i })
+      button.focus()
+      await user.keyboard('a')
+
+      expect(button).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    it('treats a null amount as absent rather than rendering "NaN"', () => {
+      const { container } = render(
+        <ActivityTimeline
+          items={[makeItem({ id: 'a', amountUsdc: null as unknown as number })]}
+        />
+      )
+      expect(container.querySelector('.activity-row__amount')).toBeNull()
+    })
+
+    it('keeps the row inert in inline mode (only the disclosure toggles)', async () => {
+      const user = userEvent.setup()
+      const { container } = render(<ActivityTimeline items={[makeItem({ id: 'a' })]} />)
+
+      const row = container.querySelector('.activity-row')
+      expect(row).not.toBeNull()
+      await user.click(row!)
+
+      expect(screen.getByRole('button', { name: /show details/i })).toHaveAttribute(
+        'aria-expanded',
+        'false'
+      )
+    })
+
+    it('does not reset expansion when nonce stays undefined across rerenders', async () => {
+      const user = userEvent.setup()
+      const item = makeItem({ id: 'a' })
+      const { rerender } = render(<ActivityTimeline items={[item]} />)
+
+      await user.click(screen.getByRole('button', { name: /show details/i }))
+      expect(document.getElementById('details-a')).toBeInTheDocument()
+
+      rerender(<ActivityTimeline items={[item]} />)
+
+      // A stable nonce must not arbitrarily collapse user-open detail panels.
+      expect(document.getElementById('details-a')).toBeInTheDocument()
+    })
+
+    it('recovers after an empty-then-populated items transition', () => {
+      const item = makeItem({ id: 'a' })
+      const { rerender } = render(<ActivityTimeline items={[]} />)
+      expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
+
+      rerender(<ActivityTimeline items={[item]} />)
+      expect(screen.queryByRole('heading', { name: /no activity yet/i })).toBeNull()
+      expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    })
+  })
+
   describe('atomic rollback and state recovery invariants', () => {
     it('resets expandedId when an expanded item is removed during refetch/filter/rollback', async () => {
       const user = userEvent.setup()

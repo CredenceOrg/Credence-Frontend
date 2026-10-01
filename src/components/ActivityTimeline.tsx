@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import './ActivityTimeline.css'
 import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY, ACTIVITY_ITEMS } from '../data/activity'
-import { AttestationStatus, toneToStatus } from '../events'
-import { formatAmount } from '../lib/format'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
 import type { BadgeVariant } from './Badge'
-import { AttestationStatus, toneToStatus } from '../events'
-import { formatAmount } from '../lib/format'
+
+export type { ActivityItem } from '../data/activity'
 
 /**
  * Maps ActivityTimeline tone values to Badge variants.
@@ -52,6 +50,10 @@ export interface ActivityTimelineProps {
   onSelect?: (item: ActivityItem) => void
   /** Idempotency nonce for deterministic safe retry and replay protection. */
   nonce?: string
+  /** Optional error state: when set, renders a recoverable error surface instead of the timeline. */
+  error?: Error | string | null
+  /** Optional retry handler surfaced in the error state for recovery. */
+  onRetry?: () => void
 }
 
 /**
@@ -78,12 +80,15 @@ export default function ActivityTimeline({
   emptyDescription = 'Attestations and events will appear here once activity begins.',
   onSelect,
   nonce,
+  error,
+  onRetry,
 }: ActivityTimelineProps): ReactElement {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
   const count = items.length
   const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
+  const hasError = error != null && (typeof error === 'string' ? error.length > 0 : true)
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
@@ -117,6 +122,14 @@ export default function ActivityTimeline({
     setExpandedId(null)
   }, [nonce])
 
+  // Recovery invariant: when an error is surfaced, collapse any open
+  // detail panel so a stale/partial detail view cannot remain visible
+  // alongside the error state. This keeps the UI in a single, coherent
+  // state and prevents leaking partially-loaded data after a failure.
+  useEffect(() => {
+    if (hasError && expandedId !== null) setExpandedId(null)
+  }, [hasError, expandedId])
+
   return (
     <section
       className={`activity-surface${compact ? ' activity-surface--compact' : ''}`}
@@ -136,7 +149,29 @@ export default function ActivityTimeline({
         )}
       </header>
 
-      {count === 0 ? (
+      {hasError ? (
+        <div
+          className="activity-surface__error"
+          role="alert"
+          aria-live="assertive"
+          data-testid="activity-timeline-error"
+        >
+          <p className="activity-surface__error-title">Unable to load activity</p>
+          <p className="activity-surface__error-message">
+            {typeof error === 'string' ? error : 'Something went wrong while loading activity.'}
+          </p>
+          {onRetry && (
+            <button
+              type="button"
+              className="activity-surface__retry"
+              onClick={onRetry}
+              data-testid="activity-timeline-retry"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      ) : count === 0 ? (
         <EmptyState
           illustration="activity"
           title={emptyTitle}

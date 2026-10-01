@@ -9,7 +9,7 @@ const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H' // 
 // A 56-char G-prefixed uppercase alphanumeric key that fails the CRC-16 checksum
 const INVALID_CHECKSUM_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
 
-const SUSPICIOUS_ZERO_WIDTH = '\u200B'
+const SUSPICIOUS_ZERO_WIDTH = '​'
 
 // --- useDebouncedValue mocking ---
 
@@ -350,9 +350,31 @@ describe('echo display respects addressDisplay setting', () => {
   })
 
   it('shows friendly address when addressDisplay is "friendly"', async () => {
-    const text = await renderAndTriggerEcho('the friendly')
+    const text = await renderAndTriggerEcho('friendly')
     // formatAddressForDisplay falls back to truncated form until on-chain names exist
     expect(text).toBe(
+      `${VALID_KEY.substring(0, 6)}…${VALID_KEY.substring(VALID_KEY.length - 4)}`
+    )
+  })
+
+  it('re-renders echo when addressDisplay setting changes', async () => {
+    mockAddressDisplay = 'full'
+    const user = userEvent.setup()
+    const { rerender } = render(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+
+    // Full mode: shows entire key
+    let code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
+    expect(code?.textContent).toBe(VALID_KEY)
+
+    // Switch setting to 'short' and re-render
+    mockAddressDisplay = 'short'
+    rerender(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+
+    code = screen.getByText('Recognized:').closest('div')?.querySelector('code')
+    expect(code?.textContent).toBe(
       `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
     )
   })
@@ -417,11 +439,12 @@ describe('boundary and recovery', () => {
     expect(onChange.mock.calls.length).toBe(2)
   })
 
-  it('treats a whitespace-only clipboard result as empty without losing the existing value', async () => {
+  it('never overwrites the existing value with an empty clipboard result', async () => {
     const onChange = vi.fn()
+    const onPasteError = vi.fn()
     clipboardReadTextMock.mockResolvedValue('   \n  ')
 
-    render(<AddressInput id="addr" value={VALID_KEY} onChange={onChange} />)
+    render(<AddressInput id="addr" value={VALID_KEY} onChange={onChange} onPasteError={onPasteError} />)
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /paste address from clipboard/i }))

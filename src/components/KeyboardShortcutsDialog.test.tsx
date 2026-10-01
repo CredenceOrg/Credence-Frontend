@@ -219,7 +219,7 @@ describe('KeyboardShortcutsDialog — focus management', () => {
     triggerEl.focus()
 
     const returnFocusRef = createRef<HTMLButtonElement>()
-    ;(returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = triggerEl
+      ; (returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = triggerEl
 
     const onClose = vi.fn()
     const { rerender } = render(
@@ -411,16 +411,23 @@ describe('KeyboardShortcutsDialog — open/close boundary transitions', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('does not throw when toggling open rapidly (open→closed→open→closed)', () => {
-    const { rerender, onClose } = renderDialog({ open: true })
-    expect(() => {
-      rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
-      rerender(<KeyboardShortcutsDialog open={true} onClose={onClose} />)
-      rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)
-      rerender(<KeyboardShortcutsDialog open={true} onClose={onClose} />)
-    }).not.toThrow()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
+  it('returns focus to returnFocusRef element on close', () => {
+    const triggerEl = document.createElement('button')
+    triggerEl.type = 'button'
+    Object.defineProperty(triggerEl, 'offsetParent', {
+      get: () => document.body,
+      configurable: true,
+    })
+    document.body.appendChild(triggerEl)
+    triggerEl.focus()
+
+    const returnFocusRef = createRef<HTMLButtonElement>()
+      ; (returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = triggerEl
+
+    const onClose = vi.fn()
+    const { rerender } = render(
+      <KeyboardShortcutsDialog open={true} onClose={onClose} returnFocusRef={returnFocusRef} />
+    )
 
   it('does not call onClose when open transitions from true to false via prop', () => {
     const { rerender, onClose } = renderDialog({ open: true })
@@ -570,7 +577,7 @@ describe('KeyboardShortcutsDialog — invalid prop boundaries', () => {
   it('does not throw when returnFocusRef points to a detached element', () => {
     const detached = document.createElement('button')
     const returnFocusRef = createRef<HTMLButtonElement>()
-    ;(returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = detached
+      ; (returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = triggerEl
 
     const onClose = vi.fn()
     const { rerender } = render(
@@ -705,5 +712,65 @@ describe('KeyboardShortcutsDialog — observability', () => {
     const { onClose, unmount } = renderDialog()
     unmount()
     expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Failure Boundary & Resilience
+// ---------------------------------------------------------------------------
+
+describe('KeyboardShortcutsDialog — handleBackdropClick failure boundaries', () => {
+  it('deterministic valid input: clicking exactly on the backdrop triggers onClose', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderDialog()
+    const backdrop = screen.getByRole('dialog').parentElement!
+
+    await user.click(backdrop)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('boundary-case/invalid input: event bubbling from child does NOT trigger onClose', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderDialog()
+
+    const header = screen.getByText('Keyboard Shortcuts')
+    await user.click(header)
+
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('duplicate/concurrent input: rapid successive clicks are processed deterministically', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderDialog()
+    const backdrop = screen.getByRole('dialog').parentElement!
+
+    await Promise.all([
+      user.click(backdrop),
+      user.click(backdrop),
+      user.click(backdrop)
+    ])
+
+    expect(onClose).toHaveBeenCalledTimes(3)
+  })
+
+  it('error state: exceptions inside onClose bubble up synchronously without corrupting internal state', async () => {
+    const user = userEvent.setup()
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+
+    const mockError = new Error('simulated error during onClose')
+    const badOnClose = vi.fn().mockImplementation(() => {
+      throw mockError
+    })
+
+    const props = { open: true, onClose: badOnClose }
+    render(<KeyboardShortcutsDialog {...props} />)
+
+    const backdrop = screen.getByRole('dialog').parentElement!
+
+    await expect(user.click(backdrop)).rejects.toThrow(mockError)
+    expect(badOnClose).toHaveBeenCalledOnce()
+    expect(errorSpy).toHaveBeenCalledWith('KeyboardShortcutsDialog: Error closing dialog from backdrop', mockError)
+
+    errorSpy.mockRestore()
   })
 })

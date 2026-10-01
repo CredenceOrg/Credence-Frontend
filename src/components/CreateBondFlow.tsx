@@ -14,7 +14,7 @@
  * @see {@link docs/risk-disclaimer.md} for the full risk/slashing policy.
  */
 
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import AmountInput from './AmountInput'
 import { FormField } from './forms/FormField'
 import Button from './Button'
@@ -48,9 +48,9 @@ import './CreateBondFlow.css'
 
 export interface CreateBondFlowProps {
   /**
-   * Called after the authoritative bond mutation has committed. May return a
-   * promise that resolves with the on-chain/backend result, or reject when the
-   * wallet/network operation fails.
+   * Performs the authoritative bond mutation. Its promise resolves only after
+   * the on-chain/backend operation commits, or rejects on wallet/network failure.
+   * Legacy synchronous completion callbacks are also supported.
    */
   onComplete?: () => void | Promise<BondCommitResult | void>
   /** Called when the user cancels the flow */
@@ -68,10 +68,7 @@ export interface BondCommitResult {
 }
 
 export type BondAuditEvent =
-  | 'BOND_CREATE_REQUESTED'
-  | 'BOND_CREATE_COMMITTED'
-  | 'BOND_CREATE_REJECTED'
-  | 'BOND_CREATE_FAILED'
+  'BOND_CREATE_REQUESTED' | 'BOND_CREATE_COMMITTED' | 'BOND_CREATE_REJECTED' | 'BOND_CREATE_FAILED'
 
 export interface BondAuditRecord {
   version: 1
@@ -103,7 +100,27 @@ const loadAuditLog = (): BondAuditRecord[] => {
     const raw = window.localStorage.getItem(AUDIT_STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? (parsed as BondAuditRecord[]) : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (record): record is BondAuditRecord =>
+        record !== null &&
+        typeof record === 'object' &&
+        record.version === 1 &&
+        Number.isSafeInteger(record.sequence) &&
+        record.sequence >= 0 &&
+        typeof record.correlationId === 'string' &&
+        typeof record.timestamp === 'string' &&
+        [
+          'BOND_CREATE_REQUESTED',
+          'BOND_CREATE_COMMITTED',
+          'BOND_CREATE_REJECTED',
+          'BOND_CREATE_FAILED',
+        ].includes(record.event) &&
+        record.payload !== null &&
+        typeof record.payload === 'object' &&
+        typeof record.payload.amount === 'string' &&
+        typeof record.payload.acknowledged === 'boolean'
+    )
   } catch {
     return []
   }
@@ -123,7 +140,9 @@ const saveAuditLog = (records: BondAuditRecord[]): void => {
 // Divider used between review card sections
 // ----------------------------------------------------------------------------
 
-const ReviewDivider = () => <div className="createBondFlow__reviewDivider" />
+const ReviewDivider = () => (
+  <div aria-hidden="true" className="createBondFlow__reviewDivider" role="separator" />
+)
 
 /**
  * Emits a diagnostic when a wizard transition is refused because the wizard is
@@ -148,7 +167,7 @@ function logRefusedTransition(direction: 'Back' | 'Next', step: number): void {
 
 export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
   const { addToast } = useToast()
-  const { isConnected, connect } = useWallet()
+  const { isConnected, address, network, isReauthRequired } = useWallet()
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
   const prefersReducedMotion = useReducedMotion()
 
@@ -164,9 +183,10 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
   const auditRecordsRef = useRef<BondAuditRecord[]>(loadAuditLog())
   const correlationIdRef = useRef('')
   const sequenceRef = useRef<number>(
-    auditRecordsRef.current.reduce((max, record) => Math.max(max, record.sequence), -1) + 1,
+    auditRecordsRef.current.reduce((max, record) => Math.max(max, record.sequence), -1) + 1
   )
   const submittingRef = useRef(false)
+  const mountedRef = useRef(true)
 
   /**
    * Latest committed wizard step, mirrored outside React state.
@@ -207,7 +227,7 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
   const recordAudit = (
     event: BondAuditEvent,
     error?: string,
-    result?: BondCommitResult,
+    result?: BondCommitResult
   ): BondAuditRecord => {
     const record: BondAuditRecord = {
       version: 1,
@@ -225,7 +245,12 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
     }
     auditRecordsRef.current = [...auditRecordsRef.current, record]
     saveAuditLog(auditRecordsRef.current)
-    onAudit?.(record)
+    try {
+      onAudit?.(record)
+    } catch {
+      // An optional observer must never change the authoritative mutation outcome.
+      console.warn('[CreateBondFlow] Audit observer failed')
+    }
     return record
   }
 
@@ -274,13 +299,12 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
     try {
       reset()
       return true
-    } catch (err) {
+    } catch {
       // Defensive: even if React state updates fail, clear the imperative
       // guards so a subsequent attempt is not blocked.
       submittingRef.current = false
       correlationIdRef.current = ''
-      const message = err instanceof Error ? err.message : 'Failed to reset bond flow.'
-      setResetError(message)
+      setResetError('Failed to reset bond flow.')
       return false
     }
   }
@@ -440,7 +464,7 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
     } finally {
       // Always release the guard so a failed attempt can be retried.
       submittingRef.current = false
-      setSubmitting(false)
+      if (mountedRef.current) setSubmitting(false)
     }
   }
 

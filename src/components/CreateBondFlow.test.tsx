@@ -47,14 +47,14 @@ vi.mock('../context/WalletContext', () => ({
 vi.mock('../hooks/useUsdcBalance', () => ({
   useUsdcBalance: () => ({
     balance: 10000,
-    status: 'success',
+    status: 'ready',
     refetch: vi.fn(),
   }),
 }))
 
-// ToastProvider depends on SettingsProvider → wrap renders with both
-import ToastProvider from './ToastProvider'
-import { SettingsProvider } from '../context/SettingsContext'
+vi.mock('./ToastProvider', () => ({
+  useToast: () => ({ addToast: vi.fn() }),
+}))
 
 // -----------------------------------------------------------------------------
 // Helpers
@@ -70,13 +70,7 @@ beforeEach(() => {
 })
 
 function renderFlow() {
-  return render(
-    <SettingsProvider>
-      <ToastProvider>
-        <CreateBondFlow />
-      </ToastProvider>
-    </SettingsProvider>
-  )
+  return render(<CreateBondFlow />)
 }
 
 /** Navigate from step 1 → step 3 with the given amount and duration. */
@@ -116,6 +110,16 @@ describe('formatUsdc', () => {
 
   it('formats very large numbers', () => {
     expect(formatUsdc(1_000_000)).toBe('1,000,000 USDC')
+  })
+})
+
+describe('ReviewDivider', () => {
+  it('renders a stable non-interactive separator on the review step', async () => {
+    await reachStep3('1000')
+
+    const divider = screen.getByRole('separator', { hidden: true })
+    expect(divider).toHaveClass('createBondFlow__reviewDivider')
+    expect(divider).toHaveAttribute('aria-hidden', 'true')
   })
 })
 

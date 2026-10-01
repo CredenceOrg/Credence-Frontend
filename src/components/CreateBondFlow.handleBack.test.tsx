@@ -124,6 +124,7 @@ beforeEach(() => {
     status: 'ready',
     error: null,
     refetch: refetchBalance,
+    isReauthRequired: false,
   })
 
   vi.mocked(useToast).mockReturnValue({ addToast } as unknown as ReturnType<typeof useToast>)
@@ -224,7 +225,7 @@ describe('handleBack – preserves entered data', () => {
     await userEvent.setup().click(backButton())
 
     expectOnStep(3)
-    expect(screen.getByTestId('review-bond-amount')).toHaveTextContent('742.50 USDC')
+    expect(screen.getByTestId('review-bond-amount')).toHaveTextContent('742.5 USDC')
     expect(screen.getByTestId('review-duration')).toHaveTextContent('90 Days')
     expect(screen.getByTestId('review-penalty-amount')).toHaveTextContent('111.38 USDC')
   })

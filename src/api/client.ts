@@ -13,6 +13,7 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
    * validated and serialized exactly at this boundary.
    */
   amountFields?: ApiAmountFields
+
   /**
    * When provided, the request is only dispatched if the active identity
    * epoch matches this value at call time **and** when the response arrives.
@@ -490,7 +491,7 @@ function replayConflict(key: string): ApiError {
  * make a permanent fault look like a transient one worth retrying.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } =
+  const { body, headers, idempotencyKey, skipRateLimit, amountFields, identityEpoch, ...init } =
     options
 
   // Exact-amount gate: validate and canonicalize declared amount fields

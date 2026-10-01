@@ -7,6 +7,7 @@ import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useToast } from '../components/ToastProvider'
 import SessionTimeoutDialog from '../components/SessionTimeoutDialog'
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
+import { clearAppLocalStorage } from '../lib/clearAppLocalStorage'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean

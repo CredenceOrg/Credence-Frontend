@@ -261,17 +261,17 @@ export default function AmountInput({
 
   /**
    * Invalidates any in-flight max request because the user has expressed a
-   * newer intent directly, and releases the loading state so Max stays usable
-   * (I3, I4). Called from the text field, from blur, and from preset chips.
+   * newer intent directly. Releases the loading state and clears any failure
+   * states (error, stale, permission) so Max stays usable and stale alerts
+   * are dismissed (I3, I4). Called from the text field, from blur, and from preset chips.
    */
   const supersedePendingMax = () => {
     maxRequestSeq.current += 1
-    if (!maxInFlight.current) return
-    // In-flight implies the button already reads `loading` (that is what set
-    // the ref), so `idle` is the only correct resting state here. This also
-    // guarantees Max is never left permanently disabled (I4).
-    maxInFlight.current = false
-    setMaxState('idle')
+    if (maxInFlight.current || maxState !== 'idle') {
+      maxInFlight.current = false
+      setMaxState('idle')
+      setMaxErrorReason(null)
+    }
   }
 
   const handleBlur: React.FocusEventHandler<HTMLInputElement> = (event) => {

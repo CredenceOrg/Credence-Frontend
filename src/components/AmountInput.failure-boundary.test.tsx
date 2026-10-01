@@ -1392,3 +1392,62 @@ describe('AmountInput — controlled consumer round trip (no data loss)', () => 
     expect(onBlur).toHaveBeenCalledTimes(1)
   })
 })
+// ---------------------------------------------------------------------------
+
+describe('AmountInput - handlePreset failure boundaries', () => {
+  it.each([
+    ['loading', null, 'loading'],
+    ['error', Promise.reject(new Error('network')), 'error'],
+    ['permission', Promise.reject(signalError('denied', { name: 'PermissionError' })), 'permission'],
+    ['stale', Promise.reject(signalError('x', { name: 'StaleDataError' })), 'stale'],
+  ])('clears %s state when a preset is clicked without losing data', async (state, p, expectedMaxState) => {
+    let gate = deferred<number>();
+    let promiseToUse = p;
+    if (state === 'loading') {
+      promiseToUse = gate.promise;
+    }
+
+    const onMaxRequest = vi.fn().mockImplementation(() => promiseToUse)
+    const onChange = vi.fn()
+    render(
+      <ControlledAmountInput
+        value="10.00"
+        onChange={onChange}
+        balance={1000}
+        presets={[250]}
+        onMaxRequest={onMaxRequest}
+      />
+    )
+
+    fireEvent.click(maxButton())
+
+    if (state !== 'loading') {
+      await screen.findByRole('alert')
+      expect(root()).toHaveAttribute('data-max-state', expectedMaxState)
+    } else {
+      expect(maxButton()).toHaveTextContent('Loading...')
+      expect(root()).toHaveAttribute('data-max-state', 'loading')
+    }
+
+    // Now user clicks preset 250
+    fireEvent.click(screen.getByRole('button', { name: 'Set amount to 250 USDC' }))
+
+    // Preset applies immediately
+    expect(textbox()).toHaveValue('250.00')
+    expect(onChange).toHaveBeenCalledWith('250.00')
+
+    // Failure states are cleared
+    expect(root()).toHaveAttribute('data-max-state', 'idle')
+    if (state !== 'loading') {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    }
+
+    // A late resolution (if loading) is discarded
+    if (state === 'loading') {
+      await act(async () => {
+        gate.resolve(800)
+      })
+      expect(textbox()).toHaveValue('250.00') // still 250
+    }
+  })
+})

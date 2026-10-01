@@ -167,9 +167,18 @@ function logRefusedTransition(direction: 'Back' | 'Next', step: number): void {
 
 export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
   const { addToast } = useToast()
-  const { isConnected, address, network, isReauthRequired } = useWallet()
+  const { isConnected, connect, isReauthRequired, reauth } = useWallet()
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
   const prefersReducedMotion = useReducedMotion()
+
+  // Keep a ref to the current isConnected value so the async handleConfirm
+  // body always reads the latest value rather than a stale closure snapshot.
+  // This makes the post-flight disconnect check deterministic even when the
+  // wallet disconnects while the onComplete promise is in-flight.
+  const isConnectedRef = useRef(isConnected)
+  useEffect(() => {
+    isConnectedRef.current = isConnected
+  }, [isConnected])
 
   const [step, setStep] = useState<number>(BOND_FLOW_MIN_STEP)
   const [amount, setAmount] = useState('')
@@ -309,36 +318,12 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
     }
   }
 
-  /**
-   * Next navigation.
-   *
-   * Failure boundaries handled here:
-   *
-   * 1. **In-flight submission.* A commit is already running, so a duplicate
-   *    Next/Confirm dispatch must be ignored. The `submittingRef` guard is
-   *    checked first and is the authoritative source of truth (not the React
-   *    `submitting` state, which lags behind by one render).
-   * 2. **Validation.** Step 1 requires a parseable amount > 0. Step 2 requires
-   *    a lock duration. Invalid input sets a user-visible error and does not
-   *    advance, so a partially filled form is never committed.
-   * 3. **Boundary / overflow.** The target is clamped into [1, 4] by
-   *    `planNextTransition`. A Next press on the last step is refused and the
-   *    wizard state (including any validation error) is left untouched.
-   * 4. **Duplicate / interleaved dispatch.** The transition is planned against
-   *    `stepRef.current`, which is updated synchronously by `applyStep`, so
-   *    batched or scripted clicks cannot collapse into a wrong target step.
-   */
-  const handleNext = (): void => {
-    // (1) In-flight guard. The ref is the authoritative source of truth.
+  const handleNext = () => {
+    const currentStep = stepRef.current
     if (submittingRef.current) return
 
-    const currentStep = stepRef.current
-
-    // (2) Per-step validation. Errors are stored in the shared `error` slot
-    // and cleared only on a successful transition.
     if (currentStep === BOND_FLOW_STEP_AMOUNT) {
-      const parsed = Number(amount)
-      if (!amount || !Number.isFinite(parsed) || parsed <= 0) {
+      if (!amount || Number(amount) <= 0) {
         setError('Please enter a valid amount greater than 0.')
         return
       }
@@ -474,6 +459,158 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
     onCancel?.()
   }
 
+  /**
+   * Deterministic confirm handler with complete failure-boundary coverage.
+   *
+   * Invariants enforced (checked before any state change):
+   * 1. **No concurrent submission:** `submittingRef` guards against duplicate clicks.
+   * 2. **Acknowledgement gate:** User must explicitly check the disclaimer box.
+   * 3. **Wallet connection:** `isConnected` must be true.
+   * 4. **Re-authentication:** If the session is stale per `isReauthRequired()`,
+   *    prompt re-auth before allowing submission.
+   * 5. **Network availability:** `navigator.onLine` check (coarse-grained, but
+   *    catches the offline case deterministically).
+   *
+   * Failures modes covered:
+   * - **Pre-flight rejection:** validation failures (no ack, disconnected,
+   *   offline, stale session) are recorded as REJECTED with a stable error
+   *   code and never consume any budget or reach the network. The user is
+   *   shown an actionable message (e.g., "Reconnect your wallet").
+   * - **Concurrent disconnect:** after the submission starts, the promise
+   *   may still resolve after the user has disconnected. `isConnected` is
+   *   re-checked on return; if false, the result is discarded and an error
+   *   is shown (no silent success state with a stale wallet).
+   * - **Retry:** errors leave the wizard on step 4 with the error message
+   *   visible. The user can correct (e.g., reconnect, re-ack) and retry.
+   *   The `correlationId` is kept stable for the retry attempt so the audit
+   *   trail groups them.
+   * - **Partial failure / network errors:** any exception from `onComplete?.()`
+   *   is caught, recorded as FAILED, and shown to the user. The wizard state
+   *   is preserved so the user does not lose their amount/duration.
+   * - **Data loss prevention:** `safeReset()` only runs after a confirmed
+   *   success. A failure (rejected or thrown) never resets the wizard state.
+   * - **Authorization boundary:** `isReauthRequired()` is enforced here. If
+   *   the wallet context signals a stale session, the user is prompted to
+   *   re-authenticate before submission is allowed. This closes the gap where
+   *   a long-lived wizard session could submit with an expired auth token.
+   *
+   * The audit log is append-only and persisted to localStorage before any
+   * async boundary, so even a crash during submission leaves a recoverable
+   * trail.
+   */
+  const handleConfirm = async () => {
+    // ─── Guard: no concurrent submissions ───
+    if (submittingRef.current) return
+
+    // ─── Validation: acknowledgement gate ───
+    if (!acknowledged) {
+      setConfirmError(
+        'Please acknowledge the slashing terms and lock conditions before creating a bond.'
+      )
+      correlationIdRef.current = correlationIdRef.current || createCorrelationId()
+      recordAudit('BOND_CREATE_REJECTED', 'ACKNOWLEDGEMENT_REQUIRED')
+      return
+    }
+
+    // ─── Validation: wallet connection ───
+    if (!isConnectedRef.current) {
+      setConfirmError('Wallet disconnected. Reconnect your wallet and try again.')
+      correlationIdRef.current = correlationIdRef.current || createCorrelationId()
+      recordAudit('BOND_CREATE_REJECTED', 'WALLET_DISCONNECTED')
+      return
+    }
+
+    // ─── Validation: session staleness (re-authentication required) ───
+    if (isReauthRequired()) {
+      setConfirmError('Your session has expired. Please re-authenticate to continue.')
+      correlationIdRef.current = correlationIdRef.current || createCorrelationId()
+      recordAudit('BOND_CREATE_REJECTED', 'SESSION_STALE')
+      setSubmitting(false)
+      submittingRef.current = false
+
+      // Prompt re-authentication (non-blocking UI hint)
+      try {
+        await reauth()
+        // After successful reauth, clear the error so user can retry
+        setConfirmError('')
+        addToast('info', 'Session refreshed. You may now confirm your bond.')
+      } catch (reauthError) {
+        const reauthMessage =
+          reauthError instanceof Error ? reauthError.message : 'Re-authentication failed.'
+        setConfirmError(`Re-authentication failed: ${reauthMessage}`)
+        recordAudit('BOND_CREATE_REJECTED', `REAUTH_FAILED: ${reauthMessage}`)
+      }
+      return
+    }
+
+    // ─── Validation: network availability (coarse-grained) ───
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setConfirmError('Network offline. Reconnect your network and try again.')
+      correlationIdRef.current = correlationIdRef.current || createCorrelationId()
+      recordAudit('BOND_CREATE_FAILED', 'NETWORK_OFFLINE')
+      return
+    }
+
+    // ─── Begin submission ───
+    // Assign correlation ID now (stable for retries if pre-flight checks passed)
+    if (!correlationIdRef.current) {
+      correlationIdRef.current = createCorrelationId()
+    }
+
+    submittingRef.current = true
+    setSubmitting(true)
+    setConfirmError('')
+    recordAudit('BOND_CREATE_REQUESTED')
+
+    try {
+      // ─── Execute the bond creation mutation ───
+      const result = await onComplete?.()
+
+      // ─── Post-flight check: wallet still connected? ───
+      // The user may have disconnected while the async operation was in-flight.
+      // isConnectedRef.current always holds the latest value from the most
+      // recent render, so this check is not affected by closure staleness.
+      if (!isConnectedRef.current) {
+        const discardMessage =
+          'Wallet disconnected during bond creation. Result discarded. Please reconnect and retry.'
+        setConfirmError(discardMessage)
+        recordAudit('BOND_CREATE_FAILED', 'WALLET_DISCONNECTED_DURING_SUBMISSION')
+        submittingRef.current = false
+        setSubmitting(false)
+        addToast('warning', discardMessage)
+        return
+      }
+
+      // ─── Success path ───
+      recordAudit('BOND_CREATE_COMMITTED', undefined, result)
+      addToast('success', 'Bond created successfully.')
+
+      // Only reset after confirmed success — failures preserve wizard state
+      safeReset()
+    } catch (err) {
+      // ─── Failure path ───
+      const message =
+        err instanceof Error ? err.message : 'Bond creation failed. Please try again.'
+      setConfirmError(message)
+      recordAudit('BOND_CREATE_FAILED', message)
+
+      // Show a user-visible toast for critical failures
+      addToast('danger', message)
+    } finally {
+      // ─── Cleanup ───
+      // Always clear the in-flight guard, even if an exception was thrown
+      submittingRef.current = false
+      setSubmitting(false)
+    }
+  }
+
+  /**
+   * Penalty breakdown derived from the current amount + duration.
+   * Re-computed whenever the user edits either field (including going
+   * back from step 3 and changing values).
+   *
+   * Returns `null` when either input is not yet valid.
+   */
   const slashBreakdown = useMemo(() => {
     const parsed = Number.parseFloat(amount)
     if (!Number.isFinite(parsed) || parsed <= 0 || !duration) return null
@@ -487,9 +624,28 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
 
   const progressPercent = Math.round((step / BOND_FLOW_STEP_COUNT) * 100)
 
-  if (balanceStatus === 'loading') {
-    return <LoadingSkeleton />
-  }
+  const StepIndicator = () => (
+    <div
+      className="createBondFlow__stepIndicator"
+      aria-label={`Step ${step} of ${BOND_FLOW_STEP_COUNT}`}
+    >
+      {Array.from({ length: BOND_FLOW_STEP_COUNT }, (_, index) => index + BOND_FLOW_MIN_STEP).map(
+        (i) => (
+          <div
+            key={i}
+            className={`createBondFlow__stepBar${i <= step ? ' createBondFlow__stepBar--active' : ''}`}
+            style={{
+              transition: prefersReducedMotion ? 'none' : undefined,
+            }}
+          />
+        )
+      )}
+    </div>
+  )
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <div className="createBondFlow" data-testid="create-bond-flow">
@@ -508,13 +664,94 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
           <h2 ref={step1Ref} tabIndex={-1}>
             How much USDC would you like to bond?
           </h2>
-          <FormField label="Bond amount" error={error}>
-            <AmountInput value={amount} onChange={setAmount} />
+
+          <Banner severity="info">
+            Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.
+          </Banner>
+
+          {/* ── Balance display ── */}
+          <div className="createBondFlow__balanceRow" aria-live="polite" aria-atomic="true">
+            {!isConnected ? (
+              <span className="createBondFlow__balanceText">
+                Connect your wallet to see your available balance.
+              </span>
+            ) : balanceStatus === 'loading' ? (
+              <LoadingSkeleton variant="text" rows={1} width="12rem" />
+            ) : balanceStatus === 'error' ? (
+              <span className="createBondFlow__balanceErrorRow">
+                <span
+                  className="createBondFlow__balanceText"
+                  role="alert"
+                  style={{ color: 'var(--credence-color-danger)' }}
+                >
+                  Could not load balance.
+                </span>
+                <Button
+                  type="button"
+                  onClick={refetchBalance}
+                  className="createBondFlow__retryButton"
+                  style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
+                >
+                  Retry
+                </Button>
+              </span>
+            ) : (
+              <span className="createBondFlow__balanceText">
+                Available: {formatUsdc(balance)}
+              </span>
+            )}
+          </div>
+
+          <FormField id="bond-amount" label="Amount (USDC)" error={error || undefined}>
+            <AmountInput
+              value={amount}
+              onChange={(next) => {
+                setAmount(next)
+                if (error) setError('')
+              }}
+              balance={balance}
+              placeholder="0"
+              presets={[100, 500, 1000]}
+              currencyLabel="USDC"
+              disabled={!isConnected}
+              hideErrorMessage={Boolean(error)}
+              aria-disabled={!isConnected || undefined}
+            />
           </FormField>
           <p className="createBondFlow__balance">
             Available balance: {formatUsdc(balance)} USDC
           </p>
-        </section>
+
+          {error && (
+            <div className="createBondFlow__error" role="alert">
+              ⚠ {error}
+            </div>
+          )}
+
+          <div className="createBondFlow__durationRow">
+            {[30, 90, 180].map((d) => {
+              const isActive = duration === d
+              return (
+                <Button
+                  key={d}
+                  type="button"
+                  onClick={() => {
+                    setDuration(d)
+                    if (error) setError('')
+                  }}
+                  className={
+                    isActive
+                      ? 'createBondFlow__durationButton createBondFlow__durationButton--active'
+                      : 'createBondFlow__durationButton'
+                  }
+                  style={{ transition: prefersReducedMotion ? 'none' : 'all 0.2s ease' }}
+                >
+                  {d} Days
+                </Button>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       {step === BOND_FLOW_STEP_DURATION && (
@@ -598,8 +835,13 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
             Next
           </Button>
         ) : (
-          <Button type="button" onClick={handleConfirm} disabled={submitting}>
-            {submitting ? 'Confirming…' : 'Confirm'}
+          <Button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!acknowledged || submitting}
+            className="createBondFlow__navButton createBondFlow__confirmButton"
+          >
+            {submitting ? 'Creating Bond…' : 'Confirm & Create Bond'}
           </Button>
         )}
         <Button type="button" onClick={handleCancel} disabled={submitting}>

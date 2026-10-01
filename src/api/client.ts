@@ -28,6 +28,7 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
 }
 
 export type ApiErrorCode = 'invalid_request_url' | 'network_error' | 'http_error'
+
 /**
  * Declaration of decimal amount fields for a request body.
  *
@@ -159,6 +160,8 @@ function rejectBaseUrl(): '' {
   return ''
 }
 
+// ── Idempotency-key replay map ───────────────────────────────────────────────
+
 type ReplayEntry = {
   fingerprint: string
   promise: Promise<unknown>
@@ -185,6 +188,16 @@ export function resetIdentityEpoch(): void {
   _identityEpoch = 0
 }
 
+// ── Rate limiter ─────────────────────────────────────────────────────────────
+
+/**
+ * Process-wide default rate limiter consulted by `apiFetch`.
+ *
+ * Built once at module init from environment overrides on top of
+ * {@link DEFAULT_API_RATE_LIMIT}. Exposed (read-only via {@link
+ * apiRateLimiterSnapshot}) so tests can inspect current configuration and
+ * tear down bucket state via {@link resetApiRateLimiter}.
+ */
 const rateLimitOverrides = readApiRateLimitOverrides({
   VITE_API_RATE_LIMIT_MAX: env?.VITE_API_RATE_LIMIT_MAX,
   VITE_API_RATE_LIMIT_WINDOW_MS: env?.VITE_API_RATE_LIMIT_WINDOW_MS,
@@ -210,6 +223,31 @@ export function resetApiRateLimiter(): void {
   defaultApiRateLimiter.reset()
 }
 
+/**
+ * Normalizes the configured API base URL.
+ *
+ * Invariants (all enforced by the `normalizeBaseUrl` tests):
+ *  1. The result is either `''` (same-origin, no prefix) or a base with **no
+ *     trailing slash**, so joining a path always inserts exactly one separator.
+ *  2. The result is never scheme-relative (`//host` or `/\host`) and never a
+ *     non-`http(s)` URL, so {@link buildUrl} cannot be steered to a foreign
+ *     origin by configuration.
+ *  3. The result never carries a query string or fragment, because a path
+ *     appended after `?`/`#` would be swallowed by the URL parser and the
+ *     server would never see it.
+ *  4. The function is idempotent: `normalizeBaseUrl(normalizeBaseUrl(x))`
+ *     always equals `normalizeBaseUrl(x)`.
+ *  5. Invalid or hostile values **fail closed** to `''` rather than throwing.
+ *     A bad `.env` entry degrades the app to same-origin requests instead of
+ *     breaking module evaluation (and therefore app boot).
+ *
+ * Rule 5 means a misconfigured `VITE_API_BASE_URL` cannot leak request URLs or
+ * credentials to another host; it can only ever remove the prefix.
+ *
+ * Exported so the failure boundaries are directly testable. `import.meta.env`
+ * is inlined at build time, so stubbing `VITE_API_BASE_URL` from a test cannot
+ * reach the module-load path that computes {@link API_BASE_URL}.
+ */
 export function normalizeBaseUrl(value: string): string {
   const trimmed = typeof value === 'string' ? value.trim() : ''
   if (!trimmed || trimmed === '/') {
@@ -397,7 +435,6 @@ function applyAmountFields(
   return wireBody
 }
 
-
 function buildHeaders(
   headers: HeadersInit | undefined,
   hasJsonBody: boolean,
@@ -491,14 +528,16 @@ function replayConflict(key: string): ApiError {
  * make a permanent fault look like a transient one worth retrying.
  */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, headers, idempotencyKey, skipRateLimit, identityEpoch, amountFields, ...init } = options
+  const { body, headers, idempotencyKey, skipRateLimit, amountFields, identityEpoch, ...init } = options
+
+  // Exact-amount gate: validate and canonicalize declared amount fields
+  // BEFORE any state change. An invalid amount must never consume
+  // rate-limit budget or reach the network, and must never mutate the
+  // caller's body object.
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
 
   // Pre-flight: deterministic, request-independent failures.
-  const url = buildUrl(path)
-  const requestHeaders = buildHeaders(headers, hasJsonBody)
-  const requestBody = hasJsonBody ? JSON.stringify(body) : body
   // Validate input size before expensive operations. Serializing an oversized
   // body is wasted work and could exhaust memory or downstream resources.
   if (hasJsonBody) {
@@ -508,7 +547,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     }
   }
 
-  const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (wireBody ?? undefined)
+  const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (body ?? undefined)
   const correlationId = generateCorrelationId('api-fetch')
   const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
   const method = (init.method || 'GET').toUpperCase()

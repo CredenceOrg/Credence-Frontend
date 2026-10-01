@@ -1,48 +1,16 @@
 import { ApiRateLimiter, DEFAULT_API_RATE_LIMIT, readApiRateLimitOverrides } from './rateLimit'
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
-
 import { AmountError, parseAmount, type AmountErrorCode, type AmountRules } from './amount'
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | unknown[] | null
   /** Stable key for retrying one state-changing operation safely. */
   idempotencyKey?: string
-  /**
-   * When true, bypasses the client-side rate limiter for this call only.
-   * Defaults to false. Intended for tests; production callers should never
-   * need this.
-   */
+  /** When true, bypasses the client-side rate limiter for this call only. */
   skipRateLimit?: boolean
-  /**
-   * Declares decimal amount fields inside a JSON object `body` so they are
-   * validated and serialized exactly at this boundary.
-   *
-   * Opt-in and backwards compatible: when omitted (or empty), the body is
-   * serialized exactly as before. When present, each declared field must
-   * exist on the body and hold a plain unsigned decimal (string, finite
-   * non-negative number, or non-negative bigint). Valid values are replaced
-   * with their canonical decimal-string form (e.g. `1000.5` → `'1000.50'`)
-   * matching the `Bond.amount` contract in `openapi.yaml`; invalid values
-   * reject with {@link ApiAmountError} **before** the rate limiter is
-   * consulted or the network is touched, and the caller's body object is
-   * never mutated.
-   *
-   * Accepts either:
-   * - an array of top-level field names using the default USDC rules
-   *   (scale 2, min `'0'`, max = the int64 scaled-integer bound), or
-   * - a map of field name to {@link AmountRules} (or `true` for defaults).
-   *
-   * @example
-   * ```ts
-   * await apiFetch('/bonds', {
-   *   method: 'POST',
-   *   body: { borrower: address, amount: '1000.5' },
-   *   amountFields: { amount: { min: '1.00' } },
-   * })
-   * ```
-   */
+  /** Declares decimal amount fields within the request JSON body. */
   amountFields?: ApiAmountFields
-  /**
+/**
    * When provided, the request is only dispatched if the active identity
    * epoch matches this value at call time **and** when the response arrives.
    * A mismatch at either point causes the promise to reject with
@@ -56,17 +24,7 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   identityEpoch?: number
 }
 
-/**
- * Machine-readable, non-sensitive classification of an {@link ApiError}.
- *
- * - `invalid_request_url` — the request never left the browser because the
- *   path or base URL failed validation. Retrying the identical call cannot
- *   succeed, so callers should surface it as a configuration/programming fault
- *   rather than as a retryable failure.
- * - `network_error` — the request never produced an HTTP response (offline,
- *   DNS failure, CORS rejection). `status` is `0`.
- * - `http_error` — the server answered with a non-2xx status.
- */
+/** Machine-readable classification for API failures. */
 export type ApiErrorCode = 'invalid_request_url' | 'network_error' | 'http_error'
 
 /**
@@ -77,21 +35,12 @@ export type ApiErrorCode = 'invalid_request_url' | 'network_error' | 'http_error
  */
 export type ApiAmountFields = string[] | Record<string, AmountRules | true>
 
-/**
- * Rejection codes for {@link ApiAmountError}. Mirrors
- * {@link AmountErrorCode} plus the boundary-only codes `INVALID_BODY`
- * (`amountFields` declared but the body is not a JSON object) and `MISSING`
- * (a declared field is absent from the body).
- */
+/** Rejection reasons for declared amount fields. */
 export type ApiAmountErrorCode = AmountErrorCode | 'INVALID_BODY' | 'MISSING'
 
 export class ApiError extends Error {
   readonly status: number
   readonly payload: unknown
-  /**
-   * Optional classification. `undefined` for `ApiError`s constructed by legacy
-   * call sites, so existing three-argument construction keeps working.
-   */
   readonly code?: ApiErrorCode
 
   constructor(status: number, message: string, payload?: unknown, code?: ApiErrorCode) {
@@ -103,43 +52,22 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Thrown by `apiFetch` when the client-side rate limiter rejects a request.
- *
- * Extends `ApiError` with `status: 429` so existing handlers that only check
- * `err instanceof ApiError` keep working unchanged; code that wants to
- * specifically retry-after a cooldown can additionally narrow on this class
- * (or on `err.status === 429`).
- */
 export class ApiRateLimitError extends ApiError {
   readonly retryAfterMs: number
 
   constructor(retryAfterMs: number, message = 'Too many requests', payload?: unknown) {
-    super(429, message, payload)
+    super(429, message, payload, 'http_error')
     this.name = 'ApiRateLimitError'
     this.retryAfterMs = retryAfterMs
   }
 }
 
-/**
- * Thrown by `apiFetch` when a field declared in `amountFields` violates the
- * exact-decimal amount rules (see `src/api/amount.ts`).
- *
- * Extends `ApiError` with a synthetic `status: 400` — mirroring how
- * `ApiRateLimitError` surfaces client-side rejections as 429 — so existing
- * handlers that only check `err instanceof ApiError` keep working. The
- * request is rejected **locally**: no rate-limit budget is consumed and
- * `fetch` is never called, so a rejected amount can never produce partial
- * or unauthorized server-side state.
- */
 export class ApiAmountError extends ApiError {
-  /** Body field the rejection applies to (`null` for body-level rejections). */
   readonly field: string | null
-  /** Machine-readable rejection reason. */
   readonly code: ApiAmountErrorCode
 
   constructor(field: string | null, code: ApiAmountErrorCode, message: string) {
-    super(400, message, { field, code })
+    super(400, message, { field, code }, 'http_error')
     this.name = 'ApiAmountError'
     this.field = field
     this.code = code
@@ -166,9 +94,7 @@ export class ApiAmountError extends ApiError {
  * fresh epoch via {@link getIdentityEpoch} and re-issue.
  */
 export class ApiSessionConflictError extends ApiError {
-  /** Epoch value at the time the request was created (now stale). */
   readonly staleEpoch: number
-  /** Epoch value at the time the conflict was detected (current). */
   readonly currentEpoch: number
 
   constructor(staleEpoch: number, currentEpoch: number, message?: string) {
@@ -176,7 +102,8 @@ export class ApiSessionConflictError extends ApiError {
       409,
       message ??
         `Session identity changed during request (epoch ${staleEpoch} → ${currentEpoch}). Re-authenticate and retry.`,
-      { staleEpoch, currentEpoch }
+      { staleEpoch, currentEpoch },
+      'http_error'
     )
     this.name = 'ApiSessionConflictError'
     this.staleEpoch = staleEpoch
@@ -184,64 +111,35 @@ export class ApiSessionConflictError extends ApiError {
   }
 }
 
-/**
- * Thrown by `apiFetch` when a request body exceeds `MAX_REQUEST_BODY_BYTES`.
- * Enforced locally (before any expense) so oversized or adversarial payloads
- * are never serialized over the wire.
- */
 export class ApiBodyTooLargeError extends ApiError {
   readonly limitBytes: number
   readonly bodySizeBytes: number
 
   constructor(limitBytes: number, payload?: { bodySize: number }) {
-    super(413, `Request body too large (limit ${limitBytes} bytes).`, payload ?? { limitBytes })
+    super(413, `Request body too large (limit ${limitBytes} bytes).`, payload ?? { limitBytes }, 'http_error')
     this.name = 'ApiBodyTooLargeError'
     this.limitBytes = limitBytes
     this.bodySizeBytes = payload?.bodySize ?? 0
   }
 }
 
-/** Maximum allowed JSON body size in bytes (1 MiB). */
-export const MAX_REQUEST_BODY_BYTES = 1_048_576
-
 const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
-
-/** Console warnings are emitted in dev/test builds only. */
 const IS_DEV = env?.PROD !== true
 
-/**
- * Longest path fragment echoed back in an error payload. Keeps diagnostics
- * bounded so a hostile or accidental huge path cannot flood logs or the
- * `ErrorState` UI.
- */
 const DIAGNOSTIC_PATH_MAX_LENGTH = 80
-
-/** C0 control range. */
 const LAST_C0_CODE = 0x1f
-/** DEL. */
 const DEL_CODE = 0x7f
-/** End of the C1 control range. */
 const LAST_C1_CODE = 0x9f
 
-/**
- * C0 controls, DEL, and C1 controls are rejected in request paths.
- *
- * The WHATWG URL parser silently *strips* tab/LF/CR and percent-encodes the
- * rest, so `/bonds\nx` and `/bondsx` would resolve to the same endpoint.
- * Rejecting them keeps the mapping from input to request one-to-one.
- *
- * Implemented as a code-point scan rather than a regex literal so the
- * `no-control-regex` lint rule stays meaningful for every other file.
- */
+export const MAX_REQUEST_BODY_BYTES = 1_048_576
+
 function isControlCode(code: number): boolean {
   return code <= LAST_C0_CODE || (code >= DEL_CODE && code <= LAST_C1_CODE)
 }
 
 function hasControlCharacters(value: string): boolean {
   for (let index = 0; index < value.length; index += 1) {
-    if (isControlCode(value.charCodeAt(index))) {
-      return true
-    }
+    if (isControlCode(value.charCodeAt(index))) return true
   }
   return false
 }
@@ -279,6 +177,7 @@ function replaceControlCharacters(value: string): string {
  * is inlined at build time, so stubbing `VITE_API_BASE_URL` from a test cannot
  * reach the module-load path that computes {@link API_BASE_URL}.
  */
+export { normalizeBaseUrl }
 export function normalizeBaseUrl(value: string): string {
   const trimmed = typeof value === 'string' ? value.trim() : ''
   if (!trimmed || trimmed === '/') {
@@ -441,20 +340,20 @@ export function resetApiRateLimiter(): void {
  * log line.
  */
 function redactPathForDiagnostics(value: unknown): string {
-  if (typeof value !== 'string') {
-    return typeof value
-  }
+  if (typeof value !== 'string') return typeof value
   const queryStart = value.indexOf('?')
   const pathOnly = queryStart === -1 ? value : value.slice(0, queryStart)
-  const printable = replaceControlCharacters(pathOnly)
+  const fragmentIndex = pathOnly.indexOf('#')
+  const sansFragment = fragmentIndex === -1 ? pathOnly : pathOnly.slice(0, fragmentIndex)
+  const printable = replaceControlCharacters(sansFragment)
   const clipped =
     printable.length > DIAGNOSTIC_PATH_MAX_LENGTH
       ? `${printable.slice(0, DIAGNOSTIC_PATH_MAX_LENGTH)}…`
       : printable
-  return queryStart === -1 ? clipped : `${clipped}?<redacted>`
+  const hasQuery = queryStart !== -1
+  return hasQuery ? `${clipped}?<redacted>` : clipped
 }
 
-/** Reasons reported by {@link normalizeApiPath}; each is a stable string. */
 type PathRejection =
   | 'path must be a string'
   | 'path must not be empty'
@@ -472,78 +371,34 @@ function invalidPathError(reason: PathRejection, path: unknown): ApiError {
   )
 }
 
-/**
- * Validates and normalizes an API path.
- *
- * Invariants:
- *  1. The result always begins with **exactly one** `/`. Combined with the
- *     base normalization this makes the joined URL incapable of being read as
- *     a scheme-relative or absolute URL by the fetch/URL parser, so a request
- *     can never be redirected to another origin via a crafted path.
- *  2. Interior duplicate slashes and trailing slashes are preserved verbatim,
- *     because some REST resources treat `/bonds//children` as significant. A
- *     run of **two or more** leading slashes is rejected rather than collapsed,
- *     because the URL parser reads `///bonds` as the origin `bonds`.
- *  3. Rejection is total and deterministic: every invalid input throws
- *     `ApiError` with `code: 'invalid_request_url'`, `status: 0`, and a
- *     redacted `payload`. No input can produce a silently wrong URL.
- */
 function normalizeApiPath(path: string): string {
   if (typeof path !== 'string') {
     throw invalidPathError('path must be a string', path)
   }
 
   const trimmed = path.trim()
-  if (!trimmed) {
-    throw invalidPathError('path must not be empty', path)
-  }
+  if (!trimmed) throw invalidPathError('path must not be empty', path)
   if (trimmed.startsWith('//')) {
-    // `fetch('//host/x')` resolves to `https://host/x` — a cross-origin
-    // request carrying every default header and credential cookie.
     throw invalidPathError('path must be relative, not origin-relative', path)
   }
   if (trimmed.includes('\\')) {
-    // The WHATWG URL parser treats `\` as `/` for special schemes, so
-    // `/\evil.com` also escapes the origin and `/a\..\b` silently traverses
-    // out of the API prefix.
     throw invalidPathError('path must not contain backslashes', path)
   }
   if (hasControlCharacters(trimmed)) {
     throw invalidPathError('path must not contain control characters', path)
   }
   if (trimmed.includes('#')) {
-    // `fetch('/bonds#x')` requests `/bonds`; the fragment is never sent. That
-    // is a silent wrong-resource fetch, which is worse than a hard failure.
     throw invalidPathError('path must not contain a URL fragment', path)
   }
 
   return `/${trimmed.replace(/^\/+/, '')}`
 }
 
-/**
- * Joins the API base and a request path into a single absolute-or-root-relative
- * request URL.
- *
- * Pure and deterministic: it reads no mutable module state beyond the
- * `baseUrl` default, so repeated calls with the same arguments are equal and
- * concurrent calls cannot interfere. `apiFetch` is the only production caller.
- *
- * The optional `baseUrl` argument exists so callers (and tests) can resolve
- * against an arbitrary prefix; it is re-normalized on every call, so even a raw
- * un-normalized `VITE_API_BASE_URL` cannot produce a cross-origin or
- * malformed URL. `normalizeBaseUrl` is a fixed point on already-valid bases,
- * so passing `API_BASE_URL` (the default) never warns.
- *
- * @throws {ApiError} `status: 0`, `code: 'invalid_request_url'` for any path
- * that would be silently rewritten or re-pointed by the URL parser.
- */
 export function buildUrl(path: string, baseUrl: string = API_BASE_URL): string {
   return `${normalizeBaseUrl(baseUrl)}${normalizeApiPath(path)}`
 }
 
 function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unknown> | unknown[] {
-  const isReadableStream = typeof ReadableStream !== 'undefined' && body instanceof ReadableStream
-
   return (
     Boolean(body) &&
     typeof body === 'object' &&
@@ -552,14 +407,10 @@ function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unkno
     !(body instanceof ArrayBuffer) &&
     !ArrayBuffer.isView(body) &&
     !(body instanceof URLSearchParams) &&
-    !isReadableStream
+    !(typeof ReadableStream !== 'undefined' && body instanceof ReadableStream)
   )
 }
 
-/**
- * Normalizes an {@link ApiAmountFields} spec into ordered `[field, rules]`
- * pairs (`undefined` rules = defaults).
- */
 function normalizeAmountFields(
   amountFields: ApiAmountFields | undefined
 ): Array<[string, AmountRules | undefined]> {
@@ -573,18 +424,6 @@ function normalizeAmountFields(
   ])
 }
 
-/**
- * Exact-amount gate for `apiFetch`.
- *
- * Returns the body to put on the wire: an untouched pass-through when no
- * `amountFields` are declared (byte-for-byte backwards compatible), or a
- * shallow copy with every declared amount field replaced by its canonical
- * decimal string. The caller's body object is never mutated, so a rejected
- * or failed request leaves no partial state behind.
- *
- * @throws {ApiAmountError} before any state change (rate-limit budget,
- * network) when the body shape is wrong or a declared amount is invalid.
- */
 function applyAmountFields(
   body: ApiFetchOptions['body'],
   amountFields: ApiAmountFields | undefined
@@ -607,21 +446,13 @@ function applyAmountFields(
     const hasField = Object.prototype.hasOwnProperty.call(record, field)
     const value = record[field]
     if (!hasField || value === undefined) {
-      throw new ApiAmountError(
-        field,
-        'MISSING',
-        `Declared amount field "${field}" is missing or undefined.`
-      )
+      throw new ApiAmountError(field, 'MISSING', `Declared amount field "${field}" is missing or undefined.`)
     }
     try {
       wireBody[field] = parseAmount(value as string | number | bigint, rules)
     } catch (error) {
       if (error instanceof AmountError) {
-        throw new ApiAmountError(
-          field,
-          error.code,
-          `Invalid amount for field "${field}": ${error.message}`
-        )
+        throw new ApiAmountError(field, error.code as ApiAmountErrorCode, `Invalid amount for field "${field}": ${error.message}`)
       }
       throw error
     }
@@ -715,6 +546,25 @@ export async function parseResponse(response: Response): Promise<unknown> {
   return trimmed
 }
 
+/** Maximum length of a server-provided error message we will surface verbatim. */
+const MAX_ERROR_MESSAGE_LENGTH = 500
+
+/**
+ * Extracts a deterministic, safe, user-visible error message from a failed
+ * response payload.
+ *
+ * Invariants:
+ * - Always returns a non-empty string, so callers can rely on
+ *   `new ApiError(status, message)` never producing an empty message.
+ * - Never throws: any shape of `payload` (null, primitives, arrays, objects
+ *   with getters that throw, cyclic structures) resolves to a fallback.
+ * - Never leaks unbounded or control-character-laden server content: string
+ *   messages are trimmed, stripped of control characters, and truncated to
+ *   {@link MAX_ERROR_MESSAGE_LENGTH}. This keeps logs and UI rendering
+ *   deterministic and prevents log-injection / terminal-escape attacks.
+ * - Prefers an explicit `message` string, then a `error` string, then a
+ *   non-empty string payload, then a status-derived fallback.
+ */
 function errorMessage(status: number, payload: unknown): string {
   if (
     payload &&
@@ -724,10 +574,32 @@ function errorMessage(status: number, payload: unknown): string {
   ) {
     return (payload as { message: string }).message
   }
-  if (typeof payload === 'string' && payload.trim()) {
-    return payload
   }
-  return 'Request failed with status ' + status
+const readStringField = (source: unknown, key: string): string | undefined => {
+    if (!source || typeof source !== 'object') return undefined
+    let raw: unknown
+    try {
+      raw = (source as Record<string, unknown>)[key]
+    } catch {
+      return undefined
+    }
+    if (typeof raw !== 'string') return undefined
+    const cleaned = sanitize(raw)
+    return cleaned || undefined
+  }
+
+  const fromMessage = readStringField(payload, 'message')
+  if (fromMessage) return fromMessage
+
+  const fromError = readStringField(payload, 'error')
+  if (fromError) return fromError
+
+  if (typeof payload === 'string') {
+    const cleaned = sanitize(payload)
+    if (cleaned) return cleaned
+  }
+
+  return `Request failed with status ${status}`
 }
 
 function requestFingerprint(
@@ -753,13 +625,9 @@ function requestFingerprint(
 }
 
 function replayConflict(key: string): ApiError {
-  return new ApiError(
-    409,
-    `Idempotency key has already been used for a different operation: ${key}`,
-    {
-      code: 'idempotency_key_conflict',
-    }
-  )
+  return new ApiError(409, `Idempotency key has already been used for a different operation: ${key}`, {
+    code: 'idempotency_key_conflict',
+  })
 }
 
 /**
@@ -794,11 +662,15 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   // Validate input size before expensive operations. Serializing an oversized
   // body is wasted work and could exhaust memory or downstream resources.
+  let serializedBody: BodyInit | undefined
   if (hasJsonBody) {
     const serialized = JSON.stringify(wireBody)
     if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
       throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
     }
+    serializedBody = serialized
+  } else {
+    serializedBody = wireBody ?? undefined
   }
 
   const serializedBody = hasJsonBody
@@ -808,49 +680,37 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
   const method = (init.method || 'GET').toUpperCase()
 
-  if (idempotencyKey !== undefined) {
-    const normalizedKey = idempotencyKey.trim()
-    if (!normalizedKey) {
-      throw new ApiError(400, 'Idempotency key must not be empty', {
-        code: 'invalid_idempotency_key',
-      })
-    }
+export function setIdentityEpoch(epoch?: number): number {
+  _identityEpoch = epoch ?? _identityEpoch + 1
+  return _identityEpoch
+}
 
     const existing = replayEntries.get(normalizedKey)
-    const url = buildUrl(path)
     const fingerprint = requestFingerprint(url, { ...init, method }, serializedBody, requestHeaders)
 
-    if (existing) {
-      if (existing.fingerprint !== fingerprint) {
-        throw replayConflict(normalizedKey)
-      }
-      return existing.promise as Promise<T>
-    }
+const rateLimitOverrides = readApiRateLimitOverrides({
+  VITE_API_RATE_LIMIT_MAX: env?.VITE_API_RATE_LIMIT_MAX,
+  VITE_API_RATE_LIMIT_WINDOW_MS: env?.VITE_API_RATE_LIMIT_WINDOW_MS,
+  VITE_API_RATE_LIMIT_ENABLED: env?.VITE_API_RATE_LIMIT_ENABLED,
+})
 
-    requestHeaders.set('Idempotency-Key', normalizedKey)
-    const requestPromise = apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody, {
-      correlationId,
-      path,
-      method,
-      skipRateLimit,
-      identityEpoch,
-    })
-    replayEntries.set(normalizedKey, { fingerprint, promise: requestPromise })
-    requestPromise.catch(() => {
-      if (replayEntries.get(normalizedKey)?.promise === requestPromise) {
-        replayEntries.delete(normalizedKey)
-      }
-    })
-    return requestPromise
-  }
+export const defaultApiRateLimiter = new ApiRateLimiter({
+  maxRequests: rateLimitOverrides.maxRequests ?? DEFAULT_API_RATE_LIMIT.maxRequests,
+  windowMs: rateLimitOverrides.windowMs ?? DEFAULT_API_RATE_LIMIT.windowMs,
+  enabled: rateLimitOverrides.enabled ?? DEFAULT_API_RATE_LIMIT.enabled,
+})
 
-  return apiFetchWithoutReplay<T>(buildUrl(path), init, requestHeaders, serializedBody, {
+  return apiFetchWithoutReplay<T>(url, init, requestHeaders, serializedBody, {
     correlationId,
     path,
     method,
     skipRateLimit,
     identityEpoch,
   })
+}
+
+export function resetApiRateLimiter(): void {
+  defaultApiRateLimiter.reset()
 }
 
 interface ApiFetchContext {
@@ -868,9 +728,6 @@ async function apiFetchWithoutReplay<T>(
   serializedBody: BodyInit | undefined,
   ctx: ApiFetchContext
 ): Promise<T> {
-  // Rate-limit gate: cheap O(k) sliding-window check before paying the cost
-  // of a fetch + DNS + TLS round-trip. When the bucket is empty we surface a
-  // typed ApiRateLimitError instead of letting a runaway loop slam prod.
   if (!ctx.skipRateLimit) {
     const decision = defaultApiRateLimiter.acquire()
     if (!decision.allowed) {
@@ -882,12 +739,6 @@ async function apiFetchWithoutReplay<T>(
     }
   }
 
-  // Pre-flight identity epoch check.
-  //
-  // If the caller supplied an epoch, verify it against the current module-
-  // level epoch before issuing the request. An epoch mismatch here means the
-  // session already changed (disconnect / reconnect / expiry) before this
-  // request even hit the network — reject immediately without dispatching.
   if (ctx.identityEpoch !== undefined && ctx.identityEpoch !== _identityEpoch) {
     throw new ApiSessionConflictError(
       ctx.identityEpoch,
@@ -904,6 +755,7 @@ async function apiFetchWithoutReplay<T>(
       body: serializedBody,
     })
   } catch (error) {
+    // Preserve AbortError unchanged — callers may inspect it directly.
     if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
       emitWalletSessionEvent('action_failed', {
         address: null,
@@ -913,6 +765,8 @@ async function apiFetchWithoutReplay<T>(
       })
       throw error
     }
+    // Network transport failure: wrap in ApiError with deterministic classification.
+
     const message = error instanceof Error ? error.message : 'Network request failed'
     emitWalletSessionEvent('action_failed', {
       address: null,
@@ -923,12 +777,6 @@ async function apiFetchWithoutReplay<T>(
     throw new ApiError(0, message, error, 'network_error')
   }
 
-  // Post-flight identity epoch check.
-  //
-  // The request was in-flight during an await. Check that the epoch has not
-  // advanced since the pre-flight check. If it has, the response belongs to a
-  // now-stale session and must be discarded. Reject with ApiSessionConflictError
-  // so the caller can decide whether to re-authenticate and retry.
   if (ctx.identityEpoch !== undefined && ctx.identityEpoch !== _identityEpoch) {
     throw new ApiSessionConflictError(
       ctx.identityEpoch,
@@ -958,4 +806,76 @@ async function apiFetchWithoutReplay<T>(
   })
 
   return payload as T
+}
+
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { body, headers, skipRateLimit, amountFields, idempotencyKey, identityEpoch, ...init } = options
+
+  const wireBody = applyAmountFields(body, amountFields)
+  const hasJsonBody = isJsonBody(wireBody)
+
+  let serializedBody: BodyInit | undefined
+  try {
+    serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (wireBody as BodyInit | undefined)
+  } catch (error) {
+    if (error instanceof TypeError) throw error
+    throw error
+  }
+
+  const url = buildUrl(path)
+  const requestHeaders = buildHeaders(headers, hasJsonBody, generateCorrelationId('api-fetch'))
+  const method = (init.method || 'GET').toUpperCase()
+
+  if (hasJsonBody) {
+    const serialized = JSON.stringify(wireBody)
+    if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
+      throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
+    }
+  }
+
+  if (idempotencyKey !== undefined) {
+    const normalizedKey = idempotencyKey.trim()
+    if (!normalizedKey) {
+      throw new ApiError(400, 'Idempotency key must not be empty', { code: 'invalid_idempotency_key' })
+    }
+
+    const existing = replayEntries.get(normalizedKey)
+    const fingerprint = requestFingerprint(url, { ...init, method }, serializedBody, requestHeaders)
+
+    if (existing) {
+      if (existing.fingerprint !== fingerprint) {
+        throw replayConflict(normalizedKey)
+      }
+      return existing.promise as Promise<T>
+    }
+
+    requestHeaders.set('Idempotency-Key', normalizedKey)
+    const requestPromise = apiFetchWithoutReplay<T>(url, { ...init, method }, requestHeaders, serializedBody, {
+      correlationId: requestHeaders.get('X-Correlation-ID') || generateCorrelationId('api-fetch'),
+      path,
+      method,
+      skipRateLimit,
+      identityEpoch,
+    })
+
+    replayEntries.set(normalizedKey, { fingerprint, promise: requestPromise })
+    requestPromise.catch(() => {
+      if (replayEntries.get(normalizedKey)?.promise === requestPromise) {
+        replayEntries.delete(normalizedKey)
+      }
+    })
+    return requestPromise
+  }
+
+  if (serializedBody !== undefined && hasJsonBody) {
+    requestHeaders.set('Content-Type', 'application/json')
+  }
+
+  return apiFetchWithoutReplay<T>(url, { ...init, method }, requestHeaders, serializedBody, {
+    correlationId: requestHeaders.get('X-Correlation-ID') || generateCorrelationId('api-fetch'),
+    path,
+    method,
+    skipRateLimit,
+    identityEpoch,
+  })
 }

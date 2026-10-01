@@ -31,7 +31,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | states/EmptyState       | Inline styles in `src/components/states/EmptyState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                                   |
 | states/ErrorState       | Inline styles in `src/components/states/ErrorState.tsx`                             | Owns inline styles and should be migrated to CSS.                                                                                   |
 | states/LoadingSkeleton  | Inline styles in `src/components/states/LoadingSkeleton.tsx`                        | Owns inline styles and should be migrated to CSS.                                                                                   |
-| SessionTimeoutDialog     | Inline styles in `src/components/SessionTimeoutDialog.tsx`                           | Uses `ConfirmDialog` primitive with internal warning styles.                                                                        |
+| SessionTimeoutDialog    | Inline styles in `src/components/SessionTimeoutDialog.tsx`                          | Uses `ConfirmDialog` primitive with internal warning styles.                                                                        |
 | ActionCard              | Inline styles in `src/components/ActionCard.tsx`                                    | Owns all inline styles; migrate to a CSS file when a module is added.                                                               |
 | VirtualizedList         | `src/components/VirtualizedList.tsx`                                                | No dedicated CSS file; uses consumer-provided layout and spacing.                                                                   |
 | Disclaimer              | `src/components/Disclaimer.css`                                                     | None.                                                                                                                               |
@@ -412,7 +412,7 @@ Tokens: `--credence-color-danger-text`, `--credence-color-success-text`, `--cred
 ```tsx
 import { FormField, Input } from '@/components/forms'
 
-<FormField id="amount" label="Bond amount" hint="Enter USDC" error={error} success={success}>
+;<FormField id="amount" label="Bond amount" hint="Enter USDC" error={error} success={success}>
   <Input value={amount} onChange={(e) => setAmount(e.target.value)} />
 </FormField>
 ```
@@ -423,10 +423,10 @@ Storybook: `Components/Forms/FormField` — **Default** · **WithHint** · **Wit
 
 Source: [`src/components/forms/Input.tsx`](../src/components/forms/Input.tsx).
 
-| Prop               | Type                                               | Default     |
-| ------------------ | -------------------------------------------------- | ----------- |
-| `compact`          | `boolean`                                          | `false`     |
-| Native input props | `InputHTMLAttributes<HTMLInputElement>` (forwarded)| —           |
+| Prop               | Type                                                | Default |
+| ------------------ | --------------------------------------------------- | ------- |
+| `compact`          | `boolean`                                           | `false` |
+| Native input props | `InputHTMLAttributes<HTMLInputElement>` (forwarded) | —       |
 
 Accessibility: forwards `id`, `aria-describedby`, `aria-invalid`, and `aria-required` from `FormField`. Use `compact` for short values (e.g. `HH:mm`). Prefer pairing with `FormField` rather than a standalone `aria-label` unless the control is icon-only or search-like with `srOnlyLabel`.
 
@@ -435,7 +435,7 @@ Tokens: border, danger, primary, slate, focus, font, motion, radius, spacing, su
 ```tsx
 import { FormField, Input } from '@/components/forms'
 
-<FormField id="quiet-start" label="Start time (HH:mm)" error={error}>
+;<FormField id="quiet-start" label="Start time (HH:mm)" error={error}>
   <Input compact value={start} onChange={(e) => setStart(e.target.value)} placeholder="22:00" />
 </FormField>
 ```
@@ -449,7 +449,7 @@ Source: [`src/components/forms/Textarea.tsx`](../src/components/forms/Textarea.t
 ```tsx
 import { FormField, Textarea } from '@/components/forms'
 
-<FormField id="evidence" label="Evidence" hint="Max 28 bytes" error={error} required>
+;<FormField id="evidence" label="Evidence" hint="Max 28 bytes" error={error} required>
   <Textarea value={evidence} onChange={(e) => setEvidence(e.target.value)} rows={4} />
 </FormField>
 ```
@@ -486,22 +486,64 @@ Storybook: `Components/Controls/Select` — **Default** · **Error** · **Disabl
 
 Source: [`src/components/controls/Toggle.tsx`](../src/components/controls/Toggle.tsx).
 
-| Prop        | Type                      | Default     |
-| ----------- | ------------------------- | ----------- |
-| `id`        | `string`                  | `undefined` |
-| `checked`   | `boolean`                 | Required    |
-| `onChange`  | `(next: boolean) => void` | Required    |
-| `ariaLabel` | `string`                  | `undefined` |
+| Prop             | Type                      | Default                                                                |
+| ---------------- | ------------------------- | ---------------------------------------------------------------------- |
+| `id`             | `string`                  | `undefined`                                                            |
+| `checked`        | `boolean`                 | Required                                                               |
+| `onChange`       | `(next: boolean) => void` | Required                                                               |
+| `ariaLabel`      | `string`                  | `undefined`                                                            |
+| `disabled`       | `boolean`                 | `undefined`                                                            |
+| `disabledReason` | `string`                  | `undefined`                                                            |
+| `isLoading`      | `boolean`                 | `false`                                                                |
+| `loadingLabel`   | `string`                  | `'Saving…'`                                                            |
+| `isStale`        | `boolean`                 | `false`                                                                |
+| `staleMessage`   | `string`                  | `'This value may be out of date. Refresh to confirm the saved value.'` |
+| `error`          | `string`                  | `undefined`                                                            |
+| `onRetry`        | `() => void`              | `undefined`                                                            |
+| `retryLabel`     | `string`                  | `'Retry'`                                                              |
 
-Accessibility: renders a native button with `role="switch"` and `aria-checked`; label it with `ariaLabel` or external labelling. Click toggles state; Space/Enter activation comes from button semantics.
+Controlled and stateless: the rendered value is always the `checked` prop, and
+`onChange` always emits its negation, so a rejected write can never leave a
+half-applied value on screen. It renders a native `type="button"` with
+`role="switch"` and `aria-checked`; label it with `ariaLabel` or an external
+label. Click, Space, and Enter all activate it.
+
+Adverse states:
+
+- `isLoading` disables the switch, sets `aria-busy`, hides the On/Off label
+  behind the spinner, and announces `loadingLabel` through a polite live
+  region. Interaction is refused inside the click handler as well as by the
+  `disabled` attribute.
+- `error` sets `aria-invalid` and renders the message with `role="alert"`,
+  linked through `aria-describedby`. When the caller already passes
+  `aria-describedby` (for example `FormField`, which renders its own message),
+  Toggle does not render a second copy.
+- `onRetry` renders a retry button next to a failed switch. It never flips the
+  value and is disabled while a request is in flight or the control is locked.
+- `isStale` annotates an unconfirmed/out-of-date value without disabling the
+  control, so a stale setting can still be corrected.
+- `disabled` + `disabledReason` explains a permission/read-only refusal as
+  visible, described text.
+
+The wrapper exposes `data-state` (`default | stale | disabled | error |
+loading`, in that reverse precedence) for styling and assertions. Failures are
+diagnosable from the rendered message; error copy must stay free of secrets,
+tokens, and addresses, since it is announced and displayed verbatim.
 
 Tokens: shared control CSS consumes border, primary, white, focus, font, line-height, motion, radius, spacing, surface, and text tokens.
 
 ```tsx
-<Toggle checked={toastsEnabled} onChange={setToastsEnabled} ariaLabel="Enable notifications" />
+<Toggle
+  checked={toastsEnabled}
+  onChange={setToastsEnabled}
+  ariaLabel="Enable notifications"
+  isLoading={isSaving}
+  error={saveError}
+  onRetry={retrySave}
+/>
 ```
 
-Storybook: `Components/Controls/Toggle` — **Off** · **On** · **Error** · **Disabled** · **Loading**.
+Storybook: `Components/Controls/Toggle` — **Off** · **On** · **Error** · **Disabled** · **DisabledWithReason** · **Loading** · **Stale** · **RetryableError**. Focused tests: `Toggle.test.tsx`, `Toggle.boundary.test.tsx`, `Toggle.recovery.test.tsx`.
 
 ## states/EmptyState
 

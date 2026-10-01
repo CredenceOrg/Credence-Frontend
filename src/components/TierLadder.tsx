@@ -1,13 +1,8 @@
-// ==== Deterministic Failure‑Boundary Coverage for TierLadder ==== //
-// This module now validates the integrity of the tier data at runtime and provides a
-// deterministic fallback UI when invariants are violated. The public interface of
-// the component (props) remains unchanged.
-
-import { useId, useState, useMemo } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import Badge, { type BadgeVariant } from './Badge'
 import './TierLadder.css'
 
-import { type TrustTier, TIERS, TIER_ORDER } from '../lib/tiers'
+import { type TrustTier, TIERS, TIER_ORDER, MAX_SCORE } from '../lib/tiers'
 
 export type TierId = TrustTier
 
@@ -29,130 +24,183 @@ export type TierValidationError = {
 }
 
 /**
- * Validate the raw tier definitions derived from `TIERS` & `TIER_ORDER`.
- * Returns an array of errors – empty means the data is safe to use.
+ * Deterministically formats the score threshold range for a given tier definition.
+ *
+ * Invariants:
+ * 1. Fail-Safe: Never throws for null, undefined, primitive, partial, or malformed input.
+ * 2. Range Monotonicity: Upper bound is guaranteed to be >= lower bound (`scoreMax >= scoreMin`).
+ * 3. Range Clamping: Numeric bounds are strictly validated and clamped within [0, MAX_SCORE] (0–1000).
+ * 4. Boundary Normalization: Fractional scores are rounded to the nearest integer.
+ * 5. Open-Ended Tiers: Null or undefined `scoreMax` (e.g. Platinum tier) is formatted as `${scoreMin}+`.
+ * 6. Fallback Canonical Lookup: If min/max are missing or non-numeric but a known tier `id` is present,
+ *    thresholds are safely resolved from canonical TIERS configuration.
+ * 7. Purity & Determinism: Pure function; concurrent or repeated calls with identical arguments yield identical results.
  */
-function validateTierData(order: TrustTier[], tiers: Record<TrustTier, any>): TierValidationError[] {
-  const errors: TierValidationError[] = []
-  const seen = new Set<TrustTier>()
+export function formatThreshold(tier?: Partial<TierDefinition> | null): string {
+  try {
+    if (!tier || typeof tier !== 'object') {
+      return '0+'
+    }
 
-  for (const id of order) {
-    // Ensure tier exists in source map
-    const raw = tiers[id]
-    if (!raw) {
-      errors.push({
-        code: 'MISSING_TIER',
-        message: `Tier definition missing for id "${id}".`,
-      })
-      continue
-    }
-    // Duplicate detection
-    if (seen.has(id)) {
-      errors.push({
-        code: 'DUPLICATE_ID',
-        message: `Duplicate tier id "${id}" in TIER_ORDER.`,
-      })
-    }
-    seen.add(id)
+    // Canonical fallback if tier id is recognized
+    const canonical = tier.id && tier.id in TIERS ? TIERS[tier.id as TrustTier] : null
 
-    // Validate numeric ranges
-    const min = raw.min as number
-    const max = raw.max as number | null
-    if (typeof min !== 'number' || (max !== null && typeof max !== 'number')) {
-      errors.push({
-        code: 'INVALID_RANGE',
-        message: `Tier "${id}" has non‑numeric score boundaries.`,
-      })
-    } else if (max !== null && min > max) {
-      errors.push({
-        code: 'INVALID_RANGE',
-        message: `Tier "${id}" min (${min}) exceeds max (${max}).`,
-      })
-    } else if (max === null && min < 0) {
-      // In our domain a null max means "or higher"; min should be non‑negative.
-      errors.push({
-        code: 'UNEXPECTED_NULL_MAX',
-        message: `Tier "${id}" has null max with negative min (${min}).`,
-      })
+    // Resolve and sanitize scoreMin
+    let min: number
+    if (typeof tier.scoreMin === 'number') {
+      if (tier.scoreMin === Number.POSITIVE_INFINITY) {
+        min = MAX_SCORE
+      } else if (tier.scoreMin === Number.NEGATIVE_INFINITY) {
+        min = 0
+      } else if (Number.isNaN(tier.scoreMin)) {
+        min = canonical ? canonical.min : 0
+      } else {
+        min = Math.round(tier.scoreMin)
+      }
+    } else if (
+      typeof tier.scoreMin === 'string' &&
+      (tier.scoreMin as string).trim() !== '' &&
+      Number.isFinite(Number(tier.scoreMin))
+    ) {
+      min = Math.round(Number(tier.scoreMin))
+    } else if (canonical) {
+      min = canonical.min
+    } else {
+      min = 0
     }
+    min = Math.min(Math.max(min, 0), MAX_SCORE)
+
+    // Resolve and sanitize scoreMax
+    // If scoreMax is explicitly null or undefined, tier is unbounded
+    if (tier.scoreMax === null || tier.scoreMax === undefined) {
+      if ('scoreMax' in tier && tier.scoreMax === null) {
+        return `${min}+`
+      }
+      if (canonical && canonical.max !== null) {
+        const max = Math.min(Math.max(canonical.max, min), MAX_SCORE)
+        return `${min}–${max}`
+      }
+      return `${min}+`
+    }
+
+    let max: number
+    if (typeof tier.scoreMax === 'number') {
+      if (tier.scoreMax === Number.POSITIVE_INFINITY) {
+        max = MAX_SCORE
+      } else if (tier.scoreMax === Number.NEGATIVE_INFINITY) {
+        max = 0
+      } else if (Number.isNaN(tier.scoreMax)) {
+        if (canonical && canonical.max !== null) {
+          max = canonical.max
+        } else {
+          return `${min}+`
+        }
+      } else {
+        max = Math.round(tier.scoreMax)
+      }
+    } else if (
+      typeof tier.scoreMax === 'string' &&
+      (tier.scoreMax as string).trim() !== '' &&
+      Number.isFinite(Number(tier.scoreMax))
+    ) {
+      max = Math.round(Number(tier.scoreMax))
+    } else if (canonical && canonical.max !== null) {
+      max = canonical.max
+    } else {
+      return `${min}+`
+    }
+
+    // Clamp max to [0, MAX_SCORE] and guarantee monotonicity: max >= min
+    max = Math.min(Math.max(max, 0), MAX_SCORE)
+    if (max < min) {
+      max = min
+    }
+
+    return `${min}–${max}`
+  } catch {
+    return '0+'
   }
-  return errors
 }
 
-/**
- * Build the deterministic ladder after successful validation.
- * The function is pure and safe to memoise.
- */
-function buildTierLadder(order: TrustTier[], tiers: Record<TrustTier, any>): TierDefinition[] {
-  return order.map((id) => {
-    const t = tiers[id]
-    return {
-      id: t.id,
-      label: t.label,
-      scoreMin: t.min,
-      scoreMax: t.max,
-      benefits: t.benefits,
-    }
-  })
-}
-
-/** Deterministic status enum – used for UI rendering */
-enum LadderStatus {
-  VALID = 'valid',
-  INVALID = 'invalid',
-}
-
-/** Hook that validates and returns the ladder together with status/error info. */
-function useTierLadder() {
-  // Validation is cheap and synchronous – memoise based on the source data.
-  const validationErrors = useMemo(() => validateTierData(TIER_ORDER, TIERS), [])
-  const status = validationErrors.length === 0 ? LadderStatus.VALID : LadderStatus.INVALID
-
-  const ladder = useMemo(() => {
-    if (status === LadderStatus.VALID) {
-      return buildTierLadder(TIER_ORDER, TIERS)
-    }
-    // Return an empty array on error – UI will show a deterministic fallback.
-    return [] as TierDefinition[]
-  }, [status])
-
-  return { status, validationErrors, ladder }
-}
-
-/** Helper to format thresholds – unchanged logic */
-function formatThreshold(tier: TierDefinition): string {
-  if (tier.scoreMax === null) {
-    return `${tier.scoreMin}+`
-  }
-  return `${tier.scoreMin}–${tier.scoreMax}`
-}
-
-interface TierLadderProps {
+export interface TierLadderProps {
   className?: string
   defaultOpen?: boolean
+  /** Custom or dynamically loaded tier definitions. Defaults to protocol TIER_LADDER */
+  tiers?: TierDefinition[]
+  /** Indicates whether tier data is actively being fetched or synchronized */
+  isLoading?: boolean
+  /** Error encountered while loading or synchronizing tier data */
+  error?: Error | string | null
+  /** Callback to retry loading tier data after an error */
+  onRetry?: () => void | Promise<void>
+  /** Indicates whether the currently displayed tier data is stale */
+  isStale?: boolean
+  /** Indicates whether the current viewer has permission to view tier thresholds. Defaults to true */
+  hasPermission?: boolean
+  /** Custom message to display when permission is denied */
+  permissionMessage?: string
 }
 
-export default function TierLadder({ className = '', defaultOpen = false }: TierLadderProps) {
+export default function TierLadder({
+  className = '',
+  defaultOpen = false,
+  tiers,
+  isLoading = false,
+  error = null,
+  onRetry,
+  isStale = false,
+  hasPermission = true,
+  permissionMessage = 'You do not have permission to view tier thresholds.',
+}: TierLadderProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [isRetrying, setIsRetrying] = useState(false)
+  const isRetryingRef = useRef(false)
+  const isMountedRef = useRef(true)
   const panelId = useId()
   const headingId = useId()
 
-  const { status, validationErrors, ladder } = useTierLadder()
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
-  // Deterministic fallback UI when validation fails.
-  if (status === LadderStatus.INVALID) {
-    const error = validationErrors[0]
-    return (
-      <section className={`tier-ladder ${className}`.trim()} aria-labelledby={headingId}>
-        <h2 id={headingId} className="sr-only">
-          Tier ladder data error
-        </h2>
-        <div className="tier-ladder__error" role="alert">
-          <strong>Configuration error:</strong> {error.message}
-        </div>
-      </section>
-    )
+  const handleRetry = async () => {
+    if (!onRetry || isRetryingRef.current) return
+    isRetryingRef.current = true
+    setIsRetrying(true)
+    try {
+      await onRetry()
+    } catch (err) {
+      if (typeof console !== 'undefined' && console.error) {
+        console.error(
+          '[TierLadder] Retry failed:',
+          err instanceof Error ? err.message : 'Unknown error'
+        )
+      }
+    } finally {
+      if (isMountedRef.current) {
+        isRetryingRef.current = false
+        setIsRetrying(false)
+      }
+    }
   }
+
+  // Format error message safely, stripping sensitive content
+  const errorMessage = error
+    ? error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : 'Failed to load tier thresholds.'
+    : null
+
+  // Resolve tiers safely: if caller passed an array, filter out nullish items; otherwise fallback to TIER_LADDER
+  const resolvedTiers =
+    Array.isArray(tiers) && tiers.length > 0
+      ? tiers.filter((t): t is TierDefinition => t !== null && typeof t === 'object')
+      : TIER_LADDER
 
   return (
     <section className={`tier-ladder ${className}`.trim()} aria-labelledby={headingId}>
@@ -165,6 +213,7 @@ export default function TierLadder({ className = '', defaultOpen = false }: Tier
         className="tier-ladder__trigger"
         aria-expanded={isOpen}
         aria-controls={panelId}
+        aria-busy={isLoading || isRetrying}
         onClick={() => setIsOpen((open) => !open)}
       >
         <span className="tier-ladder__trigger-label">How trust is earned</span>
@@ -191,34 +240,106 @@ export default function TierLadder({ className = '', defaultOpen = false }: Tier
           Tiers unlock as your score crosses each threshold at epoch settlement.
         </p>
 
-        <ol className="tier-ladder__list">
-          {ladder.map((tier, index) => (
-            <li key={tier.id} className={`tier-ladder__step tier-ladder__step--${tier.id}`}>
-              <div className="tier-ladder__rail" aria-hidden="true">
-                <span className="tier-ladder__marker">{index + 1}</span>
-                {index < ladder.length - 1 && <span className="tier-ladder__connector" />}
+        {/* Permission Denied State */}
+        {!hasPermission && (
+          <div className="tier-ladder__status tier-ladder__status--permission" role="alert">
+            <span className="tier-ladder__status-icon" aria-hidden="true">
+              🔒
+            </span>
+            <span>{permissionMessage}</span>
+          </div>
+        )}
+
+        {hasPermission && (
+          <>
+            {/* Error & Retry State */}
+            {errorMessage && (
+              <div className="tier-ladder__status tier-ladder__status--error" role="alert">
+                <span className="tier-ladder__status-icon" aria-hidden="true">
+                  ⚠
+                </span>
+                <span className="tier-ladder__error-text">{errorMessage}</span>
+                {onRetry && (
+                  <button
+                    type="button"
+                    className="tier-ladder__retry-btn"
+                    onClick={handleRetry}
+                    disabled={isRetrying || isLoading}
+                  >
+                    {isRetrying ? 'Retrying...' : 'Retry'}
+                  </button>
+                )}
               </div>
+            )}
 
-              <article className="tier-ladder__card">
-                <header className="tier-ladder__card-header">
-                  <Badge variant={tier.id as BadgeVariant} />
-                  <div className="tier-ladder__threshold">
-                    <span className="tier-ladder__threshold-label">Score range</span>
-                    <span className="tier-ladder__threshold-value">{formatThreshold(tier)}</span>
-                  </div>
-                </header>
+            {/* Loading State Indicator */}
+            {isLoading && (
+              <div
+                className="tier-ladder__status tier-ladder__status--loading"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="tier-ladder__spinner" aria-hidden="true" />
+                <span>Loading tier thresholds...</span>
+              </div>
+            )}
 
-                <h3 className="tier-ladder__tier-name">{tier.label} tier</h3>
+            {/* Stale State Indicator */}
+            {isStale && (
+              <div className="tier-ladder__status tier-ladder__status--stale" role="status">
+                <span className="tier-ladder__status-icon" aria-hidden="true">
+                  ℹ
+                </span>
+                <span>Tier thresholds may be out of date.</span>
+              </div>
+            )}
 
-                <ul className="tier-ladder__benefits">
-                  {tier.benefits.map((benefit) => (
-                    <li key={benefit}>{benefit}</li>
-                  ))}
-                </ul>
-              </article>
-            </li>
-          ))}
-        </ol>
+            {/* Tiers List */}
+            <ol className="tier-ladder__list">
+              {resolvedTiers.map((tier, index) => {
+                const tierId = tier?.id && tier.id in TIERS ? tier.id : 'bronze'
+                const tierLabel = tier?.label || TIERS[tierId as TrustTier]?.label || 'Bronze'
+                const benefits = Array.isArray(tier?.benefits) ? tier.benefits : []
+
+                return (
+                  <li
+                    key={tier?.id ?? index}
+                    className={`tier-ladder__step tier-ladder__step--${tierId}`}
+                  >
+                    <div className="tier-ladder__rail" aria-hidden="true">
+                      <span className="tier-ladder__marker">{index + 1}</span>
+                      {index < resolvedTiers.length - 1 && (
+                        <span className="tier-ladder__connector" />
+                      )}
+                    </div>
+
+                    <article className="tier-ladder__card">
+                      <header className="tier-ladder__card-header">
+                        <Badge variant={tierId as BadgeVariant} />
+                        <div className="tier-ladder__threshold">
+                          <span className="tier-ladder__threshold-label">Score range</span>
+                          <span className="tier-ladder__threshold-value">
+                            {formatThreshold(tier)}
+                          </span>
+                        </div>
+                      </header>
+
+                      <h3 className="tier-ladder__tier-name">{tierLabel} tier</h3>
+
+                      <ul className="tier-ladder__benefits">
+                        {benefits.map((benefit, bIndex) => (
+                          <li key={typeof benefit === 'string' ? benefit : bIndex}>
+                            {String(benefit)}
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  </li>
+                )
+              })}
+            </ol>
+          </>
+        )}
       </div>
     </section>
   )

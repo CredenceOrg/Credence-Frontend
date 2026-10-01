@@ -1,64 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './ThemeToggle.css'
 
-const THEME_STORAGE_KEY = 'theme'
-const THEME_CHANNEL_EVENT = 'theme-change'
-
-const DARK_QUERY = '(prefers-color-scheme: dark)'
-
-export type Theme = 'light' | 'dark'
-
-function isValidTheme(value: unknown): value is Theme {
-  return value === 'light' || value === 'dark'
-}
-
-/**
- * Safely read the persisted theme.
- *
- * Invariants:
-* - Never throws. Storage may be disabled (private mode, SecurityError,
- *   QuotaExceededError, etc.) or contain arbitrary corrupted data.
- * - Returns `undefined` for any value that is not exactly 'light' | 'dark'.
- *   Corrupt / injected values are never propagated into the DOM or state.
- */
-export function readPersistedTheme(): Theme | undefined {
-  if (typeof window === 'undefined') return undefined
-  try {
-    const saved = window.localStorage.getItem(THEME_STORAGE_KEY)
-    return isValidTheme(saved) ? saved : undefined
-  } catch {
-    return undefined
-  }
-}
-
-/**
- * Safely persist the theme. Failures are swallowed so a quota/security
- * error never breaks the toggle or loses the in-memory state.
- */
-export function persistTheme(theme: Theme): void {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
-  } catch {
-    // Persistence is best-effort; the in-memory theme remains authoritative.
-  }
-}
-
-function readOSPreference(): Theme {
-  if (typeof window === 'undefined') return 'light'
-  try {
-    if (typeof window.matchMedia !== 'function') return 'light'
-    return window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light'
-  } catch {
-    return 'light'
-  }
-}
-
-function resolveTheme(): Theme {
-  return readPersistedTheme() ?? readOSPreference()
-}
-
-function SunIcon() {
+// SunIcon renders the light-theme glyph. It is a pure, deterministic function of its props.
+// Invariants:
+//   - Always renders exactly one <svg> with the shared theme-toggle icon class.
+//   - Marked aria-hidden="true" so the accessible name comes from the button.
+//   - Never throws for any input; adverse conditions degrade to a valid SVG tree.
+export function SunIcon() {
   return (
     <svg
       className="theme-toggle__icon"
@@ -83,7 +31,7 @@ function SunIcon() {
   )
 }
 
-function MoonIcon() {
+export function MoonIcon() {
   return (
     <svg className="theme-toggle__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
       <path d="M12.03 2.26a.75.75 0 0 0-1.06.92 6 6 0 0 1 7.5 7.5.75.75 0 0 0 .92-1.06 7.5 7.5 0 0 0-7.36-7.36zM7.47 3.7A7 7 0 1 0 16.3 12.53a5.5 5.5 0 1 1-8.83-8.83z" />
@@ -165,6 +113,10 @@ export default function ThemeToggle() {
   // External consumers (e.g. the Settings context) can request a theme
   // change without duplicating the persistence / DOM invariants.
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
     const handleExternal = (event: Event) => {
       const detail = (event as CustomEvent<{ theme?: unknown }>).detail
       const next = detail?.theme
@@ -173,8 +125,8 @@ export default function ThemeToggle() {
       commitTheme(next)
     }
 
-    window.addEventListener(THEME_CHANGE_EVENT, handleExternal)
-    return () => window.removeEventListener(THEME_CHANGE_EVENT, handleExternal)
+    window.addEventListener(THEME_CHANNEL_EVENT, handleExternal)
+    return () => window.removeEventListener(THEME_CHANNEL_EVENT, handleExternal)
   }, [commitTheme])
 
   const toggleTheme = () => {
@@ -191,7 +143,7 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={`Switch to ${nextTheme} mode`}
       aria-pressed={theme === 'dark'}
-      title={`Switch to ${nextTheme} mode}`
+      title={`Switch to ${nextTheme} mode`}
     >
       {theme === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>

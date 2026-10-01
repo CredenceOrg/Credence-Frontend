@@ -16,16 +16,19 @@ export interface AddressInputProps {
   value: string
   onChange: (value: string) => void
   onValidationChange?: (isValid: boolean) => void
+  onBlur?: (value: string) => Promise<void> | void
   disabled?: boolean
-  className?: string
   /**
-   * External validation message (e.g. required-on-submit).
-   * Takes precedence over the built-in format error when provided.
+   * Renders the field in a busy state and suppresses interaction while a
+   * read/resolve is in flight. Never masks the user's current value.
    */
+  isLoading?: boolean
+  className?: string
   error?: string
   /**
    * Optional callback invoked when a clipboard read fails (permission denied,
-   * unavailable API, etc.) so callers can surface a diagnostic message.
+   * unavailable API, empty clipboard, etc.) so callers can surface a
+   * diagnostic message.
    */
   onPasteError?: (error: unknown) => void
   /**
@@ -137,7 +140,6 @@ function AddressInputInner({
         autoComplete="off"
         autoCapitalize="off"
       />
-
       <button
         type="button"
         onClick={handlePaste}
@@ -163,6 +165,8 @@ function AddressInputInner({
           />
         </svg>
       </button>
+      {pasteState === 'permission' && <div role="alert" className="paste-alert">Clipboard permission denied</div>}
+      {pasteState === 'stale' && <div role="alert" className="paste-alert">Paste content is stale</div>}
     </div>
   )
 }
@@ -173,7 +177,9 @@ export default function AddressInput({
   value,
   onChange,
   onValidationChange,
+  onBlur,
   disabled = false,
+  isLoading = false,
   className = '',
   error: externalError,
   onPasteError,
@@ -181,6 +187,7 @@ export default function AddressInput({
   onFocusRequest,
 }: AddressInputProps) {
   const { addressDisplay } = useSettings()
+  const isDisabled = disabled || isLoading
 
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -199,7 +206,7 @@ export default function AddressInput({
   const isValid = isValidStellarAddress(value)
   const isEmpty = !value
   const showError = attempted && !isValid && !isEmpty
-  const showSuccess = attempted && isValid
+  const showSuccess = attempted && isValid && blurState !== 'error' && blurState !== 'permission' && blurState !== 'stale'
 
   // Notify parent of validation state change. We key on the boolean
   // result and the callback identity so consumers can pass an inline
@@ -234,9 +241,10 @@ export default function AddressInput({
     }
   }
 
-  const handleBlur = () => {
+  const handleBlurEvent = () => {
     setFocused(false)
     setAttempted(true)
+    executeBlur(value)
   }
 
   /**
@@ -325,6 +333,8 @@ export default function AddressInput({
    * - Never overwrite the existing value with an empty clipboard result.
    * - Never clear or corrupt the existing value on failure.
    * - On failure, focus the input so the user can manually paste.
+   * - Always route accepted clipboard text through the shared sanitizer so a
+   *   `stellar:` prefix is stripped and suspicious characters are flagged.
    */
   const handlePaste = useCallback(async () => {
     try {
@@ -334,7 +344,6 @@ export default function AddressInput({
       setAttempted(true)
       setPasteFailed(false)
 
-      // Focus the input after paste
       if (inputRef.current) {
         inputRef.current.focus()
       }
@@ -348,7 +357,7 @@ export default function AddressInput({
         inputRef.current.focus()
       }
     }
-  }, [onChange, onPasteError])
+  }, [acceptSanitizedValue, onPasteError])
 
   const isChecksumError = showError && /^G[A-Z0-9]{55}$/.test(value)
   const formatError = showError
@@ -376,7 +385,6 @@ export default function AddressInput({
     formatError ??
     (pasteFailed ? 'Unable to read clipboard. Please paste manually.' : undefined)
   const hint = 'Stellar public key format (56 characters, starts with G)'
-  // Visual + FormField success only when format is valid and no external error.
   const successMessage = !externalError && showSuccess ? 'Valid Stellar address' : undefined
 
   return (
@@ -386,9 +394,9 @@ export default function AddressInput({
           inputRef={inputRef}
           value={value}
           onChange={handleChange}
-          onBlur={handleBlur}
+          onBlur={handleBlurEvent}
           onFocus={handleFocus}
-          disabled={disabled}
+          disabled={isDisabled}
           handlePaste={handlePaste}
           focused={focused}
           showError={Boolean(error)}
@@ -396,6 +404,27 @@ export default function AddressInput({
           focusState={focusState}
         />
       </FormField>
+      
+      {blurState === 'permission' && (
+        <div className="address-input-blur-error" role="alert" style={{ marginTop: '0.5rem', color: 'var(--color-error)' }}>
+          <strong>Permission Denied:</strong> {blurError}
+          <button type="button" onClick={handleRetry} style={{ marginLeft: '1rem', cursor: 'pointer', textDecoration: 'underline' }}>Retry</button>
+        </div>
+      )}
+      
+      {blurState === 'stale' && (
+        <div className="address-input-blur-error" role="alert" style={{ marginTop: '0.5rem', color: 'var(--color-warning)' }}>
+          <strong>Stale Data:</strong> {blurError}
+          <button type="button" onClick={handleRetry} style={{ marginLeft: '1rem', cursor: 'pointer', textDecoration: 'underline' }}>Retry</button>
+        </div>
+      )}
+      
+      {blurState === 'error' && (
+        <div className="address-input-blur-error" role="alert" style={{ marginTop: '0.5rem', color: 'var(--color-error)' }}>
+          <strong>Error:</strong> {blurError}
+          <button type="button" onClick={handleRetry} style={{ marginLeft: '1rem', cursor: 'pointer', textDecoration: 'underline' }}>Retry</button>
+        </div>
+      )}
 
       {/* Focus error boundary banner with retry button */}
       {showFocusError && (
@@ -421,8 +450,6 @@ export default function AddressInput({
           </code>
         </div>
       )}
-
-      {/* Character count hint */}
       {value && <div className="address-input-count">{value.length} / 56 characters</div>}
     </div>
   )

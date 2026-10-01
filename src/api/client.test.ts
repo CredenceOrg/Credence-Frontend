@@ -14,6 +14,7 @@ import {
   type ApiFetchOptions,
 } from './client'
 import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
+import { errorMessage } from './client'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -37,6 +38,39 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
   resetWalletAuditTrail()
+})
+
+describe('errorMessage', () => {
+  it('returns the message of an Error instance', () => {
+    expect(errorMessage(new Error('boom'))).toBe('boom')
+  })
+
+  it('returns the message of an ApiError subclass', () => {
+    expect(errorMessage(new ApiError(500, 'server exploded'))).toBe('server exploded')
+  })
+
+  it('returns a string thrown value verbatim', () => {
+    expect(errorMessage('string error')).toBe('string error')
+  })
+
+  it('returns a fallback for non-Error, non-string values', () => {
+    expect(errorMessage(undefined)).toBe('Something went wrong')
+    expect(errorMessage(null)).toBe('Something went wrong')
+    expect(errorMessage(42)).toBe('Something went wrong')
+    expect(errorMessage({ message: 'not an error' })).toBe('Something went wrong')
+  })
+
+  it('returns an empty-string message when the Error has an empty message', () => {
+    expect(errorMessage(new Error(''))).toBe('')
+  })
+
+  it('does not leak sensitive fields from the error object', () => {
+    const err = Object.assign(new Error('safe message'), {
+      token: 'secret-token',
+      password: 'hunter2',
+    })
+    expect(errorMessage(err)).toBe('safe message')
+  })
 })
 
 describe('apiFetch', () => {
@@ -759,6 +793,8 @@ describe('apiFetch pre-flight failure boundaries', () => {
       message: (first as ApiError).message,
     })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('commits one effect when a keyed operation is duplicated or reordered', async () => {
     const committedKeys = new Set<string>()
     fetchMock.mockImplementation(async (_url, init) => {

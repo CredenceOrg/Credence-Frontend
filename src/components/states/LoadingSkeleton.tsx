@@ -17,12 +17,32 @@ interface LoadingSkeletonProps {
   height?: string
 }
 
+const DEFAULT_ROWS = 3
+const MAX_SAFE_ROWS = 24
+
+function sanitizeRows(value: number | undefined): number {
+  if (!Number.isFinite(value) || !Number.isInteger(value)) return DEFAULT_ROWS
+  if (value <= 0) return DEFAULT_ROWS
+  return Math.min(value, MAX_SAFE_ROWS)
+}
+
+function sanitizeCssSize(value: string | undefined, fallback: string): string {
+  if (typeof value !== 'string') return fallback
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : fallback
+}
+
 export default function LoadingSkeleton({
   variant = 'text',
-  rows = 3,
+  rows = DEFAULT_ROWS,
   width = '100%',
   height,
 }: LoadingSkeletonProps) {
+  const safeVariant = typeof variant === 'string' ? variant : 'text'
+  const safeRows = sanitizeRows(rows)
+  const safeWidth = sanitizeCssSize(width, '100%')
+  const safeHeight = sanitizeCssSize(height, '4rem')
+
   // Honor prefers-reduced-motion at the JS layer: when the user requests reduced
   // motion we omit the shimmer animation entirely instead of relying on the
   // global CSS override. Components that control animation via inline styles
@@ -48,17 +68,17 @@ export default function LoadingSkeleton({
   // Existing variants — preserved AS IS to keep test expectations intact
   // -------------------------------------------------------------------------
 
-  if (variant === 'text') {
+  if (safeVariant === 'text') {
     return (
-      <div style={{ width }} role="status" aria-label="Loading">
-        {Array.from({ length: rows }).map((_, i) => (
+      <div style={{ width: safeWidth }} role="status" aria-label="Loading">
+        {Array.from({ length: safeRows }).map((_, i) => (
           <div
             key={i}
             style={{
               ...baseStyle,
               height: '1rem',
-              marginBottom: i < rows - 1 ? '0.75rem' : '0',
-              width: i === rows - 1 ? '60%' : '100%',
+              marginBottom: i < safeRows - 1 ? '0.75rem' : '0',
+              width: i === safeRows - 1 ? '60%' : '100%',
             }}
           />
         ))}
@@ -66,14 +86,14 @@ export default function LoadingSkeleton({
     )
   }
 
-  if (variant === 'card') {
+  if (safeVariant === 'card') {
     return (
       <div
         style={{
           border: '1px solid var(--credence-border-default)',
           borderRadius: 'var(--credence-radius-xl)',
           padding: 'var(--credence-space-6)',
-          width,
+          width: safeWidth,
         }}
         role="status"
         aria-label="Loading"
@@ -85,10 +105,10 @@ export default function LoadingSkeleton({
     )
   }
 
-  if (variant === 'form') {
+  if (safeVariant === 'form') {
     return (
-      <div style={{ width }} role="status" aria-label="Loading">
-        {Array.from({ length: rows }).map((_, i) => (
+      <div style={{ width: safeWidth }} role="status" aria-label="Loading">
+        {Array.from({ length: safeRows }).map((_, i) => (
           <div key={i} style={{ marginBottom: '1.5rem' }}>
             <div
               style={{ ...baseStyle, height: '0.875rem', width: '30%', marginBottom: '0.5rem' }}
@@ -100,30 +120,30 @@ export default function LoadingSkeleton({
     )
   }
 
-  if (variant === 'table') {
+  if (safeVariant === 'table') {
     return (
-      <div style={{ width }} role="status" aria-label="Loading">
+      <div style={{ width: safeWidth }} role="status" aria-label="Loading">
         <div style={{ ...baseStyle, height: '3rem', marginBottom: '0.5rem' }} />
-        {Array.from({ length: rows }).map((_, i) => (
+        {Array.from({ length: safeRows }).map((_, i) => (
           <div key={i} style={{ ...baseStyle, height: '3.5rem', marginBottom: '0.5rem' }} />
         ))}
       </div>
     )
   }
 
-  if (variant === 'dashboard') {
+  if (safeVariant === 'dashboard') {
     return (
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
           gap: '1rem',
-          width,
+          width: safeWidth,
         }}
         role="status"
         aria-label="Loading"
       >
-        {Array.from({ length: rows }).map((_, i) => (
+        {Array.from({ length: safeRows }).map((_, i) => (
           <div
             key={i}
             style={{
@@ -143,11 +163,11 @@ export default function LoadingSkeleton({
   // New variants — use CSS classes for styling
   // -------------------------------------------------------------------------
 
-  if (variant === 'stat-widget') {
+  if (safeVariant === 'stat-widget') {
     return (
       <div
         className="skeleton--stat-widget"
-        style={{ width }}
+        style={{ width: safeWidth }}
         role="status"
         aria-label="Loading"
       >
@@ -158,15 +178,15 @@ export default function LoadingSkeleton({
     )
   }
 
-  if (variant === 'list-row') {
+  if (safeVariant === 'list-row') {
     return (
       <div
         className="skeleton-wrapper"
-        style={{ width }}
+        style={{ width: safeWidth }}
         role="status"
         aria-label="Loading"
       >
-        {Array.from({ length: rows }).map((_, i) => (
+        {Array.from({ length: safeRows }).map((_, i) => (
           <div key={i} className="skeleton--list-row">
             <div className={`${baseClass} skeleton--list-avatar`} />
             <div className="skeleton--list-content">
@@ -180,15 +200,15 @@ export default function LoadingSkeleton({
     )
   }
 
-  if (variant === 'bond-row') {
+  if (safeVariant === 'bond-row') {
     return (
       <div
         className="skeleton-wrapper"
-        style={{ width }}
+        style={{ width: safeWidth }}
         role="status"
         aria-label="Loading"
       >
-        {Array.from({ length: rows }).map((_, i) => (
+        {Array.from({ length: safeRows }).map((_, i) => (
           <div key={i} className="skeleton--bond-row">
             <div className="skeleton--bond-left">
               <div className={`${baseClass} skeleton--bond-amount`} />
@@ -204,11 +224,11 @@ export default function LoadingSkeleton({
     )
   }
 
-  if (variant === 'trust-score') {
+  if (safeVariant === 'trust-score') {
     return (
       <div
         className="skeleton--trust-score-page"
-        style={{ width }}
+        style={{ width: safeWidth }}
         role="status"
         aria-label="Loading"
       >
@@ -217,7 +237,7 @@ export default function LoadingSkeleton({
           <div className={`${baseClass} skeleton--trust-tier-badge`} />
         </div>
         <div className="skeleton--trust-stats-row">
-          {Array.from({ length: rows }).map((_, i) => (
+          {Array.from({ length: safeRows }).map((_, i) => (
             <div key={i} className={`${baseClass} skeleton--trust-stat-card`} />
           ))}
         </div>
@@ -228,7 +248,7 @@ export default function LoadingSkeleton({
   // Fallback — generic block
   return (
     <div
-      style={{ ...baseStyle, width, height: height || '4rem' }}
+      style={{ ...baseStyle, width: safeWidth, height: safeHeight }}
       role="status"
       aria-label="Loading"
     />

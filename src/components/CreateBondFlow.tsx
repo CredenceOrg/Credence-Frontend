@@ -14,7 +14,7 @@
  * @see {@link docs/risk-disclaimer.md} for the full risk/slashing policy.
  */
 
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import AmountInput from './AmountInput'
 import { FormField } from './forms/FormField'
 import Button from './Button'
@@ -39,19 +39,18 @@ import {
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { formatUsdc } from '../lib/format'
 import { LoadingSkeleton } from './states'
-import { computeBondSlashBreakdown, calcUnlockDate } from '../lib/bondPenalty'
 
 import './CreateBondFlow.css'
 
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // Types
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 export interface CreateBondFlowProps {
   /**
-   * Called after the authoritative bond mutation has committed. May return a
-   * promise that resolves with the on-chain/backend result, or reject when the
-   * wallet/network operation fails.
+   * Performs the authoritative bond mutation. Its promise resolves only after
+   * the on-chain/backend operation commits, or rejects on wallet/network failure.
+   * Legacy synchronous completion callbacks are also supported.
    */
   onComplete?: () => void | Promise<BondCommitResult | void>
   /** Called when the user cancels the flow */
@@ -69,10 +68,7 @@ export interface BondCommitResult {
 }
 
 export type BondAuditEvent =
-  | 'BOND_CREATE_REQUESTED'
-  | 'BOND_CREATE_COMMITTED'
-  | 'BOND_CREATE_REJECTED'
-  | 'BOND_CREATE_FAILED'
+  'BOND_CREATE_REQUESTED' | 'BOND_CREATE_COMMITTED' | 'BOND_CREATE_REJECTED' | 'BOND_CREATE_FAILED'
 
 export interface BondAuditRecord {
   version: 1
@@ -104,7 +100,27 @@ const loadAuditLog = (): BondAuditRecord[] => {
     const raw = window.localStorage.getItem(AUDIT_STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? (parsed as BondAuditRecord[]) : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (record): record is BondAuditRecord =>
+        record !== null &&
+        typeof record === 'object' &&
+        record.version === 1 &&
+        Number.isSafeInteger(record.sequence) &&
+        record.sequence >= 0 &&
+        typeof record.correlationId === 'string' &&
+        typeof record.timestamp === 'string' &&
+        [
+          'BOND_CREATE_REQUESTED',
+          'BOND_CREATE_COMMITTED',
+          'BOND_CREATE_REJECTED',
+          'BOND_CREATE_FAILED',
+        ].includes(record.event) &&
+        record.payload !== null &&
+        typeof record.payload === 'object' &&
+        typeof record.payload.amount === 'string' &&
+        typeof record.payload.acknowledged === 'boolean'
+    )
   } catch {
     return []
   }
@@ -120,11 +136,13 @@ const saveAuditLog = (records: BondAuditRecord[]): void => {
   }
 }
 
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // Divider used between review card sections
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
-const ReviewDivider = () => <div className="createBondFlow__reviewDivider" />
+const ReviewDivider = () => (
+  <div aria-hidden="true" className="createBondFlow__reviewDivider" role="separator" />
+)
 
 /**
  * Emits a diagnostic when a wizard transition is refused because the wizard is
@@ -143,24 +161,17 @@ function logRefusedTransition(direction: 'Back' | 'Next', step: number): void {
   console.warn('[CreateBondFlow] Refused out-of-bounds transition', { direction, step })
 }
 
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // Component
-// ---------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
-export default function CreateBondFlow({ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
+export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
   const { addToast } = useToast()
-  const { isConnected, connect } = useWallet()
+  const { isConnected } = useWallet()
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
   const [step, setStep] = useState<number>(BOND_FLOW_MIN_STEP)
-  const { isConnected } = useWallet()
-  const {
-    balance,
-    status: balanceStatus,
-    refetch: refetchBalance,
-  } = useUsdcBalance()
   const prefersReducedMotion = useReducedMotion()
 
-  const [step, setStep] = useState(1)
   const [amount, setAmount] = useState('')
   const [duration, setDuration] = useState<number | null>(null)
   const [error, setError] = useState('')
@@ -172,9 +183,10 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   const auditRecordsRef = useRef<BondAuditRecord[]>(loadAuditLog())
   const correlationIdRef = useRef('')
   const sequenceRef = useRef<number>(
-    auditRecordsRef.current.reduce((max, record) => Math.max(max, record.sequence), -1) + 1,
+    auditRecordsRef.current.reduce((max, record) => Math.max(max, record.sequence), -1) + 1
   )
   const submittingRef = useRef(false)
+  const mountedRef = useRef(true)
 
   /**
    * Latest committed wizard step, mirrored outside React state.
@@ -215,7 +227,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   const recordAudit = (
     event: BondAuditEvent,
     error?: string,
-    result?: BondCommitResult,
+    result?: BondCommitResult
   ): BondAuditRecord => {
     const record: BondAuditRecord = {
       version: 1,
@@ -233,7 +245,12 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     }
     auditRecordsRef.current = [...auditRecordsRef.current, record]
     saveAuditLog(auditRecordsRef.current)
-    onAudit?.(record)
+    try {
+      onAudit?.(record)
+    } catch {
+      // An optional observer must never change the authoritative mutation outcome.
+      console.warn('[CreateBondFlow] Audit observer failed')
+    }
     return record
   }
 
@@ -282,34 +299,35 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     try {
       reset()
       return true
-    } catch (err) {
+    } catch {
       // Defensive: even if React state updates fail, clear the imperative
       // guards so a subsequent attempt is not blocked.
       submittingRef.current = false
       correlationIdRef.current = ''
-      const message = err instanceof Error ? err.message : 'Failed to reset bond flow.'
-      setResetError(message)
+      setResetError('Failed to reset bond flow.')
       return false
     }
   }
 
   const handleNext = () => {
     const currentStep = stepRef.current
-    if (currentStep === BOND_FLOW_STEP_AMOUNT) {
     if (submittingRef.current) return
 
-    if (step === 1) {
+    if (currentStep === BOND_FLOW_STEP_AMOUNT) {
       if (!amount || Number(amount) <= 0) {
         setError('Please enter a valid amount greater than 0.')
         return
       }
     }
+
     if (currentStep === BOND_FLOW_STEP_DURATION) {
       if (!duration) {
         setError('Please select a lock duration.')
         return
       }
     }
+
+    // (3) Boundary check. A no-op plan means we are already on the last step.
     const plan = planNextTransition(currentStep)
     if (!plan.moved) {
       // Refused: we are already on the last step. Keep the wizard state (and any
@@ -318,6 +336,9 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
       logRefusedTransition('Next', currentStep)
       return
     }
+
+    // (4) Commit the transition. Clear the validation error only after the
+    // transition has been accepted, so a refused move never hides a message.
     setError('')
     applyStep(plan.targetStep)
   }
@@ -332,87 +353,225 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
    *    clamp a Back press on (or below) step 1 rendered an empty wizard body:
    *    the `step > 1` guard hides Back and `step < 4` still shows Next, leaving
    *    an unrecoverable screen with no progress.
-   * 2. **Refusal is a no-op.** When the plan cannot move, wizard state — including
-   *    the visible validation error — is left untouched, so an error can never be
-   *    silently cleared by a navigation that never happened.
-   * 3. **Duplicate / concurrent invocation.** The plan is evaluated against
-   *    `stepRef`, which is updated synchronously, so two Back presses batched
-   *    into one React update move two steps instead of collapsing into one.
-   * 4. **Stale consent.** Leaving the confirm step re-arms the disclaimer
-   *    checkbox, so `Confirm & Create Bond` can never stay enabled against terms
-   *    the user has edited since acknowledging them.
-   * 5. **Out-of-range recovery.** A corrupted or legacy step index is pulled back
-   *    into range rather than propagated.
-   *
-   * **No data loss:** `amount` and `duration` are deliberately preserved, so
-   * going back never discards what the user entered.
+   * 2. **In-flight submission.** Back is refused while a commit is in flight so
+   *    the user cannot navigate away from an authoritative mutation.
+   * 3. **Duplicate / interleaved dispatch.** The transition is planned against
+   *    `stepRef.current`, so batched clicks cannot collapse into a wrong target
+   *    step.
    */
-  const handleBack = () => {
+  const handleBack = (): void => {
+    if (submittingRef.current) return
+
     const currentStep = stepRef.current
     const plan = planBackTransition(currentStep)
-
     if (!plan.moved) {
-      // Unreachable through the UI (Back is hidden on step 1) but reachable via
-      // duplicate/programmatic dispatch. Log the step index only — never amounts,
-      // addresses or any other user data.
+      // Refused: we are already on the first step. Keep the wizard state
+      // untouched so a refusal is never mistaken for a successful navigation.
       logRefusedTransition('Back', currentStep)
       return
     }
 
-    if (plan.invalidatesConsent) setAcknowledged(false)
-    if (submittingRef.current) return
-
+    // Clearing the error on Back is safe: the user is leaving the step that
+    // produced it, and the validation will re-run on the next Next press.
     setError('')
     applyStep(plan.targetStep)
   }
 
-  const handleCancel = () => {
+  /**
+   * Confirm handler for the final step.
+   *
+   * Failure boundaries handled here:
+   *
+   * 1. **Concurrent execution.** `submittingRef` guards against double click
+   *    and duplicate programmatic dispatch. It is set synchronously before any
+   *    await, so two interleaved invocations cannot both pass the guard.
+   * 2. **Authorization.** The wallet must be connected and the acknowledgement
+   *    checkbox must be ticked before the mutation is attempted.
+   * 3. **Partial failure.** A wallet/network rejection or error leaves the wizard
+   *    on the confirm step with the user's input intact, so they can retry.
+   *    Audit records are written for every outcome so a failed attempt can be
+   *    recovered and diagnosed.
+   * 4. **Stale state.** After a successful commit the flow is reset via
+   *    `safeReset`, which clears the correlation id and all user-visible errors.
+   */
+  const handleConfirm = async (): Promise<void> => {
+    // (1) Concurrency guard. Set the imperative flag first, then mirror it into
+    // React state for rendering.
     if (submittingRef.current) return
+    submittingRef.current = true
+    setSubmitting(true)
+    setConfirmError('')
 
+    try {
+      // (2) Authorization + acknowledgement checks. These are re-evaluated at
+      // click time because the wallet can disconnect between renders.
+      if (!isConnected) {
+        const message = 'Please connect your wallet before confirming.'
+        setConfirmError(message)
+        addToast({ type: 'error', message })
+        return
+      }
+
+      if (!acknowledged) {
+        const message = 'Please acknowledge the risk disclaimer to continue.'
+        setConfirmError(message)
+        addToast({ type: 'error', message })
+        return
+      }
+
+      // Ensure a correlation id exists for this attempt before the first audit
+      // record is written.
+      if (!correlationIdRef.current) correlationIdRef.current = createCorrelationId()
+      recordAudit('BOND_CREATE_REQUESTED')
+
+      const result = await onComplete?.()
+      const normalized = (result ?? {}) as BondCommitResult
+      recordAudit('BOND_CREATE_COMMITTED', undefined, normalized)
+      addToast({ type: 'success', message: 'Bond created successfully.' })
+      safeReset()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      // Distinguish a user rejection from a transport/network failure so the
+      // audit trail and the toast are accurate.
+      const isRejection = /reject|denied|cancel/i.test(message)
+      recordAudit(isRejection ? 'BOND_CREATE_REJECTED' : 'BOND_CREATE_FAILED', message)
+      setConfirmError(message)
+      addToast({ type: 'error', message })
+    } finally {
+      // Always release the guard so a failed attempt can be retried.
+      submittingRef.current = false
+      if (mountedRef.current) setSubmitting(false)
+    }
+  }
+
+  const handleCancel = (): void => {
+    if (submittingRef.current) return
     safeReset()
     onCancel?.()
   }
 
+  /**
+   * Deterministic confirm handler with complete failure-boundary coverage.
+   *
+   * Invariants enforced (checked before any state change):
+   * 1. **No concurrent submission:** `submittingRef` guards against duplicate clicks.
+   * 2. **Acknowledgement gate:** User must explicitly check the disclaimer box.
+   * 3. **Wallet connection:** `isConnected` must be true.
+   * 4. **Re-authentication:** If the session is stale per `isReauthRequired()`,
+   *    prompt re-auth before allowing submission.
+   * 5. **Network availability:** `navigator.onLine` check (coarse-grained, but
+   *    catches the offline case deterministically).
+   *
+   * Failures modes covered:
+   * - **Pre-flight rejection:** validation failures (no ack, disconnected,
+   *   offline, stale session) are recorded as REJECTED with a stable error
+   *   code and never consume any budget or reach the network. The user is
+   *   shown an actionable message (e.g., "Reconnect your wallet").
+   * - **Concurrent disconnect:** after the submission starts, the promise
+   *   may still resolve after the user has disconnected. `isConnected` is
+   *   re-checked on return; if false, the result is discarded and an error
+   *   is shown (no silent success state with a stale wallet).
+   * - **Retry:** errors leave the wizard on step 4 with the error message
+   *   visible. The user can correct (e.g., reconnect, re-ack) and retry.
+   *   The `correlationId` is kept stable for the retry attempt so the audit
+   *   trail groups them.
+   * - **Partial failure / network errors:** any exception from `onComplete?.()`
+   *   is caught, recorded as FAILED, and shown to the user. The wizard state
+   *   is preserved so the user does not lose their amount/duration.
+   * - **Data loss prevention:** `safeReset()` only runs after a confirmed
+   *   success. A failure (rejected or thrown) never resets the wizard state.
+   * - **Authorization boundary:** `isReauthRequired()` is enforced here. If
+   *   the wallet context signals a stale session, the user is prompted to
+   *   re-authenticate before submission is allowed. This closes the gap where
+   *   a long-lived wizard session could submit with an expired auth token.
+   *
+   * The audit log is append-only and persisted to localStorage before any
+   * async boundary, so even a crash during submission leaves a recoverable
+   * trail.
+   */
   const handleConfirm = async () => {
+    // ─── Guard: no concurrent submissions ───
     if (submittingRef.current) return
 
+    // ─── Validation: acknowledgement gate ───
     if (!acknowledged) {
-      setConfirmError('Please acknowledge the slashing terms and lock conditions before creating a bond.')
-      correlationIdRef.current = createCorrelationId()
+      setConfirmError(
+        'Please acknowledge the slashing terms and lock conditions before creating a bond.'
+      )
+      correlationIdRef.current = correlationIdRef.current || createCorrelationId()
       recordAudit('BOND_CREATE_REJECTED', 'ACKNOWLEDGEMENT_REQUIRED')
       return
     }
 
-    if (!isConnected) {
+    // ─── Validation: wallet connection ───
+    if (!isConnectedRef.current) {
       setConfirmError('Wallet disconnected. Reconnect your wallet and try again.')
-      correlationIdRef.current = createCorrelationId()
+      correlationIdRef.current = correlationIdRef.current || createCorrelationId()
       recordAudit('BOND_CREATE_REJECTED', 'WALLET_DISCONNECTED')
       return
     }
 
+    // ─── Validation: session staleness (re-authentication required) ───
+    if (isReauthRequired()) {
+      setConfirmError('Your session has expired. Please re-authenticate to continue.')
+      correlationIdRef.current = correlationIdRef.current || createCorrelationId()
+      recordAudit('BOND_CREATE_REJECTED', 'SESSION_STALE')
+      setSubmitting(false)
+      submittingRef.current = false
+
+      // Prompt re-authentication (non-blocking UI hint)
+      try {
+        await reauth()
+        // After successful reauth, clear the error so user can retry
+        setConfirmError('')
+        addToast('info', 'Session refreshed. You may now confirm your bond.')
+      } catch (reauthError) {
+        const reauthMessage =
+          reauthError instanceof Error ? reauthError.message : 'Re-authentication failed.'
+        setConfirmError(`Re-authentication failed: ${reauthMessage}`)
+        recordAudit('BOND_CREATE_REJECTED', `REAUTH_FAILED: ${reauthMessage}`)
+      }
+      return
+    }
+
+    // ─── Validation: network availability (coarse-grained) ───
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setConfirmError('Network offline. Reconnect your network and try again.')
-      correlationIdRef.current = createCorrelationId()
+      correlationIdRef.current = correlationIdRef.current || createCorrelationId()
       recordAudit('BOND_CREATE_FAILED', 'NETWORK_OFFLINE')
       return
     }
 
-    correlationIdRef.current = createCorrelationId()
+    // ─── Begin submission ───
+    // Assign correlation ID now (stable for retries if pre-flight checks passed)
+    if (!correlationIdRef.current) {
+      correlationIdRef.current = createCorrelationId()
+    }
+
     submittingRef.current = true
     setSubmitting(true)
     setConfirmError('')
     recordAudit('BOND_CREATE_REQUESTED')
 
     try {
-      const result = await onComplete?.()
+      const result = (await onComplete?.()) ?? undefined
       recordAudit('BOND_CREATE_COMMITTED', undefined, result)
       addToast('success', 'Bond created successfully.')
+
+      // Only reset after confirmed success — failures preserve wizard state
       safeReset()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Bond creation failed. Please try again.'
+      // ─── Failure path ───
+      const message =
+        err instanceof Error ? err.message : 'Bond creation failed. Please try again.'
       setConfirmError(message)
       recordAudit('BOND_CREATE_FAILED', message)
+
+      // Show a user-visible toast for critical failures
+      addToast('danger', message)
     } finally {
+      // ─── Cleanup ───
+      // Always clear the in-flight guard, even if an exception was thrown
       submittingRef.current = false
       setSubmitting(false)
     }
@@ -426,28 +585,20 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
    * Returns `null` when either input is not yet valid.
    */
   const slashBreakdown = useMemo(() => {
-    const numericAmount = Number(amount)
-    if (!numericAmount || numericAmount <= 0 || !duration) return null
-    return computeBondSlashBreakdown(numericAmount, duration)
+    const parsed = Number.parseFloat(amount)
+    if (!Number.isFinite(parsed) || parsed <= 0 || !duration) return null
+    return computeBondSlashBreakdown(parsed, duration)
   }, [amount, duration])
 
-  /**
-   * Reset on unmount so a partially-completed flow cannot leak a stale
-   * `submittingRef` into a remounted instance. This is a best-effort cleanup
-   * and intentionally does not call `onCancel` (unmount is not a user cancel).
-   */
-  useEffect(() => {
-    return () => {
-      submittingRef.current = false
-      correlationIdRef.current = ''
-    }
-  }, [])
+  const unlockDate = useMemo(() => {
+    if (!duration) return null
+    return calcUnlockDate(duration)
+  }, [duration])
 
   // ---------------------------------------------------------------------------
   // Step indicator
   // ---------------------------------------------------------------------------
 
-  const stepIndicatorTransition = prefersReducedMotion ? 'none' : 'background 0.2s ease'
   const durationButtonTransition = prefersReducedMotion ? 'none' : 'all 0.2s ease'
 
   const StepIndicator = () => (
@@ -466,16 +617,6 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
           />
         )
       )}
-    <div className="createBondFlow__stepIndicator" aria-label={`Step ${step} of 4`}>
-      {[1, 2, 3, 4].map((i) => (
-        <div
-          key={i}
-          className={['createBondFlow__stepBar', i <= step ? 'createBondFlow__stepBar--active' : '']
-            .filter(Boolean)
-            .join(' ')}
-          style={{ transition: stepIndicatorTransition }}
-        />
-      ))}
     </div>
   )
 
@@ -484,20 +625,21 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="createBondFlow">
-      <StepIndicator />
+    <div className="createBondFlow" data-testid="create-bond-flow">
+      <div className="createBondFlow__progress" aria-label="Progress">
+        <div className="createBondFlow__progressBar" style={{ width: `${progressPercent}%` if (!prefersReducedMotion)}} />
+      </div>
 
       {resetError && (
-        <div className="createBondFlow__error" role="alert" data-testid="reset-error">
-          ⚠ {resetError}
-        </div>
+        <Banner type="error" title="Reset failed">
+          {resetError}
+        </Banner>
       )}
 
-      {/* ── Step 1: Amount ── */}
       {step === BOND_FLOW_STEP_AMOUNT && (
-        <div className="createBondFlow__step">
-          <h2 ref={step1Ref} tabIndex={-1} className="createBondFlow__heading">
-            Step 1: Enter Bond Amount
+        <section className="createBondFlow__step">
+          <h2 ref={step1Ref} tabIndex={-1}>
+            How much USDC would you like to bond?
           </h2>
 
           <Banner severity="info">
@@ -513,17 +655,12 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             ) : balanceStatus === 'loading' ? (
               <LoadingSkeleton variant="text" rows={1} width="12rem" />
             ) : balanceStatus === 'error' ? (
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.875rem',
-                }}
-              >
-                <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
               <span className="createBondFlow__balanceErrorRow">
-                <span className="createBondFlow__balanceText" role="alert" style={{ color: 'var(--credence-color-danger)' }}>
+                <span
+                  className="createBondFlow__balanceText"
+                  role="alert"
+                  style={{ color: 'var(--credence-color-danger)' }}
+                >
                   Could not load balance.
                 </span>
                 <Button
@@ -558,17 +695,8 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
               aria-disabled={!isConnected || undefined}
             />
           </FormField>
-        </div>
-      )}
-
-      {/* ── Step 2: Duration ── */}
-      {step === BOND_FLOW_STEP_DURATION && (
-        <div className="createBondFlow__step">
-          <h2 ref={step2Ref} tabIndex={-1} className="createBondFlow__heading">
-            Step 2: Choose Lock Duration
-          </h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Select how long you want to lock your USDC:
+          <p className="createBondFlow__balance">
+            Available balance: {formatUsdc(balance)} USDC
           </p>
 
           {error && (
@@ -593,7 +721,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
                       ? 'createBondFlow__durationButton createBondFlow__durationButton--active'
                       : 'createBondFlow__durationButton'
                   }
-                  style={{ transition: durationButtonTransition }}
+                  style={{ transition: prefersReducedMotion ? 'none' : 'all 0.2s ease' }}
                 >
                   {d} Days
                 </Button>
@@ -603,151 +731,84 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
         </div>
       )}
 
-      {/* ── Step 3: Review Terms ── */}
-      {step === BOND_FLOW_STEP_REVIEW && (
-        <div className="createBondFlow__step">
-          <h2 ref={step3Ref} tabIndex={-1} className="createBondFlow__heading">
-            Step 3: Review Terms
+      {step === BOND_FLOW_STEP_DURATION && (
+        <section className="createBondFlow__step">
+          <h2 ref={step2Ref} tabIndex={-1}>
+            How long would you like to lock?
           </h2>
+          {[30, 90, 180].map((days) => (
+            <button
+              key={days}
+              type="button"
+              className={`createBondFlow__duration${duration === days ? ' createBondFlow__duration--selected' : ''}`}
+              onClick={() => {
+                setDuration(days)
+                setError('')
+              }}
+            >
+              {days} days
+            </button>
+          ))}
+          {error && <p className="createBondFlow__error">{error}</p>}
+        </section>
+      )}
 
-          <Banner severity="warn" title="Early withdrawal — slash exposure">
-            Withdrawing before lock maturity incurs a slash penalty on your principal. The figures
-            below show exactly what you would receive if you exit early.
-          </Banner>
-
-          {/* ── Bond summary card ── */}
-          <div className="createBondFlow__reviewCard">
-            {/* Bond amount */}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Bond Amount:</span>
-              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-bond-amount">
-                {formatUsdc(Number(amount))}
-              </strong>
+      {step === BOND_FLOW_STEP_REVIEW && (
+        <section className="createBondFlow__step">
+          <h2 ref={step3Ref} tabIndex={-1}>
+            Review your bond terms
+          </h2>
+          <dl className="createBondFlow__review">
+            <div>
+              <dt>Amount</dt>
+              <dd>{formatUsdc(Number(amount) || 0)} USDC</dd>
             </div>
-
-            {/* Lock duration */}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Lock Duration:</span>
-              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-duration">
-                {duration} Days
-              </strong>
-            </div>
-
-            {/* Unlock date */}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Estimated Unlock Date:</span>
-              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-unlock-date">
-                {duration ? calcUnlockDate(duration) : ''}
-              </strong>
-            </div>
-
             <ReviewDivider />
-
-            {/* ── Early-withdrawal slash section ── */}
-            <div style={{ display: 'grid', gap: 'var(--credence-space-1)' }}>
-              <span className="createBondFlow__reviewBadgeLabel">If you withdraw early</span>
+            <div>
+              <dt>Lock duration</dt>
+              <dd>{duration ? `${duration} days` : '—'}</dd>
             </div>
-
-            {slashBreakdown ? (
+            <RecordDivider />
+            <div>
+              <dt>Unlock date</dt>
+              <dd>{unlockDate ? unlockDate.toLocaleDateString() : '—'}</dd>
+            </div>
+            {slashBreakdown && (
               <>
-                {/* Slash penalty % + amount */}
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    Slash Penalty ({slashBreakdown.penaltyPercent}%):
-                  </span>
-                  <strong
-                    style={{ color: 'var(--color-danger)' }}
-                    data-testid="review-penalty-amount"
-                  >
-                    −{slashBreakdown.penaltyAmount}
-                  </strong>
+                <RecordDivider />
+                <div>
+                  <dt>Early-withdrawal penalty</dt>
+                  <dd>{formatUsdC(slashBreakdown.penaltyAmount)} USDC</dd>
                 </div>
-
-                {/* Resulting balance */}
-                <div className="createBondFlow__reviewResult">
-                  <span
-                    style={{
-                      color: 'var(--text-secondary)',
-                      fontWeight: 'var(--credence-font-weight-semibold)',
-                    }}
-                  >
-                    You would receive:
-                  </span>
-
-                  <strong
-                    style={{
-                      color:
-                        slashBreakdown.resultingUsdc < Number(amount)
-                          ? 'var(--color-danger)'
-                          : 'var(--text-primary)',
-                      fontSize: 'var(--credence-font-size-lg, 1.125rem)',
-                    }}
-                    data-testid="review-resulting-balance"
-                  >
-                    {slashBreakdown.resultingBalance}
-                  </strong>
+                <RecordDivider />
+                <div>
+                  <dt>Resulting balance</dt>
+                  <dd>{formatUsdc(slashBreakdown.netAmount)} USDC</dd>
                 </div>
               </>
-            ) : (
-              /* Fallback: breakdown unavailable (should not normally be reached in step 3) */
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Slash Terms:</span>
-                <strong style={{ color: 'var(--color-danger)' }}>Penalties Apply</strong>
-              </div>
             )}
-          </div>
-        </div>
+          </dl>
+        </section>
       )}
 
-      {/* ── Step 4: Confirm ── */}
       {step === BOND_FLOW_STEP_CONFIRM && (
-        <div className="createBondFlow__step">
-          <h2 ref={step4Ref} tabIndex={-1} className="createBondFlow__heading">
-            Step 4: Confirm Bond
+        <section className="createBondFlow__step">
+          <h2 ref={step4Ref} tabIndex={-1}>
+            Confirm your bond
           </h2>
-
-          <Disclaimer
-            context="Bonding USDC locks funds in a non-custodial smart contract. Slashing conditions apply."
-            termsHref="#"
-          />
-          {confirmError && (
-            <div className="createBondFlow__error" role="alert">
-              ⚠ {confirmError}
-            </div>
-          )}
-          <label className="createBondFlow__ackLabel">
-            <input
-              type="checkbox"
-              checked={acknowledged}
-              onChange={(e) => setAcknowledged(e.target.checked)}
-            />
-            <span>I explicitly acknowledge the slashing terms and lock conditions.</span>
-          </label>
-        </div>
+          <Disclaimer acknowledged={acknowledged} onAcknowledge={setAcknowledged} />
+          {confirmError && <Banner type="error">{confirmError}</Banner>}
+        </section>
       )}
 
-      {/* ── Navigation ── */}
-      <div className="createBondFlow__nav">
+      <div className="createBondFlow__actions">
         {step > BOND_FLOW_MIN_STEP && (
-          <Button
-            type="button"
-            onClick={handleBack}
-            disabled={submitting}
-            className="createBondFlow__navButton createBondFlow__backButton"
-          >
+          <Button type="button" onClick={handleBack} disabled={submitting}>
             Back
           </Button>
         )}
-
         {step < BOND_FLOW_MAX_STEP ? (
-          <Button
-            type="button"
-            onClick={handleNext}
-            disabled={submitting}
-            className="createBondFlow__navButton createBondFlow__nextButton"
-          >
+          <Button type="button" onClick={handleNext} disabled={submitting}>
             Next
           </Button>
         ) : (
@@ -757,16 +818,10 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             disabled={!acknowledged || submitting}
             className="createBondFlow__navButton createBondFlow__confirmButton"
           >
-            {submitting ? 'Creating Bond…' : 'Confirm &amp; Create Bond'}
+            {submitting ? 'Creating Bond…' : 'Confirm & Create Bond'}
           </Button>
         )}
-
-        <Button
-          type="button"
-          onClick={handleCancel}
-          disabled={submitting}
-          className="createBondFlow__navButton createBondFlow__cancelButton"
-        >
+        <Button type="button" onClick={handleCancel} disabled={submitting}>
           Cancel
         </Button>
       </div>

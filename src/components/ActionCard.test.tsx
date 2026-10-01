@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ActionCard from './ActionCard'
 
@@ -22,12 +22,14 @@ vi.mock('../hooks/useCopyToClipboard', () => ({
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { defaultValue?: string }) => {
       const translations: Record<string, string> = {
         'dashboard.copyLink': 'Copy link to this card',
         'dashboard.linkCopied': 'Link copied to clipboard',
+        'dashboard.linkCopyFailed': 'Unable to copy link',
+        'dashboard.closeCard': 'Close card',
       }
-      return translations[key] || key
+      return translations[key] || options?.defaultValue || key
     },
   }),
 }))
@@ -94,12 +96,62 @@ describe('ActionCard', () => {
   it('does not render a copy-link button when shareableLink is omitted', () => {
     render(<ActionCard title="Test Title">Content</ActionCard>)
 
-    expect(screen.queryByRole('button', { name: 'Copy link to this card' })).not.toBeInTheDocument()
+    expect(screen.queryButton('Copy link to this card')).not.toBeInTheDocument()
   })
 
-  it('does not show toast when copy fails', async () => {
+  it('shows an error toast and invokes onCopyError when copy returns false', async () => {
     const user = userEvent.setup()
+    const onCopyError = vi.fn()
     mockCopy.mockResolvedValue(false)
+
+    render(
+      <ActionCard
+        title="Test Title"
+        shareableLink="https://example.com/dashboard?widget=test"
+        onCopyError={onCopyError}
+      >
+        Content
+      </ActionCard>
+    )
+
+    await user.click(screen.getByButton('Copy link to this card'))
+
+    expect(mockCopy).toHaveBeenCalledTimes(1)
+    expect(mockAddToast).toHaveBeenCalledWith('error', 'Unable to copy link')
+    expect(onCopyError).toHaveBeenCalledOnce()
+  })
+
+  it('shows an error toast and invokes onCopyError when copy rejects', async () => {
+    const user = userEvent.setup()
+    const onCopyError = vi.fn()
+    const failure = new Error('clipboard denied')
+    mockCopy.mockRejected(failure)
+
+    render(
+      <ActionCard
+        title="Test Title"
+        shareableLink="https://example.com/dashboard?widget=test"
+        onCopyError={onCopyError}
+      >
+        Content
+      </ActionCard>
+    )
+
+    await user.click(screen.getButton('Copy link to this card'))
+
+    expect(mockAddToast).toHaveBeenCalledWith('error', 'Unable to copy link')
+    expect(onCopyError).toHaveBeenCalledWith(failure)
+  })
+
+  it('swallows concurrent clicks while a copy is in flight', async () => {
+    const user = userEvent.setup()
+    let resolveCopy: ((value: boolean) => void) | undefined
+    mockCopy.mockImplementation(
+      () =>
+        new Promise<boolean~((resolve) => {
+          resolveCopy = resolve
+        })
+    )
 
     render(
       <ActionCard title="Test Title" shareableLink="https://example.com/dashboard?widget=test">
@@ -107,10 +159,14 @@ describe('ActionCard', () => {
       </ActionCard>
     )
 
-    await user.click(screen.getByRole('button', { name: 'Copy link to this card' }))
+    const copyButton = screen.getButton('Copy link to this card')
+    await user.click(copyButton)
+    await user.click(copyButton)
 
     expect(mockCopy).toHaveBeenCalledTimes(1)
-    expect(mockAddToast).not.toHaveBeenCalled()
+
+    resolveCopy?.(true)
+    await waitFor(() => expect(mockAddToast).toHaveBeenCalledTimes(1))
   })
 
   it('renders a beta ribbon when isEarlyAccess is true', () => {
@@ -130,10 +186,81 @@ describe('ActionCard', () => {
         Content
       </ActionCard>
     )
-    const closeBtn = screen.getByRole('button', { name: 'Close card' })
+    const closeBtn = screen.getByButton('Close card')
     expect(closeBtn).toBeInTheDocument()
 
     await user.click(closeBtn)
     expect(onDismiss).toHaveBeenCalledTimes(1)
+  })
+
+  describe('touch gestures (boundary and recovery)', () => {
+    it('dismisses when swiped right beyond threshold', () => {
+      const onDismiss = vi.fn()
+      const { container } = render(
+        <ActionCard title="Test" onDismiss={onDismiss}>
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchStart(article, { touches: [{ clientX: 0 }] })
+      fireEvent.touchMove(article, { touches: [{ clientX: 101 }] })
+      fireEvent.touchEnd(article)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    })
+
+    it('dismisses when swiped left beyond threshold', () => {
+      const onDismiss = vi.fn()
+      const { container } = render(
+        <ActionCard title="Test" onDismiss={onDismiss}>
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchStart(article, { touches: [{ clientX: 150 }] })
+      fireEvent.touchMove(article, { touches: [{ clientX: 49 }] })
+      fireEvent.touchEnd(article)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not dismiss when swiped below threshold', () => {
+      const onDismiss = vi.fn()
+      const { container } = render(
+        <ActionCard title="Test" onDismiss={onDismiss}>
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchStart(article, { touches: [{ clientX: 0 }] })
+      fireEvent.touchMove(article, { touches: [{ clientX: 99 }] })
+      fireEvent.touchEnd(article)
+      expect(onDismiss).not.toHaveBeenCalled()
+    })
+
+    it('recovers from touchMove without touchStart gracefully', () => {
+      const onDismiss = vi.fn()
+      const { container } = render(
+        <ActionCard title="Test" onDismiss={onDismiss}>
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchMove(article, { touches: [{ clientX: 100 }] })
+      fireEvent.touchEnd(article)
+      expect(onDismiss).not.toHaveBeenCalled()
+    })
+
+    it('ignores touch events if onDismiss is not provided', () => {
+      const { container } = render(
+        <ActionCard title="Test">
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchStart(article, { touches: [{ clientX: 0 }] })
+      fireEvent.touchMove(article, { touches: [{ clientX: 200 }] })
+      fireEvent.touchEnd(article)
+      // No errors should be thrown
+      expect(article).not.toHaveClass('actionCard--swiping')
+    })
   })
 })

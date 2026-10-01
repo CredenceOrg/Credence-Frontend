@@ -86,20 +86,22 @@ function AppRouter() {
 }
 
 /**
- * Provider order is partly load-bearing:
+ * Provider order is load-bearing:
+ *  - `<WidgetCacheProvider>` (closes #561) sits as the outermost state provider
+ *    after `<BrowserRouter>` and above `<ErrorBoundary>` so widget cache state
+ *    survives route-level crashes, settings reloads, and wallet-connect cycles.
  *  - `SettingsProvider` must remain the outer ancestor of every provider whose
  *    body calls `useSettings()` (currently `ToastProvider`, which reads
  *    `toastsEnabled` and `autoDismiss`).
  *  - `ToastProvider` sits above `WalletProvider` so `WalletProvider` can use
  *    `useToast()` for idle-disconnect notifications.
- *
- * `<WidgetCacheProvider>` (closes #561) sits ABOVE `SettingsProvider` because
- * it has no dependency on any other context, and we deliberately keep it as
- * the outermost shared ancestor after `<BrowserRouter>` so dashboard widget
- * state survives settings-watcher reloads and wallet-connect cycles. See
- * `docs/widget-cache.md` for the per-key isolation contract.
+ *  - `<ErrorBoundary>` wraps the route `<Suspense>` tree so render failures and
+ *    chunk-load rejections are caught with a branded recovery UI without
+ *    unmounting outer state or losing user data.
+ *  - `<Suspense>` displays an accessible loading fallback (`role="status"`)
+ *    while route components resolve dynamically.
  */
-function App() {
+export function App({ children, errorFallback, loadingFallback }: AppProps = {}) {
   return (
     <BrowserRouter>
       <WidgetCacheProvider>

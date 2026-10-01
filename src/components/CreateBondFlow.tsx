@@ -167,11 +167,11 @@ function logRefusedTransition(direction: 'Back' | 'Next', step: number): void {
 
 export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
   const { addToast } = useToast()
-  const { isConnected } = useWallet()
+  const { isConnected, connect, isReauthRequired, reauth } = useWallet()
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
-  const [step, setStep] = useState<number>(BOND_FLOW_MIN_STEP)
   const prefersReducedMotion = useReducedMotion()
 
+  const [step, setStep] = useState<number>(BOND_FLOW_MIN_STEP)
   const [amount, setAmount] = useState('')
   const [duration, setDuration] = useState<number | null>(null)
   const [error, setError] = useState('')
@@ -504,7 +504,7 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
     }
 
     // ─── Validation: wallet connection ───
-    if (!isConnectedRef.current) {
+    if (!isConnected) {
       setConfirmError('Wallet disconnected. Reconnect your wallet and try again.')
       correlationIdRef.current = correlationIdRef.current || createCorrelationId()
       recordAudit('BOND_CREATE_REJECTED', 'WALLET_DISCONNECTED')
@@ -554,7 +554,25 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
     recordAudit('BOND_CREATE_REQUESTED')
 
     try {
-      const result = (await onComplete?.()) ?? undefined
+      // ─── Execute the bond creation mutation ───
+      const result = await onComplete?.()
+
+      // ─── Post-flight check: wallet still connected? ───
+      // The user may have disconnected while the async operation was in-flight.
+      // If so, discard the result and show an error rather than silently
+      // committing a success state with a stale wallet.
+      if (!isConnected) {
+        const discardMessage =
+          'Wallet disconnected during bond creation. Result discarded. Please reconnect and retry.'
+        setConfirmError(discardMessage)
+        recordAudit('BOND_CREATE_FAILED', 'WALLET_DISCONNECTED_DURING_SUBMISSION')
+        submittingRef.current = false
+        setSubmitting(false)
+        addToast('warning', discardMessage)
+        return
+      }
+
+      // ─── Success path ───
       recordAudit('BOND_CREATE_COMMITTED', undefined, result)
       addToast('success', 'Bond created successfully.')
 
@@ -598,8 +616,6 @@ export default function CreateBondFlow(s{ onComplete, onCancel, onAudit }: Creat
   // ---------------------------------------------------------------------------
   // Step indicator
   // ---------------------------------------------------------------------------
-
-  const durationButtonTransition = prefersReducedMotion ? 'none' : 'all 0.2s ease'
 
   const StepIndicator = () => (
     <div

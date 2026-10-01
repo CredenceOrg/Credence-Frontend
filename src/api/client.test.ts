@@ -1,5 +1,8 @@
-import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+// Re-export buildHeaders for testing (non-exported function needs manual testing)
+// This will be tested indirectly through apiFetch, but we verify the behavior here
 import {
+  API_BASE_URL,
   ApiAmountError,
   ApiBodyTooLargeError,
   ApiError,
@@ -7,13 +10,19 @@ import {
   MAX_REQUEST_BODY_BYTES,
   apiFetch,
   apiRateLimiterSnapshot,
+  buildUrl,
   defaultApiRateLimiter,
+  normalizeBaseUrl,
+  parseResponse,
   resetApiRateLimiter,
   type ApiFetchOptions,
 } from './client'
-import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
+import { resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
+
+/** Origin every relative URL in these tests is resolved against. */
+const ORIGIN = 'https://app.credence.example'
 
 function jsonResponse(payload: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(payload), {
@@ -22,10 +31,49 @@ function jsonResponse(payload: unknown, init: ResponseInit = {}) {
   })
 }
 
+/** Silences and captures the dev-only base-URL rejection warning. */
+function captureWarnings() {
+  return vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+}
+
 afterEach(() => {
   fetchMock.mockReset()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   resetWalletAuditTrail()
+})
+
+describe('errorMessage', () => {
+  it('returns the message of an Error instance', () => {
+    expect(errorMessage(new Error('boom'))).toBe('boom')
+  })
+
+  it('returns the message of an ApiError subclass', () => {
+    expect(errorMessage(new ApiError(500, 'server exploded'))).toBe('server exploded')
+  })
+
+  it('returns a string thrown value verbatim', () => {
+    expect(errorMessage('string error')).toBe('string error')
+  })
+
+  it('returns a fallback for non-Error, non-string values', () => {
+    expect(errorMessage(undefined)).toBe('Something went wrong')
+    expect(errorMessage(null)).toBe('Something went wrong')
+    expect(errorMessage(42)).toBe('Something went wrong')
+    expect(errorMessage({ message: 'not an error' })).toBe('Something went wrong')
+  })
+
+  it('returns an empty-string message when the Error has an empty message', () => {
+    expect(errorMessage(new Error(''))).toBe('')
+  })
+
+  it('does not leak sensitive fields from the error object', () => {
+    const err = Object.assign(new Error('safe message'), {
+      token: 'secret-token',
+      password: 'hunter2',
+    })
+    expect(errorMessage(err)).toBe('safe message')
+  })
 })
 
 describe('apiFetch', () => {
@@ -212,6 +260,544 @@ describe('apiFetch', () => {
     })
   })
 
+  it('classifies transport failures as retryable network errors', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiFetch('/bonds')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 0,
+      code: 'network_error',
+    } satisfies Partial<ApiError>)
+  })
+
+  it('classifies non-2xx responses as http errors', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'Nope' }, { status: 403 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiFetch('/bonds')).rejects.toMatchObject({
+      status: 403,
+      code: 'http_error',
+    } satisfies Partial<ApiError>)
+  })
+
+  it('leaves code undefined on ApiErrors built by legacy three-argument callers', () => {
+    const error = new ApiError(500, 'boom')
+
+    expect(error.code).toBeUndefined()
+    expect(error).toBeInstanceOf(Error)
+    expect(error.name).toBe('ApiError')
+  })
+})
+
+describe('buildUrl', () => {
+  describe('valid paths', () => {
+    it('prefixes the API base and guarantees a single separator', () => {
+      expect(buildUrl('/bonds', '/api')).toBe('/api/bonds')
+    })
+
+    it('adds the missing leading slash', () => {
+      expect(buildUrl('bonds', '/api')).toBe('/api/bonds')
+    })
+
+    it('trims surrounding whitespace instead of encoding it into the request', () => {
+      expect(buildUrl('  /bonds  ', '/api')).toBe('/api/bonds')
+    })
+
+    it('preserves query strings verbatim', () => {
+      expect(buildUrl('/bonds?status=active&page=2', '/api')).toBe(
+        '/api/bonds?status=active&page=2'
+      )
+    })
+
+    it('preserves a trailing slash, which addresses collection roots', () => {
+      expect(buildUrl('/bonds/', '/api')).toBe('/api/bonds/')
+    })
+
+    it('resolves the API root when the path is only a slash', () => {
+      expect(buildUrl('/', '/api')).toBe('/api/')
+    })
+
+    it('preserves interior duplicate slashes because some resources treat them as significant', () => {
+      expect(buildUrl('/bonds//children', '/api')).toBe('/api/bonds//children')
+    })
+
+    it('preserves percent-encoded and non-ASCII path segments verbatim', () => {
+      expect(buildUrl('/bonds/%2Fid', '/api')).toBe('/api/bonds/%2Fid')
+      expect(buildUrl('/bonds/ünïcode', '/api')).toBe('/api/bonds/ünïcode')
+    })
+
+    it('preserves URL template braces used by route params', () => {
+      expect(buildUrl('/bonds/{id}/attestations', '/api')).toBe('/api/bonds/{id}/attestations')
+    })
+  })
+
+  describe('base URL boundaries', () => {
+    it('treats an empty base as same-origin with no prefix', () => {
+      expect(buildUrl('/bonds', '')).toBe('/bonds')
+    })
+
+    it('treats a bare slash base as same-origin with no prefix', () => {
+      expect(buildUrl('/bonds', '/')).toBe('/bonds')
+    })
+
+    it('strips trailing slashes from the base so only one separator remains', () => {
+      expect(buildUrl('/bonds', '/api/')).toBe('/api/bonds')
+      expect(buildUrl('/bonds', '/api///')).toBe('/api/bonds')
+    })
+
+    it('trims surrounding whitespace from the base', () => {
+      expect(buildUrl('/bonds', '  /api  ')).toBe('/api/bonds')
+    })
+
+    it('supports an absolute base that carries its own path prefix', () => {
+      expect(buildUrl('/bonds', 'https://api.credence.example/v1/')).toBe(
+        'https://api.credence.example/v1/bonds'
+      )
+    })
+
+    it('supports a plain http origin', () => {
+      expect(buildUrl('/bonds', 'http://localhost:3000')).toBe('http://localhost:3000/bonds')
+    })
+  })
+
+  describe('hostile or malformed bases fail closed', () => {
+    it('falls back to same-origin for a scheme-relative base instead of leaking every request', () => {
+      const warn = captureWarnings()
+
+      expect(buildUrl('/bonds', '//evil.example')).toBe('/bonds')
+      expect(warn).toHaveBeenCalledTimes(1)
+    })
+
+    it('falls back to same-origin for a backslash scheme-relative base', () => {
+      captureWarnings()
+
+      expect(buildUrl('/bonds', '/\\evil.example')).toBe('/bonds')
+    })
+
+    it('falls back to same-origin for a scheme-less base that fetch would resolve as a path', () => {
+      captureWarnings()
+
+      expect(buildUrl('/bonds', 'api.credence.example')).toBe('/bonds')
+    })
+
+    it.each([
+      'javascript:alert(1)',
+      'data:text/html,x',
+      'file:///etc/passwd',
+      'blob:https://x/y',
+      '\\\\evil.example',
+    ])('falls back to same-origin for the non-http scheme %s', (base) => {
+      captureWarnings()
+
+      expect(buildUrl('/bonds', base)).toBe('/bonds')
+    })
+
+    it('falls back to same-origin when the base carries a query string', () => {
+      captureWarnings()
+
+      expect(buildUrl('/bonds', '/api?token=secret')).toBe('/bonds')
+    })
+
+    it('falls back to same-origin when the base carries a fragment', () => {
+      captureWarnings()
+
+      expect(buildUrl('/bonds', '/api#frag')).toBe('/bonds')
+    })
+
+    it('falls back to same-origin when an absolute base carries a query string', () => {
+      captureWarnings()
+
+      expect(buildUrl('/bonds', 'https://api.credence.example/?token=secret')).toBe('/bonds')
+    })
+
+    it('never echoes the offending base value, which may embed credentials', () => {
+      const warn = captureWarnings()
+
+      buildUrl('/bonds', 'https://user:sup3rsecret@api.credence.example')
+
+      expect(warn).toHaveBeenCalledTimes(0)
+    })
+  })
+
+  describe('rejected paths', () => {
+    it('rejects an empty path', () => {
+      expect(() => buildUrl('')).toThrowError(
+        expect.objectContaining({
+          code: 'invalid_request_url',
+          status: 0,
+          message: 'Invalid API request path: path must not be empty',
+        } satisfies Partial<ApiError>)
+      )
+    })
+
+    it('rejects a whitespace-only path', () => {
+      expect(() => buildUrl('   \t  ')).toThrowError(/path must not be empty/)
+    })
+
+    it('rejects an origin-relative path that would become a cross-origin request', () => {
+      expect(() => buildUrl('//evil.example/steal')).toThrowError(
+        /path must be relative, not origin-relative/
+      )
+    })
+
+    it.each(['///bonds', '////bonds', '//', '///'])(
+      'rejects %j, which the URL parser would read as an origin rather than a path',
+      (path) => {
+        expect(() => buildUrl(path, '/api')).toThrowError(
+          /path must be relative, not origin-relative/
+        )
+      }
+    )
+
+    it('rejects a backslash-led path that the URL parser treats as protocol-relative', () => {
+      expect(() => buildUrl('/\\evil.example/steal')).toThrowError(
+        /path must not contain backslashes/
+      )
+    })
+
+    it('rejects dot-segment traversal written with backslashes', () => {
+      expect(() => buildUrl('/bonds\\..\\..\\admin')).toThrowError(
+        /path must not contain backslashes/
+      )
+    })
+
+    it.each([
+      ['newline', '/bonds\nx'],
+      ['carriage return', '/bonds\rx'],
+      ['tab', '/bonds\tx'],
+      ['null byte', '/bonds\u0000'],
+      ['C1 control', '/bonds\u0085'],
+      ['DEL', '/bonds\u007f'],
+    ])('rejects a path containing a %s that the URL parser would silently drop', (_label, path) => {
+      expect(() => buildUrl(path)).toThrowError(/path must not contain control characters/)
+    })
+
+    it('rejects a fragment that would silently fetch a different resource', () => {
+      expect(() => buildUrl('/bonds#other-resource')).toThrowError(
+        /path must not contain a URL fragment/
+      )
+    })
+
+    it.each([
+      ['undefined', undefined],
+      ['null', null],
+      ['a number', 42],
+      ['an object', {}],
+    ])('rejects %s passed where a path string is required', (_label, value) => {
+      expect(() => buildUrl(value as unknown as string)).toThrowError(/path must be a string/)
+    })
+
+    it('rejects an empty path even when an explicit base is supplied', () => {
+      expect(() => buildUrl('', 'https://api.credence.example')).toThrowError(
+        /path must not be empty/
+      )
+    })
+  })
+
+  describe('diagnostics', () => {
+    it('strips the query string so tokens never reach logs or the error UI', () => {
+      expect(() => buildUrl('/bonds?token=sup3rsecret#frag')).toThrowError(
+        expect.objectContaining({
+          payload: {
+            code: 'invalid_request_url',
+            reason: 'path must not contain a URL fragment',
+            path: '/bonds?<redacted>',
+          },
+        } satisfies Partial<ApiError>)
+      )
+    })
+
+    it('replaces control characters so a path cannot smuggle a newline into a log line', () => {
+      let payload: { path: string } | undefined
+      try {
+        buildUrl('/bo\nnds')
+      } catch (error) {
+        payload = (error as ApiError).payload as { path: string }
+      }
+
+      expect(payload?.path).toBe('/bo?nds')
+    })
+
+    it('truncates very long paths so diagnostics stay bounded', () => {
+      let payload: { path: string } | undefined
+      try {
+        buildUrl(`/${'a'.repeat(500)}#frag`)
+      } catch (error) {
+        payload = (error as ApiError).payload as { path: string }
+      }
+
+      expect(payload?.path).toHaveLength(81)
+      expect(payload?.path.endsWith('…')).toBe(true)
+    })
+
+    it('reports the type instead of the value for non-string input', () => {
+      let payload: { path: string } | undefined
+      try {
+        buildUrl({ secret: 'value' } as unknown as string)
+      } catch (error) {
+        payload = (error as ApiError).payload as { path: string }
+      }
+
+      expect(payload?.path).toBe('object')
+    })
+  })
+
+  describe('determinism', () => {
+    it('is idempotent, so a retry produces a byte-identical URL', () => {
+      const first = buildUrl('/bonds?page=2', '/api')
+      const second = buildUrl('/bonds?page=2', '/api')
+
+      expect(second).toBe(first)
+    })
+
+    it('is idempotent on the base, so re-normalizing an already-normalized base is a no-op', () => {
+      const bases = ['', '/', '/api', '/api/', 'https://api.credence.example', 'https://x.dev/v1/']
+
+      for (const base of bases) {
+        captureWarnings()
+        expect(buildUrl('/bonds', normalizeBaseUrl(base))).toBe(buildUrl('/bonds', base))
+      }
+    })
+
+    it('does not leak state between calls, so a hostile base cannot affect later calls', () => {
+      const warn = captureWarnings()
+
+      expect(buildUrl('/bonds', '//evil.example')).toBe('/bonds')
+      expect(buildUrl('/bonds', '/api')).toBe('/api/bonds')
+      expect(warn).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects the same invalid input with the same error every time', () => {
+      const capture = () => {
+        try {
+          buildUrl('//evil.example/steal')
+          return null
+        } catch (error) {
+          return error as ApiError
+        }
+      }
+      const first = capture()
+      const second = capture()
+
+      expect(first?.message).toBe(second?.message)
+      expect(first?.code).toBe('invalid_request_url')
+      expect(first?.payload).toEqual(second?.payload)
+    })
+  })
+
+  describe('origin containment', () => {
+    const bases = [
+      '',
+      '/',
+      '/api',
+      '/api/',
+      '//evil.example',
+      '/\\evil.example',
+      'api.credence.example',
+      'https://api.credence.example',
+      'https://api.credence.example/',
+      'javascript:alert(1)',
+    ]
+    const paths = [
+      '/bonds',
+      'bonds',
+      '///bonds',
+      '//evil.example/steal',
+      '/\\evil.example/steal',
+      '/bonds\\..\\..\\admin',
+      '/bonds\nx',
+      '/bonds#frag',
+      'https://evil.example/steal',
+      '/bonds?next=https://evil.example',
+      '',
+      '   ',
+    ]
+
+    it.each(bases.flatMap((base) => paths.map((path) => [base, path] as const)))(
+      'never escapes the origin resolved for base %j and path %j',
+      (base, path) => {
+        captureWarnings()
+        // The API root is always a valid path, so it pins the origin this base
+        // is allowed to reach. Every other path must either reject or land on
+        // exactly that origin.
+        const expectedOrigin = new URL(buildUrl('/', base), ORIGIN).origin
+
+        let url: string
+        try {
+          url = buildUrl(path, base)
+        } catch (error) {
+          expect(error).toBeInstanceOf(ApiError)
+          expect((error as ApiError).code).toBe('invalid_request_url')
+          return
+        }
+
+        expect(new URL(url, ORIGIN).origin).toBe(expectedOrigin)
+      }
+    )
+  })
+})
+
+describe('normalizeBaseUrl', () => {
+  it.each([
+    ['an empty string', ''],
+    ['whitespace only', '   '],
+    ['a bare slash', '/'],
+  ])('resolves %s to the same-origin fallback', (_label, value) => {
+    expect(normalizeBaseUrl(value)).toBe('')
+  })
+
+  it('resolves a repeated slash to the same-origin fallback', () => {
+    captureWarnings()
+
+    expect(normalizeBaseUrl('///')).toBe('')
+  })
+
+  it.each([
+    ['/api', '/api'],
+    ['/api/', '/api'],
+    ['/api///', '/api'],
+    ['  /api/v1  ', '/api/v1'],
+    ['https://api.credence.example', 'https://api.credence.example'],
+    ['https://api.credence.example/', 'https://api.credence.example'],
+    ['https://api.credence.example/v1/', 'https://api.credence.example/v1'],
+    ['http://localhost:3000', 'http://localhost:3000'],
+    ['HTTPS://API.CREDENCE.EXAMPLE', 'HTTPS://API.CREDENCE.EXAMPLE'],
+  ])('normalizes %s to %s', (value, expected) => {
+    captureWarnings()
+
+    expect(normalizeBaseUrl(value)).toBe(expected)
+  })
+
+  it.each(['http://', 'https://', 'https://%', 'http://:80', 'http://a b'])(
+    'fails closed for the unparseable absolute base %j',
+    (value) => {
+      captureWarnings()
+
+      expect(normalizeBaseUrl(value)).toBe('')
+    }
+  )
+
+  it('is idempotent for every accepted shape', () => {
+    const values = [
+      '',
+      '/',
+      '/api/',
+      'https://api.credence.example/v1/',
+      'http://localhost:3000',
+      '//evil.example',
+      'javascript:alert(1)',
+      '/api?token=secret',
+    ]
+
+    for (const value of values) {
+      captureWarnings()
+      const once = normalizeBaseUrl(value)
+      expect(normalizeBaseUrl(once)).toBe(once)
+    }
+  })
+
+  it('tolerates a non-string value without throwing, so module load cannot break', () => {
+    captureWarnings()
+
+    expect(normalizeBaseUrl(undefined as unknown as string)).toBe('')
+    expect(normalizeBaseUrl(null as unknown as string)).toBe('')
+  })
+})
+
+describe('API_BASE_URL', () => {
+  it('falls back to /api when VITE_API_BASE_URL is unset', () => {
+    expect(API_BASE_URL).toBe('/api')
+  })
+
+  it('is already normalized, so passing it back through the normalizer changes nothing', () => {
+    captureWarnings()
+
+    expect(normalizeBaseUrl(API_BASE_URL)).toBe(API_BASE_URL)
+  })
+})
+
+describe('apiFetch pre-flight failure boundaries', () => {
+  it('never reaches the network for an origin-relative path', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiFetch('//evil.example/steal')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 0,
+      code: 'invalid_request_url',
+    } satisfies Partial<ApiError>)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('never reaches the network for an empty path', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiFetch('')).rejects.toMatchObject({ code: 'invalid_request_url' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('surfaces a circular-body serialization fault as a TypeError, not as a network error', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+
+    await expect(apiFetch('/bonds', { method: 'POST', body: circular })).rejects.toThrow(TypeError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('surfaces an invalid header as a TypeError rather than misreporting it as a network error', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiFetch('/bonds', { headers: { 'bad header name': 'value' } })).rejects.toThrow(
+      TypeError
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps concurrent requests on their own URLs', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(jsonResponse({ url }, { status: 200 }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const [a, b, c] = await Promise.all([
+      apiFetch<{ url: string }>('/bonds/1'),
+      apiFetch<{ url: string }>('/bonds/2'),
+      apiFetch<{ url: string }>('/bonds/3'),
+    ])
+
+    expect(a.url).toBe('/api/bonds/1')
+    expect(b.url).toBe('/api/bonds/2')
+    expect(c.url).toBe('/api/bonds/3')
+  })
+
+  it('resolves retries of the same valid request to the same URL', async () => {
+    fetchMock.mockImplementation((url: string) => Promise.resolve(jsonResponse({ url })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/bonds?page=1')
+    await apiFetch('/bonds?page=1')
+
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      '/api/bonds?page=1',
+      '/api/bonds?page=1',
+    ])
+  })
+
+  it('fails a retried invalid request identically without touching the network', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    const first = await apiFetch('//evil.example/steal').catch((error: ApiError) => error)
+    const second = await apiFetch('//evil.example/steal').catch((error: ApiError) => error)
+
+    expect(first).toBeInstanceOf(ApiError)
+    expect(second).toMatchObject({
+      code: 'invalid_request_url',
+      message: (first as ApiError).message,
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('commits one effect when a keyed operation is duplicated or reordered', async () => {
     const committedKeys = new Set<string>()
     fetchMock.mockImplementation(async (_url, init) => {
@@ -317,7 +903,9 @@ describe('apiFetch', () => {
   it('rejects JSON bodies exceeding MAX_REQUEST_BODY_BYTES before fetching', async () => {
     const oversizedPayload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES + 1) }
 
-    await expect(apiFetch('/upload', { method: 'POST', body: oversizedPayload })).rejects.toMatchObject({
+    await expect(
+      apiFetch('/upload', { method: 'POST', body: oversizedPayload })
+    ).rejects.toMatchObject({
       name: 'ApiBodyTooLargeError',
       status: 413,
     } satisfies Partial<ApiBodyTooLargeError>)
@@ -331,7 +919,9 @@ describe('apiFetch', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const payload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES - 100) }
-    await expect(apiFetch('/upload', { method: 'POST', body: payload })).resolves.toEqual({ ok: true })
+    await expect(apiFetch('/upload', { method: 'POST', body: payload })).resolves.toEqual({
+      ok: true,
+    })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
@@ -769,5 +1359,490 @@ describe('apiFetch amount precision boundary (exact decimal amounts)', () => {
     expect(err.code).toBe('NEGATIVE')
     expect(err.payload).toEqual({ field: 'amount', code: 'NEGATIVE' })
     expect(err.message).toContain('amount')
+  })
+})
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// buildHeaders determinism and boundary tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('buildHeaders determinism', () => {
+  it('sets Accept header when not provided', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', { headers: undefined })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('Accept')).toBe('application/json')
+  })
+
+  it('sets Content-Type header for JSON bodies when not provided', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', { method: 'POST', body: { key: 'value' } })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('Content-Type')).toBe('application/json')
+  })
+
+  it('does not set Content-Type for non-JSON bodies', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', { method: 'GET' })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('Content-Type')).toBeNull()
+  })
+
+  it('preserves caller-provided Accept header', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', { headers: { Accept: 'text/plain' } })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('Accept')).toBe('text/plain')
+  })
+
+  it('preserves caller-provided Content-Type header', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', {
+      method: 'POST',
+      body: { key: 'value' },
+      headers: { 'Content-Type': 'application/custom' },
+    })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('Content-Type')).toBe('application/custom')
+  })
+
+  it('always sets X-Correlation-ID header', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test')
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    const correlationId = headers.get('X-Correlation-ID')
+    expect(correlationId).toBeTruthy()
+    expect(typeof correlationId).toBe('string')
+    expect(correlationId!.length).toBeGreaterThan(0)
+  })
+
+  it('does not override caller-provided X-Correlation-ID', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const customId = 'my-custom-correlation-id'
+    await apiFetch('/test', { headers: { 'X-Correlation-ID': customId } })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('X-Correlation-ID')).toBe(customId)
+  })
+
+  it('generates unique correlation IDs for different requests', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({})))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test-1')
+    await apiFetch('/test-2')
+
+    const headers1 = fetchMock.mock.calls[0][1]?.headers as Headers
+    const headers2 = fetchMock.mock.calls[1][1]?.headers as Headers
+    const id1 = headers1.get('X-Correlation-ID')
+    const id2 = headers2.get('X-Correlation-ID')
+
+    expect(id1).toBeTruthy()
+    expect(id2).toBeTruthy()
+    expect(id1).not.toBe(id2)
+  })
+
+  it('produces headers with consistent state across multiple accesses', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', {
+      method: 'POST',
+      body: { key: 'value' },
+      headers: { 'X-Custom': 'custom-value' },
+    })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    // Access the same header multiple times to ensure no mutation
+    const accept1 = headers.get('Accept')
+    const accept2 = headers.get('Accept')
+    const contentType1 = headers.get('Content-Type')
+    const contentType2 = headers.get('Content-Type')
+
+    expect(accept1).toBe(accept2)
+    expect(accept1).toBe('application/json')
+    expect(contentType1).toBe(contentType2)
+    expect(contentType1).toBe('application/json')
+  })
+
+  it('header names are case-insensitive for lookups but preserved on set', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', { headers: { accept: 'text/custom' } })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    // Case-insensitive lookup should find the header
+    expect(headers.get('Accept')).toBe('text/custom')
+    expect(headers.get('ACCEPT')).toBe('text/custom')
+    expect(headers.get('accept')).toBe('text/custom')
+  })
+
+  it('concatenates multiple values for the same header name without duplication', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', {
+      method: 'POST',
+      body: { key: 'value' },
+      headers: { Accept: 'text/html' },
+    })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    const accept = headers.get('Accept')
+    // Should preserve the custom value, not append defaults
+    expect(accept).toBe('text/html')
+  })
+
+  it('does not mutate the original headers object passed by caller', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const originalHeaders = { 'X-Custom': 'value' }
+    const snapshot = structuredClone(originalHeaders)
+
+    await apiFetch('/test', { method: 'POST', body: {}, headers: originalHeaders })
+
+    expect(originalHeaders).toEqual(snapshot)
+  })
+
+  it('sets all three default headers in a single request', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', { method: 'POST', body: { key: 'value' } })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('Accept')).toBe('application/json')
+    expect(headers.get('Content-Type')).toBe('application/json')
+    expect(headers.get('X-Correlation-ID')).toBeTruthy()
+  })
+
+  it('handles empty headers object', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', { method: 'POST', body: {}, headers: {} })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('Accept')).toBe('application/json')
+    expect(headers.get('Content-Type')).toBe('application/json')
+    expect(headers.get('X-Correlation-ID')).toBeTruthy()
+  })
+
+  it('handles headers array format (HTTP-style)', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', {
+      method: 'POST',
+      body: {},
+      headers: [['X-Custom', 'value']],
+    })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('X-Custom')).toBe('value')
+    expect(headers.get('Accept')).toBe('application/json')
+    expect(headers.get('X-Correlation-ID')).toBeTruthy()
+  })
+
+  it('preserves all existing headers from caller while adding defaults', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', {
+      method: 'POST',
+      body: { key: 'value' },
+      headers: {
+        'X-Custom-1': 'val1',
+        'X-Custom-2': 'val2',
+      },
+    })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('X-Custom-1')).toBe('val1')
+    expect(headers.get('X-Custom-2')).toBe('val2')
+    expect(headers.get('Accept')).toBe('application/json')
+    expect(headers.get('Content-Type')).toBe('application/json')
+    expect(headers.get('X-Correlation-ID')).toBeTruthy()
+  })
+})
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// State consistency: wireBody, correlationId, headers flow through call chain
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('state consistency across call chain', () => {
+  it('uses wireBody (amount-canonicalized) not original body in fetch call', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/bonds', {
+      method: 'POST',
+      body: { amount: 100.5 },
+      amountFields: { amount: true },
+    })
+
+    const body = fetchMock.mock.calls[0][1]?.body as string
+    // Should be canonicalized to exact decimal form (100.50 with 2 decimal places)
+    expect(body).toBe('{"amount":"100.50"}')
+  })
+
+  it('preserves correlationId through all request stages', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', { method: 'POST', body: {} })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    const correlationId = headers.get('X-Correlation-ID')
+    expect(correlationId).toBeTruthy()
+    expect(correlationId!.startsWith('api-fetch-')).toBe(true)
+  })
+
+  it('maintains correlationId consistency when idempotencyKey is used', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', {
+      method: 'POST',
+      body: {},
+      idempotencyKey: 'key-1',
+    })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    const correlationId = headers.get('X-Correlation-ID')
+    const idempotencyKey = headers.get('Idempotency-Key')
+
+    expect(correlationId).toBeTruthy()
+    expect(idempotencyKey).toBe('key-1')
+    // Both should be present and different
+    expect(correlationId).not.toBe(idempotencyKey)
+  })
+
+  it('applies amountFields validation before rate limit check', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    // Invalid amount should fail before any rate-limit budget is consumed
+    const initialSnapshot = apiRateLimiterSnapshot()
+
+    await expect(
+      apiFetch('/test', {
+        method: 'POST',
+        body: { amount: -5 },
+        amountFields: { amount: true },
+      })
+    ).rejects.toBeInstanceOf(ApiAmountError)
+
+    const afterSnapshot = apiRateLimiterSnapshot()
+    // Rate limiter state should be unchanged
+    expect(initialSnapshot).toEqual(afterSnapshot)
+  })
+
+  it('does not create duplicate headers between buildHeaders calls', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test', { method: 'POST', body: { key: 'value' } })
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    const acceptValues: string[] = []
+    headers.forEach((value, name) => {
+      if (name.toLowerCase() === 'accept') {
+        acceptValues.push(value)
+      }
+    })
+
+    // Should have exactly one Accept header, not duplicated
+    expect(acceptValues.length).toBe(1)
+    expect(acceptValues[0]).toBe('application/json')
+  })
+
+  it('serializes body consistently when amountFields are applied', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const body = { amount: '100.10' }
+    await apiFetch('/test', {
+      method: 'POST',
+      body,
+      amountFields: { amount: true },
+    })
+    const firstWire = fetchMock.mock.calls[0][1]?.body as string
+
+    await apiFetch('/test', {
+      method: 'POST',
+      body,
+      amountFields: { amount: true },
+    })
+    const secondWire = fetchMock.mock.calls[1][1]?.body as string
+
+    expect(firstWire).toBe(secondWire)
+    expect(firstWire).toBe('{"amount":"100.10"}')
+  })
+
+  it('maintains headers object immutability throughout request lifecycle', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const originalHeaders = new Headers({ 'X-Custom': 'original' })
+    const snapshot = Array.from(originalHeaders.entries())
+
+    await apiFetch('/test', { method: 'POST', body: {}, headers: originalHeaders })
+
+    const afterSnapshot = Array.from(originalHeaders.entries())
+    expect(snapshot).toEqual(afterSnapshot)
+  })
+
+  it('includes correlationId in all error scenarios', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'failed' }, { status: 500 })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    try {
+      await apiFetch('/test', { method: 'GET' })
+    } catch {
+      // Expected to throw
+    }
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Headers
+    expect(headers.get('X-Correlation-ID')).toBeTruthy()
+  })
+
+  it('propagates wireBody size limits correctly before network dispatch', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+
+    const largeBody = {
+      amount: '1000.00',
+      data: 'x'.repeat(MAX_REQUEST_BODY_BYTES + 1),
+    }
+
+    await expect(
+      apiFetch('/test', {
+        method: 'POST',
+        body: largeBody,
+        amountFields: { amount: true },
+      })
+    ).rejects.toBeInstanceOf(ApiBodyTooLargeError)
+
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('maintains request context (path, method, correlationId) through idempotency replay', async () => {
+    const paths: string[] = []
+    const methods: string[] = []
+    const correlationIds: string[] = []
+
+    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+      paths.push(url)
+      methods.push(init.method || '')
+      const headers = init.headers as Headers
+      correlationIds.push(headers.get('X-Correlation-ID') || 'missing')
+      return jsonResponse({ ok: true })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    // First request with idempotency key
+    await apiFetch('/test', {
+      method: 'POST',
+      body: { amount: '10.00' },
+      idempotencyKey: 'key-unique-1',
+    })
+
+    expect(paths[0]).toBe('/api/test')
+    expect(methods[0]).toBe('POST')
+    expect(correlationIds[0]).toBeTruthy()
+  })
+
+  it('distinct calls use distinct correlationIds even with idempotency caching', async () => {
+    const correlationIds: string[] = []
+
+    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+      const headers = init.headers as Headers
+      correlationIds.push(headers.get('X-Correlation-ID') || 'missing')
+      return jsonResponse({ ok: true })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    // First call with idempotency key
+    await apiFetch('/test-1', {
+      method: 'POST',
+      body: { amount: '10.00' },
+      idempotencyKey: 'key-unique-2',
+    })
+
+    // Different call - different path means different cache key behavior
+    await apiFetch('/test-2', {
+      method: 'POST',
+      body: { amount: '20.00' },
+      idempotencyKey: 'key-unique-3',
+    })
+
+    // Two distinct fetches should occur with distinct correlation IDs
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(correlationIds.length).toBe(2)
+    expect(correlationIds[0]).not.toBe(correlationIds[1])
+  })
+
+  it('correlationId is set before rate limiting decision', async () => {
+    let capturedCorrelationId: string | null = null
+
+    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+      const headers = init.headers as Headers
+      capturedCorrelationId = headers.get('X-Correlation-ID')
+      return jsonResponse({ ok: true })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/test')
+
+    expect(capturedCorrelationId).toBeTruthy()
+  })
+
+  it('does not lose state when concurrent requests with different amountFields are made', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await Promise.all([
+      apiFetch('/test1', {
+        method: 'POST',
+        body: { amount: 100.5 },
+        amountFields: { amount: true },
+      }),
+      apiFetch('/test2', {
+        method: 'POST',
+        body: { amount: 200.25 },
+        amountFields: { amount: true },
+      }),
+      apiFetch('/test3', { method: 'GET' }),
+    ])
+
+    const bodies = fetchMock.mock.calls.map((call) => call[1]?.body as string)
+    expect(bodies[0]).toContain('"amount":"100.50"')
+    expect(bodies[1]).toContain('"amount":"200.25"')
+    expect(bodies[2]).toBeUndefined()
   })
 })

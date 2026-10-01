@@ -367,3 +367,161 @@ describe('useTransactions cursor pagination', () => {
     expect(rendered.result.current.error).toBeNull()
   })
 })
+
+describe('useTransactions pending transactions and boundaries', () => {
+  const PENDING_KEY = 'credence:pendingTransactions'
+
+  beforeEach(() => {
+    localStorage.clear()
+    apiFetchMock.mockReset()
+    sequence = 0
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('prepends pending transactions from storage ahead of server data', async () => {
+    const pending = makeTx()
+    const server = makeTx()
+    localStorage.setItem(PENDING_KEY, JSON.stringify([pending]))
+    apiFetchMock.mockResolvedValue({ items: [server] })
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data.map((t) => t.id)).toEqual([pending.id, server.id])
+  })
+
+  it('reconciles a mined pending transaction out of state and storage', async () => {
+    const mined = makeTx()
+    localStorage.setItem(PENDING_KEY, JSON.stringify([mined]))
+    // The server now reports the same hash as a confirmed record.
+    apiFetchMock.mockResolvedValue({ items: [{ ...mined, status: 'confirmed' }] })
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data.map((t) => t.hash)).toEqual([mined.hash])
+    expect(JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]')).toEqual([])
+  })
+
+  it('adds pending transactions newest-first to state and storage', async () => {
+    apiFetchMock.mockResolvedValue({ items: [] })
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    const a = makeTx()
+    const b = makeTx()
+    act(() => {
+      result.current.addPendingTransaction(a)
+      result.current.addPendingTransaction(b)
+    })
+
+    expect(result.current.data.map((t) => t.id)).toEqual([b.id, a.id])
+    const stored = JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]')
+    expect(stored.map((t: Transaction) => t.id)).toEqual([b.id, a.id])
+  })
+
+  it('removes a pending transaction by hash from state and storage', async () => {
+    const removed = makeTx()
+    const kept = makeTx()
+    localStorage.setItem(PENDING_KEY, JSON.stringify([removed, kept]))
+    apiFetchMock.mockResolvedValue({ items: [] })
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.data).toHaveLength(2))
+
+    act(() => {
+      result.current.removePendingTransaction(removed.hash)
+    })
+
+    expect(result.current.data.map((t) => t.id)).toEqual([kept.id])
+    const stored = JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]')
+    expect(stored.map((t: Transaction) => t.hash)).toEqual([kept.hash])
+  })
+
+  it('treats unparsable pending storage as empty instead of throwing', async () => {
+    localStorage.setItem(PENDING_KEY, '{not-json')
+    apiFetchMock.mockResolvedValue({ items: [makeTx()] })
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data).toHaveLength(1)
+    expect(result.current.error).toBeNull()
+  })
+
+  it('ignores out-of-range or current-page navigation without a request', async () => {
+    apiFetchMock.mockResolvedValue({ items: [makeTx()], nextCursor: 'c1' })
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const calls = apiFetchMock.mock.calls.length
+
+    await act(async () => {
+      await result.current.goToPage(0)
+      await result.current.goToPage(-3)
+      await result.current.goToPage(1)
+    })
+
+    expect(apiFetchMock.mock.calls.length).toBe(calls)
+    expect(result.current.page).toBe(1)
+  })
+
+  it('refuses to fetch a page whose predecessor cursor was never produced', async () => {
+    // Page 1 is the last page, so no cursor for page 2 exists.
+    apiFetchMock.mockResolvedValue({ items: [makeTx()] })
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const calls = apiFetchMock.mock.calls.length
+
+    await act(async () => {
+      await result.current.goToPage(3)
+    })
+
+    expect(apiFetchMock.mock.calls.length).toBe(calls)
+    expect(result.current.page).toBe(1)
+    expect(result.current.error).toBeNull()
+  })
+
+  it('prefetch skips invalid pages and pages with an unknown predecessor cursor', async () => {
+    apiFetchMock.mockResolvedValue({ items: [makeTx()] })
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const calls = apiFetchMock.mock.calls.length
+
+    await act(async () => {
+      await result.current.prefetchPage(0)
+      await result.current.prefetchPage(4)
+    })
+
+    expect(apiFetchMock.mock.calls.length).toBe(calls)
+  })
+
+  it('wraps non-ApiError failures in a status-0 ApiError and clears stale rows', async () => {
+    apiFetchMock.mockRejectedValue(new Error('network down'))
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.error).toBeInstanceOf(ApiError)
+    expect(result.current.error?.status).toBe(0)
+    expect(result.current.error?.message).toBe('Unexpected error loading transactions')
+    expect(result.current.data).toEqual([])
+  })
+
+  it('aborts the in-flight request when the hook unmounts', async () => {
+    let capturedSignal: AbortSignal | undefined
+    apiFetchMock.mockImplementation((_path: string, options?: { signal?: AbortSignal }) => {
+      capturedSignal = options?.signal
+      // Never resolves — the hook must abort it on unmount.
+      return new Promise(() => {})
+    })
+
+    const { unmount } = renderHook(() => useTransactions())
+    expect(capturedSignal).toBeDefined()
+
+    unmount()
+    expect(capturedSignal!.aborted).toBe(true)
+  })
+})

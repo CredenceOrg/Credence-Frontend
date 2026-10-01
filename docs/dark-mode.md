@@ -83,13 +83,35 @@ user has a dark or system preference saved.
   `useSettings()`. It owns no theme state and writes to no storage key. It:
   - _derives_ the displayed light/dark from `themeMode` (resolving `'system'`
     via `matchMedia`),
-  - subscribes to `matchMedia` so its icon, `aria-pressed`, and `aria-label`
-    stay in sync with `data-theme` when the OS theme changes in `system` mode,
+  - subscribes to `matchMedia` so its icon, `aria-pressed`, and dynamic `title`
+    stay in sync with `data-theme` when the OS theme changes in `system` mode
+    (the accessible name `aria-label="Toggle theme"` is static),
   - on click calls `setThemeMode` with the **explicit** opposite of the
     currently resolved theme (never back to `'system'`).
 
 This removes the historical desync where the toggle kept its own state under a
 duplicate `'theme'` key while the document was driven by `credence:settings`.
+
+### Component invariants (enforced by tests)
+
+`ThemeToggle` guarantees the following; each is covered by a focused test in
+`ThemeToggle.test.tsx` and `ThemeToggle.boundary.test.tsx`.
+
+1. **No self-owned state.** The only local state is the mirrored OS
+   preference, which is derived from — never authoritative over — `themeMode`.
+2. **No self-owned persistence.** The component never calls
+   `localStorage.setItem`/`removeItem`, so the legacy orphan `'theme'` key can
+   never be re-created.
+3. **Total resolution.** Any `themeMode` outside `'light' | 'dark' | 'system'`
+   (corrupt or future value) resolves to `'light'`, so the rendered icon,
+   `title`, and `aria-pressed` always agree with `data-theme`.
+4. **Deterministic repetition.** N clicks always produce a theme that is the
+   exact opposite of the one before, and the control never lands in an
+   un-actionable state.
+5. **Degraded-environment safety.** If `window.matchMedia` is absent, throws,
+   returns `null`, or exposes only the deprecated `addListener` API, the toggle
+   still renders a usable control and `SettingsContext` still applies a valid
+   `data-theme` instead of throwing and taking down the app shell.
 
 ### Legacy `'theme'` key migration
 
@@ -106,3 +128,44 @@ migration** so returning users keep their preference:
 
 The migration is transparent: it does not register as an unsaved change on the
 Settings page.
+
+## Failure boundaries: `getSystemPrefersDark`
+
+`getSystemPrefersDark()` (exported from `src/components/ThemeToggle.tsx`, with
+the diagnostic variant `readSystemPrefersDark()` and the change subscription
+`subscribeSystemPrefersDark()`) is the guarded read of the OS
+`prefers-color-scheme: dark` preference. Invariants:
+
+- **Total function.** It never throws and always returns a strict `boolean`.
+  Missing `window` (SSR), missing/non-callable `window.matchMedia`, a throwing
+  `matchMedia`, a non-object `MediaQueryList`, and a throwing or non-boolean
+  `.matches` all resolve to the light fallback (`false`).
+- **Deterministic.** It is a pure read of current environment state: duplicate
+  and concurrent calls agree, and it never writes storage, so a retry cannot
+  race or duplicate persisted user data.
+- **Strict boolean.** Only `matches === true` means dark; a truthy
+  non-boolean (`'true'`, `1`) is reported as unreadable instead of being
+  coerced, so malformed input can never silently flip the theme.
+- **Non-destructive fallback.** A failed read yields `'light'` and never
+  supersedes an explicitly persisted `themeMode` — the user's saved choice
+  survives any environment failure, and the toggle stays clickable.
+- **Bounded retries, no torn state.** The `change` subscription is
+  established with at most `SUBSCRIBE_MAX_ATTEMPTS` attempts (linear backoff);
+  on give-up the last known value is retained and re-synced on the next
+  `themeMode` transition. Invalid/stale event payloads are dropped rather than
+  coerced, and duplicate unsubscribes are no-ops.
+- **Diagnosable, not noisy.** Each failure class is logged once per session
+  through `src/lib/log.ts` (`event=theme_system_preference_unavailable
+failure=<class>`) — the class only, never an error message or user value.
+  The button also carries `data-theme-source` (`'explicit' | 'system' |
+'fallback'`) so support can read the current path straight from the DOM.
+
+`SettingsContext` mirrors the same guard locally for its `data-theme`
+application (it must not import components, because the Settings tests
+module-mock `ThemeToggle`), so an absent or hostile `matchMedia` degrades to
+"no live OS updates" instead of crashing the tree.
+
+Focused coverage lives in
+`src/components/ThemeToggle.failure-boundary.test.tsx` (success, rejection,
+boundary, retry, recovery, regression); the happy path and single-source-of-
+truth regressions live in `src/components/ThemeToggle.test.tsx`.

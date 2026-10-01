@@ -250,6 +250,68 @@ describe('Toast', () => {
       vi.useRealTimers()
     }
   })
+
+  describe('boundary and recovery states', () => {
+    it('cleans up timers on unmount', () => {
+      vi.useFakeTimers()
+      try {
+        const { unmount, onDismiss } = renderToast('info', 'Unmount toast', 5000)
+        unmount()
+        vi.advanceTimersByTime(10000)
+        expect(onDismiss).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('handles negative duration gracefully by treating it as non-dismissing', () => {
+      vi.useFakeTimers()
+      try {
+        const { onDismiss } = renderToast('info', 'Negative toast', -1000)
+        vi.advanceTimersByTime(5000)
+        expect(onDismiss).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('resumes timer on blur if focus genuinely left the component', () => {
+      vi.useFakeTimers()
+      try {
+        const { onDismiss } = renderToast('info', 'Blur toast', 5000)
+        const toast = screen.getByRole('status')
+        
+        fireEvent.focus(toast)
+        vi.advanceTimersByTime(10000)
+        expect(onDismiss).not.toHaveBeenCalled()
+
+        // Simulate blur where relatedTarget is outside
+        fireEvent.blur(toast, { relatedTarget: document.body })
+        vi.advanceTimersByTime(5000)
+        expect(onDismiss).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not resume timer on blur if relatedTarget is inside the component', () => {
+      vi.useFakeTimers()
+      try {
+        const { onDismiss } = renderToast('info', 'Blur internal toast', 5000)
+        const toast = screen.getByRole('status')
+        const dismissBtn = screen.getByRole('button', { name: 'Dismiss info notification' })
+        
+        fireEvent.focus(toast)
+        vi.advanceTimersByTime(2000)
+
+        fireEvent.blur(toast, { relatedTarget: dismissBtn })
+        vi.advanceTimersByTime(5000)
+        expect(onDismiss).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
 })
 
 /**

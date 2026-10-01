@@ -10,7 +10,17 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   skipRateLimit?: boolean
   /** Declares decimal amount fields within the request JSON body. */
   amountFields?: ApiAmountFields
-  /** Identity epoch captured at the moment the caller reads the identity it intends to act on. */
+/**
+   * When provided, the request is only dispatched if the active identity
+   * epoch matches this value at call time **and** when the response arrives.
+   * A mismatch at either point causes the promise to reject with
+   * {@link ApiSessionConflictError}, leaving no partial state.
+   *
+   * Pass the epoch obtained from {@link getIdentityEpoch} at the moment the
+   * caller reads the identity it intends to act on. The client advances the
+   * epoch automatically on every {@link setIdentityEpoch} call (disconnect,
+   * reconnect, expiry).
+   */
   identityEpoch?: number
 }
 
@@ -64,6 +74,25 @@ export class ApiAmountError extends ApiError {
   }
 }
 
+/**
+ * Thrown by `apiFetch` when a session identity conflict is detected.
+ *
+ * A conflict is detected in two places:
+ *
+ * 1. **Pre-flight** — the caller supplied an `identityEpoch` option and the
+ *    active epoch has already advanced (disconnect / reconnect / expiry) before
+ *    the request even hits the network. The request is never dispatched.
+ *
+ * 2. **Post-flight** — the epoch advanced *while* the request was in-flight
+ *    (e.g. the user disconnected their wallet before the response arrived). The
+ *    response is discarded and the promise rejects with this error. No partial
+ *    state is committed.
+ *
+ * `status` is `409` so existing `err instanceof ApiError` handlers keep
+ * working; code that wants specific conflict handling can narrow on this class
+ * or on `err.status === 409`. Do **not** retry automatically — re-acquire a
+ * fresh epoch via {@link getIdentityEpoch} and re-issue.
+ */
 export class ApiSessionConflictError extends ApiError {
   readonly staleEpoch: number
   readonly currentEpoch: number
@@ -123,16 +152,32 @@ function replaceControlCharacters(value: string): string {
   return result
 }
 
-function rejectBaseUrl(): '' {
-  if (IS_DEV) {
-    console.warn(
-      '[api] VITE_API_BASE_URL is not a supported API base. Expected an empty value, ' +
-        'a root-relative prefix (e.g. "/api"), or an absolute http(s) origin. Falling back to same-origin requests.'
-    )
-  }
-  return ''
-}
-
+/**
+ * Normalizes the configured API base URL.
+ *
+ * Invariants (all enforced by the `normalizeBaseUrl` tests):
+ *  1. The result is either `''` (same-origin, no prefix) or a base with **no
+ *     trailing slash**, so joining a path always inserts exactly one separator.
+ *  2. The result is never scheme-relative (`//host` or `/\host`) and never a
+ *     non-`http(s)` URL, so {@link buildUrl} cannot be steered to a foreign
+ *     origin by configuration.
+ *  3. The result never carries a query string or fragment, because a path
+ *     appended after `?`/`#` would be swallowed by the URL parser and the
+ *     server would never see it.
+ *  4. The function is idempotent: `normalizeBaseUrl(normalizeBaseUrl(x))`
+ *     always equals `normalizeBaseUrl(x)`.
+ *  5. Invalid or hostile values **fail closed** to `''` rather than throwing.
+ *     A bad `.env` entry degrades the app to same-origin requests instead of
+ *     breaking module evaluation (and therefore app boot).
+ *
+ * Rule 5 means a misconfigured `VITE_API_BASE_URL` cannot leak request URLs or
+ * credentials to another host; it can only ever remove the prefix.
+ *
+ * Exported so the failure boundaries are directly testable. `import.meta.env`
+ * is inlined at build time, so stubbing `VITE_API_BASE_URL` from a test cannot
+ * reach the module-load path that computes {@link API_BASE_URL}.
+ */
+export { normalizeBaseUrl }
 export function normalizeBaseUrl(value: string): string {
   const trimmed = typeof value === 'string' ? value.trim() : ''
   if (!trimmed || trimmed === '/') {
@@ -173,6 +218,26 @@ export function normalizeBaseUrl(value: string): string {
 
   return trimmed.replace(/\/+$/, '')
 }
+
+/**
+ * Reports an unusable `VITE_API_BASE_URL` and yields the same-origin fallback.
+ *
+ * The offending value is deliberately **not** echoed: a base URL may embed
+ * credentials (`https://user:token@host`) and the value is already visible in
+ * the operator's own `.env` file. Only the classification is logged.
+ */
+function rejectBaseUrl(): '' {
+  if (IS_DEV) {
+    console.warn(
+      '[api] VITE_API_BASE_URL is not a supported API base. Expected an empty value, ' +
+        'a root-relative prefix (e.g. "/api"), or an absolute http(s) origin. ' +
+        'Falling back to same-origin requests.'
+    )
+  }
+  return ''
+}
+
+export const API_BASE_URL = normalizeBaseUrl(env?.VITE_API_BASE_URL || '/api')
 
 type ReplayEntry = {
   fingerprint: string
@@ -266,25 +331,14 @@ export function resetApiRateLimiter(): void {
   defaultApiRateLimiter.reset()
 }
 
-
 /**
- * Reports an unusable `VITE_API_BASE_URL` and yields the same-origin fallback.
+ * Builds the redacted, length-bounded path echoed in `ApiError.payload`.
  *
- * The offending value is deliberately **not** echoed: a base URL may embed
- * credentials (`https://user:token@host`) and the value is already visible in
- * the operator's own `.env` file. Only the classification is logged.
+ * Strips the query string so bearer tokens, signatures, and user-supplied
+ * identifiers never reach logs, telemetry, or the `ErrorState` UI. Control
+ * characters are replaced with `?` so the value cannot smuggle newlines into a
+ * log line.
  */
-function rejectBaseUrl(): '' {
-  if (IS_DEV) {
-    console.warn(
-      '[api] VITE_API_BASE_URL is not a supported API base. Expected an empty value, ' +
-        'a root-relative prefix (e.g. "/api"), or an absolute http(s) origin. ' +
-        'Falling back to same-origin requests.'
-    )
-  }
-  return ''
-}
-
 function redactPathForDiagnostics(value: unknown): string {
   if (typeof value !== 'string') return typeof value
   const queryStart = value.indexOf('?')
@@ -410,30 +464,141 @@ function applyAmountFields(
 function buildHeaders(
   headers: HeadersInit | undefined,
   hasJsonBody: boolean,
-  correlationId: string
+  correlationId?: string
 ): Headers {
   const nextHeaders = new Headers(headers)
-  if (!nextHeaders.has('Accept')) nextHeaders.set('Accept', 'application/json')
-  if (hasJsonBody && !nextHeaders.has('Content-Type')) nextHeaders.set('Content-Type', 'application/json')
-  if (correlationId && !nextHeaders.has('X-Correlation-ID')) nextHeaders.set('X-Correlation-ID', correlationId)
+  if (!nextHeaders.has('Accept')) {
+    nextHeaders.set('Accept', 'application/json')
+  }
+  if (hasJsonBody && !nextHeaders.has('Content-Type')) {
+    nextHeaders.set('Content-Type', 'application/json')
+  }
+  if (correlationId && !nextHeaders.has('X-Correlation-ID')) {
+    nextHeaders.set('X-Correlation-ID', correlationId)
+  }
   return nextHeaders
 }
 
-async function parseResponse(response: Response): Promise<unknown> {
-  if (response.status === 204) return undefined
+/**
+ * Safely parses an HTTP response into a typed JSON value, text, or undefined.
+ *
+ * Deterministic failure-boundary invariants:
+ *  1. Empty content statuses (204 No Content, 205 Reset Content, 304 Not Modified)
+ *     always return `undefined` immediately without attempting to read the body stream.
+ *  2. Responses with empty or whitespace-only bodies return `undefined` instead
+ *     of throwing a syntax error.
+ *  3. JSON recognition: Matches `application/json`, `application/*+json`,
+ *     and `text/json` (case-insensitive) in the Content-Type header, or valid
+ *     JSON-like object/array payloads.
+ *  4. Body stream safety: Reads `response.text()` first. If network cuts or the stream
+ *     is aborted mid-read, rethrows `AbortError` or raises a deterministic `network_error`.
+ *  5. Malformed/Partial JSON:
+ *     - If `response.ok` is false (e.g. 4xx/5xx error responses), malformed JSON does not
+ *       crash; the raw text body is preserved and returned as payload, ensuring callers
+ *       have full diagnostic information without silent data loss.
+ *     - If `response.ok` is true (2xx), but the JSON is malformed, throws an `ApiError`
+ *       with classification `http_error` and a redacted diagnostic message.
+ *  6. Safe data representation: Valid JSON primitives like `false`, `0`, `""`, and `null`
+ *     are preserved as their parsed values and not accidentally coerced to `undefined`.
+ */
+export async function parseResponse(response: Response): Promise<unknown> {
+  if (response.status === 204 || response.status === 205 || response.status === 304) {
+    return undefined
+  }
 
-  const contentType = response.headers.get('content-type') || ''
-  if (contentType.includes('application/json')) return response.json()
+  let text: string
+  try {
+    text = await response.text()
+  } catch (error) {
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
+      throw error
+    }
+    const message = error instanceof Error ? error.message : 'Failed to read response body'
+    throw new ApiError(response.status || 0, message, error, 'network_error')
+  }
 
-  const text = await response.text()
-  return text || undefined
+  const trimmed = text.trim()
+  if (!trimmed) {
+    return undefined
+  }
+
+  const contentType = (response.headers.get('content-type') || '').toLowerCase()
+  const isJsonHeader =
+    contentType.includes('application/json') ||
+    contentType.includes('+json') ||
+    contentType.includes('text/json')
+
+  const looksLikeJson =
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'))
+
+  if (isJsonHeader || looksLikeJson) {
+    try {
+      return JSON.parse(text)
+    } catch (err) {
+      if (!response.ok) {
+        return trimmed
+      }
+      throw err
+    }
+  }
+
+  return trimmed
 }
 
+/** Maximum length of a server-provided error message we will surface verbatim. */
+const MAX_ERROR_MESSAGE_LENGTH = 500
+
+/**
+ * Extracts a deterministic, safe, user-visible error message from a failed
+ * response payload.
+ *
+ * Invariants:
+ * - Always returns a non-empty string, so callers can rely on
+ *   `new ApiError(status, message)` never producing an empty message.
+ * - Never throws: any shape of `payload` (null, primitives, arrays, objects
+ *   with getters that throw, cyclic structures) resolves to a fallback.
+ * - Never leaks unbounded or control-character-laden server content: string
+ *   messages are trimmed, stripped of control characters, and truncated to
+ *   {@link MAX_ERROR_MESSAGE_LENGTH}. This keeps logs and UI rendering
+ *   deterministic and prevents log-injection / terminal-escape attacks.
+ * - Prefers an explicit `message` string, then a `error` string, then a
+ *   non-empty string payload, then a status-derived fallback.
+ */
 function errorMessage(status: number, payload: unknown): string {
-  if (payload && typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string') {
-    return payload.message
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'message' in payload &&
+    typeof (payload as { message: unknown }).message === 'string'
+  ) {
+    return (payload as { message: string }).message
   }
-  if (typeof payload === 'string' && payload.trim()) return payload
+  }
+const readStringField = (source: unknown, key: string): string | undefined => {
+    if (!source || typeof source !== 'object') return undefined
+    let raw: unknown
+    try {
+      raw = (source as Record<string, unknown>)[key]
+    } catch {
+      return undefined
+    }
+    if (typeof raw !== 'string') return undefined
+    const cleaned = sanitize(raw)
+    return cleaned || undefined
+  }
+
+  const fromMessage = readStringField(payload, 'message')
+  if (fromMessage) return fromMessage
+
+  const fromError = readStringField(payload, 'error')
+  if (fromError) return fromError
+
+  if (typeof payload === 'string') {
+    const cleaned = sanitize(payload)
+    if (cleaned) return cleaned
+  }
+
   return `Request failed with status ${status}`
 }
 
@@ -494,21 +659,26 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   // caller's body object.
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
-  const correlationId = generateCorrelationId('api-fetch')
 
-  // Pre-flight: deterministic, request-independent failures.
-  const url = buildUrl(path)
-  const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
   // Validate input size before expensive operations. Serializing an oversized
   // body is wasted work and could exhaust memory or downstream resources.
+  let serializedBody: BodyInit | undefined
   if (hasJsonBody) {
     const serialized = JSON.stringify(wireBody)
     if (new TextEncoder().encode(serialized).byteLength > MAX_REQUEST_BODY_BYTES) {
       throw new ApiBodyTooLargeError(MAX_REQUEST_BODY_BYTES, { bodySize: serialized.length })
     }
+    serializedBody = serialized
+  } else {
+    serializedBody = wireBody ?? undefined
   }
 
   const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (wireBody ?? undefined)
+  // Pre-flight: deterministic, request-independent failures.
+  const url = buildUrl(path)
+const serializedBody = hasJsonBody ? JSON.stringify(wireBody) : (wireBody ?? undefined)
+  const correlationId = generateCorrelationId('api-fetch')
+  const requestHeaders = buildHeaders(headers, hasJsonBody, correlationId)
   const method = (init.method || 'GET').toUpperCase()
 
 export function setIdentityEpoch(epoch?: number): number {
@@ -586,6 +756,7 @@ async function apiFetchWithoutReplay<T>(
       body: serializedBody,
     })
   } catch (error) {
+    // Preserve AbortError unchanged — callers may inspect it directly.
     if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
       emitWalletSessionEvent('action_failed', {
         address: null,
@@ -595,6 +766,7 @@ async function apiFetchWithoutReplay<T>(
       })
       throw error
     }
+    // Network transport failure: wrap in ApiError with deterministic classification.
 
     const message = error instanceof Error ? error.message : 'Network request failed'
     emitWalletSessionEvent('action_failed', {

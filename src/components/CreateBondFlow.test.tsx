@@ -39,27 +39,21 @@ vi.mock('../context/WalletContext', () => ({
 vi.mock('../hooks/useUsdcBalance', () => ({
   useUsdcBalance: () => ({
     balance: 10000,
-    status: 'success',
+    status: 'ready',
     refetch: vi.fn(),
   }),
 }))
 
-// ToastProvider depends on SettingsProvider → wrap renders with both
-import ToastProvider from './ToastProvider'
-import { SettingsProvider } from '../context/SettingsContext'
+vi.mock('./ToastProvider', () => ({
+  useToast: () => ({ addToast: vi.fn() }),
+}))
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function renderFlow() {
-  return render(
-    <SettingsProvider>
-      <ToastProvider>
-        <CreateBondFlow />
-      </ToastProvider>
-    </SettingsProvider>
-  )
+  return render(<CreateBondFlow />)
 }
 
 /** Navigate from step 1 → step 3 with the given amount and duration. */

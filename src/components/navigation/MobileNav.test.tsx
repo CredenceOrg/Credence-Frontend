@@ -32,6 +32,7 @@ function openDrawer() {
 describe('MobileNav', () => {
   beforeEach(() => {
     document.body.style.overflow = ''
+    sessionStorage.clear()
   })
 
   afterEach(() => {
@@ -42,7 +43,7 @@ describe('MobileNav', () => {
 
   it('renders a hamburger button', () => {
     renderNav()
-    expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInDocument()
+    expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInTheDocument()
   })
 
   it('drawer is hidden on initial render', () => {
@@ -88,6 +89,27 @@ describe('MobileNav', () => {
     const backdrop = document.querySelector('.mobileNav-backdrop') as HTMLElement
     expect(backdrop).not.toBeNull()
     fireEvent.click(backdrop)
+    expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('close is idempotent when called repeatedly', () => {
+    renderNav()
+    openDrawer()
+    const closeBtn = screen.getByRole('button', { name: /close navigation menu/i })
+    fireEvent.click(closeBtn)
+    expect(() => fireEvent.click(closeBtn)).not.toThrow()
+    expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('close handles concurrent dispatches without throwing', () => {
+    renderNav()
+    openDrawer()
+    const closeBtn = screen.getByRole('button', { name: /close navigation menu/i })
+    const backdrop = document.querySelector('.mobileNav-backdrop') as HTMLElement
+    expect(() => {
+      fireEvent.click(closeBtn)
+      fireEvent.click(backdrop)
+    }).not.toThrow()
     expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
   })
 
@@ -156,16 +178,16 @@ describe('MobileNav', () => {
   it('shows secondary nav links (Home and Settings) when drawer is open', () => {
     renderNav()
     openDrawer()
-    expect(screen.getByRole('link', { name: /home/i })).toBeInDocument()
-    expect(screen.getByRole('link', { name: /settings/i })).toBeInDocument()
+    expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument()
   })
 
   it('does not show primary route links in the drawer', () => {
     renderNav()
     openDrawer()
-    expect(screen.queryByRole('link', { name: /^dashboard$/i })).not.toBeInDocument()
-    expect(screen.queryByRole('link', { name: /^bond$/i })).not.toBeInDocument()
-    expect(screen.queryByRole('link', { name: /^trust score$/i })).not.toBeInDocument()
+    expect(screen.queryByRole('link', { name: /^dashboard$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /^bond$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /^trust score$/i })).not.toBeInTheDocument()
   })
 
   // --- backdrop lifecycle ---
@@ -281,14 +303,16 @@ describe('MobileNav', () => {
     expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('restores body overflow and focus after a failure-boundary close', () => {
+  it('restores body overflow and focus after a failure-boundary close', async () => {
     renderNav()
     openDrawer()
     expect(document.body.style.overflow).toBe('hidden')
     const drawer = getDrawer()
     fireEvent.keyDown(drawer, { key: 'Escape' })
     expect(document.body.style.overflow).toBe('')
-    expect(screen.getByRole('button', { name: /open navigation menu/i })).toHaveFocus()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /open navigation menu/i })).toHaveFocus()
+    })
   })
 
   // =====================================================================

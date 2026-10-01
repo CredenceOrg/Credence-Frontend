@@ -351,7 +351,7 @@ describe('echo display respects addressDisplay setting', () => {
 
   it('shows friendly address when addressDisplay is "friendly"', async () => {
     const text = await renderAndTriggerEcho('friendly')
-    // formatAddressForDisplay friendly: first 6 + "…" + last 4
+    // formatAddressForDisplay falls back to truncated form until on-chain names exist
     expect(text).toBe(
       `${VALID_KEY.substring(0, 6)}…${VALID_KEY.substring(VALID_KEY.length - 4)}`
     )
@@ -421,9 +421,7 @@ describe('boundary and recovery', () => {
 
   it('keeps the latest paste result when clipboard resolves after a second click', async () => {
     const onChange = vi.fn()
-    clipboardReadTextMock
-      .mockResolvedValueOnce('  first-paste  ')
-      .mockResolvedValueOnce(VALID_KEY)
+    clipboardReadTextMock.mockResolvedValueOnce('  first-paste  ').mockResolvedValueOnce(VALID_KEY)
 
     render(<AddressInput id="addr" value="" onChange={onChange} />)
 
@@ -438,7 +436,7 @@ describe('boundary and recovery', () => {
 
     expect(onChange).toHaveBeenCalledWith('first-paste')
     expect(onChange).toHaveBeenCalledWith(VALID_KEY)
-    expect(onChange).toHaveBeenCalledTimes(2)
+    expect(onChange.mock.calls.length).toBe(2)
   })
 
   it('never overwrites the existing value with an empty clipboard result', async () => {
@@ -615,5 +613,270 @@ describe('AddressInput tests', () => {
     
     expect(await screen.findByText('Paste content is stale')).toBeInTheDocument()
     expect(onChange).toHaveBeenCalledWith('G123')
+  })
+})
+
+// --- handleFocus: deterministic failure-boundary coverage ---
+describe('handleFocus deterministic failure-boundary coverage', () => {
+  it('calls synchronous onFocus handler and maintains user input', async () => {
+    const onFocus = vi.fn()
+    render(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} onFocus={onFocus} />)
+    const input = screen.getByRole('textbox')
+
+    fireEvent.focus(input)
+    expect(onFocus).toHaveBeenCalledTimes(1)
+    expect(input).toHaveValue(VALID_KEY)
+  })
+
+  it('enters loading state during async onFocusRequest without losing input', async () => {
+    let resolvePromise!: (val: string) => void
+    const pendingPromise = new Promise<string>((resolve) => {
+      resolvePromise = resolve
+    })
+    const onFocusRequest = vi.fn().mockReturnValue(pendingPromise)
+
+    render(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY}
+        onChange={vi.fn()}
+        onFocusRequest={onFocusRequest}
+      />
+    )
+    const input = screen.getByRole('textbox')
+
+    fireEvent.focus(input)
+    expect(input).toHaveAttribute('aria-busy', 'true')
+    expect(input).toBeDisabled()
+    expect(input).toHaveValue(VALID_KEY)
+
+    await act(async () => {
+      resolvePromise(VALID_KEY)
+      await pendingPromise
+    })
+
+    expect(input).not.toHaveAttribute('aria-busy')
+    expect(input).not.toBeDisabled()
+  })
+
+  it('displays error alert and preserves user input when onFocusRequest rejects', async () => {
+    const onFocusRequest = vi.fn().mockRejectedValue(new Error('Network lookup failed'))
+    render(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY}
+        onChange={vi.fn()}
+        onFocusRequest={onFocusRequest}
+      />
+    )
+    const input = screen.getByRole('textbox')
+
+    await act(async () => {
+      fireEvent.focus(input)
+    })
+
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('Network lookup failed')
+    // Crucial invariant: user's existing data must never be lost
+    expect(input).toHaveValue(VALID_KEY)
+  })
+
+  it('displays permission alert when permission is denied', async () => {
+    const permError = new Error('Permission denied')
+    permError.name = 'PermissionError'
+    const onFocusRequest = vi.fn().mockRejectedValue(permError)
+
+    render(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY}
+        onChange={vi.fn()}
+        onFocusRequest={onFocusRequest}
+      />
+    )
+    const input = screen.getByRole('textbox')
+
+    await act(async () => {
+      fireEvent.focus(input)
+    })
+
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('Permission denied focusing address.')
+    expect(input).toHaveValue(VALID_KEY)
+  })
+
+  it('displays stale alert when data is stale', async () => {
+    const staleError = new Error('Data is stale')
+    staleError.name = 'StaleDataError'
+    const onFocusRequest = vi.fn().mockRejectedValue(staleError)
+
+    render(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY}
+        onChange={vi.fn()}
+        onFocusRequest={onFocusRequest}
+      />
+    )
+    const input = screen.getByRole('textbox')
+
+    await act(async () => {
+      fireEvent.focus(input)
+    })
+
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('Address data is stale.')
+    expect(input).toHaveValue(VALID_KEY)
+  })
+
+  it('can retry and recover after a failure', async () => {
+    let callCount = 0
+    const onChange = vi.fn()
+    const onFocusRequest = vi.fn().mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.reject(new Error('Transient fault'))
+      }
+      return Promise.resolve(VALID_KEY)
+    })
+
+    render(
+      <AddressInput
+        id="addr"
+        value="GINITIAL"
+        onChange={onChange}
+        onFocusRequest={onFocusRequest}
+      />
+    )
+    const input = screen.getByRole('textbox')
+
+    await act(async () => {
+      fireEvent.focus(input)
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Transient fault')
+    const retryButton = screen.getByRole('button', { name: /retry focus request/i })
+
+    await act(async () => {
+      fireEvent.click(retryButton)
+    })
+
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(onChange).toHaveBeenCalledWith(VALID_KEY)
+  })
+
+  it('prevents concurrent execution when multiple focus events occur', async () => {
+    let resolvePromise!: (val: string) => void
+    const pendingPromise = new Promise<string>((resolve) => {
+      resolvePromise = resolve
+    })
+    const onFocusRequest = vi.fn().mockReturnValue(pendingPromise)
+
+    render(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY}
+        onChange={vi.fn()}
+        onFocusRequest={onFocusRequest}
+      />
+    )
+    const input = screen.getByRole('textbox')
+
+    // Fire focus multiple times
+    fireEvent.focus(input)
+    fireEvent.focus(input)
+    fireEvent.focus(input)
+
+    expect(onFocusRequest).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolvePromise(VALID_KEY)
+      await pendingPromise
+    })
+  })
+
+  it('discards stale response when a subsequent request resolves first', async () => {
+    let resolveP1!: (val: string) => void
+    let resolveP2!: (val: string) => void
+    const p1 = new Promise<string>((r) => {
+      resolveP1 = r
+    })
+    const p2 = new Promise<string>((r) => {
+      resolveP2 = r
+    })
+
+    let callCount = 0
+    const onChange = vi.fn()
+    const onFocusRequest = vi.fn().mockImplementation(() => {
+      callCount++
+      return callCount === 1 ? p1 : p2
+    })
+
+    const { rerender } = render(
+      <AddressInput id="addr" value="GSTART" onChange={onChange} onFocusRequest={onFocusRequest} />
+    )
+    const input = screen.getByRole('textbox')
+
+    // Initial focus triggers p1
+    fireEvent.focus(input)
+    expect(onFocusRequest).toHaveBeenCalledTimes(1)
+
+    // User types new address and re-focuses, initiating second request p2
+    fireEvent.change(input, { target: { value: 'GNEW' } })
+    rerender(
+      <AddressInput id="addr" value="GNEW" onChange={onChange} onFocusRequest={onFocusRequest} />
+    )
+    fireEvent.focus(input)
+    expect(onFocusRequest).toHaveBeenCalledTimes(2)
+
+    // Resolve p2 first
+    await act(async () => {
+      resolveP2('GSECOND_RESOLVED')
+      await p2
+    })
+    expect(onChange).toHaveBeenCalledWith('GSECOND_RESOLVED')
+
+    // Now resolve p1 afterwards
+    await act(async () => {
+      resolveP1('GFIRST_STALE')
+      await p1
+    })
+
+    // Stale p1 must not overwrite the latest state
+    expect(onChange).not.toHaveBeenCalledWith('GFIRST_STALE')
+  })
+
+  it('clears focus error on manual user typing without losing input', async () => {
+    const onFocusRequest = vi.fn().mockRejectedValue(new Error('Focus failed'))
+    let val = ''
+    const onChange = vi.fn((next: string) => {
+      val = next
+    })
+
+    const { rerender } = render(
+      <AddressInput id="addr" value={val} onChange={onChange} onFocusRequest={onFocusRequest} />
+    )
+    const input = screen.getByRole('textbox')
+
+    await act(async () => {
+      fireEvent.focus(input)
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Focus failed')
+
+    // Typing should clear the error alert
+    await act(async () => {
+      fireEvent.change(input, { target: { value: VALID_KEY } })
+    })
+    rerender(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY}
+        onChange={onChange}
+        onFocusRequest={onFocusRequest}
+      />
+    )
+
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })

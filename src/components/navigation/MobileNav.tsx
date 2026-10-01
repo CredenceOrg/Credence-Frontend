@@ -124,7 +124,13 @@ function MobileNavInner() {
     return () => window.removeEventListener(DOM_EVENTS.KEY_DOWN, safeHandleKeyDown)
   }, [isOpen])
 
-  const close = useCallback(() => setIsOpen(false), [])
+  const close = useCallback(() => {
+    try {
+      setIsOpen((prev) => (prev ? false : prev))
+    } catch {
+      // Failure boundary: prevent close from crashing
+    }
+  }, [])
 
   useFocusTrap({
     containerRef: drawerRef,

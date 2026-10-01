@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ActionCard from './ActionCard'
 
@@ -191,5 +191,76 @@ describe('ActionCard', () => {
 
     await user.click(closeBtn)
     expect(onDismiss).toHaveBeenCalledTimes(1)
+  })
+
+  describe('touch gestures (boundary and recovery)', () => {
+    it('dismisses when swiped right beyond threshold', () => {
+      const onDismiss = vi.fn()
+      const { container } = render(
+        <ActionCard title="Test" onDismiss={onDismiss}>
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchStart(article, { touches: [{ clientX: 0 }] })
+      fireEvent.touchMove(article, { touches: [{ clientX: 101 }] })
+      fireEvent.touchEnd(article)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    })
+
+    it('dismisses when swiped left beyond threshold', () => {
+      const onDismiss = vi.fn()
+      const { container } = render(
+        <ActionCard title="Test" onDismiss={onDismiss}>
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchStart(article, { touches: [{ clientX: 150 }] })
+      fireEvent.touchMove(article, { touches: [{ clientX: 49 }] })
+      fireEvent.touchEnd(article)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not dismiss when swiped below threshold', () => {
+      const onDismiss = vi.fn()
+      const { container } = render(
+        <ActionCard title="Test" onDismiss={onDismiss}>
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchStart(article, { touches: [{ clientX: 0 }] })
+      fireEvent.touchMove(article, { touches: [{ clientX: 99 }] })
+      fireEvent.touchEnd(article)
+      expect(onDismiss).not.toHaveBeenCalled()
+    })
+
+    it('recovers from touchMove without touchStart gracefully', () => {
+      const onDismiss = vi.fn()
+      const { container } = render(
+        <ActionCard title="Test" onDismiss={onDismiss}>
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchMove(article, { touches: [{ clientX: 100 }] })
+      fireEvent.touchEnd(article)
+      expect(onDismiss).not.toHaveBeenCalled()
+    })
+
+    it('ignores touch events if onDismiss is not provided', () => {
+      const { container } = render(
+        <ActionCard title="Test">
+          Content
+        </ActionCard>
+      )
+      const article = container.querySelector('article')!
+      fireEvent.touchStart(article, { touches: [{ clientX: 0 }] })
+      fireEvent.touchMove(article, { touches: [{ clientX: 200 }] })
+      fireEvent.touchEnd(article)
+      // No errors should be thrown
+      expect(article).not.toHaveClass('actionCard--swiping')
+    })
   })
 })

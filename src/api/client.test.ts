@@ -1,7 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { API_BASE_URL, ApiError, apiFetch, buildUrl, normalizeBaseUrl } from './client'
-import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
+  API_BASE_URL,
   ApiAmountError,
   ApiBodyTooLargeError,
   ApiError,
@@ -9,11 +8,14 @@ import {
   MAX_REQUEST_BODY_BYTES,
   apiFetch,
   apiRateLimiterSnapshot,
+  buildUrl,
   defaultApiRateLimiter,
+  normalizeBaseUrl,
+  parseResponse,
   resetApiRateLimiter,
   type ApiFetchOptions,
 } from './client'
-import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
+import { resetWalletAuditTrail } from '../lib/walletAudit'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -37,6 +39,39 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
   resetWalletAuditTrail()
+})
+
+describe('errorMessage', () => {
+  it('returns the message of an Error instance', () => {
+    expect(errorMessage(new Error('boom'))).toBe('boom')
+  })
+
+  it('returns the message of an ApiError subclass', () => {
+    expect(errorMessage(new ApiError(500, 'server exploded'))).toBe('server exploded')
+  })
+
+  it('returns a string thrown value verbatim', () => {
+    expect(errorMessage('string error')).toBe('string error')
+  })
+
+  it('returns a fallback for non-Error, non-string values', () => {
+    expect(errorMessage(undefined)).toBe('Something went wrong')
+    expect(errorMessage(null)).toBe('Something went wrong')
+    expect(errorMessage(42)).toBe('Something went wrong')
+    expect(errorMessage({ message: 'not an error' })).toBe('Something went wrong')
+  })
+
+  it('returns an empty-string message when the Error has an empty message', () => {
+    expect(errorMessage(new Error(''))).toBe('')
+  })
+
+  it('does not leak sensitive fields from the error object', () => {
+    const err = Object.assign(new Error('safe message'), {
+      token: 'secret-token',
+      password: 'hunter2',
+    })
+    expect(errorMessage(err)).toBe('safe message')
+  })
 })
 
 describe('apiFetch', () => {
@@ -866,7 +901,9 @@ describe('apiFetch pre-flight failure boundaries', () => {
   it('rejects JSON bodies exceeding MAX_REQUEST_BODY_BYTES before fetching', async () => {
     const oversizedPayload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES + 1) }
 
-    await expect(apiFetch('/upload', { method: 'POST', body: oversizedPayload })).rejects.toMatchObject({
+    await expect(
+      apiFetch('/upload', { method: 'POST', body: oversizedPayload })
+    ).rejects.toMatchObject({
       name: 'ApiBodyTooLargeError',
       status: 413,
     } satisfies Partial<ApiBodyTooLargeError>)
@@ -880,7 +917,9 @@ describe('apiFetch pre-flight failure boundaries', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const payload = { data: 'x'.repeat(MAX_REQUEST_BODY_BYTES - 100) }
-    await expect(apiFetch('/upload', { method: 'POST', body: payload })).resolves.toEqual({ ok: true })
+    await expect(apiFetch('/upload', { method: 'POST', body: payload })).resolves.toEqual({
+      ok: true,
+    })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
@@ -1318,5 +1357,159 @@ describe('apiFetch amount precision boundary (exact decimal amounts)', () => {
     expect(err.code).toBe('NEGATIVE')
     expect(err.payload).toEqual({ field: 'amount', code: 'NEGATIVE' })
     expect(err.message).toContain('amount')
+  })
+})
+
+describe('parseResponse – deterministic failure boundaries', () => {
+  it('returns undefined for 204 No Content', async () => {
+    const res = new Response(null, { status: 204 })
+    await expect(parseResponse(res)).resolves.toBeUndefined()
+  })
+
+  it('returns undefined for 205 Reset Content', async () => {
+    const res = new Response(null, { status: 205 })
+    await expect(parseResponse(res)).resolves.toBeUndefined()
+  })
+
+  it('returns undefined for 304 Not Modified', async () => {
+    const res = new Response(null, { status: 304 })
+    await expect(parseResponse(res)).resolves.toBeUndefined()
+  })
+
+  it('returns undefined for empty or whitespace-only response bodies', async () => {
+    const emptyRes = new Response('', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await expect(parseResponse(emptyRes)).resolves.toBeUndefined()
+
+    const whitespaceRes = new Response('   \r\n\t   ', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await expect(parseResponse(whitespaceRes)).resolves.toBeUndefined()
+  })
+
+  it('parses valid JSON objects and arrays with application/json header', async () => {
+    const objRes = new Response(JSON.stringify({ success: true, count: 5 }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    })
+    await expect(parseResponse(objRes)).resolves.toEqual({ success: true, count: 5 })
+
+    const arrRes = new Response(JSON.stringify(['a', 'b', 'c']), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await expect(parseResponse(arrRes)).resolves.toEqual(['a', 'b', 'c'])
+  })
+
+  it('parses structured JSON for +json vendor types and text/json regardless of case', async () => {
+    const problemRes = new Response(JSON.stringify({ type: 'problem', detail: 'bad' }), {
+      status: 400,
+      headers: { 'Content-Type': 'APPLICATION/PROBLEM+JSON' },
+    })
+    await expect(parseResponse(problemRes)).resolves.toEqual({ type: 'problem', detail: 'bad' })
+
+    const textJsonRes = new Response(JSON.stringify({ flag: true }), {
+      status: 200,
+      headers: { 'content-type': 'text/json' },
+    })
+    await expect(parseResponse(textJsonRes)).resolves.toEqual({ flag: true })
+  })
+
+  it('preserves valid JSON primitives (numbers, booleans, null, strings)', async () => {
+    const zeroRes = new Response('0', {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await expect(parseResponse(zeroRes)).resolves.toBe(0)
+
+    const falseRes = new Response('false', {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await expect(parseResponse(falseRes)).resolves.toBe(false)
+
+    const nullRes = new Response('null', {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await expect(parseResponse(nullRes)).resolves.toBeNull()
+
+    const strRes = new Response('"test-string"', {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await expect(parseResponse(strRes)).resolves.toBe('test-string')
+  })
+
+  it('parses JSON when Content-Type is missing or generic if body looks like JSON', async () => {
+    const inferredObj = new Response('{"auto": "detected"}', {
+      status: 200,
+    })
+    await expect(parseResponse(inferredObj)).resolves.toEqual({ auto: 'detected' })
+
+    const inferredArr = new Response('[1, 2, 3]', {
+      status: 200,
+    })
+    await expect(parseResponse(inferredArr)).resolves.toEqual([1, 2, 3])
+  })
+
+  it('returns plain text when response is not JSON', async () => {
+    const textRes = new Response('OK, healthy service', {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain' },
+    })
+    await expect(parseResponse(textRes)).resolves.toBe('OK, healthy service')
+  })
+
+  it('throws SyntaxError when 2xx response has malformed JSON', async () => {
+    const malformed200 = new Response('{"brokenJson: 123', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    await expect(parseResponse(malformed200)).rejects.toThrow(SyntaxError)
+  })
+
+  it('preserves raw text body without throwing when non-2xx error response contains malformed JSON/HTML', async () => {
+    const htmlError502 = new Response('<html><body>502 Bad Gateway</body></html>', {
+      status: 502,
+      headers: { 'Content-Type': 'application/json' }, // Misconfigured gateway sending HTML with JSON header
+    })
+
+    const result = await parseResponse(htmlError502)
+    expect(result).toBe('<html><body>502 Bad Gateway</body></html>')
+  })
+
+  it('propagates AbortError if response body reading is aborted', async () => {
+    const abortedRes = {
+      status: 200,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      text: () => {
+        const error = new Error('The operation was aborted.')
+        error.name = 'AbortError'
+        return Promise.reject(error)
+      },
+    } as unknown as Response
+
+    await expect(parseResponse(abortedRes)).rejects.toThrow('The operation was aborted.')
+  })
+
+  it('wraps generic body stream read error into ApiError network_error', async () => {
+    const streamErrorRes = {
+      status: 200,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      text: () => Promise.reject(new Error('Premature close of HTTP response stream')),
+    } as unknown as Response
+
+    let err: unknown
+    try {
+      await parseResponse(streamErrorRes)
+    } catch (e) {
+      err = e
+    }
+
+    expect(err).toBeInstanceOf(ApiError)
+    const apiErr = err as ApiError
+    expect(apiErr.code).toBe('network_error')
+    expect(apiErr.message).toContain('Premature close')
   })
 })

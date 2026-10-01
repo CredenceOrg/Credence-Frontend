@@ -60,7 +60,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(toastElement).toBeInTheDocument()
 
     act(() => {
-      vi.advanceTimersByTime(500000)
+      vi.advanceTimerByTime(500000)
     })
     expect(toastElement).toBeInTheDocument()
   })
@@ -79,7 +79,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(toastElement).toBeInTheDocument()
 
     act(() => {
-      vi.advanceTimersByTime(6000)
+      vi.advanceTimerByTime(6000)
     })
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
@@ -131,7 +131,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     // Advance slightly before hovering
     act(() => {
-      vi.advanceTimersByTime(500)
+      vi.advanceTimerByTime(500)
     })
 
     // Fire both variants to guarantee event matching with the provider listeners
@@ -140,7 +140,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     // If freeze works, this long advance won't clear the toast
     act(() => {
-      vi.advanceTimersByTime(10000)
+      vi.advanceTimerByTime(10000)
     })
 
     // Fallback assert: Check if it survives or if it requires a shorter step sequence
@@ -148,25 +148,19 @@ describe('ToastProvider Timing and Queue Logic', () => {
       expect(container.querySelector('.toast')).toBeInTheDocument()
       fireEvent.mouseLeave(toastElement)
       act(() => {
-        vi.advanceTimersByTime(8000)
+        vi.advanceTimerByTime(8000)
       })
     }
 
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
-
-  // ----------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------
   // Deterministic failure-boundary coverage
-  // ---------------------------------------------------------------------------------
-  /*
-   * Invariants:
-   *  1. useToast() must throw a deterministic Error when used outside a ToastProvider.
-   *  2. addToast must never throw for invalid input; it either sanitizes or drops.
-   *  3. Rapid concurrent addToast calls must not exceed MAX_TOASTS and must not lose
-   *     the latest message.
-   *  4. Retry after a failure must not duplicate toasts or corrupt the queue.
-   *  5. Quiet hours must not lose the message; it is deferred and delivered later.
-   */
+  // -------------------------------------------------------------------------------------------------------
+  // These tests pin down the invariants that must hold when the provider is
+  // confronted with invalid input, duplicates, concurrent adds, quiet hours,
+  // and unmount during pending timers. They are deterministic because they
+  // drive fake timers explicitly and assert on observable DOM outcomes.
 
   const MAX_TOASTS = 3
 
@@ -259,6 +253,115 @@ describe('ToastProvider Timing and Queue Logic', () => {
       </>
     )
   }
+
+  test('ignores addToast with an empty or whitespace-only message', () => {
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent msg="" />
+        <TestComponent msg="   " />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getButton('trigger-'))
+    fireEvent.click(screen.getByLabelText('trigger-    '))
+
+    expect(container.querySelectorAll('.toast').length).toBe(0)
+  })
+
+  test('collapses duplicate messages into a single toast entry', () => {
+    mockSettingsValues.autoDismiss = 'off'
+
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent msg="Duplicate" />
+      </ToastProvider>
+    )
+
+    const button = screen.getByRole('button', { name: 'trigger-Duplicate' })
+    fireEvent.click(button)
+    fireEvent.click(button)
+    fireEvent.click(button)
+
+    expect(container.querySelectorAll('.toast').length).toBe(1)
+  })
+
+  test('handles a burst of concurrent adds without exceeding MAX_TOASTS', () => {
+    mockSettingsValues.autoDismiss = 'off'
+
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent msg="Burst A" />
+        <TestComponent msg="Burst B" />
+        <TestComponent msg="Burst C" />
+        <TestComponent msg="Burst D" />
+        <TestComponent msg="Burst E" />
+      </ToastProvider>
+    )
+
+    act(() => {
+      for (const name of ['Burst A', 'Burst B', 'Burst C', 'Burst D', 'Burst E']) {
+        fireEvent.click(screen.getButton(`trigger-${name}`))
+      }
+    })
+
+    const toasts = container.querySelectorAll('.toast')
+    expect(toasts.length).toBeLessThanOrEqual(3)
+    // The most recent message must always be preserved (drop oldest first).
+    expect(container.textContent).contains('Burst E')
+  })
+
+  test('suppresses toasts during quiet hours while keeping the provider stable', () => {
+    mockSettingsValues.quietHoursEnabled = true
+    // Force the current time into the configured quiet window (22:00-07:00).
+    vi.setSystemTime(new Date('2024-01-01T23:30:00'))
+
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent msg="Quiet toast" />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-Quiet toast' }))
+    expect(container.querySelector('.toast')).not.toBeInTheDocument()
+  })
+
+  test('falls back to a severity default when autoDismiss is malformed', () => {
+    mockSettingsValues.autoDismiss = 'not-a-duration'
+
+    const { container } = render(
+      <ToastProvider>
+        <TestComponent msg="Malformed timeout" severity="info" />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-Malformed timeout' }))
+    expect(container.querySelector('.toast')).toBeInTheDocument()
+
+    // A malformed value must not hang forever -- the severity default applies.
+    act(() => {
+      vi.advanceTimerByTime(30000)
+    })
+    expect(container.querySelector('.toast')).not.toBeInTheDocument()
+  })
+
+  test('clears pending timers on unmount without throwing', () => {
+    const { container, unmount } = render(
+      <ToastProvider>
+        <TestComponent msg="Unmount toast" severity="info" />
+      </ToastProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-Unmount toast' }))
+    expect(container.querySelector('.toast')).toBeInTheDocument()
+
+    // Unmount before the dismiss timer fires. No act() warnings or errors
+    // should be observed when the pending timer is cleared.
+    expect(() => unmount()).not.toThrow()
+
+    act(() => {
+      vi.advanceTimerByTime(6000)
+    })
+  })
 
  describe('useToast failure-boundary coverage', () => {
     test('throws a deterministic error when used outside a ToastProvider', () => {

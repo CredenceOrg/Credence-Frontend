@@ -86,6 +86,7 @@ export default defineConfig({
         'src/components/BackToTop.tsx',
         'src/components/controls/Select.tsx',
         'src/components/controls/Toggle.tsx',
+        'src/components/CopyableHash.tsx',
         'src/hooks/useLocalStorage.ts',
         'src/hooks/useReducedMotion.ts',
         'src/lib/bondPenalty.ts',
@@ -105,6 +106,20 @@ export default defineConfig({
           statements: 100,
         },
         'src/components/Badge.tsx': { branches: 95 },
+        // CopyableHash is the transaction/address copy failure boundary: every
+        // rejection class (permission / stale / generic), the recovery window
+        // that follows each one, and the success/failure timer slot it shares
+        // with the 'Copied' confirmation must all stay reachable.
+        'src/components/CopyableHash.tsx': {
+          lines: 100,
+          // Three defensive guards are unreachable through the rendered UI by
+          // design: the unmount cleanup clears the recovery timer, every new
+          // attempt cancels the pending one, and the copy button is disabled
+          // while loading. The rest of the copy state machine stays at 100%.
+          branches: 95,
+          functions: 100,
+          statements: 100,
+        },
         // BackToTop guards every DOM/window call in its click handler, so each
         // catch arm is a reachable branch that must stay covered.
         'src/components/BackToTop.tsx': {

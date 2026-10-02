@@ -180,12 +180,20 @@ Per-file thresholds are enforced in `vite.config.ts`. The current targets are:
 | File                               | Lines | Branches |
 | ---------------------------------- | ----- | -------- |
 | `src/api/client.ts`                | 100%  | 100%     |
+| `src/components/CopyableHash.tsx`  | 100%  | 95%      |
 | `src/components/AddressInput.tsx`  | 90%   | 90%      |
 | `src/components/AmountInput.tsx`   | 80%   | 80%      |
 | `src/components/ConfirmDialog.tsx` | —     | 90%      |
 | `src/hooks/useFocusTrap.ts`        | —     | 85%      |
 
 A build that misses a threshold exits with a non-zero code, which fails CI.
+
+`CopyableHash.tsx` is held at 100% lines/statements/functions with a 95% branch
+floor. Three of its guards are unreachable through the rendered UI by design: the
+unmount cleanup clears the pending recovery timer, every new attempt cancels the
+previous one, and the copy button is `disabled` while a copy is loading. Requiring
+100% branches there would only reward deleting the guards.
+
 
 ---
 

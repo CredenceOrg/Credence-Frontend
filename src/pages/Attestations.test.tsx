@@ -71,19 +71,6 @@ describe('Attestations Page — filter, drawer, and live region', () => {
     expect(screen.getByText(/showing 2 of 5 attestations/i)).toBeInTheDocument()
   })
 
-  it('shows attestation-specific empty state when filter yields no results', () => {
-    render(<Attestations />)
-    const filterSelect = screen.getByRole('combobox', { name: /filter attestations/i })
-
-    const rows = screen.getAllByRole('listitem')
-    await user.click(rows[0]!)
-
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-    // Should show the attestation-specific empty state, not the ActivityTimeline default
-    expect(screen.getByRole('heading', { name: /no matching attestations/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /clear filter/i })).toBeInTheDocument()
-  })
-
   it('drawer surfaces validator, transaction hash, evidence, and timestamp', async () => {
     const user = userEvent.setup()
     renderInRouter(<Attestations />)

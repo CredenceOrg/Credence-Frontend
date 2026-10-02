@@ -445,6 +445,15 @@ describe('KeyboardShortcutsDialog — open/close boundary transitions', () => {
       <KeyboardShortcutsDialog open={true} onClose={onClose} returnFocusRef={returnFocusRef} />
     )
 
+    rerender(
+      <KeyboardShortcutsDialog open={false} onClose={onClose} returnFocusRef={returnFocusRef} />
+    )
+
+    expect(document.activeElement).toBe(triggerEl)
+
+    document.body.removeChild(triggerEl)
+  })
+
   it('does not call onClose when open transitions from true to false via prop', () => {
     const { rerender, onClose } = renderDialog({ open: true })
     rerender(<KeyboardShortcutsDialog open={false} onClose={onClose} />)

@@ -44,7 +44,7 @@ function resolveTimeout(
 }
 
 const SHARED_TIMEOUT_OVERRIDE = parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT)
-const WARNING_TIMEOUT_OVERRIDE = parseEnvTimeout(import.meta.env.VITE_TOST_TIMEOUT_WARNING)
+const WARNING_TIMEOUT_OVERRIDE = parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT_WARNING)
 
 export const TOAST_CONFIG = {
   /** Timeout per severity (milliseconds). 0 = no auto-dismiss. */
@@ -58,6 +58,6 @@ export const TOAST_CONFIG = {
   maxToasts: 3,
 } as const
 
-export type ToastConfig = typeof TOST_CONFIG
+export type ToastConfig = typeof TOAST_CONFIG
 
 export default TOAST_CONFIG

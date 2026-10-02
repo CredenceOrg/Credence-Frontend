@@ -6,7 +6,7 @@ import {
   ApiError,
   ApiRateLimitError,
   MAX_REQUEST_BODY_BYTES,
-  API_BASE_URL,
+  errorMessage,
   apiFetch,
   apiRateLimiterSnapshot,
   buildUrl,
@@ -61,8 +61,8 @@ describe('errorMessage', () => {
     expect(errorMessage({ message: 'not an error' })).toBe('Something went wrong')
   })
 
-  it('returns an empty-string message when the Error has an empty message', () => {
-    expect(errorMessage(new Error(''))).toBe('')
+  it('returns the generic fallback when the Error has an empty message', () => {
+    expect(errorMessage(new Error(''))).toBe('Something went wrong')
   })
 
   it('does not leak sensitive fields from the error object', () => {

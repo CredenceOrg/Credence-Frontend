@@ -49,14 +49,6 @@ export interface TrustGaugeProps {
   className?: string
   /** Optional ID for accessibility */
   id?: string
-  /** Indicates if the gauge data is currently loading */
-  isLoading?: boolean
-  /** Any error that occurred while fetching or updating the gauge */
-  error?: Error | null
-  /** Callback to retry fetching or updating the gauge */
-  onRetry?: () => void
-  /** Indicates if the displayed data is stale */
-  isStale?: boolean
   /** Indicates if the user has permission to view the gauge */
   hasPermission?: boolean
 }
@@ -226,10 +218,6 @@ export default function TrustGauge({
   id = 'trust-gauge',
   correlationId,
   onCommit,
-  isLoading = false,
-  error = null,
-  onRetry,
-  isStale = false,
   hasPermission = true,
 }: TrustGaugeProps) {
   const prefersReducedMotion = useReducedMotion()

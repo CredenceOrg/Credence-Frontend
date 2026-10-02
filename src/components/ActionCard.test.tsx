@@ -125,7 +125,7 @@ describe('ActionCard', () => {
     const user = userEvent.setup()
     const onCopyError = vi.fn()
     const failure = new Error('clipboard denied')
-    mockCopy.mockRejected(failure)
+    mockCopy.mockRejectedValue(failure)
 
     render(
       <ActionCard
@@ -148,7 +148,7 @@ describe('ActionCard', () => {
     let resolveCopy: ((value: boolean) => void) | undefined
     mockCopy.mockImplementation(
       () =>
-        new Promise<boolean~((resolve) => {
+        new Promise<boolean>((resolve) => {
           resolveCopy = resolve
         })
     )

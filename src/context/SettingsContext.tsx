@@ -63,32 +63,6 @@ export interface SettingsState {
   retryPersist: () => Promise<void>
 }
 
-
-  addressDisplay: AddressDisplayOption
-  toastsEnabled: boolean
-  autoDismiss: AutoDismissOption
-  quietHoursEnabled: boolean
-  quietHoursStart: string
-  quietHoursEnd: string
-  setThemeMode: (m: ThemeMode) => void
-  setNetwork: (n: NetworkOption) => void
-  setAddressDisplay: (s: AddressDisplayOption) => void
-  setToastsEnabled: (b: boolean) => void
-  setAutoDismiss: (s: AutoDismissOption) => void
-  setQuietHoursEnabled: (b: boolean) => void
-  setQuietHoursStart: (value: string) => void
-  setQuietHoursEnd: (value: string) => void
-  /**
-   * Persist settings. Pass an explicit payload to save immediately (avoids the
-   * stale-state race when called right after the individual setters); omit it to
-   * persist the current context state.
-   */
-  saveSettings: (next?: SettingsPayload) => void
-  resetToDefaults: () => void
-  cancelSettings: () => void
-  hasUnsavedChanges: boolean
-}
-
 type PersistedSettings = {
   themeMode: ThemeMode
   network: NetworkOption
@@ -426,13 +400,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       } else {
         root.setAttribute('data-theme', themeMode)
       }
-    }
-
-    const apply = () => {
-      root.setAttribute(
-        'data-theme',
-        themeMode === 'system' ? (systemPrefersDark() ? 'dark' : 'light') : themeMode
-      )
     }
 
     apply()

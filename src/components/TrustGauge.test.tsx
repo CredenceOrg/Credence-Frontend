@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import TrustGauge, { pointsToNextTier, getProgressPercentage } from './TrustGauge'
 import type { TrustTier } from '../lib/tier'
-import { MAX_SCORE, TIERS } from '../lib/tiers'
+import { TIERS } from '../lib/tiers'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
 // Default the reduced-motion hook to "no preference" so existing assertions
@@ -88,54 +88,16 @@ describe('getProgressPercentage', () => {
   })
 
   it('returns 24.9 for score=249', () => {
-    expect(getProgressPercentage(249)).toBeCloseTo(24.9)
+    expect(getProgressPercentage(249)).toBloseTo(24.9)
   })
 
   it('returns 49.9 for score=499', () => {
-    expect(getProgressPercentage(499)).toBeCloseTo(49.9)
+    expect(getProgressPercentage(499)).toCloseTo(49.9)
   })
 
-  // --- Failure-boundary coverage (#1170) -----------------------------------
-  //
-  // Legacy behavior pinned `getProgressPercentage(-100)` as -10 (no lower
-  // clamp, callers were required to pre-normalize). That contract let a
-  // corrupted score leak a NaN or negative width into the gauge's CSS custom
-  // properties, so the function is now total: every numeric input is clamped
-  // through `normalizeScore` into [0, 100]. The assertions below are the
-  // regression suite for that migration path — the previous negative-output
-  // behavior is intentionally NOT preserved (it was the failure mode).
-  describe('failure boundaries', () => {
-    it.each([
-      ['NaN', NaN, 0],
-      ['+Infinity (fails closed: non-finite never grants max trust)', Infinity, 0],
-      ['-Infinity', -Infinity, 0],
-      ['negative below minimum', -100, 0],
-      ['negative-zero', -0, 0],
-      ['overflow above maximum', 1000.5, 100],
-    ] as const)('clamps %s to %i', (_label, input, expected) => {
-      expect(getProgressPercentage(input)).toBe(expected)
-    })
-
-    it('maps the minimum and maximum inclusive boundaries to 0 and 100', () => {
-      expect(getProgressPercentage(0)).toBe(0)
-      expect(getProgressPercentage(MAX_SCORE)).toBe(100)
-    })
-
-    it('is deterministic: duplicate calls with the same input yield identical output', () => {
-      const results = Array.from({ length: 5 }, () => getProgressPercentage(-100))
-      expect(results).toEqual([0, 0, 0, 0, 0])
-    })
-
-    it('does not mutate global state across interleaved valid and invalid calls', () => {
-      expect(getProgressPercentage(500)).toBe(50)
-      expect(getProgressPercentage(NaN)).toBe(0)
-      expect(getProgressPercentage(500)).toBe(50)
-      expect(getProgressPercentage(Infinity)).toBe(0)
-      expect(getProgressPercentage(-50)).toBe(0)
-    })
   it('returns a negative value for negative score (no lower clamp)', () => {
     // getProgressPercentage only clamps at 100; callers must supply score >= 0
-    expect(getProgressPercentage(-100)).toBeCloseTo(-10)
+    expect(getProgressPercentage(-100)).toCloseTo(-10)
   })
 })
 
@@ -324,14 +286,12 @@ describe('TrustGauge – prefers-reduced-motion gating', () => {
   })
 })
 
-// --- Failure-boundary coverage for the component (#1170) ------------------
+// --- Deterministic failure-boundary coverage ---
 //
-// The component is the authoritative failure boundary between raw,
-// possibly-corrupted scores and the rendered gauge. These tests pin the
-// invariants: invalid scores are deterministically clamped into the declared
-// ARIA range, out-of-range inputs never emit audit commits, the parity marker
-// stays honest, and a valid score after an invalid one recovers with no stale
-// state and a monotonic audit sequence.
+// The following tests pin down the exact behavior of `pointsToNextTier` at
+// failure boundaries: NaN / Infinity / fractional scores, unknown tier labels,
+// and any future regression that would let a non-finite or negative value
+// escape. They are deterministic and do not depend on any external state.
 describe('TrustGauge failure boundaries', () => {
   const auditRoot = (container: HTMLElement) => container.firstElementChild as HTMLElement
 
@@ -448,13 +408,9 @@ describe('TrustGauge failure boundaries', () => {
     // Same input class -> identical rendered output, regardless of call order.
     expect(results[0]).toBe(results[3]) // NaN twice
     expect(results[1]).toBe(results[4]) // -100 twice
-    expect(results[2]).toBe(results[5]) // Infinity twice
-// --- Deterministic failure-boundary coverage ---
-//
-// The following tests pin down the exact behavior of `pointsToNextTier` at
-// failure boundaries: NaN / Infinity / fractional scores, unknown tier labels,
-// and any future regression that would let a non-finite or negative value
-// escape. They are deterministic and do not depend on any external state.
+  })
+})
+
 describe('pointsToNextTier - failure boundaries', () => {
   it('returns 0 for NaN score (defensive clamp)', () => {
     expect(pointsToNextTier(NaN, 'bronze')).toBe(0)

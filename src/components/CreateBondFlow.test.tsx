@@ -314,7 +314,7 @@ describe('CreateBondFlow – step 3 review', () => {
     await reachStep3('1000', 30)
     const unlockDate = screen.getByTestId('review-unlock-date')
     // Should contain a year (not empty)
-    expect(unlockDate.textContent).toMatch(/\d/{4}/)
+    expect(unlockDate.textContent).toMatch(/\d{4}/)
   })
 
   it('shows the warning banner about early withdrawal', async () => {
@@ -421,7 +421,7 @@ describe('CreateBondFlow – handleNext failure boundaries', () => {
     await user.type(input, 'abc')
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
 
-    expect(screen.getByText(/valid amount greater than 0/t)).toBeInTheDocument()
+    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
   })
 
@@ -432,7 +432,7 @@ describe('CreateBondFlow – handleNext failure boundaries', () => {
     await user.type(input, '   ')
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
 
-    expect(screen.getByText(/valid amount greater than 0/t)).toBeInTheDocument()
+    expect(screen.getByText(/valid amount greater than 0/i)).toBeInTheDocument()
     expect(screen.getByText(/Step 1: Enter Bond Amount/i)).toBeInTheDocument()
   })
 
@@ -568,7 +568,7 @@ describe('CreateBondFlow – handleNext failure boundaries', () => {
     await user.type(screen.getByPlaceholderText('0'), '0')
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
 
-    const error = screen.getByText(/valid amount greater than 0/t)
+    const error = screen.getByText(/valid amount greater than 0/i)
     expect(error).toBeInTheDocument()
     // Error message must not leak the wallet address.
     expect(error.textContent).not.toMatch(/GAAZI4TCR3TY5OJHCTJC/)

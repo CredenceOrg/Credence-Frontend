@@ -83,8 +83,7 @@ export default function ActionCard({
    */
   const [isCopyingLink, setIsCopyingLink] = useState(false)
 
-  const handleTouchStart = (e
- TouchEvent<HTMLElement>) => {
+const handleTouchStart = (e: TouchEvent<HTMLElement>) => {
     if (!onDismiss) return
     touchStartX.current = e.touches[0].clientX
     setIsSwiping(true)

@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom'
+import { useWallet } from '../context/WalletContext'
+import { useSeo } from '../hooks/useSeo'
+import { LoadingSkeleton } from '../components/states'
 import './Home.css'
 
-export default function Home() {
+function Hero() {
   return (
     <div className="home">
       <div>

@@ -8,6 +8,16 @@ import './CopyableHash.css'
 
 export type CopyState = 'idle' | 'loading' | 'copied' | 'error' | 'stale' | 'permission'
 
+/** How long a success confirmation stays visible before returning to 'idle'. */
+const COPIED_RESET_MS = 2000
+
+/**
+ * How long a failure state stays visible before the component recovers to
+ * 'idle'. Failure states are recoverable: the retry affordance is always
+ * offered, and the alert must not strand the user on a terminal-looking state.
+ */
+const FAILURE_RESET_MS = 3000
+
 export interface CopyableHashProps {
   /** The raw hash string (transaction hash or address) */
   hash: string
@@ -123,12 +133,47 @@ export default function CopyableHash({
       : `/tx/${encodeURIComponent(cleanHash)}`
   const explorerHref = `${explorerBaseUrl}${explorerPath}`
 
+  /**
+   * Cancel whatever timer is pending. A success confirmation and a failure
+   * announcement share one slot: whichever happened last owns the deadline.
+   */
+  const clearPendingReset = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+  }
+
+  /**
+   * Enter a recoverable failure state and schedule its return to 'idle'.
+   *
+   * Every failure path funnels through here so the alert is announced once,
+   * the success timer is cancelled (an in-flight success deadline must never
+   * clear a newer failure), and the state cannot strand the user.
+   *
+   * @param state  The failure state to render.
+   * @param message  The user-visible message for that state.
+   */
+  const enterFailureState = (state: 'error' | 'stale' | 'permission', message: string) => {
+    clearPendingReset()
+    const scheduledAtSeq = copyRequestSeq.current
+    setCopyState(state)
+    setErrorMessage(message)
+    timeoutRef.current = setTimeout(() => {
+      if (!isMountedRef.current) return
+      // A newer attempt owns the state now; leave it alone.
+      if (scheduledAtSeq !== copyRequestSeq.current) return
+      timeoutRef.current = null
+      setCopyState('idle')
+      setErrorMessage(null)
+    }, FAILURE_RESET_MS)
+  }
+
   const executeCopy = async () => {
     if (copyState === 'loading') return
 
     if (isStale) {
-      setCopyState('stale')
-      setErrorMessage('Hash data is stale.')
+      enterFailureState('stale', 'Hash data is stale.')
       return
     }
 
@@ -156,23 +201,22 @@ export default function CopyableHash({
 
       // Verify that the hash didn't change while the async copy was in flight
       if (currentHashRef.current !== cleanHash) {
-        setCopyState('stale')
-        setErrorMessage('Hash data is stale.')
+        enterFailureState('stale', 'Hash data is stale.')
         return
       }
 
       if (success) {
+        clearPendingReset()
         setCopyState('copied')
         setErrorMessage(null)
-        if (timeoutRef.current) clearTimeout(timeoutRef.current)
         timeoutRef.current = setTimeout(() => {
           if (seq === copyRequestSeq.current && isMountedRef.current) {
+            timeoutRef.current = null
             setCopyState('idle')
           }
-        }, 2000)
+        }, COPIED_RESET_MS)
       } else {
-        setCopyState('error')
-        setErrorMessage('Failed to copy hash.')
+        enterFailureState('error', 'Failed to copy hash.')
       }
     } catch (err: unknown) {
       if (seq !== copyRequestSeq.current || !isMountedRef.current) return
@@ -194,14 +238,11 @@ export default function CopyableHash({
         (err as any)?.code === 'STALE_DATA'
 
       if (isPermission) {
-        setCopyState('permission')
-        setErrorMessage('Permission denied copying hash.')
+        enterFailureState('permission', 'Permission denied copying hash.')
       } else if (isStaleData) {
-        setCopyState('stale')
-        setErrorMessage('Hash data is stale.')
+        enterFailureState('stale', 'Hash data is stale.')
       } else {
-        setCopyState('error')
-        setErrorMessage('Failed to copy hash.')
+        enterFailureState('error', 'Failed to copy hash.')
       }
     }
   }
@@ -349,11 +390,7 @@ export default function CopyableHash({
       {showError && (
         <span className="copyable-hash__error-box" role="alert">
           <span className="copyable-hash__error-text">
-            {copyState === 'permission'
-              ? 'Permission denied copying hash.'
-              : copyState === 'stale'
-                ? 'Hash data is stale.'
-                : 'Failed to copy hash.'}
+            {errorMessage}
           </span>
           <button
             type="button"

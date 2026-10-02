@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import CopyableHash from './CopyableHash'
 import * as SettingsContextModule from '../context/SettingsContext'
+import type { NetworkOption } from '../context/SettingsContext'
 import * as CopyHookModule from '../hooks/useCopyToClipboard'
 
 vi.mock('../context/SettingsContext', () => ({
@@ -23,16 +24,25 @@ describe('CopyableHash', () => {
       themeMode: 'system',
       toastsEnabled: true,
       autoDismiss: '5s',
-      reauthThresholdMinutes: 15,
       setThemeMode: vi.fn(),
       setNetwork: vi.fn(),
       setAddressDisplay: vi.fn(),
       setToastsEnabled: vi.fn(),
       setAutoDismiss: vi.fn(),
-      setReauthThresholdMinutes: vi.fn(),
+      quietHoursEnabled: false,
+      quietHoursStart: '22:00',
+      quietHoursEnd: '07:00',
+      setQuietHoursEnabled: vi.fn(),
+      setQuietHoursStart: vi.fn(),
+      setQuietHoursEnd: vi.fn(),
+
       resetToDefaults: vi.fn(),
       saveSettings: vi.fn(),
       cancelSettings: vi.fn(),
+      canPersist: true,
+      lastError: null,
+      retryPersist: vi.fn().mockResolvedValue(undefined),
+
       hasUnsavedChanges: false,
     })
 
@@ -153,7 +163,7 @@ describe('CopyableHash', () => {
         render(<CopyableHash hash="abc" />)
 
         const btn = screen.getByRole('button', { name: 'Copy hash' })
-        
+  
         await act(async () => {
           fireEvent.click(btn)
         })
@@ -173,7 +183,8 @@ describe('CopyableHash', () => {
     it('falls back to public network for unknown network string', () => {
       vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
         ...vi.mocked(SettingsContextModule.useSettings)(),
-        network: 'unknown-network',
+        // Deliberately out-of-contract: the explorer link must fall back to public.
+        network: 'unknown-network' as unknown as NetworkOption,
       })
       render(<CopyableHash hash="abc" kind="tx" />)
       const link = screen.getByRole('link')

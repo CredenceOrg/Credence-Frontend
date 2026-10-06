@@ -12,8 +12,19 @@ import './ErrorState.css'
  * icon glyph (search / compass) with friendlier copy and a back-to-home
  * CTA. Use it from NotFound.tsx and RouteErrorPage when the route is a
  * confirmed 404.
+ *
+ * `stale` is the "last refresh failed, so what is on screen may be out of
+ * date" surface. It is non-blocking: the surrounding view keeps showing the
+ * cached data and the panel only offers a refresh. Use it instead of
+ * `generic` when previously loaded data survives the failed request, so the
+ * user is never told their data was lost.
+ *
+ * `permission` is the 401/403 surface. Its action is a sign-in or
+ * access-request affordance, never a retry — retrying an authorization
+ * failure cannot succeed, so in-flight retry state is suppressed for it.
  */
-export type ErrorStateKind = 'network' | 'backend' | 'validation' | 'generic' | 'pageNotFound'
+export type ErrorStateKind =
+  'network' | 'backend' | 'validation' | 'generic' | 'pageNotFound' | 'stale' | 'permission'
 
 /**
  * Visual / aural severity.  Drives colour tone, role mapping, and
@@ -30,15 +41,27 @@ interface ErrorStateProps {
   type?: ErrorStateKind
   /** Visual / aural severity. Default: derived from `type` (danger for most, info for pageNotFound). */
   severity?: ErrorStateSeverity
-  /** Override default title for the given `type`. Pass an empty string to suppress the heading entirely. */
+  /**
+   * Override default title for the given `type`. Pass an empty string (or a
+   * whitespace-only string, which would otherwise render an empty heading) to
+   * suppress the heading entirely.
+   */
   title?: string
-  /** Override default message for the given `type`. */
+  /**
+   * Override default message for the given `type`. An empty or whitespace-only
+   * override falls back to the kind's copy: the panel must always carry
+   * readable text, otherwise the alert announces nothing.
+   */
   message?: string
   /** Primary action — retry, navigate, open a doc page, etc. */
   action?: {
     label: string
     onClick: () => void
-    /** Disable the button while async work is in flight. */
+    /**
+     * Disable the button while async work is in flight. Ignored for
+     * `type="permission"`, whose action is a sign-in / access-request affordance
+     * rather than a retry.
+     */
     isLoading?: boolean
   }
   /** Override the default icon glyph entirely. Receives `aria-hidden="true"`. */
@@ -149,6 +172,39 @@ const ERROR_ICONS: Record<ErrorStateKind, ReactNode> = {
       <line x1="8" y1="11" x2="14" y2="11" />
     </svg>
   ),
+  stale: (
+    <svg
+      viewBox="0 0 24 24"
+      width="32"
+      height="32"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <polyline points="12 7 12 12 16 14" />
+    </svg>
+  ),
+  permission: (
+    <svg
+      viewBox="0 0 24 24"
+      width="32"
+      height="32"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  ),
 }
 
 /**
@@ -173,11 +229,21 @@ const ERROR_COPY: Record<ErrorStateKind, { title: string; message: string }> = {
   generic: {
     title: 'Something didn’t load',
     message:
-      'An unexpected hiccup stopped this view. Try again — if it persists, reach out and we“ll help.',
+      'An unexpected hiccup stopped this view. Try again — if it persists, reach out and we’ll help.',
   },
   pageNotFound: {
     title: 'Page not found',
     message: "The page you're looking for doesn't exist. It may have moved or been renamed.",
+  },
+  stale: {
+    title: 'This may be out of date',
+    message:
+      'We could not refresh this view, so what is shown may be from an earlier load. Your data is still here — try again to get the latest.',
+  },
+  permission: {
+    title: "You don't have access to this",
+    message:
+      'Your account is not allowed to view it. Sign in with an account that has access, or ask an owner to grant it.',
   },
 }
 
@@ -192,33 +258,125 @@ const DEFAULT_SEVERITY: Record<ErrorStateKind, ErrorStateSeverity> = {
   validation: 'warning',
   generic: 'danger',
   pageNotFound: 'info',
+  stale: 'info',
+  permission: 'warning',
 }
 
 /**
- * Resolve an error kind to a known value, falling back to `generic` for
- * unknown or invalid input. This keeps the component determinstic and
- * safe at the failure boundary: a bad `ErrorStateKind` from a dynamic
- * caller must not crash the render or produce an unstyled panel.
+ * Live-region semantics per kind. Blocking failures interrupt (`alert` /
+ * `assertive`); the stale hint sits beside data the user is still reading, and
+ * a permission denial is important but not urgent, so both announce politely.
+ * Legacy kinds keep the `alert` / `assertive` contract they shipped with.
  */
-function resolveErrorKind(type: ErrorStateKind | undefined): ErrorStateKind {
-  if (type && type in ERROR_COPY) {
-    return type
+const ARIA_ROLE: Record<ErrorStateKind, 'alert' | 'status'> = {
+  network: 'alert',
+  backend: 'alert',
+  validation: 'alert',
+  generic: 'alert',
+  pageNotFound: 'alert',
+  stale: 'status',
+  permission: 'alert',
+}
+
+const ARIA_LIVE: Record<ErrorStateKind, 'assertive' | 'polite'> = {
+  network: 'assertive',
+  backend: 'assertive',
+  validation: 'assertive',
+  generic: 'assertive',
+  pageNotFound: 'assertive',
+  stale: 'polite',
+  permission: 'polite',
+}
+
+/** Label shown on the action while a retry is in flight. */
+const RETRY_IN_FLIGHT_LABEL = 'Retrying…'
+
+/**
+ * Ceiling for the unrecognised kind echoed into `data-error-kind`, so a dynamic
+ * caller cannot park an arbitrarily long string in the DOM.
+ */
+const MAX_TELEMETRY_KIND_LENGTH = 64
+
+/**
+ * A string with at least one non-whitespace character. Every text-ish prop goes
+ * through this so `''` and `'   '` behave identically to "not provided".
+ */
+function isFilled(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== ''
+}
+
+/**
+ * Own-property test rather than `in`: `'constructor' in ERROR_COPY` is true via
+ * the prototype chain, which would resolve a bogus kind to `Object` and render a
+ * panel with no icon, no heading and no message.
+ */
+function hasOwnKey(object: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(object, key)
+}
+
+/** Own-property membership only, so inherited names can never pass as a kind. */
+function isKnownKind(value: unknown): value is ErrorStateKind {
+  return typeof value === 'string' && hasOwnKey(ERROR_COPY, value)
+}
+
+interface KindResolution {
+  /** The kind the panel actually renders — always a known `ErrorStateKind`. */
+  kind: ErrorStateKind
+  /**
+   * Value for `data-error-kind`: the rendered `kind`, or the caller's own code
+   * when it arrived as an unrecognised non-empty string, so telemetry can still
+   * tell which value was rejected. Capped, and never an arbitrary object.
+   */
+  telemetry: string
+  /** Whether the input resolved to a documented kind rather than the fallback. */
+  recognised: boolean
+}
+
+/**
+ * Normalise the `type` prop at the failure boundary. Unknown, non-string, empty
+ * and whitespace-only input all resolve to `generic`, so a bad `ErrorStateKind`
+ * from a dynamic caller can neither crash the render nor produce an unstyled,
+ * unannounced panel. Surrounding whitespace on a real code is tolerated.
+ */
+function resolveKindInput(type: unknown): KindResolution {
+  const code = typeof type === 'string' ? type.trim() : undefined
+  if (isKnownKind(code)) {
+    return { kind: code, telemetry: code, recognised: true }
   }
-  return 'generic'
+  const telemetry =
+    code !== undefined && code !== '' ? code.slice(0, MAX_TELEMETRY_KIND_LENGTH) : 'generic'
+  return { kind: 'generic', telemetry, recognised: false }
 }
 
 /**
  * Resolve a severity to a known value, falling back to the kind's default.
  * Prevents an invalid severity from producing a class that has no CSS rule.
  */
-function resolveSeverity(
-  severity: ErrorStateSeverity | undefined,
-  kind: ErrorStateKind,
-): ErrorStateSeverity {
-  if (severity === 'danger' || severity === 'warning' || severity === 'info') {
-    return severity
-  }
-  return DEFAULT_SEVERITY[kind]
+function isKnownSeverity(value: unknown): value is ErrorStateSeverity {
+  return value === 'danger' || value === 'warning' || value === 'info'
+}
+
+function resolveSeverity(severity: unknown, kind: ErrorStateKind): ErrorStateSeverity {
+  return isKnownSeverity(severity) ? severity : DEFAULT_SEVERITY[kind]
+}
+
+/**
+ * Render a rejected prop for the dev console without dumping its contents:
+ * callers pass server error text and account data through this component, and
+ * only the offending code (or the value's type) is safe to echo.
+ */
+function describeRejectedValue(value: unknown): string {
+  return typeof value === 'string'
+    ? JSON.stringify(value.trim().slice(0, MAX_TELEMETRY_KIND_LENGTH))
+    : `a non-string (${typeof value}) value`
+}
+
+function reportUnknownProp(name: string, value: unknown): void {
+  if (!import.meta.env.DEV) return
+  console.warn(
+    `[ErrorState] Ignored unsupported "${name}" ${describeRejectedValue(value)}. ` +
+      'The panel rendered with its documented fallback.'
+  )
 }
 
 export default function ErrorState({
@@ -234,27 +392,41 @@ export default function ErrorState({
   // Invariant: an unknown `type` or `severity` must never produce an
   // unstyled or crashing panel. Normalize at the boundary so every downstream
   // lookup is total.
-  const resolvedKind = resolveErrorKind(type)
-  const resolvedSeverity = resolveSeverity(severity, resolvedKand)
+  const { kind: resolvedKind, telemetry: reportedKind, recognised } = resolveKindInput(type)
+  const resolvedSeverity = resolveSeverity(severity, resolvedKind)
   const copy = ERROR_COPY[resolvedKind]
-  const showHeading = !hideHeading && title !== ''
-  const resolvedTitle = showHeading ? (title ?? copy.title) : undefined
-  const resolvedMessage = message ?? copy.message
-  // The role="alert" already conveys severity to assistive tech, so avoid
-  // leaking the literal word "Error" into the panel's accessible name.
-  // Default to the resolved title only.
-  const resolvedAriaLabel = ariaLabel ?? resolvedTitle ?? copy.title
+
+  if (!recognised) reportUnknownProp('type', type)
+  if (severity !== undefined && !isKnownSeverity(severity)) reportUnknownProp('severity', severity)
+
+  const showHeading = !hideHeading && (title === undefined || isFilled(title))
+  const resolvedTitle = showHeading ? (isFilled(title) ? title : copy.title) : undefined
+  const resolvedMessage = isFilled(message) ? message : copy.message
+  // Invariant: the live region always carries a non-empty accessible name, even
+  // when the heading is suppressed. `role`/`aria-live` already convey severity,
+  // so the name must not leak the word "Error"; fall through the resolved title
+  // to the kind's own copy rather than emitting an empty `aria-label`, which
+  // screen-reader region navigation would skip.
+  const resolvedAriaLabel = isFilled(ariaLabel) ? ariaLabel : (resolvedTitle ?? copy.title)
+  const ariaRole = ARIA_ROLE[resolvedKind]
+  const ariaLive = ARIA_LIVE[resolvedKind]
+
+  const isRetrying = action?.isLoading === true
+  // Invariant (shared with EmptyState): a permission action signs the user in or
+  // requests access — retrying an authorization failure cannot help — so
+  // `isLoading` is inert for that kind rather than disabling the only CTA.
+  const showRetryInFlight = isRetrying && resolvedKind !== 'permission'
 
   return (
     <div
       className={`error-state error-state--${resolvedSeverity}`}
-      role="alert"
-      aria-live="assertive"
+      role={ariaRole}
+      aria-live={ariaLive}
       aria-label={resolvedAriaLabel}
-      data-error-kind={resolvedKind}
+      data-error-kind={reportedKind}
       data-error-severity={resolvedSeverity}
     >
-      <div className="error-state__icon">{icon ?? ERROR_ICONS[resolvedKand]}</div>
+      <div className="error-state__icon">{icon ?? ERROR_ICONS[resolvedKind]}</div>
       {resolvedTitle && <h3 className="error-state__title">{resolvedTitle}</h3>}
       <p className={`error-state__message${action ? ' error-state__message--has-action' : ''}`}>
         {resolvedMessage}
@@ -264,10 +436,14 @@ export default function ErrorState({
           type="button"
           onClick={action.onClick}
           className="error-state__action"
-          disabled={action.isLoading}
-          aria-busy={action.isLoading}
+          disabled={showRetryInFlight}
+          aria-busy={showRetryInFlight ? true : undefined}
         >
-          {action.isLoading ? 'Retrying…' : action.label}
+          {showRetryInFlight
+            ? RETRY_IN_FLIGHT_LABEL
+            : isFilled(action.label)
+              ? action.label
+              : 'Retry'}
         </button>
       )}
     </div>

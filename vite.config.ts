@@ -86,6 +86,7 @@ export default defineConfig({
         'src/components/BackToTop.tsx',
         'src/components/controls/Select.tsx',
         'src/components/controls/Toggle.tsx',
+        'src/components/states/ErrorState.tsx',
         'src/hooks/useLocalStorage.ts',
         'src/hooks/useReducedMotion.ts',
         'src/lib/bondPenalty.ts',
@@ -127,6 +128,17 @@ export default defineConfig({
         'src/components/controls/Toggle.tsx': {
           lines: 100,
           branches: 100,
+          functions: 100,
+          statements: 100,
+        },
+        // ErrorState is the shared failure surface for every page, so its
+        // boundary normalisation (rejected kind/severity, blank overrides,
+        // retry-in-flight) must not silently lose a branch. The single branch
+        // that stays uncovered is the `import.meta.env.DEV` arm of
+        // reportUnknownProp, which the test environment compiles away.
+        'src/components/states/ErrorState.tsx': {
+          lines: 100,
+          branches: 95,
           functions: 100,
           statements: 100,
         },

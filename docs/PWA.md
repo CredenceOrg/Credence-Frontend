@@ -1,6 +1,6 @@
 # Offline Strategy
 
-The Credence frontend uses a Service Worker implemented via `vite-plugin-pwa` to cache the application shell and read-only endpoints using a cache-first strategy. Write operations that fail due to network errors are automatically queued in IndexedDB and retried upon reconnection.
+The Credence frontend uses a Service Worker implemented via `vite-plugin-pwa` to cache the application shell and read-only endpoints. Write requests pass through untouched. When a write fails because the network is unavailable, the API client surfaces a `network_error`; writes are never queued or replayed implicitly.
 
 ---
 
@@ -37,7 +37,9 @@ any that match confirmed server entries are removed from the queue.
 
 ### Write operations
 
-When API requests (e.g., `POST`, `PATCH`, `PUT`) fail due to a network error, the Service Worker automatically captures the payload and queues it in IndexedDB (`credence-offline-db`). Upon the `online` event, the Service Worker attempts to replay these queued operations in order.
+API writes (`POST`, `PATCH`, `PUT`, and other non-`GET` requests) are never queued. The service worker does not intercept them, so network failures reach the API client and are surfaced as `ApiError` with code `network_error` and status `0`.
+
+This is intentional for financial operations: returning a synthetic `202` could make the UI report a write as successful even though the server never received it. Replaying later without the original idempotency and identity headers could duplicate a mutation or apply it under a different signed-in account. The service worker deletes the legacy `credence-offline-db` on activation so stale writes from earlier versions are never replayed.
 
 ---
 
@@ -49,7 +51,7 @@ Queries fetch from the network first. If offline, the Service Worker serves the 
 
 ### API client (`apiFetch`)
 
-Network errors are still surfaced as `ApiError` with status `0`. The application continues to handle these as before to provide immediate user feedback if necessary, even while the Service Worker attempts background retries.
+Network errors are surfaced as `ApiError` with code `network_error` and status `0`, allowing the application to provide immediate feedback. No background retries are attempted for writes.
 
 ---
 
@@ -59,5 +61,5 @@ Network errors are still surfaced as `ApiError` with status `0`. The application
 | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Page load while offline**                            | App loads from Service Worker cache. `useQuery` falls back to cached data or handles the error. Settings, etc. served from `localStorage`. |
 | **Widget refresh while offline**                       | `useWidgetCache` fetches; if network fails, Service Worker serves cached response. |
-| **Auto-save / Write while offline**                    | `apiFetch` fails; Service Worker captures request, queues in IndexedDB, and returns `202 Queued`. |
-| **Reconnect**                                          | Service Worker detects `online` event and automatically replays queued writes from IndexedDB. |
+| **Auto-save / Write while offline**                    | The request passes through; `apiFetch` surfaces a `network_error` and the write is not queued. |
+| **Reconnect**                                          | Failed writes remain failed; the user or application must initiate a new request. |

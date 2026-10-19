@@ -4,12 +4,38 @@ import {
   RECENT_LOOKUPS_V1_KEY,
   readRecentLookups,
   writeRecentLookups,
+  sanitizeRecentLookups,
+  addRecentLookup,
 } from './recentLookupsStorage'
 
 // Real StrKey addresses (the storage validates the CRC checksum, so the
 // repeated-character placeholders fail isValidStellarAddress and get dropped).
 const ADDR1 = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
 const ADDR2 = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
+
+function fixtureAddress(seed: number): string {
+  const bytes = [48, ...Array.from({ length: 32 }, (_, index) => (seed + index) % 256)]
+  let crc = 0
+  for (const byte of bytes) {
+    crc ^= byte << 8
+    for (let bit = 0; bit < 8; bit++) crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff
+  }
+  bytes.push(crc & 0xff, crc >> 8)
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  let bits = 0
+  let value = 0
+  let encoded = ''
+  for (const byte of bytes) {
+    value = (value << 8) | byte
+    bits += 8
+    while (bits >= 5) {
+      encoded += alphabet[(value >>> (bits - 5)) & 31]
+      bits -= 5
+    }
+  }
+  if (bits) encoded += alphabet[(value << (5 - bits)) & 31]
+  return encoded
+}
 
 describe('recentLookupsStorage', () => {
   beforeEach(() => {
@@ -60,6 +86,41 @@ describe('recentLookupsStorage', () => {
 
     const legacy = JSON.parse(localStorage.getItem(RECENT_LOOKUPS_LEGACY_KEY)!)
     expect(legacy).toEqual([{ address: ADDR1, timestamp: 10 }])
+  })
+
+  it('sanitizes malformed values without throwing', () => {
+    const validItem = { address: ADDR1, timestamp: 1 }
+    expect(sanitizeRecentLookups([{ timestamp: 1 }, null, { address: 'GBAD' }, validItem])).toEqual([
+      validItem,
+    ])
+    expect(sanitizeRecentLookups(null)).toEqual([])
+    expect(sanitizeRecentLookups([undefined, 1, 'bad', { address: ADDR1, timestamp: NaN }])).toEqual([])
+    expect(addRecentLookup([{ address: ADDR1, timestamp: 1 }], 'GBAD', 2)).toEqual([
+      { address: ADDR1, timestamp: 1 },
+    ])
+  })
+
+  it('moves a case-insensitive duplicate to the top without duplicating it', () => {
+    const result = addRecentLookup(
+      [{ address: ADDR1, timestamp: 1 }, { address: ADDR2, timestamp: 2 }],
+      ADDR1.toLowerCase(),
+      3
+    )
+    expect(result).toEqual([
+      { address: ADDR1, timestamp: 3 },
+      { address: ADDR2, timestamp: 2 },
+    ])
+    expect(sanitizeRecentLookups(result)).toEqual(result)
+  })
+
+  it('evicts the oldest item when adding a sixth lookup', () => {
+    const addresses = Array.from({ length: 6 }, (_, index) => fixtureAddress(index + 1))
+    const existing = addresses.slice(0, 5).map((address, index) => ({ address, timestamp: 5 - index }))
+    const result = addRecentLookup(existing, addresses[5], 10)
+    expect(result).toHaveLength(5)
+    expect(result[0]).toEqual({ address: addresses[5], timestamp: 10 })
+    expect(result).not.toContainEqual(existing[4])
+    expect(result.slice(1)).toEqual(existing.slice(0, 4))
   })
 
   it('is resumable when the v1 write fails (no partial migration, rerun succeeds)', () => {

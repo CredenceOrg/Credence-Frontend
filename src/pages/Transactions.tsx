@@ -18,6 +18,7 @@ import { formatAmount } from '../lib/format'
 import { truncateAddress } from '../lib/stellar'
 import { formatUsdc } from '../lib/format'
 import type { Transaction } from '../api/types'
+import type { TransactionWithNetwork } from '../lib/pendingTransactionsStorage'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
 
@@ -49,11 +50,22 @@ export default function Transactions() {
     return t('transactions.relativeTime.daysAgo', { count: days })
   }
 
-  const { network } = useSettings()
+  const { network: settingsNetwork } = useSettings()
   const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage } =
     useTransactions()
   const { addToast } = useToast()
   const [filter, setFilter] = useState<StatusFilter>('all')
+
+  // Helper to get the network for a transaction (use stored network for pending, settings for server)
+  const getTxNetwork = useCallback(
+    (tx: Transaction): 'public' | 'test' => {
+      if ('_network' in tx) {
+        return (tx as TransactionWithNetwork)._network
+      }
+      return settingsNetwork
+    },
+    [settingsNetwork]
+  )
 
   // Local "deleted" overlay: we cannot mutate the API-fetched list, so we
   // keep track of removed IDs here. Bulk Delete writes here and clears the
@@ -361,7 +373,7 @@ export default function Transactions() {
                       <td data-label="Transaction">
                         <AddressDisplay address={tx.hash} className="transactions__hash" />{' '}
                         <a
-                          href={explorerUrl(network, tx.hash)}
+                          href={explorerUrl(getTxNetwork(tx), tx.hash)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="transactions__explorerLink"

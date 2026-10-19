@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import type { ApiResponse, operations, Transaction } from '../api/types'
 
@@ -109,7 +109,10 @@ export function useTransactions(): UseTransactionsResult {
   const [hasNextPage, setHasNextPage] = useState(true)
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined)
 
-  const data = [...pendingData, ...serverData]
+  const data = useMemo(
+    () => [...pendingData, ...serverData],
+    [pendingData, serverData]
+  )
 
   const abortRef = useRef<AbortController | null>(null)
   const fetchIdRef = useRef(0)

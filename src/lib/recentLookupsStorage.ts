@@ -33,14 +33,37 @@ type RecentLookupsV1 = {
   migratedAt?: string
 }
 
-function coerceItems(raw: unknown): RecentLookupItem[] {
+export function sanitizeRecentLookups(raw: unknown): RecentLookupItem[] {
   if (!Array.isArray(raw)) return []
   return raw.filter((item): item is RecentLookupItem => {
     if (!item || typeof item !== 'object') return false
     const addr = (item as { address?: unknown }).address
     const ts = (item as { timestamp?: unknown }).timestamp
-    return typeof addr === 'string' && typeof ts === 'number' && isValidStellarAddress(addr)
+    return typeof addr === 'string' && typeof ts === 'number' && Number.isFinite(ts) && isValidStellarAddress(addr)
   })
+}
+
+export function addRecentLookup(
+  items: unknown,
+  address: string,
+  timestamp: number = Date.now()
+): RecentLookupItem[] {
+  const sanitized = sanitizeRecentLookups(items)
+  const normalizedAddress = typeof address === 'string' ? address.toUpperCase() : ''
+  if (
+    typeof address !== 'string' ||
+    !isValidStellarAddress(normalizedAddress) ||
+    typeof timestamp !== 'number' ||
+    !Number.isFinite(timestamp)
+  ) {
+    return sanitized.slice(0, 5)
+  }
+
+  const normalizedAddressLowercase = normalizedAddress.toLowerCase()
+  return [
+    { address: normalizedAddress, timestamp },
+    ...sanitized.filter((item) => item.address.toLowerCase() !== normalizedAddressLowercase),
+  ].slice(0, 5)
 }
 
 function readV1(): RecentLookupItem[] | null {
@@ -48,14 +71,14 @@ function readV1(): RecentLookupItem[] | null {
   if (!res.ok) return []
   if (!res.value) return null
   if (res.value.schemaVersion !== 1) return []
-  return coerceItems(res.value.items)
+  return sanitizeRecentLookups(res.value.items)
 }
 
 function readLegacy(): RecentLookupItem[] | null {
   const res = safeReadJson<unknown>(RECENT_LOOKUPS_LEGACY_KEY)
   if (!res.ok) return []
   if (!res.value) return null
-  return coerceItems(res.value)
+  return sanitizeRecentLookups(res.value)
 }
 
 function migrateFromLegacy(items: RecentLookupItem[]): void {
@@ -95,7 +118,7 @@ export function readRecentLookups(): RecentLookupItem[] {
  * If v1 write fails, legacy is still attempted so user data is not lost.
  */
 export function writeRecentLookups(items: RecentLookupItem[]): void {
-  const sanitized = coerceItems(items)
+  const sanitized = sanitizeRecentLookups(items)
 
   safeWriteJson<RecentLookupsV1>(RECENT_LOOKUPS_V1_KEY, {
     schemaVersion: 1,

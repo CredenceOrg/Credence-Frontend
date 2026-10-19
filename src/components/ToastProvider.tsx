@@ -75,15 +75,15 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   const politeAnnouncementTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const assertiveAnnouncementTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const idCounter = useRef(0)
+  const timeoutsMap = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
   useEffect(() => () => {
     if (politeAnnouncementTimer.current !== null) clearTimeout(politeAnnouncementTimer.current)
     if (assertiveAnnouncementTimer.current !== null) clearTimeout(assertiveAnnouncementTimer.current)
     timeoutsMap.current.forEach((timerId) => clearTimeout(timerId))
     timeoutsMap.current.clear()
   }, [])
-
-  const idCounter = useRef(0)
-  const timeoutsMap = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const announce = useCallback((rawMessage: string, assertive = false) => {
     const message = normalizeToastMessage(rawMessage)
@@ -166,7 +166,11 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
 
       // An explicit finite, non-negative timeout wins over settings. Invalid
       // values are ignored; zero means the toast remains until dismissed.
-      if (typeof options?.timeoutMs === 'number' && Number.isFinite(options.timeoutMs) && options.timeoutMs >= 0) {
+      if (
+        typeof options?.timeoutMs === 'number' &&
+        Number.isFinite(options.timeoutMs) &&
+        options.timeoutMs >= 0
+      ) {
         timeout = Math.round(options.timeoutMs)
       }
 

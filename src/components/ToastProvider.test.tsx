@@ -1383,14 +1383,6 @@ describe('ToastProvider gating', () => {
   })
 })
 
-describe('ToastProvider quiet hours', () => {
-  beforeEach(() => {
-    // Pin the fake clock inside the default quiet hours window
-    // (22:00 - 07:00) so silence assertions are deterministic regardless
-    // of the host machine's local timezone (use the UTC suffix).
-    vi.setSystemTime(new Date('2024-01-01T23:00:00Z'))
-  })
-
   function renderWithQuietHours(overrides: Partial<MockSettings> = {}) {
     const harness = makeHarness()
     const rendered = renderProvider({
@@ -1399,6 +1391,14 @@ describe('ToastProvider quiet hours', () => {
     })
     return { ...rendered, harness }
   }
+
+describe('ToastProvider quiet hours', () => {
+  beforeEach(() => {
+    // Pin the fake clock inside the default quiet hours window
+    // (22:00 - 07:00) so silence assertions are deterministic regardless
+    // of the host machine's local timezone (construct a local wall-clock time).
+    vi.setSystemTime(new Date(2024, 0, 1, 23, 0, 0))
+  })
 
   it('silences non-danger toasts while quiet hours are active', () => {
     const { container, harness } = renderWithQuietHours()
@@ -1434,7 +1434,7 @@ describe('ToastProvider quiet hours', () => {
   })
 
   it('includes the end of the window, matching isWithinQuietHours', () => {
-    vi.setSystemTime(new Date('2024-01-01T07:00:00Z'))
+    vi.setSystemTime(new Date(2024, 0, 1, 7, 0, 0))
     const { container, harness } = renderWithQuietHours()
     act(() => harness.api.addToast('info', 'Info'))
 
@@ -1443,7 +1443,7 @@ describe('ToastProvider quiet hours', () => {
   })
 
   it('lets non-danger toasts through one minute past the end of the window', () => {
-    vi.setSystemTime(new Date('2024-01-01T07:01:00Z'))
+    vi.setSystemTime(new Date(2024, 0, 1, 7, 1, 0))
     const { container, harness } = renderWithQuietHours()
     act(() => harness.api.addToast('info', 'Info'))
 
@@ -1451,7 +1451,7 @@ describe('ToastProvider quiet hours', () => {
   })
 
   it('lets non-danger toasts through when the clock is well outside the window', () => {
-    vi.setSystemTime(new Date('2024-01-01T12:00:00Z'))
+    vi.setSystemTime(new Date(2024, 0, 1, 12, 0, 0))
     const { container, harness } = renderWithQuietHours()
     act(() => harness.api.addToast('info', 'Info'))
 

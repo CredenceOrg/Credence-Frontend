@@ -21,12 +21,14 @@ import FooterLink from './FooterLink'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+import { useRouteFocus } from '../hooks/useRouteFocus'
 import { DOM_EVENTS } from '../events'
 import './Layout.css'
 
 export default function Layout() {
   const { t } = useTranslation()
   const location = useLocation()
+  useRouteFocus()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)

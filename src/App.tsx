@@ -5,9 +5,6 @@ import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
-import BreakpointOverlay from './components/dev/BreakpointOverlay'
-import DebugOverlay from './components/dev/DebugOverlay'
-import { WidgetCacheProvider } from './widgetCache'
 
 const Home = lazy(() => import('./pages/Home'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -19,10 +16,18 @@ const TrustSummary = lazy(() => import('./pages/TrustSummary'))
 const Attestations = lazy(() => import('./pages/Attestations'))
 const Transactions = lazy(() => import('./pages/Transactions'))
 const Settings = lazy(() => import('./pages/Settings'))
-const AmountInputTestPage = lazy(() => import('./pages/AmountInputTestPage'))
 const SignIn = lazy(() => import('./pages/SignIn'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
+const BreakpointOverlay = import.meta.env.DEV
+  ? lazy(() => import('./components/dev/BreakpointOverlay'))
+  : null
+const DebugOverlay = import.meta.env.DEV
+  ? lazy(() => import('./components/dev/DebugOverlay'))
+  : null
+const AmountInputTestPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/AmountInputTestPage'))
+  : null
 const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
 
 export interface AppProps {
@@ -50,9 +55,14 @@ export interface AppProps {
  *  - `<Suspense>` displays an accessible loading fallback (`role="status"`)
  *    while route components resolve dynamically.
  */
+const WidgetCacheProvider = lazy(() =>
+  import('./widgetCache').then((m) => ({ default: m.WidgetCacheProvider })),
+)
+
 export function App({ children, errorFallback, loadingFallback }: AppProps = {}) {
   return (
     <BrowserRouter>
+      <Suspense fallback={null}>
       <WidgetCacheProvider>
         <SettingsProvider>
           <ToastProvider>
@@ -80,7 +90,9 @@ export function App({ children, errorFallback, loadingFallback }: AppProps = {})
                         <Route path="attestations" element={<Attestations />} />
                         <Route path="transactions" element={<Transactions />} />
                         <Route path="settings" element={<Settings />} />
-                        <Route path="test-amount-input" element={<AmountInputTestPage />} />
+                        {import.meta.env.DEV && AmountInputTestPage && (
+                          <Route path="test-amount-input" element={<AmountInputTestPage />} />
+                        )}
                         <Route path="signin" element={<SignIn />} />
                         {import.meta.env.DEV && ToastTest && (
                           <Route path="dev/toasts" element={<ToastTest />} />
@@ -90,13 +102,18 @@ export function App({ children, errorFallback, loadingFallback }: AppProps = {})
                     </Routes>
                   )}
                 </Suspense>
-                <BreakpointOverlay />
-                <DebugOverlay />
+                {import.meta.env.DEV && BreakpointOverlay && (
+                  <BreakpointOverlay />
+                )}
+                {import.meta.env.DEV && DebugOverlay && (
+                  <DebugOverlay />
+                )}
               </ErrorBoundary>
             </WalletProvider>
           </ToastProvider>
         </SettingsProvider>
-      </WidgetCacheProvider>
+        </WidgetCacheProvider>
+      </Suspense>
     </BrowserRouter>
   )
 }

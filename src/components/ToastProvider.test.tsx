@@ -1491,7 +1491,7 @@ describe('ToastProvider quiet hours', () => {
   })
 
   it('does not honour quiet hours when the feature is disabled, even with malformed times', () => {
-    vi.setSystemTime(new Date('2024-01-01T23:00:00Z'))
+    vi.setSystemTime(new Date(2024, 0, 1, 23, 0, 0))
     const { container, harness } = renderWithQuietHours({
       quietHoursEnabled: false,
       quietHoursStart: '',

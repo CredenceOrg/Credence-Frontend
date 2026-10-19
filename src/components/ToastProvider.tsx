@@ -119,6 +119,18 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
     setToasts([])
     timeoutsMap.current.forEach((timerId) => clearTimeout(timerId))
     timeoutsMap.current.clear()
+
+    // Removing all toasts also clears announcements associated with them.
+    if (politeAnnouncementTimer.current !== null) {
+      clearTimeout(politeAnnouncementTimer.current)
+      politeAnnouncementTimer.current = null
+    }
+    if (assertiveAnnouncementTimer.current !== null) {
+      clearTimeout(assertiveAnnouncementTimer.current)
+      assertiveAnnouncementTimer.current = null
+    }
+    setAnnouncement('')
+    setAssertiveAnnouncement('')
   }, [])
 
   const addToast = useCallback(
@@ -129,8 +141,9 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
       const { toastsEnabled, autoDismiss, quietHoursEnabled, quietHoursStart, quietHoursEnd } =
         settingsRef.current
 
-      // respect global toast enable setting
-      if (!toastsEnabled) return
+      // Respect the global setting for routine notifications, but never
+      // suppress danger toasts: they can communicate security or destructive failures.
+      if (!toastsEnabled && severity !== 'danger') return
 
       // Quiet hours: silence non-critical toasts. Critical ("danger") toasts
       // always surface so incidents and destructive failures are not lost.
@@ -149,18 +162,20 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
       // We manually announce the text to the visually-hidden aria-live region to guarantee it is read.
       announce(message, severity === 'danger')
 
-      // compute timeout: settings `autoDismiss` can override default TIMEOUTS
+      // Resolve the configured auto-dismiss duration. A malformed string is
+      // treated as sticky rather than unexpectedly dismissing a notification.
       let timeout = TIMEOUTS[severity]
       if (timeout > 0) {
-        try {
-          if (autoDismiss === 'off') {
+        if (autoDismiss === 'off') {
+          timeout = 0
+        } else if (typeof autoDismiss === 'string') {
+          const match = /^\s*(\d+(?:\.\d+)?)s\s*$/.exec(autoDismiss)
+          if (match) {
+            const seconds = Number(match[1])
+            timeout = Number.isFinite(seconds) ? Math.max(0, seconds * 1000) : 0
+          } else {
             timeout = 0
-          } else if (typeof autoDismiss === 'string' && autoDismiss.endsWith('s')) {
-            const seconds = Number(autoDismiss.replace('s', ''))
-            if (!Number.isNaN(seconds)) timeout = seconds * 1000
           }
-        } catch {
-          // fallback to default
         }
       }
 

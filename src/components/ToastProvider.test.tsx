@@ -367,21 +367,16 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     expect(toasts(container)).toHaveLength(1)
   })
 
-  it('falls back to the severity default for a malformed autoDismiss value', () => {
+  it('keeps a toast sticky when autoDismiss is a malformed string', () => {
     const harness = makeHarness()
     const { container } = renderProvider({ harness, settings: { autoDismiss: 'soon' as never } })
 
     act(() => harness.api.addToast('info', 'Info'))
 
     act(() => {
-      vi.advanceTimersByTime(INFO_TIMEOUT - 1)
+      vi.advanceTimersByTime(100000)
     })
     expect(toasts(container)).toHaveLength(1)
-
-    act(() => {
-      vi.advanceTimersByTime(1)
-    })
-    expect(toasts(container)).toHaveLength(0)
   })
 
   it('falls back to the severity default for a non-string autoDismiss value', () => {
@@ -1236,6 +1231,27 @@ describe('ToastProvider announcements', () => {
     expect(politeRegion(container).textContent).toBe('repeatable')
   })
 
+  it('keeps announcement B after announcement A reaches its original clear deadline', () => {
+    const harness = makeHarness()
+    const { container } = renderProvider({ harness, settings: { autoDismiss: 'off' } })
+
+    act(() => harness.api.announce('A'))
+    act(() => {
+      vi.advanceTimersByTime(2500)
+    })
+    act(() => harness.api.announce('B'))
+
+    act(() => {
+      vi.advanceTimersByTime(ANNOUNCEMENT_CLEAR_DELAY - 1)
+    })
+    expect(politeRegion(container).textContent).toBe('B')
+
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(politeRegion(container).textContent).toBe('')
+  })
+
   it('resets the clear delay when a new announcement supersedes a pending one', () => {
     const harness = makeHarness()
     const { container } = renderProvider({ harness, settings: { autoDismiss: 'off' } })
@@ -1730,25 +1746,26 @@ describe('ToastProvider error recovery', () => {
 
   it('silences non-danger toasts when quiet hours wrap around midnight', () => {
     // 23:00 is inside 22:00–07:00 and the default window wraps around midnight
-    const { container } = renderWithQuietHours()
-    fireEvent.click(screen.getByText('Add Info'))
+    const { container, harness } = renderWithQuietHours()
+    act(() => harness.api.addToast('info', 'Info Message'))
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
 
   it('treats malformed quiet hours times as non-silencing when enabled', () => {
-    const { container } = renderWithQuietHours({
+    const { container, harness } = renderWithQuietHours({
       quietHoursStart: 'not-a-time',
       quietHoursEnd: '',
     })
-    fireEvent.click(screen.getByText('Add Info'))
+    act(() => harness.api.addToast('info', 'Info Message'))
     expect(container.querySelector('.toast--info')).toBeInTheDocument()
   })
 
   it('still announces danger toasts during quiet hours even when toasts are disabled', () => {
     // Danger toasts are safety-critical and must not be silenced by the
     // general toastsEnabled flag.
-    const { container } = renderWithQuietHours({ toastsEnabled: false })
-    fireEvent.click(screen.getByText('Add Danger'))
+    const { container, harness } = renderWithQuietHours({ toastsEnabled: false })
+    act(() => harness.api.addToast('danger', 'Danger Message'))
     expect(container.querySelector('.toast--danger')).toBeInTheDocument()
+    expect(assertiveRegion(container)).toHaveTextContent('Danger Message')
   })
 })

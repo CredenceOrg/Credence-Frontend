@@ -153,6 +153,15 @@ describe('Layout Integration', () => {
     expect(drawer).toHaveAttribute('aria-hidden', 'true')
   })
 
+  // --- HeaderWallet / WalletConnect demo guard ---
+
+  it('does not render the fake demo balance "128.4 XLM" in the header', () => {
+    // The header must never show the hard-coded placeholder from the old
+    // uncontrolled WalletConnect demo path.
+    renderLayout()
+    expect(screen.queryByText(/128\.4 XLM/)).not.toBeInTheDocument()
+  })
+
   // --- BottomNav integration ---
 
   it('renders BottomNav inside the layout', () => {

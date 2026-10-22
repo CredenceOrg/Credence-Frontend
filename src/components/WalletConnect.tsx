@@ -58,13 +58,31 @@ function avatarHue(address: string): number {
 export default function WalletConnect({
   status: controlledStatus,
   address: controlledAddress,
-  balanceHint = '128.4 XLM',
+  balanceHint,
   network = 'public',
   onConnect,
   onDisconnect,
   className = '',
 }: WalletConnectProps) {
   const isControlled = controlledStatus !== undefined
+
+  // Guard: uncontrolled mode is for Storybook / local demos only.
+  // In production renders, always pass an explicit `status` prop so the
+  // component is driven by real wallet state rather than the internal
+  // demo state machine. This fires in dev/test but never in production.
+  if (
+    !isControlled &&
+    typeof process !== 'undefined' &&
+    process.env.NODE_ENV !== 'production' &&
+    typeof window !== 'undefined' &&
+    !(window as unknown as Record<string, unknown>).__STORYBOOK_ADDONS_CHANNEL__
+  ) {
+    console.warn(
+      '[WalletConnect] Rendered without a `status` prop outside Storybook. ' +
+        'This activates the internal demo state machine and must not be used in ' +
+        'production. Use <HeaderWallet /> in Layout instead.'
+    )
+  }
   const [internalStatus, setInternalStatus] = useState<WalletConnectStatus>('disconnected')
   const [internalAddress, setInternalAddress] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)

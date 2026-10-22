@@ -1,9 +1,18 @@
 import './TrustGauge.css'
 import { useEffect, useMemo, useRef } from 'react'
 
-import { type TrustTier, TIERS, TIER_ORDER, MAX_SCORE } from '../lib/tiers'
+import {
+  type TrustTier,
+  TIERS,
+  TIER_ORDER,
+  MAX_SCORE,
+  normalizeScore,
+  tierFromScore,
+} from '../lib/tiers'
 import { TIER_THRESHOLDS } from '../lib/tier'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+
+export { normalizeScore, tierFromScore }
 
 export const TRUST_SCORE_EVENT_VERSION = 1
 
@@ -103,27 +112,16 @@ const TIER_INDEX_MAP = TIER_ORDER.reduce(
  * Normalize a trust score to the authoritative [0, MAX_SCORE] range.
  * Invalid, negative, or overflow scores are clamped so the gauge cannot
  * render partial or unauthorized state.
+ *
+ * Re-exported above from `../lib/tiers` so existing callers keep working.
  */
-export function normalizeScore(score: number): number {
-  if (!Number.isFinite(score)) {
-    return 0
-  }
-  return Math.min(Math.max(score, 0), MAX_SCORE)
-}
 
 /**
  * Derive the canonical tier from an authoritative score. This keeps the
  * rendered tier, aria values, and audit events aligned with the score.
+ *
+ * Re-exported above from `../lib/tiers` so existing callers keep working.
  */
-export function tierFromScore(score: number): TrustTier {
-  const clamped = normalizeScore(score)
-  for (const tier of TIER_ORDER) {
-    if (clamped <= TIER_CONFIG[tier].max) {
-      return tier
-    }
-  }
-  return TIER_ORDER[TIER_ORDER.length - 1]
-}
 
 /**
  * Resolve the canonical tier for a score, tolerating invalid input.

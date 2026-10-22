@@ -81,8 +81,8 @@ export default function Transactions() {
   // or unmount between fetches). Stale IDs would otherwise leak selection
   // into the new list.
   useEffect(() => {
-    setDeletedIds(new Set())
-    setSelectedIds(new Set())
+    setDeletedIds((prev) => (prev.size === 0 ? prev : new Set()))
+    setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()))
   }, [data])
 
   // A 404 from the list endpoint means there is no history to show (e.g. no

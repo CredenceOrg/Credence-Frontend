@@ -5,7 +5,7 @@ import { PRELOADS_BY_PATH } from '../config/routes'
 import { useTranslation } from 'react-i18next'
 import ThemeToggle from './ThemeToggle'
 import NetworkIndicator from './NetworkIndicator'
-import WalletConnect from './WalletConnect'
+import HeaderWallet from './HeaderWallet'
 import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
@@ -116,7 +116,7 @@ export default function Layout() {
             ))}
           </nav>
 
-          <WalletConnect />
+          <HeaderWallet />
           <ThemeToggle />
           <NetworkIndicator />
 

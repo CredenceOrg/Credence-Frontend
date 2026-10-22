@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { apiFetch, ApiError } from '../api/client'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { apiFetch, ApiError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import type { ApiResponse, operations, Transaction } from '../api/types'
-
-const PENDING_TXS_KEY = 'credence:pendingTransactions'
+import { useWallet } from '../context/WalletContext'
+import { useSettings } from '../context/SettingsContext'
+import {
+  addPendingTransaction as addPendingToStorage,
+  removePendingTransaction as removePendingFromStorage,
+  readPendingTransactions,
+  writePendingTransactions,
+  migrateToV2,
+  type TransactionWithNetwork,
+} from '../lib/pendingTransactionsStorage'
 /**
  * Fixed page size for every request. Falls inside the contractually valid
  * range (1–100) documented in `openapi.yaml` (`LimitParam`), so the client
@@ -42,44 +50,6 @@ interface FetchedPage {
   nextCursor?: string
 }
 
-/**
- * A page request that has been dispatched but has not settled yet.
- *
- * Both `prefetchPage` and `goToPage` register here *before* awaiting the
- * network so that a later trigger for the same page can join the existing
- * request instead of cancelling it and issuing a duplicate.
- *
- * `controller` is owned by the map: only `refetch()` and unmount abort it, so
- * a prefetch can never be cancelled by an unrelated navigation.
- */
-interface InFlightPage {
-  controller: AbortController
-  promise: Promise<FetchedPage | null>
-}
-
-function getPendingTransactions(): Transaction[] {
-  try {
-    const stored = localStorage.getItem(PENDING_TXS_KEY)
-    return stored ? JSON.parse(stored) : []
-  } catch {
-    return []
-  }
-}
-
-function setPendingTransactions(txs: Transaction[]): void {
-  localStorage.setItem(PENDING_TXS_KEY, JSON.stringify(txs))
-}
-
-function addPendingTransaction(tx: Transaction): void {
-  const pending = getPendingTransactions()
-  setPendingTransactions([tx, ...pending])
-}
-
-function removePendingTransaction(hash: string): void {
-  const pending = getPendingTransactions()
-  setPendingTransactions(pending.filter((tx) => tx.hash !== hash))
-}
-
 export interface UseTransactionsResult {
   data: Transaction[]
   isLoading: boolean
@@ -115,8 +85,11 @@ export interface UseTransactionsResult {
 }
 
 export function useTransactions(): UseTransactionsResult {
+  const { address: walletAddress, network: walletNetwork } = useWallet()
+  const { network: settingsNetwork } = useSettings()
+
   const [serverData, setServerData] = useState<Transaction[]>([])
-  const [pendingData, setPendingData] = useState<Transaction[]>([])
+  const [pendingData, setPendingData] = useState<TransactionWithNetwork[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<ApiError | null>(null)
   const [page, setPage] = useState(1)
@@ -124,10 +97,10 @@ export function useTransactions(): UseTransactionsResult {
   const [hasNextPage, setHasNextPage] = useState(true)
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined)
 
-  const data = useMemo(
-    () => [...pendingData, ...serverData],
-    [pendingData, serverData]
-  )
+  // Use wallet network if available, otherwise fall back to settings network
+  const network = (walletNetwork || settingsNetwork) as 'public' | 'test'
+
+  const data = [...pendingData, ...serverData]
 
   // Navigation-only abort controller / fetch id. Prefetches deliberately do
   // not touch these: they are background work and must never invalidate a
@@ -135,6 +108,7 @@ export function useTransactions(): UseTransactionsResult {
   const abortRef = useRef<AbortController | null>(null)
   const fetchIdRef = useRef(0)
   const mountedRef = useRef(true)
+  const migrationRanRef = useRef(false)
 
   // Cursor map: page number → cursor string (or undefined for the first
   // page). Updated after each successful fetch. This is the forward chain:
@@ -178,8 +152,11 @@ export function useTransactions(): UseTransactionsResult {
         params.set('cursor', cursor)
       }
 
+      const epoch = getIdentityEpoch()
+
       const result = await apiFetch<TransactionsResponse>(`/transactions?${params.toString()}`, {
         signal,
+        identityEpoch: epoch,
       })
 
       // A response that lands after abort (refetch / unmount / superseded
@@ -254,6 +231,19 @@ export function useTransactions(): UseTransactionsResult {
   }, [])
 
   const fetchTransactions = useCallback(async () => {
+    // Disconnected state: no fetch, return empty list
+    if (!walletAddress) {
+      setServerData([])
+      setPendingData([])
+      setIsLoading(false)
+      setError(null)
+      setPage(1)
+      setTotalPages(0)
+      setNextCursor(undefined)
+      setHasNextPage(false)
+      return
+    }
+
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
@@ -269,10 +259,10 @@ export function useTransactions(): UseTransactionsResult {
 
       if (result) {
         // Reconcile pending transactions with server data
-        const pending = getPendingTransactions()
+        const pending = readPendingTransactions(network, walletAddress)
         const serverHashes = new Set(result.items.map((tx) => tx.hash))
         const remainingPending = pending.filter((tx) => !serverHashes.has(tx.hash))
-        setPendingTransactions(remainingPending)
+        writePendingTransactions(network, walletAddress, remainingPending)
 
         setServerData(result.items)
         setPendingData(remainingPending)
@@ -290,6 +280,11 @@ export function useTransactions(): UseTransactionsResult {
         return
       }
 
+      // Silently discard session conflict errors (identity changed during request)
+      if (err instanceof ApiSessionConflictError) {
+        return
+      }
+
       setServerData([])
       setError(
         err instanceof ApiError ? err : new ApiError(0, 'Unexpected error loading transactions')
@@ -299,7 +294,7 @@ export function useTransactions(): UseTransactionsResult {
         setIsLoading(false)
       }
     }
-  }, [fetchPage])
+  }, [fetchPage, walletAddress, network])
 
   const goToPage = useCallback(
     async (pageNum: number) => {
@@ -345,7 +340,7 @@ export function useTransactions(): UseTransactionsResult {
         if (!mountedRef.current || fetchId !== fetchIdRef.current) return
 
         if (result) {
-          const pending = getPendingTransactions()
+          const pending = readPendingTransactions(network, walletAddress)
           setServerData(result.items)
           setPendingData(pending)
           setPage(pageNum)
@@ -367,6 +362,12 @@ export function useTransactions(): UseTransactionsResult {
         ) {
           return
         }
+
+        // Silently discard session conflict errors
+        if (err instanceof ApiSessionConflictError) {
+          return
+        }
+
         setError(err instanceof ApiError ? err : new ApiError(0, 'Unexpected error loading page'))
       } finally {
         if (mountedRef.current && fetchId === fetchIdRef.current) {
@@ -374,7 +375,7 @@ export function useTransactions(): UseTransactionsResult {
         }
       }
     },
-    [page, startPageRequest]
+    [fetchPage, page, network, walletAddress]
   )
 
   const prefetchPage = useCallback(
@@ -421,27 +422,52 @@ export function useTransactions(): UseTransactionsResult {
   }, [abortInFlightPages, fetchTransactions])
 
   const addPending = useCallback((tx: Transaction) => {
-    addPendingTransaction(tx)
-    setPendingData((prev) => [tx, ...prev])
-  }, [])
+    if (!walletAddress) return
+    addPendingToStorage(network, walletAddress, tx)
+    setPendingData((prev) => [{ ...tx, _network: network }, ...prev])
+  }, [network, walletAddress])
 
   const removePendingByHash = useCallback((hash: string) => {
-    removePendingTransaction(hash)
+    if (!walletAddress) return
+    removePendingFromStorage(network, walletAddress, hash)
     setPendingData((prev) => prev.filter((tx) => tx.hash !== hash))
-  }, [])
+  }, [network, walletAddress])
 
   useEffect(() => {
     mountedRef.current = true
-    // Load pending transactions from storage on mount
-    setPendingData(getPendingTransactions())
+
+    // One-time migration from v1/v0 to v2 on first mount
+    if (!migrationRanRef.current) {
+      migrateToV2(network, walletAddress)
+      migrationRanRef.current = true
+    }
+
+    // Load pending transactions from storage for current identity
+    if (walletAddress) {
+      setPendingData(readPendingTransactions(network, walletAddress))
+    } else {
+      setPendingData([])
+    }
+
     void fetchTransactions()
+
     return () => {
       mountedRef.current = false
       cacheEpochRef.current += 1
       abortRef.current?.abort()
       abortInFlightPages()
     }
-  }, [abortInFlightPages, fetchTransactions])
+  }, [fetchTransactions, network, walletAddress])
+
+  // Clear caches and reset when address or network changes
+  useEffect(() => {
+    pageCacheRef.current.clear()
+    cursorMapRef.current.clear()
+    setPage(1)
+    setTotalPages(0)
+    setNextCursor(undefined)
+    setHasNextPage(true)
+  }, [network, walletAddress])
 
   return {
     data,

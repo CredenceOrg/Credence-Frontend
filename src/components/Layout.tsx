@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink, useLocation, Link } from 'react-router-dom'
 import { PrefetchNavLink } from './PrefetchNavLink'
@@ -28,12 +29,15 @@ import './Layout.css'
 export default function Layout() {
   const { t } = useTranslation()
   const location = useLocation()
+
   useRouteFocus()
+
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt)
+
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
   const whatsNewButtonRef = useRef<HTMLButtonElement>(null)
@@ -63,6 +67,7 @@ export default function Layout() {
 
     const handleBeforeInstallPrompt = (event: Event) => {
       if (installPromptDismissed) return
+
       event.preventDefault()
       markInstallPromptHandled()
       setInstallPromptDismissed(true)
@@ -73,6 +78,7 @@ export default function Layout() {
       DOM_EVENTS.BEFORE_INSTALL_PROMPT,
       handleBeforeInstallPrompt as EventListener
     )
+
     return () => {
       window.removeEventListener(
         DOM_EVENTS.BEFORE_INSTALL_PROMPT,

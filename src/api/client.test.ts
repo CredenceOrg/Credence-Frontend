@@ -157,6 +157,17 @@ describe('apiFetch', () => {
     } satisfies Partial<ApiError>)
   })
 
+  it('surfaces an offline write as a network_error with status 0', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiFetch('/settings', { method: 'PATCH', body: { a: 1 } })).rejects.toMatchObject({
+      name: 'ApiError',
+      code: 'network_error',
+      status: 0,
+    })
+  })
+
   it('normalizes paths without a leading slash', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ items: [] }))
     vi.stubGlobal('fetch', fetchMock)

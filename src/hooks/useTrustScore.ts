@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import type { TrustScore } from '../api/types'
 import { isValidStellarAddress } from '@/lib/stellar'
+import { normalizeTrustScore } from '@/lib/trustScore'
 
 export interface UseTrustScoreResult {
   /** Trust score payload from `GET /trust-score/:address`, or null before/after a failed fetch. */
@@ -74,7 +75,14 @@ export function useTrustScore(address: string): UseTrustScoreResult {
         return
       }
 
-      setData(result)
+      const normalized = normalizeTrustScore(result)
+      if (!normalized) {
+        setData(null)
+        setError(new ApiError(0, 'Malformed trust score response'))
+        return
+      }
+
+      setData(normalized)
     } catch (err) {
       if (!mountedRef.current || fetchId !== fetchIdRef.current || isAbortError(err)) {
         return

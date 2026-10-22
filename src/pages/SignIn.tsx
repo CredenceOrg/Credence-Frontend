@@ -1,7 +1,9 @@
 import EmptyState from '../components/states/EmptyState'
 import { useWallet } from '../context/WalletContext'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function SignIn() {
+  useDocumentTitle('Sign In')
   const { connect, isConnecting } = useWallet()
 
   return (

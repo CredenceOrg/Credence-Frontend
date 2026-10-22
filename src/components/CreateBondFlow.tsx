@@ -164,7 +164,7 @@ function logRefusedTransition(direction: 'Back' | 'Next', step: number): void {
 
 export default function CreateBondFlow({ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
   const { addToast } = useToast()
-  const { isConnected, address, network, isReauthRequired } = useWallet()
+  const { isConnected, address, network, isReauthRequired, requestReauth } = useWallet()
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
   const [step, setStep] = useState<number>(BOND_FLOW_MIN_STEP)
   const prefersReducedMotion = useReducedMotion()
@@ -185,6 +185,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   )
   const submittingRef = useRef(false)
   const mountedRef = useRef(true)
+  const pendingNextRef = useRef(false)
 
   /**
    * Latest committed wizard step, mirrored outside React state.
@@ -311,7 +312,15 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   // or connected wallet is not authorization for a later mutation.
   const validateFunding = (): string => {
     if (!isConnected) return 'Wallet disconnected. Reconnect your wallet and try again.'
-    if (isReauthRequired?.()) return 'Wallet session expired. Reauthenticate and try again.'
+    if (isReauthRequired?.()) {
+      void requestReauth().then((success) => {
+        if (success && stepRef.current === BOND_FLOW_STEP_AMOUNT) {
+          pendingNextRef.current = true
+          setError('')
+        }
+      })
+      return 'Wallet session expired. Reauthenticate and try again.'
+    }
     if (balanceStatus !== 'ready')
       return 'Wait for an available balance. Retry loading your balance if needed.'
     const numericAmount = Number(amount)
@@ -355,6 +364,26 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     }
     setError('')
     applyStep(plan.targetStep)
+  }
+
+  useEffect(() => {
+    if (
+      pendingNextRef.current &&
+      isConnected &&
+      !isReauthRequired?.() &&
+      balanceStatus === 'ready'
+    ) {
+      pendingNextRef.current = false
+      handleNext()
+    }
+  }, [balanceStatus, handleNext, isConnected, isReauthRequired])
+
+  const handleBalanceRetry = () => {
+    if (isReauthRequired?.()) {
+      void requestReauth()
+      return
+    }
+    refetchBalance()
   }
 
   /**
@@ -567,7 +596,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
                 </span>
                 <Button
                   type="button"
-                  onClick={refetchBalance}
+                  onClick={handleBalanceRetry}
                   className="createBondFlow__retryButton"
                   style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
                 >

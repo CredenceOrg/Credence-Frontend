@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from '
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
@@ -13,8 +13,8 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import ConnectGate from '../components/ConnectGate'
 import TierLadder from '../components/TierLadder'
-import TrustGauge, { TIER_CONFIG, pointsToNextTier } from '../components/TrustGauge'
-import { TIER_ORDER, MAX_SCORE } from '../lib/tiers'
+import TrustGauge from '../components/TrustGauge'
+import { describeTierProgress, MAX_SCORE, normalizeScore } from '../lib/tiers'
 import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
@@ -24,6 +24,7 @@ import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
+import { normalizeTrustScore } from '../lib/trustScore'
 import { useToast } from '../components/ToastProvider'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import { useRecentLookups } from '../hooks/useRecentLookups'
@@ -91,7 +92,12 @@ export default function TrustScore() {
   const safeHistory = sanitizeRecentLookups(history)
   const recordedResultRef = useRef<string | null>(null)
 
-  const { data, isLoading, error, refetch } = useTrustScore(lookupAddress)
+  const { data: rawData, isLoading, error, refetch } = useTrustScore(lookupAddress)
+
+  // The API response is unvalidated at runtime. Normalise it once at the
+  // render boundary so every downstream expression (hero badge, gauge,
+  // history) sees a valid tier and a clamped score.
+  const data = useMemo(() => normalizeTrustScore(rawData), [rawData])
 
   useEffect(() => {
     if (!pendingLookupRef.current || !lookupAddress) {
@@ -178,7 +184,13 @@ export default function TrustScore() {
 
   const activity: ActivityItem[] = data ? SAMPLE_ACTIVITY : []
 
-  const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
+  // `data.tier` comes from an unvalidated API payload, so never index
+  // TIER_CONFIG / TIER_ORDER with it directly. The helper resolves unknown
+  // tiers from the score and reports progress without ever reading past the
+  // final tier (platinum has no "next tier").
+  const tierProgress = data ? describeTierProgress(data.score, data.tier) : null
+  const displayScore = data ? normalizeScore(data.score) : 0
+  const tierLabel = tierProgress ? `${tierProgress.label} Tier` : undefined
   const mismatchBannerId = 'trust-score-network-mismatch'
 
   return (
@@ -232,23 +244,29 @@ export default function TrustScore() {
           {data && lookupAddress === address.trim() && (
             <div className="trustScore__hero" role="region" aria-label="Trust score result">
               <div className="trustScore__heroScore">
-                <span className="trustScore__heroScoreValue">{data.score}</span>
+                <span className="trustScore__heroScoreValue">{displayScore}</span>
                 <span className="trustScore__heroScoreTotal">/ {MAX_SCORE}</span>
               </div>
 
               <div className="trustScore__heroMeta">
-                <Badge variant={data.tier} label={tierLabel!} className="trustScore__heroBadge" />
+                <Badge
+                  variant={tierProgress?.tier ?? data.tier}
+                  label={tierLabel!}
+                  className="trustScore__heroBadge"
+                />
                 <p className="trustScore__heroNext">
-                  {data.tier === 'platinum' && data.score >= MAX_SCORE
-                    ? 'Platinum tier \u2014 maximum score achieved'
-                    : `${pointsToNextTier(data.score, data.tier)} points to ${
-                        TIER_CONFIG[TIER_ORDER[TIER_ORDER.indexOf(data.tier) + 1]].label
-                      }`}
+                  {tierProgress === null
+                    ? null
+                    : tierProgress.nextLabel === null
+                      ? tierProgress.pointsRemaining === 0
+                        ? 'Platinum tier \u2014 maximum score achieved'
+                        : `Top tier \u2014 ${tierProgress.pointsRemaining} points to maximum score`
+                      : `${tierProgress.pointsRemaining} points to ${tierProgress.nextLabel}`}
                 </p>
               </div>
 
               <div className="trustScore__heroGauge">
-                <TrustGauge score={data.score} tier={data.tier} />
+                <TrustGauge score={displayScore} tier={tierProgress?.tier ?? data.tier} />
               </div>
 
               <div className="trustScore__heroFooter">

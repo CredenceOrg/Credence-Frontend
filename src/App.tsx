@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { SettingsProvider } from './context/SettingsContext'
 import { WalletProvider } from './context/WalletContext'
@@ -8,22 +8,24 @@ import Layout from './components/Layout'
 import BreakpointOverlay from './components/dev/BreakpointOverlay'
 import DebugOverlay from './components/dev/DebugOverlay'
 import { WidgetCacheProvider } from './widgetCache'
+import { lazyWithRetry } from './lib/lazyWithRetry'
+import {
+  Home,
+  Dashboard,
+  Bond,
+  CreateBondPage,
+  BondDetail,
+  TrustScore,
+  TrustSummary,
+  Attestations,
+  Transactions,
+  Settings,
+  AmountInputTestPage,
+  SignIn,
+  NotFound,
+} from './config/routes'
 
-const Home = lazy(() => import('./pages/Home'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Bond = lazy(() => import('./pages/Bond'))
-const CreateBondPage = lazy(() => import('./pages/CreateBondPage'))
-const BondDetail = lazy(() => import('./pages/BondDetail'))
-const TrustScore = lazy(() => import('./pages/TrustScore'))
-const TrustSummary = lazy(() => import('./pages/TrustSummary'))
-const Attestations = lazy(() => import('./pages/Attestations'))
-const Transactions = lazy(() => import('./pages/Transactions'))
-const Settings = lazy(() => import('./pages/Settings'))
-const AmountInputTestPage = lazy(() => import('./pages/AmountInputTestPage'))
-const SignIn = lazy(() => import('./pages/SignIn'))
-const NotFound = lazy(() => import('./pages/NotFound'))
-
-const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
+const ToastTest = import.meta.env.DEV ? lazyWithRetry(() => import('./pages/ToastTest')) : null
 
 export interface AppProps {
   /** Optional custom subtree to render instead of default Routes for testing and boundary harnesses. */

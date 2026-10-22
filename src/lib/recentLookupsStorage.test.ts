@@ -6,8 +6,10 @@ import {
   writeRecentLookups,
 } from './recentLookupsStorage'
 
-const ADDR1 = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-const ADDR2 = 'GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'
+// Real StrKey addresses (the storage validates the CRC checksum, so the
+// repeated-character placeholders fail isValidStellarAddress and get dropped).
+const ADDR1 = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+const ADDR2 = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
 
 describe('recentLookupsStorage', () => {
   beforeEach(() => {
@@ -66,12 +68,14 @@ describe('recentLookupsStorage', () => {
       JSON.stringify([{ address: ADDR1, timestamp: 1 }])
     )
 
-    const originalSetItem = localStorage.setItem.bind(localStorage)
-    vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+    // jsdom's storage defines setItem on the instance, shadowing the
+    // prototype — spy on Storage.prototype so every storage handle intercepts.
+    const originalSetItem = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
       if (key === RECENT_LOOKUPS_V1_KEY) {
         throw new Error('quota exceeded')
       }
-      return originalSetItem(key, value)
+      return originalSetItem.call(this, key, value)
     })
 
     // Should not throw; should still return legacy items.

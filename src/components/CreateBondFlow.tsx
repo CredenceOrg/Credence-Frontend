@@ -39,8 +39,6 @@ import {
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { formatUsdc } from '../lib/format'
 import { LoadingSkeleton } from './states'
-import { computeBondSlashBreakdown, calcUnlockDate } from '../lib/bondPenalty'
-
 import './CreateBondFlow.css'
 
 // ---------------------------------------------------------------------------
@@ -49,9 +47,9 @@ import './CreateBondFlow.css'
 
 export interface CreateBondFlowProps {
   /**
-   * Called after the authoritative bond mutation has committed. May return a
-   * promise that resolves with the on-chain/backend result, or reject when the
-   * wallet/network operation fails.
+   * Performs the authoritative bond mutation. Its promise resolves only after
+   * the on-chain/backend operation commits, or rejects on wallet/network failure.
+   * Legacy synchronous completion callbacks are also supported.
    */
   onComplete?: () => void | Promise<BondCommitResult | void>
   /** Called when the user cancels the flow */
@@ -69,10 +67,7 @@ export interface BondCommitResult {
 }
 
 export type BondAuditEvent =
-  | 'BOND_CREATE_REQUESTED'
-  | 'BOND_CREATE_COMMITTED'
-  | 'BOND_CREATE_REJECTED'
-  | 'BOND_CREATE_FAILED'
+  'BOND_CREATE_REQUESTED' | 'BOND_CREATE_COMMITTED' | 'BOND_CREATE_REJECTED' | 'BOND_CREATE_FAILED'
 
 export interface BondAuditRecord {
   version: 1
@@ -104,7 +99,27 @@ const loadAuditLog = (): BondAuditRecord[] => {
     const raw = window.localStorage.getItem(AUDIT_STORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? (parsed as BondAuditRecord[]) : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (record): record is BondAuditRecord =>
+        record !== null &&
+        typeof record === 'object' &&
+        record.version === 1 &&
+        Number.isSafeInteger(record.sequence) &&
+        record.sequence >= 0 &&
+        typeof record.correlationId === 'string' &&
+        typeof record.timestamp === 'string' &&
+        [
+          'BOND_CREATE_REQUESTED',
+          'BOND_CREATE_COMMITTED',
+          'BOND_CREATE_REJECTED',
+          'BOND_CREATE_FAILED',
+        ].includes(record.event) &&
+        record.payload !== null &&
+        typeof record.payload === 'object' &&
+        typeof record.payload.amount === 'string' &&
+        typeof record.payload.acknowledged === 'boolean'
+    )
   } catch {
     return []
   }
@@ -149,18 +164,12 @@ function logRefusedTransition(direction: 'Back' | 'Next', step: number): void {
 
 export default function CreateBondFlow({ onComplete, onCancel, onAudit }: CreateBondFlowProps) {
   const { addToast } = useToast()
-  const { isConnected, connect } = useWallet()
+  const { isConnected, address, network, isReauthRequired, requestReauth } = useWallet()
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
   const [step, setStep] = useState<number>(BOND_FLOW_MIN_STEP)
-  const { isConnected } = useWallet()
-  const {
-    balance,
-    status: balanceStatus,
-    refetch: refetchBalance,
-  } = useUsdcBalance()
   const prefersReducedMotion = useReducedMotion()
-
-  const [step, setStep] = useState(1)
+  const consentIdentityRef = useRef<string | null>(null)
+  const walletIdentity = JSON.stringify([address, network])
   const [amount, setAmount] = useState('')
   const [duration, setDuration] = useState<number | null>(null)
   const [error, setError] = useState('')
@@ -172,9 +181,11 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   const auditRecordsRef = useRef<BondAuditRecord[]>(loadAuditLog())
   const correlationIdRef = useRef('')
   const sequenceRef = useRef<number>(
-    auditRecordsRef.current.reduce((max, record) => Math.max(max, record.sequence), -1) + 1,
+    auditRecordsRef.current.reduce((max, record) => Math.max(max, record.sequence), -1) + 1
   )
   const submittingRef = useRef(false)
+  const mountedRef = useRef(true)
+  const pendingNextRef = useRef(false)
 
   /**
    * Latest committed wizard step, mirrored outside React state.
@@ -215,7 +226,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   const recordAudit = (
     event: BondAuditEvent,
     error?: string,
-    result?: BondCommitResult,
+    result?: BondCommitResult
   ): BondAuditRecord => {
     const record: BondAuditRecord = {
       version: 1,
@@ -233,7 +244,12 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     }
     auditRecordsRef.current = [...auditRecordsRef.current, record]
     saveAuditLog(auditRecordsRef.current)
-    onAudit?.(record)
+    try {
+      onAudit?.(record)
+    } catch {
+      // An optional observer must never change the authoritative mutation outcome.
+      console.warn('[CreateBondFlow] Audit observer failed')
+    }
     return record
   }
 
@@ -282,25 +298,53 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     try {
       reset()
       return true
-    } catch (err) {
+    } catch {
       // Defensive: even if React state updates fail, clear the imperative
       // guards so a subsequent attempt is not blocked.
       submittingRef.current = false
       correlationIdRef.current = ''
-      const message = err instanceof Error ? err.message : 'Failed to reset bond flow.'
-      setResetError(message)
+      setResetError('Failed to reset bond flow.')
       return false
     }
   }
 
+  // Recheck funding at navigation and submission; a previously loaded balance
+  // or connected wallet is not authorization for a later mutation.
+  const validateFunding = (): string => {
+    if (!isConnected) return 'Wallet disconnected. Reconnect your wallet and try again.'
+    if (isReauthRequired?.()) {
+      void requestReauth().then((success) => {
+        if (success && stepRef.current === BOND_FLOW_STEP_AMOUNT) {
+          pendingNextRef.current = true
+          setError('')
+        }
+      })
+      return 'Wallet session expired. Reauthenticate and try again.'
+    }
+    if (balanceStatus !== 'ready')
+      return 'Wait for an available balance. Retry loading your balance if needed.'
+    const numericAmount = Number(amount)
+    if (
+      !amount ||
+      !Number.isFinite(numericAmount) ||
+      numericAmount <= 0 ||
+      numericAmount > Number.MAX_SAFE_INTEGER
+    ) {
+      return 'Please enter a valid amount greater than 0.'
+    }
+    if (!Number.isFinite(balance) || balance < 0 || numericAmount > balance) {
+      return 'Amount exceeds available balance.'
+    }
+    return ''
+  }
+
   const handleNext = () => {
     const currentStep = stepRef.current
-    if (currentStep === BOND_FLOW_STEP_AMOUNT) {
     if (submittingRef.current) return
-
-    if (step === 1) {
-      if (!amount || Number(amount) <= 0) {
-        setError('Please enter a valid amount greater than 0.')
+    if (currentStep === BOND_FLOW_STEP_AMOUNT) {
+      const message = validateFunding()
+      if (message) {
+        setError(message)
         return
       }
     }
@@ -320,6 +364,26 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     }
     setError('')
     applyStep(plan.targetStep)
+  }
+
+  useEffect(() => {
+    if (
+      pendingNextRef.current &&
+      isConnected &&
+      !isReauthRequired?.() &&
+      balanceStatus === 'ready'
+    ) {
+      pendingNextRef.current = false
+      handleNext()
+    }
+  }, [balanceStatus, handleNext, isConnected, isReauthRequired])
+
+  const handleBalanceRetry = () => {
+    if (isReauthRequired?.()) {
+      void requestReauth()
+      return
+    }
+    refetchBalance()
   }
 
   /**
@@ -348,6 +412,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
    * going back never discards what the user entered.
    */
   const handleBack = () => {
+    if (submittingRef.current) return
     const currentStep = stepRef.current
     const plan = planBackTransition(currentStep)
 
@@ -377,16 +442,31 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     if (submittingRef.current) return
 
     if (!acknowledged) {
-      setConfirmError('Please acknowledge the slashing terms and lock conditions before creating a bond.')
+      setConfirmError(
+        'Please acknowledge the slashing terms and lock conditions before creating a bond.'
+      )
       correlationIdRef.current = createCorrelationId()
       recordAudit('BOND_CREATE_REJECTED', 'ACKNOWLEDGEMENT_REQUIRED')
       return
     }
 
-    if (!isConnected) {
-      setConfirmError('Wallet disconnected. Reconnect your wallet and try again.')
+    const fundingError = validateFunding()
+    if (fundingError) {
+      setConfirmError(fundingError)
       correlationIdRef.current = createCorrelationId()
-      recordAudit('BOND_CREATE_REJECTED', 'WALLET_DISCONNECTED')
+      recordAudit('BOND_CREATE_REJECTED', 'FUNDING_UNAVAILABLE')
+      return
+    }
+
+    if (stepRef.current !== BOND_FLOW_STEP_CONFIRM || ![30, 90, 180].includes(duration ?? 0)) {
+      setConfirmError('Review a valid amount and lock duration before creating a bond.')
+      return
+    }
+    if (consentIdentityRef.current !== walletIdentity) {
+      setAcknowledged(false)
+      setConfirmError('Wallet or network changed. Review and acknowledge the terms again.')
+      correlationIdRef.current = createCorrelationId()
+      recordAudit('BOND_CREATE_REJECTED', 'WALLET_CHANGED')
       return
     }
 
@@ -401,20 +481,23 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
     submittingRef.current = true
     setSubmitting(true)
     setConfirmError('')
-    recordAudit('BOND_CREATE_REQUESTED')
-
     try {
-      const result = await onComplete?.()
-      recordAudit('BOND_CREATE_COMMITTED', undefined, result)
-      addToast('success', 'Bond created successfully.')
-      safeReset()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Bond creation failed. Please try again.'
-      setConfirmError(message)
-      recordAudit('BOND_CREATE_FAILED', message)
+      recordAudit('BOND_CREATE_REQUESTED')
+      const pending = onComplete?.()
+      const result = pending ? await pending : undefined
+      recordAudit('BOND_CREATE_COMMITTED', undefined, result || undefined)
+      try {
+        if (mountedRef.current) addToast('success', 'Bond created successfully.')
+      } catch {
+        console.warn('[CreateBondFlow] Success notification failed')
+      }
+      if (mountedRef.current) safeReset()
+    } catch {
+      if (mountedRef.current) setConfirmError('Bond creation failed. Please try again.')
+      recordAudit('BOND_CREATE_FAILED', 'MUTATION_FAILED')
     } finally {
       submittingRef.current = false
-      setSubmitting(false)
+      if (mountedRef.current) setSubmitting(false)
     }
   }
 
@@ -432,14 +515,14 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   }, [amount, duration])
 
   /**
-   * Reset on unmount so a partially-completed flow cannot leak a stale
-   * `submittingRef` into a remounted instance. This is a best-effort cleanup
-   * and intentionally does not call `onCancel` (unmount is not a user cancel).
+   * A late mutation result still belongs to its original attempt. Keep its
+   * correlation ID on unmount, but avoid updating a detached wizard. A new
+   * instance owns fresh refs; unmount is neither cancellation nor a retry.
    */
   useEffect(() => {
+    mountedRef.current = true
     return () => {
-      submittingRef.current = false
-      correlationIdRef.current = ''
+      mountedRef.current = false
     }
   }, [])
 
@@ -447,12 +530,12 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   // Step indicator
   // ---------------------------------------------------------------------------
 
-  const stepIndicatorTransition = prefersReducedMotion ? 'none' : 'background 0.2s ease'
   const durationButtonTransition = prefersReducedMotion ? 'none' : 'all 0.2s ease'
 
   const StepIndicator = () => (
     <div
       className="createBondFlow__stepIndicator"
+      role="group"
       aria-label={`Step ${step} of ${BOND_FLOW_STEP_COUNT}`}
     >
       {Array.from({ length: BOND_FLOW_STEP_COUNT }, (_, index) => index + BOND_FLOW_MIN_STEP).map(
@@ -461,21 +544,11 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             key={i}
             className={`createBondFlow__stepBar${i <= step ? ' createBondFlow__stepBar--active' : ''}`}
             style={{
-              transition: prefersReducedMotion ? 'none' : undefined,
+              transition: prefersReducedMotion ? 'none' : 'background 0.2s ease',
             }}
           />
         )
       )}
-    <div className="createBondFlow__stepIndicator" aria-label={`Step ${step} of 4`}>
-      {[1, 2, 3, 4].map((i) => (
-        <div
-          key={i}
-          className={['createBondFlow__stepBar', i <= step ? 'createBondFlow__stepBar--active' : '']
-            .filter(Boolean)
-            .join(' ')}
-          style={{ transition: stepIndicatorTransition }}
-        />
-      ))}
     </div>
   )
 
@@ -513,22 +586,17 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             ) : balanceStatus === 'loading' ? (
               <LoadingSkeleton variant="text" rows={1} width="12rem" />
             ) : balanceStatus === 'error' ? (
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.875rem',
-                }}
-              >
-                <span role="alert" style={{ color: 'var(--credence-color-danger)' }}>
               <span className="createBondFlow__balanceErrorRow">
-                <span className="createBondFlow__balanceText" role="alert" style={{ color: 'var(--credence-color-danger)' }}>
+                <span
+                  className="createBondFlow__balanceText"
+                  role="alert"
+                  style={{ color: 'var(--credence-color-danger)' }}
+                >
                   Could not load balance.
                 </span>
                 <Button
                   type="button"
-                  onClick={refetchBalance}
+                  onClick={handleBalanceRetry}
                   className="createBondFlow__retryButton"
                   style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
                 >
@@ -536,15 +604,14 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
                 </Button>
               </span>
             ) : (
-              <span className="createBondFlow__balanceText">
-                Available: {formatUsdc(balance)}
-              </span>
+              <span className="createBondFlow__balanceText">Available: {formatUsdc(balance)}</span>
             )}
           </div>
 
           <FormField id="bond-amount" label="Amount (USDC)" error={error || undefined}>
             <AmountInput
               value={amount}
+              error={error || undefined}
               onChange={(next) => {
                 setAmount(next)
                 if (error) setError('')
@@ -553,7 +620,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
               placeholder="0"
               presets={[100, 500, 1000]}
               currencyLabel="USDC"
-              disabled={!isConnected}
+              disabled={!isConnected || balanceStatus !== 'ready'}
               hideErrorMessage={Boolean(error)}
               aria-disabled={!isConnected || undefined}
             />
@@ -721,7 +788,11 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             <input
               type="checkbox"
               checked={acknowledged}
-              onChange={(e) => setAcknowledged(e.target.checked)}
+              disabled={submitting}
+              onChange={(e) => {
+                consentIdentityRef.current = e.target.checked ? walletIdentity : null
+                setAcknowledged(e.target.checked)
+              }}
             />
             <span>I explicitly acknowledge the slashing terms and lock conditions.</span>
           </label>
@@ -757,7 +828,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             disabled={!acknowledged || submitting}
             className="createBondFlow__navButton createBondFlow__confirmButton"
           >
-            {submitting ? 'Creating Bond…' : 'Confirm &amp; Create Bond'}
+            {submitting ? 'Creating Bond…' : 'Confirm & Create Bond'}
           </Button>
         )}
 

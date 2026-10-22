@@ -11,7 +11,7 @@ interface QRScannerDialogProps {
 
 type ScannerState = 'requesting' | 'scanning' | 'error' | 'success'
 
-export default function QRScannerDialog({ open, onScan, onClose }: QRScannerModalProps) {
+export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)

@@ -9,8 +9,9 @@ describe('explorerUrl', () => {
     expect(url).toBe(`https://stellar.expert/explorer/public/tx/${HASH}`)
   })
 
-  it('uses the testnet base URL when network is testnet', () => {
-    const url = explorerUrl('testnet', HASH)
+  it('uses the testnet base URL when network is test (testnet)', () => {
+    // The Credence NetworkOption literal is 'test' (see SettingsContext).
+    const url = explorerUrl('test', HASH)
     expect(url).toBe(`https://stellar.expert/explorer/testnet/tx/${HASH}`)
   })
 

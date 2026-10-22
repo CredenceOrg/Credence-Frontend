@@ -118,6 +118,12 @@ export function toneToStatus(tone: ActivityTone): AttestationStatus | null {
 
 export interface ActivityEventPayload {
   id: string
+  /** Schema version stamped onto the event so consumers can apply
+   *  forward-compatible parsing / migration rules. */
+  eventVersion?: string
+  /** Correlation id linking related events (e.g. a wallet action and the
+   *  activity row it produced) so audit trails can be reconstructed. */
+  correlationId?: string
   timestamp: string
   title: string
   description: string
@@ -127,6 +133,9 @@ export interface ActivityEventPayload {
   statusLabel: string
   tone: ActivityTone
   meta: string
+  /** Optional USDC amount attached to the activity. When present the
+   *  timeline renders it; invalid values are shown as an em dash. */
+  amountUsdc?: number
   /** Optional explicit attestation status. When present it is the
    *  user-facing filterable value (accepted / needs-update / in-review).
    *  Falls back to `toneToStatus(tone)` for legacy items. */

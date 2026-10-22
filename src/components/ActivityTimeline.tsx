@@ -7,8 +7,8 @@ import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
 import type { BadgeVariant } from './Badge'
-import { AttestationStatus, toneToStatus } from '../events'
-import { formatAmount } from '../lib/format'
+
+export type { ActivityItem } from '../data/activity'
 
 /**
  * Maps ActivityTimeline tone values to Badge variants.

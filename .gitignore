@@ -17,3 +17,5 @@ blob-report
 
 # Lighthouse CI reports
 lhci-reports
+.vercel
+.env*

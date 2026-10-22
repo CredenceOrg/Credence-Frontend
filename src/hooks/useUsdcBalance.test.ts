@@ -174,6 +174,35 @@ describe('useUsdcBalance', () => {
     expect(result.current.error).toBeInstanceOf(mocks.MockHorizonError)
   })
 
+  it('re-fetches automatically when the re-auth timestamp changes', async () => {
+    mocks.mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      lastReauthTime: 1,
+      isReauthRequired: vi.fn(() => true),
+    })
+    const { result, rerender } = renderHook(() => useUsdcBalance())
+
+    expect(result.current.isReauthRequired).toBe(true)
+    expect(result.current.status).toBe('error')
+    expect(mocks.mockFetchUsdcBalance).not.toHaveBeenCalled()
+
+    mocks.mockFetchUsdcBalance.mockResolvedValueOnce(850)
+    mocks.mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      lastReauthTime: 2,
+      isReauthRequired: vi.fn(() => false),
+    })
+    rerender()
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('ready')
+    })
+    expect(result.current.balance).toBe(850)
+    expect(mocks.mockFetchUsdcBalance).toHaveBeenCalledOnce()
+  })
+
   it('returns balance 0 when account has no USDC trustline', async () => {
     mocks.mockFetchUsdcBalance.mockResolvedValueOnce(0)
 

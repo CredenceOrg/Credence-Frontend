@@ -15,7 +15,7 @@ describe('usePinnedWidgets', () => {
   it('persists to localStorage', () => {
     const { result } = renderHook(() => usePinnedWidgets())
     act(() => result.current.togglePin('active-bonds'))
-    expect(JSON.parse(localStorage.getItem('credence:pinnedWidgets')!)).toContain('active-bonds')
+    expect(JSON.parse(localStorage.getItem('credence:pinned_widgets')!)).toContain('active-bonds')
   })
 
   it('caps at MAX_PINNED_WIDGETS', () => {

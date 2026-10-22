@@ -222,7 +222,7 @@ export function MutationRecoveryProvider({
 
         logInfo('mutation_recovery_provider_audit_events_emitted', {
           eventCount: emittedEvents.length,
-          operationIds: emittedEvents.map((event) => event.operationId),
+          operationIds: emittedEvents.map((event) => event.operationId).join(','),
         })
       }
 
@@ -363,11 +363,9 @@ export function MutationRecoveryProvider({
       logInfo('mutation_recovery_provider_health_check', {
         isHealthy,
         systemStatus: systemStatus?.isHealthy,
-        recoveryStatusSummary: {
-          activeCount: recoveryStatus.active.length,
-          pendingCount: recoveryStatus.pending,
-          failedCount: recoveryStatus.failed,
-        },
+        activeCount: recoveryStatus.active.length,
+        pendingCount: recoveryStatus.pending,
+        failedCount: recoveryStatus.failed,
       })
 
       return isHealthy || false

@@ -166,13 +166,90 @@ describe('WhatsNewDialog / ChangelogDrawer', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('calls onClose when the backdrop is clicked', () => {
-    const onClose = vi.fn()
-    render(<WhatsNewDialog open={true} onClose={onClose} />)
-    const backdrop = document.querySelector('.whats-new-dialog__backdrop')
-    expect(backdrop).not.toBeNull()
-    fireEvent.click(backdrop!)
-    expect(onClose).toHaveBeenCalledTimes(1)
+  describe('handleBackdropClick boundaries', () => {
+    const getBackdrop = () =>
+      document.querySelector('.whats-new-dialog__backdrop') as HTMLElement | null
+    const getDialog = () => document.querySelector('.whats-new-dialog') as HTMLElement
+
+    it('calls onClose when the press and click both land on the backdrop', () => {
+      const onClose = vi.fn()
+      render(<WhatsNewDialog open={true} onClose={onClose} />)
+      const backdrop = getBackdrop()
+      expect(backdrop).not.toBeNull()
+
+      fireEvent.mouseDown(backdrop!)
+      fireEvent.click(backdrop!)
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not close when the interaction starts on the dialog content', () => {
+      const onClose = vi.fn()
+      render(<WhatsNewDialog open={true} onClose={onClose} />)
+      const dialog = getDialog()
+
+      fireEvent.mouseDown(dialog)
+      fireEvent.click(dialog)
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('does not close when the interaction starts on a nested descendant', () => {
+      const onClose = vi.fn()
+      render(<WhatsNewDialog open={true} onClose={onClose} />)
+      const title = screen.getByRole('heading', { name: /what.s new/i })
+
+      fireEvent.mouseDown(title)
+      fireEvent.click(title)
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('does not close when a press starts inside the dialog and the click lands on the backdrop', () => {
+      const onClose = vi.fn()
+      render(<WhatsNewDialog open={true} onClose={onClose} />)
+      const backdrop = getBackdrop()
+      const dialog = getDialog()
+
+      // Press inside the dialog (e.g. selecting text), release over the backdrop:
+      // the browser reports the click on their nearest common ancestor (the
+      // backdrop), which must not be treated as a backdrop dismissal.
+      fireEvent.mouseDown(dialog)
+      fireEvent.mouseUp(backdrop!)
+      fireEvent.click(backdrop!)
+
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('does not close when a press starts on the backdrop but the click lands on the dialog', () => {
+      const onClose = vi.fn()
+      render(<WhatsNewDialog open={true} onClose={onClose} />)
+      const backdrop = getBackdrop()
+      const dialog = getDialog()
+
+      fireEvent.mouseDown(backdrop!)
+      fireEvent.mouseUp(dialog)
+      fireEvent.click(dialog)
+
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('treats each independent backdrop press/click as a dismissal', () => {
+      const onClose = vi.fn()
+      render(<WhatsNewDialog open={true} onClose={onClose} />)
+      const backdrop = getBackdrop()
+
+      fireEvent.mouseDown(backdrop!)
+      fireEvent.click(backdrop!)
+      fireEvent.mouseDown(backdrop!)
+      fireEvent.click(backdrop!)
+
+      expect(onClose).toHaveBeenCalledTimes(2)
+    })
+
+    it('renders no backdrop (and never closes) while the dialog is closed', () => {
+      const onClose = vi.fn()
+      render(<WhatsNewDialog open={false} onClose={onClose} />)
+      expect(getBackdrop()).toBeNull()
+      expect(onClose).not.toHaveBeenCalled()
+    })
   })
 
   it('locks body scroll while open and restores it on close', async () => {
@@ -189,6 +266,72 @@ describe('WhatsNewDialog / ChangelogDrawer', () => {
     render(<WhatsNewDialog open={true} onClose={() => undefined} />)
     const newTags = screen.getAllByText('New')
     expect(newTags.length).toBeGreaterThan(0)
+  })
+
+  it('renders stale data when isLoading is true but updates are present', () => {
+    vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
+      updates: PRODUCT_UPDATES,
+      unreadCount: 0,
+      isLoading: true,
+      error: null,
+      markAllRead: mockMarkAllRead,
+      refetch: mockRefetch,
+    })
+    render(<WhatsNewDialog open={true} onClose={() => undefined} />)
+    const list = screen.getByRole('list', { name: /recent product updates/i })
+    expect(list).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('renders stale data when error is present but updates exist', () => {
+    vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
+      updates: PRODUCT_UPDATES,
+      unreadCount: 0,
+      isLoading: false,
+      error: 'Network Error',
+      markAllRead: mockMarkAllRead,
+      refetch: mockRefetch,
+    })
+    render(<WhatsNewDialog open={true} onClose={() => undefined} />)
+    const list = screen.getByRole('list', { name: /recent product updates/i })
+    expect(list).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('handles invalid or missing dates gracefully', () => {
+    const badDateUpdates = [
+      { ...PRODUCT_UPDATES[0], id: 'bad-1', date: 'invalid-date-string' },
+      { ...PRODUCT_UPDATES[0], id: 'bad-2', date: '' }
+    ]
+    vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
+      updates: badDateUpdates,
+      unreadCount: 0,
+      isLoading: false,
+      error: null,
+      markAllRead: mockMarkAllRead,
+      refetch: mockRefetch,
+    })
+    render(<WhatsNewDialog open={true} onClose={() => undefined} />)
+    expect(screen.getByText('invalid-date-string')).toBeInTheDocument()
+    expect(screen.getByText('Unknown Date')).toBeInTheDocument()
+  })
+
+  it('renders correctly when updates contain duplicate IDs', () => {
+    const duplicateUpdates = [
+      PRODUCT_UPDATES[0],
+      PRODUCT_UPDATES[0]
+    ]
+    vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
+      updates: duplicateUpdates,
+      unreadCount: 0,
+      isLoading: false,
+      error: null,
+      markAllRead: mockMarkAllRead,
+      refetch: mockRefetch,
+    })
+    render(<WhatsNewDialog open={true} onClose={() => undefined} />)
+    const list = screen.getByRole('list', { name: /recent product updates/i })
+    expect(list.querySelectorAll('li')).toHaveLength(2)
   })
 
   it('renders unread badge when unreadCount > 0', () => {

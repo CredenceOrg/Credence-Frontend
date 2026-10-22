@@ -12,7 +12,7 @@ type LazyIconLoader = () => Promise<{ default: ComponentType<IconProps> }>
  * still handles route-level loading states.
  */
 function lazyIcon(loader: LazyIconLoader) {
-  const Component = lazy(loader)
+  const Component = lazy(loader) as unknown as ComponentType<IconProps>
   return function LazyIcon(props: IconProps): ReactElement | null {
     return (
       <Suspense fallback={null}>

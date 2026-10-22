@@ -14,7 +14,6 @@ import { useTransactions } from '../hooks/useTransactions'
 import { useToast } from '../components/ToastProvider'
 import { buildExportFilename, downloadCsv, transactionsToCsv } from '../lib/transactionsExport'
 import { explorerUrl } from '../lib/explorerUrl'
-import { formatAmount } from '../lib/format'
 import { truncateAddress } from '../lib/stellar'
 import { formatUsdc } from '../lib/format'
 import type { Transaction } from '../api/types'
@@ -94,11 +93,14 @@ export default function Transactions() {
   // or unmount between fetches). Stale IDs would otherwise leak selection
   // into the new list.
   useEffect(() => {
-    setDeletedIds(new Set())
-    setSelectedIds(new Set())
+    setDeletedIds((prev) => (prev.size === 0 ? prev : new Set()))
+    setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()))
   }, [data])
 
-  const hasData = !isLoading && !error && visibleTransactions.length >= 0
+  // A 404 from the list endpoint means there is no history to show (e.g. no
+  // API deployed for this environment) — render the empty state, not an error.
+  const isMissingHistory = error?.status === 404
+  const hasData = !isLoading && (!error || isMissingHistory) && visibleTransactions.length >= 0
 
   // ── Selection helpers ───────────────────────────────────────────────
   const isRowSelected = useCallback((id: string) => selectedIds.has(id), [selectedIds])
@@ -243,7 +245,7 @@ export default function Transactions() {
         </div>
       )}
 
-      {!isLoading && error && (
+      {!isLoading && error && !isMissingHistory && (
         <ErrorState
           type={error.status === 0 ? 'network' : error.status >= 500 ? 'backend' : 'generic'}
           title={t('transactions.unableToLoad')}

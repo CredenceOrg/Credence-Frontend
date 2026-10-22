@@ -91,6 +91,8 @@ export interface MutationStorageV2 {
   operations: Record<MutationOperationId, MutationOperation>
   metadata: {
     createdAt: string
+    updatedAt?: string
+    lastCleanup?: string
     lastMigration?: {
       fromVersion: number
       toVersion: number

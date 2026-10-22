@@ -1,114 +1,100 @@
-import { lazy, Suspense, useState, useCallback, useEffect } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { SettingsProvider } from './context/SettingsContext'
-import { WalletProvider, useWallet } from './context/WalletContext'
+import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
 import BreakpointOverlay from './components/dev/BreakpointOverlay'
 import DebugOverlay from './components/dev/DebugOverlay'
 import { WidgetCacheProvider } from './widgetCache'
-import { MutationRecoveryProvider } from './components/MutationRecoveryProvider'
-import LoadingSkeleton from './components/states/LoadingSkeleton'
-import ReauthPrompt from './components/ReauthPrompt'
+import { lazyWithRetry } from './lib/lazyWithRetry'
+import {
+  Home,
+  Dashboard,
+  Bond,
+  CreateBondPage,
+  BondDetail,
+  TrustScore,
+  TrustSummary,
+  Attestations,
+  Transactions,
+  Settings,
+  AmountInputTestPage,
+  SignIn,
+  NotFound,
+} from './config/routes'
 
-const Home = lazy(() => import('./pages/Home'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Bond = lazy(() => import('./pages/Bond'))
-const CreateBondPage = lazy(() => import('./pages/CreateBondPage'))
-const BondDetail = lazy(() => import('./pages/BondDetail'))
-const TrustScore = lazy(() => import('./pages/TrustScore'))
-const TrustSummary = lazy(() => import('./pages/TrustSummary'))
-const Attestations = lazy(() => import('./pages/Attestations'))
-const Transactions = lazy(() => import('./pages/Transactions'))
-const Settings = lazy(() => import('./pages/Settings'))
-const AmountInputTestPage = lazy(() => import('./pages/AmountInputTestPage'))
-const SignIn = lazy(() => import('./pages/SignIn'))
-const NotFound = lazy(() => import('./pages/NotFound'))
+const ToastTest = import.meta.env.DEV ? lazyWithRetry(() => import('./pages/ToastTest')) : null
 
-const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
-
-function AppRouter() {
-  const { isReauthRequired, reauth, connected } = useWallet()
-  const [showReauth, setShowReauth] = useState(false)
-
-  useEffect(() => {
-    if (connected && isReauthRequired()) {
-      setShowReauth(true)
-    }
-  }, [connected, isReauthRequired])
-
-  const handleReauthConfirm = useCallback(async () => {
-    await reauth()
-    setShowReauth(false)
-  }, [reauth])
-
-  const handleReauthCancel = useCallback(() => {
-    setShowReauth(false)
-  }, [])
-
-  return (
-    <>
-      <ErrorBoundary>
-        <Suspense fallback={<LoadingSkeleton variant="dashboard" />}>
-          <Routes>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Home />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="bond" element={<Bond />} />
-              <Route path="bond/new" element={<CreateBondPage />} />
-              <Route path="bond/:id" element={<BondDetail />} />
-              <Route path="trust" element={<TrustScore />} />
-              <Route path="trust/summary" element={<TrustSummary />} />
-              <Route path="attestations" element={<Attestations />} />
-              <Route path="transactions" element={<Transactions />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="test-amount-input" element={<AmountInputTestPage />} />
-              <Route path="signin" element={<SignIn />} />
-              {import.meta.env.DEV && ToastTest && (
-                <Route path="dev/toasts" element={<ToastTest />} />
-              )}
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
-        </Suspense>
-        <BreakpointOverlay />
-        <DebugOverlay />
-      </ErrorBoundary>
-
-      <ReauthPrompt 
-        open={showReauth}
-        onConfirm={handleReauthConfirm}
-        onCancel={handleReauthCancel}
-      />
-    </>
-  )
+export interface AppProps {
+  /** Optional custom subtree to render instead of default Routes for testing and boundary harnesses. */
+  children?: ReactNode
+  /** Optional custom error fallback for the route ErrorBoundary. */
+  errorFallback?: (error: Error, reset: () => void) => ReactNode
+  /** Optional custom loading fallback for the route Suspense boundary. */
+  loadingFallback?: ReactNode
 }
 
 /**
- * Provider order is partly load-bearing:
+ * Provider order is load-bearing:
+ *  - `<WidgetCacheProvider>` (closes #561) sits as the outermost state provider
+ *    after `<BrowserRouter>` and above `<ErrorBoundary>` so widget cache state
+ *    survives route-level crashes, settings reloads, and wallet-connect cycles.
  *  - `SettingsProvider` must remain the outer ancestor of every provider whose
  *    body calls `useSettings()` (currently `ToastProvider`, which reads
  *    `toastsEnabled` and `autoDismiss`).
  *  - `ToastProvider` sits above `WalletProvider` so `WalletProvider` can use
  *    `useToast()` for idle-disconnect notifications.
- *
- * `<WidgetCacheProvider>` (closes #561) sits ABOVE `SettingsProvider` because
- * it has no dependency on any other context, and we deliberately keep it as
- * the outermost shared ancestor after `<BrowserRouter>` so dashboard widget
- * state survives settings-watcher reloads and wallet-connect cycles. See
- * `docs/widget-cache.md` for the per-key isolation contract.
+ *  - `<ErrorBoundary>` wraps the route `<Suspense>` tree so render failures and
+ *    chunk-load rejections are caught with a branded recovery UI without
+ *    unmounting outer state or losing user data.
+ *  - `<Suspense>` displays an accessible loading fallback (`role="status"`)
+ *    while route components resolve dynamically.
  */
-function App() {
+export function App({ children, errorFallback, loadingFallback }: AppProps = {}) {
   return (
     <BrowserRouter>
       <WidgetCacheProvider>
         <SettingsProvider>
           <ToastProvider>
             <WalletProvider>
-              <MutationRecoveryProvider>
-                <AppRouter />
-              </MutationRecoveryProvider>
+              <ErrorBoundary fallback={errorFallback}>
+                <Suspense
+                  fallback={
+                    loadingFallback ?? (
+                      <div role="status" aria-live="polite">
+                        Loading...
+                      </div>
+                    )
+                  }
+                >
+                  {children ?? (
+                    <Routes>
+                      <Route path="/" element={<Layout />}>
+                        <Route index element={<Home />} />
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="bond" element={<Bond />} />
+                        <Route path="bond/new" element={<CreateBondPage />} />
+                        <Route path="bond/:id" element={<BondDetail />} />
+                        <Route path="trust" element={<TrustScore />} />
+                        <Route path="trust/summary" element={<TrustSummary />} />
+                        <Route path="attestations" element={<Attestations />} />
+                        <Route path="transactions" element={<Transactions />} />
+                        <Route path="settings" element={<Settings />} />
+                        <Route path="test-amount-input" element={<AmountInputTestPage />} />
+                        <Route path="signin" element={<SignIn />} />
+                        {import.meta.env.DEV && ToastTest && (
+                          <Route path="dev/toasts" element={<ToastTest />} />
+                        )}
+                        <Route path="*" element={<NotFound />} />
+                      </Route>
+                    </Routes>
+                  )}
+                </Suspense>
+                <BreakpointOverlay />
+                <DebugOverlay />
+              </ErrorBoundary>
             </WalletProvider>
           </ToastProvider>
         </SettingsProvider>

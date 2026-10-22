@@ -2,6 +2,8 @@
 
 Web UI for the Credence economic trust protocol. Connect a Stellar wallet, create or manage USDC bonds, and view trust scores.
 
+**Live demo:** https://credence-frontend-fawn.vercel.app
+
 ## About
 
 This app is part of [Credence](../README.md). It talks to the Credence backend API and (via wallet) to Soroban contracts on Stellar for bonding and attestations.

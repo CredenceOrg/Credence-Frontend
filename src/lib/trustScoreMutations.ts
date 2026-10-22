@@ -86,7 +86,7 @@ export async function lookupTrustScore(
   // Initiate new mutation operation
   const { operationId, isNewOperation, started } = await initiateMutation(
     'trust_score_lookup',
-    params,
+    { ...params },
     3 // Max attempts for trust score lookups
   )
 
@@ -281,9 +281,7 @@ export function createEnhancedTrustScoreLookup() {
     return result
   }
 
-  const getStatus = (): EnhancedTrustScoreHookResult['data'] extends TrustScore
-    ? Omit<EnhancedTrustScoreHookResult, 'refetch' | 'retry' | 'cancel'>
-    : null => {
+  const getStatus = (): Omit<EnhancedTrustScoreHookResult, 'refetch' | 'retry' | 'cancel'> => {
     if (!currentOperationId) {
       return {
         data: null,

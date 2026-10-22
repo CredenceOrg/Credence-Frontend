@@ -307,7 +307,7 @@ export class MutationManager<T = unknown> {
       // Link external signal to our controller
       let onExternalAbort: (() => void) | null = null
       if (signal) {
-        onExternalAbort = () => state.abortController.abort()
+        onExternalAbort = () => state!.abortController.abort()
         signal.addEventListener('abort', onExternalAbort, { once: true })
       }
 
@@ -438,7 +438,7 @@ export class MutationManager<T = unknown> {
                 attempt: attempts,
                 timestamp: Date.now(),
                 result,
-                error: result.error,
+                error: result.error ?? undefined,
               })
 
               return result
@@ -455,7 +455,7 @@ export class MutationManager<T = unknown> {
         }
 
         // Remove this promise from pending set
-        state.pendingPromises.delete(resultPromise)
+        state.pendingPromises.delete(resultPromise!)
 
         // Clean up if no more pending promises
         if (state.pendingPromises.size === 0) {

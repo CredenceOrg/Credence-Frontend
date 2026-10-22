@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import './TrustSummary.css'
 import Badge from '../components/Badge'
@@ -8,6 +9,8 @@ import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
 import { isValidStellarAddress } from '@/lib/stellar'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { TIERS } from '@/lib/tiers'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 
 function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validation' | 'generic' {
@@ -24,7 +27,18 @@ export default function TrustSummary() {
 
   const { copy, copied } = useCopyToClipboard()
 
-  const { data, isLoading, error, refetch } = useTrustScore(address)
+  const { data: fetched, isLoading, error, refetch } = useTrustScore(address)
+  // The hook keeps the previous address's payload until its next request starts,
+  // so only show data that belongs to the address in the URL.
+  const data = fetched && fetched.address === address ? fetched : null
+
+  useDocumentTitle('Trust Summary')
+
+  // useTrustScore is lookup-driven and never fetches on its own, so request the
+  // score whenever the page has a valid address. `refetch` is referentially stable.
+  useEffect(() => {
+    if (address) refetch()
+  }, [address, refetch])
 
   if (!address) {
     return (
@@ -37,7 +51,7 @@ export default function TrustSummary() {
     )
   }
 
-  const tierLabel = data ? `${data.tier} Tier` : undefined
+  const tierLabel = data ? `${TIERS[data.tier]?.label ?? data.tier} Tier` : undefined
 
   return (
     <div className="trustSummary">

@@ -147,15 +147,15 @@ async function performInitialization(
     if (result.success) {
       logInfo('mutation_system_initialization_completed', {
         duration: result.duration,
-        migrations: result.migrationResults,
-        cleanup: result.cleanupResults,
+        migrations: JSON.stringify(result.migrationResults ?? null),
+        cleanup: JSON.stringify(result.cleanupResults ?? null),
         warnings: result.warnings.length,
       })
     } else {
       logError('mutation_system_initialization_failed', {
         duration: result.duration,
-        errors: result.errors,
-        warnings: result.warnings,
+        errors: result.errors.join('; '),
+        warnings: result.warnings.join('; '),
       })
     }
 

@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Outlet, NavLink } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, Link } from 'react-router-dom'
 import { PrefetchNavLink } from './PrefetchNavLink'
 import { PRELOADS_BY_PATH } from '../config/routes'
+import ErrorBoundary, { isChunkLoadError } from './ErrorBoundary'
+import ErrorState from './states/ErrorState'
+import { reloadPageGuarded, hasAttemptedChunkReload } from '../lib/lazyWithRetry'
 import { useTranslation } from 'react-i18next'
 import ThemeToggle from './ThemeToggle'
 import NetworkIndicator from './NetworkIndicator'
-import WalletConnect from './WalletConnect'
+import HeaderWallet from './HeaderWallet'
 import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
@@ -14,43 +17,18 @@ import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
 import BackToTop from './BackToTop'
+import FooterLink from './FooterLink'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
-import { isExternalUrl } from '../lib/isExternalUrl'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+import { useRouteFocus } from '../hooks/useRouteFocus'
 import { DOM_EVENTS } from '../events'
 import './Layout.css'
 
-function FooterLink({ label, href }: { label: string; href: string }) {
-  const isPlaceholder = !href || href === '#'
-  const isExternal = isExternalUrl(href)
-
-  if (isPlaceholder) {
-    return (
-      <span
-        className="footer-link footer-link--disabled"
-        aria-disabled="true"
-        title="Coming soon"
-        tabIndex={-1}
-      >
-        {label}
-      </span>
-    )
-  }
-
-  return (
-    <a
-      href={href}
-      className="footer-link"
-      {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-    >
-      {label}
-    </a>
-  )
-}
-
 export default function Layout() {
   const { t } = useTranslation()
+  const location = useLocation()
+  useRouteFocus()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
@@ -144,7 +122,7 @@ export default function Layout() {
             ))}
           </nav>
 
-          <WalletConnect />
+          <HeaderWallet />
           <ThemeToggle />
           <NetworkIndicator />
 
@@ -178,7 +156,45 @@ export default function Layout() {
       )}
 
       <main id="main-content" className="appMain">
-        <Outlet />
+        <ErrorBoundary
+          resetKey={location.pathname}
+          fallback={(error, reset) => {
+            const isChunk = isChunkLoadError(error)
+            const isReloadAttempted = hasAttemptedChunkReload()
+
+            return (
+              <div
+                className="error-fallback-container error-fallback-container--page"
+                data-error-boundary="route"
+              >
+                <ErrorState
+                  type={isChunk ? 'network' : 'generic'}
+                  severity="danger"
+                  title="Something went wrong"
+                  message={
+                    isChunk
+                      ? 'Failed to load this section of the app. Try again, or reload the page.'
+                      : 'An unexpected error occurred in this page. You can try again or return to the dashboard.'
+                  }
+                  ariaLabel="Page error"
+                  action={{
+                    label: isChunk && isReloadAttempted ? 'Reload page' : 'Try again',
+                    onClick: isChunk && isReloadAttempted ? reloadPageGuarded : reset,
+                  }}
+                />
+                <Link
+                  to="/dashboard"
+                  className="error-fallback-secondary-link"
+                  onClick={reset}
+                >
+                  Go to dashboard
+                </Link>
+              </div>
+            )
+          }}
+        >
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
       <footer className="app-footer">

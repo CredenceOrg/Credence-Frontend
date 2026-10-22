@@ -21,7 +21,7 @@ export type ErrorStateKind = 'network' | 'backend' | 'validation' | 'generic' | 
  *
  *  • danger  — default for blocking failures (network, backend, generic).
  *  • warning — recoverable / user-actionable failures (validation, slow).
- *  • info    — non-blocking but worth surfacing (cached fallback, etc.).
+ *  •  info    — non-blocking but worth surfacing (cached fallback, etc).
  */
 export type ErrorStateSeverity = 'danger' | 'warning' | 'info'
 
@@ -194,6 +194,22 @@ const DEFAULT_SEVERITY: Record<ErrorStateKind, ErrorStateSeverity> = {
   pageNotFound: 'info',
 }
 
+/**
+ * ErrorState — deterministic failure-boundary surface.
+ *
+ * Invariants (enforced by this component):
+ *  1. The root always carries `role="alert"` and `aria-live="assertive``
+ *     so failures are announced exactly once and cannot be silently dropped.
+ *  2. `data-error-kind` / `data-error-severity` are always present and
+ *     derived from the resolved kind/severity, never from untrusted input.
+ *     This gives tests and telemetry a stable contract to assert against.
+ *  3. The action button is always `type="button`" (never accidentally
+ *     submits a form), and is disabled + `aria-busy` in the loading state
+ *     so double-click / concurrent retries cannot fire twice.
+ *  4. When `title===''` or `hideHeading`, the heading is omitted entirely
+ *     and the aria-label falls back to the copy deck title so the region
+     is never nameless.
+ */
 export default function ErrorState({
   type = 'generic',
   severity,

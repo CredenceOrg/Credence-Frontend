@@ -270,3 +270,89 @@
 .tier-ladder__benefits li::marker {
   color: var(--tier-border);
 }
+
+/* ─── Status banners (loading / error / stale / permission) ───────────────── */
+
+.tier-ladder__status {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-3);
+  padding: var(--credence-space-3) var(--credence-space-4);
+  border-radius: var(--credence-radius-md);
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-base);
+  margin-bottom: var(--credence-space-4);
+}
+
+.tier-ladder__status-icon {
+  flex-shrink: 0;
+}
+
+.tier-ladder__status--loading {
+  background: var(--credence-surface-subtle, rgba(148, 163, 184, 0.1));
+  color: var(--credence-text-secondary);
+  border: 1px solid var(--credence-border-subtle, rgba(148, 163, 184, 0.2));
+}
+
+.tier-ladder__status--error {
+  background: var(--credence-color-danger-subtle, rgba(239, 68, 68, 0.1));
+  color: var(--credence-color-danger, #ef4444);
+  border: 1px solid var(--credence-color-danger-border, rgba(239, 68, 68, 0.3));
+}
+
+.tier-ladder__status--stale {
+  background: var(--credence-color-warning-subtle, rgba(245, 158, 11, 0.1));
+  color: var(--credence-color-warning, #d97706);
+  border: 1px solid var(--credence-color-warning-border, rgba(245, 158, 11, 0.3));
+}
+
+.tier-ladder__status--permission {
+  background: var(--credence-surface-subtle, rgba(100, 116, 139, 0.1));
+  color: var(--credence-text-secondary);
+  border: 1px solid var(--credence-border-default);
+}
+
+.tier-ladder__error-text {
+  flex: 1;
+}
+
+.tier-ladder__retry-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--credence-space-1) var(--credence-space-3);
+  border-radius: var(--credence-radius-sm);
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  cursor: pointer;
+  transition: opacity var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.tier-ladder__retry-btn:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.tier-ladder__retry-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tier-ladder__spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--credence-radius-full);
+  animation: tier-ladder-spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes tier-ladder-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+

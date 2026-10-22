@@ -44,6 +44,68 @@
   color: var(--credence-color-success, #008800);
 }
 
+.copyable-hash__copy-btn--loading {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.copyable-hash__copy-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.copyable-hash__error-box {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-spacing-2xs, 0.25rem);
+  font-size: 0.8em;
+  color: var(--credence-color-danger, #cc0000);
+  margin-left: var(--credence-spacing-2xs, 0.25rem);
+}
+
+.copyable-hash__error-text {
+  line-height: 1;
+}
+
+.copyable-hash__retry-btn {
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--credence-radius-sm, 0.25rem);
+  color: inherit;
+  font-size: 0.75rem;
+  padding: 0.0625rem 0.25rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.copyable-hash__retry-btn:hover {
+  background-color: var(--credence-color-surface-hover, rgba(0, 0, 0, 0.05));
+}
+
+.copyable-hash__retry-btn:focus-visible {
+  outline: 2px solid var(--credence-color-primary, #0055ff);
+  outline-offset: 1px;
+}
+
+.copyable-hash__spinner {
+  animation: credence-spin 0.8s linear infinite;
+}
+
+@keyframes credence-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copyable-hash__spinner {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .copyable-hash__copy-btn--copied svg {
     animation: credence-copy-pulse 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);

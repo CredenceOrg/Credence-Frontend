@@ -119,6 +119,17 @@
   color: var(--credence-text-primary);
 }
 
+.confirm-dialog__error {
+  padding: var(--credence-space-3);
+  margin-bottom: var(--credence-space-2);
+  border-radius: var(--credence-radius-md);
+  background: var(--credence-color-danger-surface);
+  border: 1px solid var(--credence-color-danger-border);
+  color: var(--credence-color-danger-action);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-medium);
+}
+
 .confirm-dialog__confirm-field label {
   display: block;
   margin-bottom: var(--credence-space-2);

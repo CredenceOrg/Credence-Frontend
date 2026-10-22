@@ -24,8 +24,22 @@ const TAG_LABELS: Record<ProductUpdate['tag'], string> = {
   fix: 'Fixed',
 }
 
-function formatDate(isoDate: string): string {
+export function formatDate(isoDate: string): string {
   const date = new Date(`${isoDate}T00:00:00Z`)
+  // A malformed feed entry must not crash the drawer (or surface the literal
+  // "Invalid Date"): fall back to the raw value so the failure is diagnosable.
+  if (Number.isNaN(date.getTime())) return isoDate
+  // `new Date('2023-02-29T00:00:00Z')` silently rolls over to March 1. Compare
+  // the calendar parts so an out-of-range date is surfaced verbatim instead of
+  // being silently re-dated.
+  const [year, month, day] = isoDate.slice(0, 10).split('-')
+  if (
+    date.getUTCFullYear() !== Number(year) ||
+    date.getUTCMonth() + 1 !== Number(month) ||
+    date.getUTCDate() !== Number(day)
+  ) {
+    return isoDate
+  }
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -66,14 +80,32 @@ export default function WhatsNewDialog({ open, onClose, returnFocusRef }: WhatsN
     markAllRead()
   }, [open, markAllRead])
 
+  // Tracks whether the current interaction began on the backdrop itself. A
+  // click event's target is the nearest common ancestor of where the press and
+  // release happened, so without this a press that starts inside the dialog and
+  // ends on the backdrop is reported as a backdrop click and closes the drawer
+  // mid-interaction (e.g. while selecting text or dragging the scrollbar).
+  const backdropPressRef = useRef(false)
+
+  const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    backdropPressRef.current = event.target === event.currentTarget
+  }
+
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) handleClose()
+    const pressedOnBackdrop = backdropPressRef.current
+    backdropPressRef.current = false
+    if (pressedOnBackdrop && event.target === event.currentTarget) handleClose()
   }
 
   if (!open) return null
 
   return createPortal(
-    <div className="whats-new-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
+    <div
+      className="whats-new-dialog__backdrop"
+      onMouseDown={handleBackdropMouseDown}
+      onClick={handleBackdropClick}
+      aria-hidden={false}
+    >
       <div
         ref={dialogRef}
         role="dialog"
@@ -123,7 +155,7 @@ export default function WhatsNewDialog({ open, onClose, returnFocusRef }: WhatsN
             items={updates}
             itemHeight={118}
             containerHeight={420}
-            getItemKey={(update) => update.id}
+            getItemKey={(update, index) => `${update.id}-${index}`}
             renderItem={(update) => (
               <li className="whats-new-dialog__item">
                 <div className="whats-new-dialog__item-meta">

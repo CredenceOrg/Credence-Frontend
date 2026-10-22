@@ -165,6 +165,10 @@ export default function ThemeToggle() {
   // External consumers (e.g. the Settings context) can request a theme
   // change without duplicating the persistence / DOM invariants.
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
     const handleExternal = (event: Event) => {
       const detail = (event as CustomEvent<{ theme?: unknown }>).detail
       const next = detail?.theme
@@ -173,8 +177,8 @@ export default function ThemeToggle() {
       commitTheme(next)
     }
 
-    window.addEventListener(THEME_CHANGE_EVENT, handleExternal)
-    return () => window.removeEventListener(THEME_CHANGE_EVENT, handleExternal)
+    window.addEventListener(THEME_CHANNEL_EVENT, handleExternal)
+    return () => window.removeEventListener(THEME_CHANNEL_EVENT, handleExternal)
   }, [commitTheme])
 
   const toggleTheme = () => {
@@ -191,7 +195,7 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={`Switch to ${nextTheme} mode`}
       aria-pressed={theme === 'dark'}
-      title={`Switch to ${nextTheme} mode}`
+      title={`Switch to ${nextTheme} mode`}
     >
       {theme === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>

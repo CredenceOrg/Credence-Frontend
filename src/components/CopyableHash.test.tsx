@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import CopyableHash from './CopyableHash'
 import * as SettingsContextModule from '../context/SettingsContext'
 import * as CopyHookModule from '../hooks/useCopyToClipboard'
@@ -143,5 +143,47 @@ describe('CopyableHash', () => {
   it('returns null if hash is empty', () => {
     const { container } = render(<CopyableHash hash="" />)
     expect(container).toBeEmptyDOMElement()
+  })
+
+  describe('boundary and recovery states', () => {
+    it('recovers from copy error after 3 seconds', async () => {
+      vi.useFakeTimers()
+      try {
+        mockCopy.mockResolvedValue(false)
+        render(<CopyableHash hash="abc" />)
+
+        const btn = screen.getByRole('button', { name: 'Copy hash' })
+        
+        await act(async () => {
+          fireEvent.click(btn)
+        })
+
+        expect(screen.getByText('Copy failed')).toBeInTheDocument()
+
+        await act(async () => {
+          vi.advanceTimersByTime(3000)
+        })
+
+        expect(screen.queryByText('Copy failed')).not.toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('falls back to public network for unknown network string', () => {
+      vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+        ...vi.mocked(SettingsContextModule.useSettings)(),
+        network: 'unknown-network',
+      })
+      render(<CopyableHash hash="abc" kind="tx" />)
+      const link = screen.getByRole('link')
+      expect(link).toHaveAttribute('href', 'https://stellar.expert/explorer/public/tx/abc')
+    })
+
+    it('handles extremely long hashes safely', () => {
+      const longHash = 'A'.repeat(10000)
+      render(<CopyableHash hash={longHash} />)
+      expect(screen.getByText('AAAAAAAAAAAA...AAAAAAAA')).toBeInTheDocument()
+    })
   })
 })

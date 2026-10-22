@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node api.js && vite",
+    "dev": "vite",
     "dev:reset": "node scripts/dev-reset.mjs",
-    "build": "node api.js && tsc -b && vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
     "generate:api": "openapi-typescript openapi.yaml -o src/api/generated.ts",
     "test": "vitest run",

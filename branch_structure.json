@@ -1,0 +1,18 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "fix/issue-1405-perf-bundle-first-paint-needs-356-kb-of-js-114",
+    "main",
+    "origin"
+  ],
+  "parent": {
+    "fix/issue-1405-perf-bundle-first-paint-needs-356-kb-of-js-114": "main",
+    "main": null,
+    "origin": "main"
+  },
+  "order": [
+    "main",
+    "fix/issue-1405-perf-bundle-first-paint-needs-356-kb-of-js-114",
+    "origin"
+  ]
+}

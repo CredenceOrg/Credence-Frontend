@@ -3,7 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import WalletConnect, { WALLET_CONNECT_DEMO_ADDRESS } from './WalletConnect'
 import { formatAddressForDisplay } from '../lib/stellar'
 
-describe('WalletConnect', () => {
+describe('WalletConnect (controlled mode)', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -12,23 +12,20 @@ describe('WalletConnect', () => {
     vi.useRealTimers()
   })
 
-  it('renders Connect wallet with an accessible name when disconnected', () => {
-    render(<WalletConnect />)
+  it('renders Connect wallet with an accessible name when disconnected (controlled)', () => {
+    render(<WalletConnect status="disconnected" />)
     const btn = screen.getByRole('button', { name: /connect wallet/i })
     expect(btn).toBeInTheDocument()
     expect(btn).toHaveAccessibleName(/connect wallet/i)
   })
 
-  it('shows connecting (Button isLoading) then connected with truncated address', async () => {
-    render(<WalletConnect />)
-    fireEvent.click(screen.getByRole('button', { name: /connect wallet/i }))
-
+  it('shows connecting state (Button isLoading) when status=connecting (controlled)', () => {
+    render(<WalletConnect status="connecting" />)
     expect(screen.getByRole('button', { name: /connecting wallet/i })).toBeDisabled()
+  })
 
-    await act(async () => {
-      vi.advanceTimersByTime(900)
-    })
-
+  it('shows connected state with truncated address when status=connected (controlled)', () => {
+    render(<WalletConnect status="connected" address={WALLET_CONNECT_DEMO_ADDRESS} />)
     const friendly = formatAddressForDisplay(WALLET_CONNECT_DEMO_ADDRESS, 'friendly')
     expect(
       screen.getByRole('button', { name: new RegExp(`wallet menu for ${friendly}`, 'i') })
@@ -89,5 +86,44 @@ describe('WalletConnect', () => {
     const friendly = formatAddressForDisplay(WALLET_CONNECT_DEMO_ADDRESS, 'friendly')
     expect(friendly).toMatch(/^G.{5}….+$/)
     expect(friendly.length).toBeLessThan(WALLET_CONNECT_DEMO_ADDRESS.length)
+  })
+})
+
+// Demo / Storybook mode — uncontrolled internal state machine.
+// This path is intentionally kept for Storybook stories and isolated demos
+// only. Production code must never render WalletConnect without `status`.
+describe('WalletConnect (uncontrolled / Storybook demo mode)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    // Silence the dev-only guard warning for uncontrolled renders in this suite.
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  it('renders Connect wallet when rendered uncontrolled (demo mode)', () => {
+    render(<WalletConnect />)
+    const btn = screen.getByRole('button', { name: /connect wallet/i })
+    expect(btn).toBeInTheDocument()
+  })
+
+  it('runs demo state machine: clicking Connect transitions to connecting then connected', async () => {
+    render(<WalletConnect />)
+    fireEvent.click(screen.getByRole('button', { name: /connect wallet/i }))
+
+    expect(screen.getByRole('button', { name: /connecting wallet/i })).toBeDisabled()
+
+    await act(async () => {
+      vi.advanceTimersByTime(900)
+    })
+
+    const friendly = formatAddressForDisplay(WALLET_CONNECT_DEMO_ADDRESS, 'friendly')
+    expect(
+      screen.getByRole('button', { name: new RegExp(`wallet menu for ${friendly}`, 'i') })
+    ).toBeInTheDocument()
+    expect(screen.getByText(friendly)).toBeInTheDocument()
   })
 })

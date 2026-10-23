@@ -21,6 +21,7 @@ beforeEach(() => {
     network: 'public',
     isConnected: true,
     isReauthRequired: vi.fn(() => false),
+    requestReauth: vi.fn(async () => false),
   } as unknown as ReturnType<typeof useWallet>
   funding = {
     balance: 1000,
@@ -156,6 +157,55 @@ describe('CreateBondFlow boundary and recovery', () => {
     expect(screen.getByPlaceholderText('0')).toHaveValue('123')
     next()
     expect(screen.getByRole('heading', { name: /Step 2/ })).toBeInTheDocument()
+  })
+
+  it('requests re-authentication when retrying a balance blocked by session expiry', async () => {
+    const requestReauth = vi.fn(async () => true)
+    wallet = {
+      ...wallet,
+      isReauthRequired: vi.fn(() => true),
+      requestReauth,
+    }
+    funding = { ...funding, status: 'error' }
+    const view = render(<CreateBondFlow />)
+    const amountInput = screen.getByPlaceholderText('0')
+    expect(amountInput).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+
+    await waitFor(() => expect(requestReauth).toHaveBeenCalledOnce())
+    wallet = { ...wallet, isReauthRequired: vi.fn(() => false) }
+    funding = { ...funding, status: 'loading' }
+    view.rerender(<CreateBondFlow />)
+    funding = { ...funding, status: 'ready' }
+    view.rerender(<CreateBondFlow />)
+    expect(amountInput).toBeEnabled()
+  })
+
+  it('resumes Next after re-authentication and the balance refresh', async () => {
+    const requestReauth = vi.fn(async () => true)
+    const view = render(<CreateBondFlow />)
+    await userEvent.setup().type(screen.getByPlaceholderText('0'), '123')
+
+    wallet = {
+      ...wallet,
+      isReauthRequired: vi.fn(() => true),
+      requestReauth,
+    }
+    funding = { ...funding, status: 'error' }
+    view.rerender(<CreateBondFlow />)
+    next()
+
+    await waitFor(() => expect(requestReauth).toHaveBeenCalledOnce())
+    wallet = { ...wallet, isReauthRequired: vi.fn(() => false) }
+    funding = { ...funding, status: 'loading' }
+    view.rerender(<CreateBondFlow />)
+    funding = { ...funding, status: 'ready' }
+    view.rerender(<CreateBondFlow />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /Step 2/ })).toBeInTheDocument()
+    )
   })
 
   it.each([

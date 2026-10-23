@@ -174,53 +174,77 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
   const [error, setError] = useState<WalletError | null>(null)
   const watcherStopRef = useRef<(() => void) | null>(null)
   const connectInFlightRef = useRef(false)
+  const settingsNetworkRef = useRef(_settingsNetwork)
+  settingsNetworkRef.current = _settingsNetwork
+  const walletStateRef = useRef<{ address: string; network: CredenceNetwork | null }>({
+    address: '',
+    network: null,
+  })
 
   const stopWatcher = useCallback(() => {
     watcherStopRef.current?.()
     watcherStopRef.current = null
   }, [])
 
-  const syncNetwork = useCallback(async () => {
-    const freighterNetwork = await fetchFreighterNetwork()
-    setNetwork(freighterNetwork)
-    return freighterNetwork
-  }, [])
+  const applyWalletState = useCallback(
+    (
+      next: { address: string; network: CredenceNetwork | null },
+      options: { rejectMismatch?: boolean; correlationId?: string } = {}
+    ) => {
+      const expected = parseNetwork(settingsNetworkRef.current)
+      const mismatch = Boolean(next.network && expected && next.network !== expected)
+      const previous = walletStateRef.current
+      const committed = mismatch && options.rejectMismatch ? { address: '', network: null } : next
+
+      if (committed.address) {
+        writePersistedWalletSession(committed.address, committed.network)
+      } else {
+        clearPersistedWalletSession()
+      }
+      walletStateRef.current = committed
+      setAddress(committed.address)
+      setNetwork(committed.network)
+      setError(
+        mismatch
+          ? {
+              code: 'network_mismatch',
+              message: `Wallet is on ${next.network} network, expected ${settingsNetworkRef.current}.`,
+            }
+          : null
+      )
+
+      // Persist first; subscribers must observe the same state as the audit event.
+      // Keep side effects outside React state updaters, which may be replayed.
+      if (previous.address && committed.address && previous.address !== committed.address) {
+        advanceIdentityEpoch()
+        emitWalletSessionEvent('account_changed', {
+          ...committed,
+          correlationId: options.correlationId,
+          metadata: { previousAddress: previous.address },
+        })
+      }
+      if (previous.network && committed.network && previous.network !== committed.network) {
+        advanceIdentityEpoch()
+        emitWalletSessionEvent('network_changed', {
+          ...committed,
+          correlationId: options.correlationId,
+          metadata: { previousNetwork: previous.network },
+        })
+      }
+      return mismatch
+    },
+    []
+  )
 
   const startWatcher = useCallback(
     async (correlationId?: string) => {
       stopWatcher()
-      const watcher = await createWalletWatcher(
-        ({ address: nextAddress, network: nextNetwork }) => {
-          setAddress((prevAddress) => {
-            if (prevAddress && nextAddress && prevAddress !== nextAddress) {
-              advanceIdentityEpoch()
-              emitWalletSessionEvent('account_changed', {
-                address: nextAddress,
-                network: nextNetwork,
-                correlationId,
-                metadata: { previousAddress: prevAddress },
-              })
-            }
-            return nextAddress
-          })
-          setNetwork((prevNetwork) => {
-            if (prevNetwork && nextNetwork && prevNetwork !== nextNetwork) {
-              advanceIdentityEpoch()
-              emitWalletSessionEvent('network_changed', {
-                address: nextAddress,
-                network: nextNetwork,
-                correlationId,
-                metadata: { previousNetwork: prevNetwork },
-              })
-            }
-            return nextNetwork
-          })
-          setError(null)
-        }
-      )
+      const watcher = await createWalletWatcher((next) => {
+        applyWalletState(next, { correlationId })
+      })
       watcherStopRef.current = watcher?.stop ?? null
     },
-    [stopWatcher]
+    [stopWatcher, applyWalletState]
   )
 
   const connect = useCallback(async () => {
@@ -270,26 +294,13 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       }
 
       advanceIdentityEpoch()
-      setAddress(result.address)
-      const freighterNetwork = await syncNetwork()
-
-      if (
-        freighterNetwork &&
-        parseNetwork(_settingsNetwork) &&
-        freighterNetwork !== parseNetwork(_settingsNetwork)
-      ) {
-        advanceIdentityEpoch()
-        clearPersistedWalletSession()
-        setAddress('')
-        setError({
-          code: 'network_mismatch',
-          message: `Wallet is on ${freighterNetwork} network, expected ${_settingsNetwork}.`,
-        })
-        return
-      }
-
-      writePersistedWalletSession(result.address, freighterNetwork)
-      await startWatcher()
+      const freighterNetwork = await fetchFreighterNetwork()
+      const mismatch = applyWalletState(
+        { address: result.address, network: freighterNetwork },
+        { rejectMismatch: true, correlationId }
+      )
+      if (mismatch) return
+      await startWatcher(correlationId)
     } catch {
       setError({
         code: 'unknown',
@@ -305,7 +316,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       connectInFlightRef.current = false
       setIsConnecting(false)
     }
-  }, [startWatcher, syncNetwork])
+  }, [startWatcher, applyWalletState])
 
   const disconnect = useCallback(() => {
     const previousAddress = address
@@ -314,6 +325,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
     connectInFlightRef.current = false
     clearPersistedWalletSession()
     advanceIdentityEpoch()
+    walletStateRef.current = { address: '', network: null }
     setAddress('')
     setNetwork(null)
     setError(null)
@@ -333,18 +345,8 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
     let cancelled = false
 
     async function restoreSession() {
-      const persistedSession = readPersistedWalletSession()
-      if (persistedSession && persistedSession.address) {
-        const storedNetwork = persistedSession.network
-        if (
-          storedNetwork &&
-          parseNetwork(_settingsNetwork) &&
-          storedNetwork !== parseNetwork(_settingsNetwork)
-        ) {
-          clearPersistedWalletSession()
-          return
-        }
-      }
+      // Validate/migrate storage, but Freighter's currently allowed state is authoritative.
+      readPersistedWalletSession()
 
       const installed = await checkFreighterInstalled()
       if (!installed || cancelled) return
@@ -352,38 +354,9 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       const existingAddress = await fetchFreighterAddress()
       if (!existingAddress || cancelled) return
 
-      if (
-        persistedSession &&
-        persistedSession.address &&
-        existingAddress !== persistedSession.address
-      ) {
-        clearPersistedWalletSession()
-        return
-      }
-
+      const restoredNetwork = await fetchFreighterNetwork()
       if (!cancelled) {
-        const restoredAddress = persistedSession?.address || existingAddress
-        const restoredNetwork = persistedSession?.network ?? (await syncNetwork())
-
-        if (
-          restoredNetwork &&
-          parseNetwork(_settingsNetwork) &&
-          restoredNetwork !== parseNetwork(_settingsNetwork)
-        ) {
-          clearPersistedWalletSession()
-          setAddress('')
-          setNetwork(null)
-          setError({
-            code: 'network_mismatch',
-            message: `Wallet is on ${restoredNetwork} network, expected ${_settingsNetwork}.`,
-          })
-          return
-        }
-
-        setAddress(restoredAddress)
-        setNetwork(restoredNetwork)
-        setError(null)
-        writePersistedWalletSession(restoredAddress, restoredNetwork)
+        applyWalletState({ address: existingAddress, network: restoredNetwork })
         await startWatcher()
       }
     }
@@ -394,18 +367,35 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
       cancelled = true
       stopWatcher()
     }
-  }, [startWatcher, stopWatcher, syncNetwork])
+  }, [startWatcher, stopWatcher, applyWalletState])
+
+  useEffect(() => {
+    if (walletStateRef.current.address) applyWalletState(walletStateRef.current)
+  }, [_settingsNetwork, applyWalletState])
 
   useEffect(() => {
     if (!address) return
 
-    const handleFocus = () => {
-      void syncNetwork()
+    let cancelled = false
+    const handleFocus = async () => {
+      const previous = walletStateRef.current
+      try {
+        const currentAddress = await fetchFreighterAddress()
+        const currentNetwork = await fetchFreighterNetwork()
+        if (!cancelled && walletStateRef.current === previous) {
+          applyWalletState({ address: currentAddress ?? '', network: currentNetwork })
+        }
+      } catch {
+        // A transient extension failure must not discard the last known session.
+      }
     }
 
     window.addEventListener(DOM_EVENTS.FOCUS, handleFocus)
-    return () => window.removeEventListener(DOM_EVENTS.FOCUS, handleFocus)
-  }, [address, syncNetwork])
+    return () => {
+      cancelled = true
+      window.removeEventListener(DOM_EVENTS.FOCUS, handleFocus)
+    }
+  }, [address, applyWalletState])
 
   return {
     address,

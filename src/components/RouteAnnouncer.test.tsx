@@ -20,14 +20,17 @@
  *                   isolation for every significant input class
  */
 
+import { useEffect } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useNavigate } from 'react-router-dom'
 import RouteAnnouncer, {
   ANNOUNCE_DELAY_MS,
+  ANNOUNCEMENT_DELAY_MS,
   MAX_LABEL_LENGTH,
   UNKNOWN_ROUTE_LABEL,
   resolvePageLabel,
+  resolveRouteLabel,
   clampLabel,
   buildAnnouncement,
 } from './RouteAnnouncer'
@@ -586,7 +589,7 @@ describe('RouteAnnouncer – regression', () => {
     it('is pure and deterministic across repeated calls', () => {
       const a = resolveRouteLabel('/bond')
       const b = resolveRouteLabel('/bond')
-      expect(a).to%Be(b)
+      expect(a).toBe(b)
       expect(a).toBe('Bond page')
     })
   })
@@ -648,7 +651,7 @@ describe('RouteAnnouncer – regression', () => {
 
   it('re-announces the same label on a repeat visit to the same route', () => {
     const { rerender } = render(
-      <MemoryRouter key="dashboard" initialEntries={'/dashboard'}>
+      <MemoryRouter key="dashboard" initialEntries={['/dashboard']}>
         <RouteAnnouncer />
       </MemoryRouter>
     )
@@ -660,7 +663,7 @@ describe('RouteAnnouncer – regression', () => {
 
     // Navigate away and back to the same route.
     rerender(
-      <MemoryRouter key="/trust" initialEntries={'/trust'}>
+      <MemoryRouter key="/trust" initialEntries={['/trust']}>
         <RouteAnnouncer />
       </MemoryRouter>
     )
@@ -669,7 +672,7 @@ describe('RouteAnnouncer – regression', () => {
     })
 
     rerender(
-      <MemoryRouter key="dashboard-2" initialEntries={'/dashboard'}>
+      <MemoryRouter key="dashboard-2" initialEntries={['/dashboard']}>
         <RouteAnnouncer />
       </MemoryRouter>
     )

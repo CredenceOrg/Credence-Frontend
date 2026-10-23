@@ -279,7 +279,7 @@ describe('useWallet', () => {
     expect(restored.result.current.address).toBe(TEST_ADDRESS)
   })
 
-  it('drops stale persisted wallet data when the restored account no longer matches', async () => {
+  it('updates stale persisted wallet data to the currently allowed account', async () => {
     window.localStorage.setItem(
       'credence:wallet-session',
       JSON.stringify({ version: 1, address: 'GSTALE', network: 'public', updatedAt: Date.now() })
@@ -292,9 +292,12 @@ describe('useWallet', () => {
     const { result } = renderHook(() => useWallet('public'))
 
     await waitFor(() => {
-      expect(result.current.address).toBe('')
+      expect(result.current.address).toBe(TEST_ADDRESS)
     })
-    expect(window.localStorage.getItem('credence:wallet-session')).toBeNull()
+    expect(JSON.parse(window.localStorage.getItem('credence:wallet-session') ?? 'null')).toMatchObject({
+      address: TEST_ADDRESS,
+      network: 'public',
+    })
   })
 
   it('removes invalid persisted wallet data during recovery', async () => {

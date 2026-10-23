@@ -1,8 +1,9 @@
 import { Component, ReactNode } from 'react'
 import ErrorState, { type ErrorStateKind, type ErrorStateSeverity } from './states/ErrorState'
+import { reloadPageGuarded, resetAllLazyChunks } from '../lib/lazyWithRetry'
 import './ErrorBoundary.css'
 
-interface Props {
+export interface ErrorBoundaryProps {
   children: ReactNode
   /** Override the default fallback. Receives the caught error and a reset callback. */
   fallback?: (error: Error, reset: () => void) => ReactNode
@@ -14,10 +15,24 @@ interface Props {
   onError?: (payload: ErrorBoundaryTelemetry) => void
   /**
    * Maximum number of automatic re-mount attempts before the boundary
-   * stops retrying and surfaces a terminal failure state. Defaults to 1.
+   * stops retrying and surfaces a terminal failure state. Defaults to 3.
    */
   maxRetries?: number
+  /**
+   * Single key that resets the boundary when changed (e.g. location.pathname).
+   */
+  resetKey?: unknown
+  /**
+   * Array of keys that reset the boundary when any element changes.
+   */
+  resetKeys?: unknown[]
+  /**
+   * Callback invoked whenever the boundary resets due to key changes or manual reset.
+   */
+  onReset?: () => void
 }
+
+type Props = ErrorBoundaryProps
 
 export interface ErrorBoundaryTelemetry {
   /** Error class name (e.g. 'Error', 'ChunkLoadError'). Never the message. */
@@ -48,14 +63,35 @@ interface ClassifiedError {
 }
 
 /**
+ * Classifies an error as a network or dynamic-chunk loading failure.
+ */
+export function isChunkLoadError(error: Error): boolean {
+  const message = (error.message ?? '').toLowerCase()
+  const errorName = (error.name ?? '').toLowerCase()
+
+  return (
+    message.includes('failed to load') ||
+    message.includes('loading chunk') ||
+    message.includes('loading module') ||
+    errorName === 'chunkloaderror' ||
+    errorName === 'chunksloaderror' ||
+    message.includes('dynamically imported') ||
+    message.includes('failed to fetch') ||
+    message.includes('import(') ||
+    message.includes('network error') ||
+    message.includes('chunk-load')
+  )
+}
+
+/**
  * Deterministic failure-boundary coverage for the app subtree.
  *
  * Invariants:
  *  1. A caught error always produces a rendered fallback - never a blank
-  *     screen and never a silent swallowed failure.
+ *     screen and never a silent swallowed failure.
  *  2. Retry is bounded by `maxRetries` so a persistently throwing subtree
  *     cannot loop forever. Once the budget is exhausted the fallback switches
-  *     to a terminal copy and the retry action is removed.
+ *     to a terminal copy and the retry action is removed.
  *  3. Telemetry never includes the error message or component stack - only
  *     the class name and classification - so sensitive data is not leaked.
  *  4. Reset is idempotent: calling it when no error is present is a no-op.
@@ -65,25 +101,31 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
 
   private get maxRetries(): number {
     const raw = this.props.maxRetries
-    if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) return 1
+    if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) return 3
     return Math.floor(raw)
   }
 
-  private isChunkLoadError(error: Error): boolean {
-    const message = (error.message ?? '').toLowerCase()
-    const errorName = (error.name ?? '').toLowerCase()
+  componentDidUpdate(prevProps: Props): void {
+    const { hasError } = this.state
+    if (!hasError) return
 
-    return (
-      message.includes('failed to load') ||
-      message.includes('loading chunk') ||
-      message.includes('loading module') ||
-      errorName === 'chunksloaderror' ||
-      message.includes('dynamically imported') ||
-      message.includes('failed to fetch') ||
-      message.includes('import(') ||
-      message.includes('network error') ||
-      message.includes('chunk-load')
-    )
+    const keyChanged =
+      this.props.resetKey !== undefined && this.props.resetKey !== prevProps.resetKey
+
+    const keysChanged =
+      this.props.resetKeys !== undefined &&
+      (prevProps.resetKeys === undefined ||
+        this.props.resetKeys.length !== prevProps.resetKeys.length ||
+        this.props.resetKeys.some((k, i) => k !== prevProps.resetKeys![i]))
+
+    if (keyChanged || keysChanged) {
+      this.handleResetAll()
+      this.props.onReset?.()
+    }
+  }
+
+  private isChunkLoadError(error: Error): boolean {
+    return isChunkLoadError(error)
   }
 
   /**
@@ -137,7 +179,6 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
         this.props.onError(payload)
       } else {
         // Dev-only diagnostic - do not log the full message in production.
-        // eslint-disable-next-line no-console
         console.error('[ErrorBoundary]', payload.name, kind, severity, retryCount)
       }
     } catch {
@@ -164,15 +205,17 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
       return
     }
 
+    resetAllLazyChunks()
     this.setState({ hasError: false, error: null, retryCount: nextRetryCount })
   }
 
   /**
    * Fully clear the boundary and reset the retry budget. Used by the
-   * terminal fallback's "go home" action so a new failure chain gets a fresh
-   * budget.
+   * terminal fallback's "go home" action and key-based resets so a new
+   * failure chain gets a fresh budget.
    */
   private handleResetAll = (): void => {
+    resetAllLazyChunks()
     this.setState({ hasError: false, error: null, retryCount: 0 })
   }
 
@@ -213,7 +256,30 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
         return fallback(error, this.handleReset)
       }
 
-      if (this.isExhausted) {
+      const isChunk = this.isChunkLoadError(error)
+      const isChunkExhausted = isChunk && this.state.retryCount >= 2
+
+      if (this.isExhausted || isChunkExhausted) {
+        if (isChunk) {
+          return (
+            <div className="error-fallback-container" data-error-boundary="true">
+              <ErrorState
+                type="network"
+                severity="danger"
+                title="Something went wrong"
+                message="Failed to load this application resource. Please reload the page or head back to the home page."
+                ariaLabel="Application error"
+                action={{
+                  label: 'Reload page',
+                  onClick: reloadPageGuarded,
+                }}
+              />
+              <a className="error-fallback-secondary-link" href="/" onClick={this.handleResetAll}>
+                Go to home page
+              </a>
+            </div>
+          )
+        }
         return this.renderTerminalFallback()
       }
 

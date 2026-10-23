@@ -6,13 +6,16 @@ import { useWallet as useWalletState, type UseWalletState } from '../hooks/useWa
 import { useIdleTimeout } from '../hooks/useIdleTimeout'
 import { useToast } from '../components/ToastProvider'
 import SessionTimeoutDialog from '../components/SessionTimeoutDialog'
+import ReauthPrompt from '../components/ReauthPrompt'
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
 import { clearAppLocalStorage } from '../lib/clearAppLocalStorage'
+import { fetchFreighterAddress, requestFreighterAccess } from '../lib/freighterClient'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean
   lastReauthTime: number | null
-  reauth: () => Promise<void>
+  reauth: () => Promise<boolean>
+  requestReauth: () => Promise<boolean>
   isReauthRequired: () => boolean
 }
 
@@ -26,7 +29,8 @@ const defaultWalletState: WalletContextValue = {
   disconnect: () => {},
   network: null,
   lastReauthTime: null,
-  reauth: async () => {},
+  reauth: async () => false,
+  requestReauth: async () => false,
   isReauthRequired: () => false,
 }
 
@@ -55,8 +59,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { addToast } = useToast()
   const navigate = useNavigate()
   const [showWarning, setShowWarning] = useState(false)
+  const [showReauthPrompt, setShowReauthPrompt] = useState(false)
   const [lastReauthTime, setLastReauthTime] = useState<number | null>(null)
   const logoutGenRef = useRef(0)
+  const latestWalletRef = useRef(wallet)
+  latestWalletRef.current = wallet
+  const pendingReauthRef = useRef<{
+    promise: Promise<boolean>
+    resolve: (success: boolean) => void
+  } | null>(null)
+
+  const finishReauthPrompt = useCallback((success: boolean) => {
+    setShowReauthPrompt(false)
+    const pending = pendingReauthRef.current
+    pendingReauthRef.current = null
+    pending?.resolve(success)
+  }, [])
 
   // Atomic reauth-time tracking: derive directly from wallet address rather
   // than scheduling separate state updates after connect/reauth calls. This
@@ -71,6 +89,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [wallet.isConnected, lastReauthTime])
 
   const handleLogout = useCallback(() => {
+    logoutGenRef.current += 1
+    finishReauthPrompt(false)
     const prevAddress = wallet.address
     const prevNetwork = wallet.network
     advanceIdentityEpoch()
@@ -92,26 +112,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
     navigate('/signin')
     addToast('warning', 'Logged out due to inactivity.')
-  }, [wallet, navigate, addToast])
+  }, [wallet, navigate, addToast, finishReauthPrompt])
 
   const handleStayLoggedIn = useCallback(() => {
     setShowWarning(false)
   }, [])
 
-  const reauth = useCallback(async () => {
-    const gen = logoutGenRef.current
-    // Reconnect wallet as re-authentication.
-    // wallet.connect() uses its own generation counter internally, so
-    // a concurrent disconnect will invalidate this connect attempt.
-    await wallet.connect()
-    // Only update reauth time if:
-    // 1. Logout hasn't been triggered in the meantime (same generation)
-    // 2. The wallet actually reports connected (connect may have been
-    //    invalidated by a concurrent disconnect)
-    if (logoutGenRef.current === gen && wallet.isConnected) {
-      setLastReauthTime(Date.now())
-    }
-  }, [wallet])
+  const disconnect = useCallback(() => {
+    logoutGenRef.current += 1
+    wallet.disconnect()
+  }, [wallet.disconnect])
 
   const isReauthRequired = useCallback(() => {
     if (!wallet.isConnected || lastReauthTime === null) {
@@ -121,6 +131,76 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const thresholdMs = reauthThresholdMinutes * 60 * 1000
     return elapsedMs >= thresholdMs
   }, [wallet.isConnected, lastReauthTime, reauthThresholdMinutes])
+
+  const reauth = useCallback(async () => {
+    const gen = logoutGenRef.current
+    const session = latestWalletRef.current
+
+    try {
+      if (!session.isConnected || !session.address) {
+        await session.connect()
+        const connectedWallet = latestWalletRef.current
+        if (
+          logoutGenRef.current !== gen ||
+          !connectedWallet.isConnected ||
+          !connectedWallet.address
+        ) {
+          return false
+        }
+        setLastReauthTime(Date.now())
+        return true
+      }
+
+      const access = await requestFreighterAccess()
+      if (!access.ok) return false
+      if (logoutGenRef.current !== gen) return false
+      if (access.address !== session.address) {
+        disconnect()
+        return false
+      }
+
+      const activeAddress = await fetchFreighterAddress()
+      if (logoutGenRef.current !== gen) return false
+
+      if (!activeAddress || activeAddress !== session.address) {
+        if (activeAddress && activeAddress !== session.address) disconnect()
+        return false
+      }
+
+      const latestWallet = latestWalletRef.current
+      if (
+        !latestWallet.isConnected ||
+        latestWallet.address !== session.address ||
+        logoutGenRef.current !== gen
+      ) {
+        return false
+      }
+
+      setLastReauthTime(Date.now())
+      return true
+    } catch {
+      addToast('danger', 'Unable to verify your wallet. Please try again.')
+      return false
+    }
+  }, [addToast, disconnect])
+
+  const requestReauth = useCallback(() => {
+    if (!isReauthRequired()) return Promise.resolve(true)
+    if (pendingReauthRef.current) return pendingReauthRef.current.promise
+
+    let resolve!: (success: boolean) => void
+    const promise = new Promise<boolean>((yes) => {
+      resolve = yes
+    })
+    pendingReauthRef.current = { promise, resolve }
+    setShowReauthPrompt(true)
+    return promise
+  }, [isReauthRequired])
+
+  const handleReauthConfirm = useCallback(async () => {
+    const success = await reauth()
+    finishReauthPrompt(success)
+  }, [finishReauthPrompt, reauth])
 
   useIdleTimeout({
     timeoutMs: wallet.isConnected ? IDLE_TIMEOUT_MS - WARNING_THRESHOLD_MS : 0,
@@ -144,9 +224,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     ...wallet,
+    disconnect,
     connected: wallet.isConnected,
     lastReauthTime,
     reauth,
+    requestReauth,
     isReauthRequired,
   }
 
@@ -158,6 +240,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         timeLeftSeconds={60}
         onStayLoggedIn={handleStayLoggedIn}
         onLogout={handleLogout}
+      />
+      <ReauthPrompt
+        open={showReauthPrompt}
+        onConfirm={handleReauthConfirm}
+        onCancel={() => finishReauthPrompt(false)}
       />
     </WalletContext.Provider>
   )

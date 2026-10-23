@@ -253,32 +253,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     quietHoursStart !== originalSettings.quietHoursStart ||
     quietHoursEnd !== originalSettings.quietHoursEnd
 
-  // Auto-persist any draft change immediately so values survive a page reload.
-  useEffect(() => {
-    setPersistedSettings({
-      themeMode,
-      network,
-      addressDisplay,
-      toastsEnabled,
-      autoDismiss,
-      quietHoursEnabled,
-      quietHoursStart,
-      quietHoursEnd,
-    })
-  }, [
-    themeMode,
-    network,
-    addressDisplay,
-    toastsEnabled,
-    autoDismiss,
-    quietHoursEnabled,
-    quietHoursStart,
-    quietHoursEnd,
-    setPersistedSettings,
-  ])
-
-  const saveSettings = () => {
-    const payload = {
+  const saveSettings = (next?: SettingsPayload) => {
+    // A caller that just changed state in the same event handler cannot rely on
+    // the render closure (React batches updates), so prefer the explicit payload
+    // when one is supplied. Omitting it commits the current context state.
+    const payload: SettingsPayload = next ?? {
       themeMode,
       network,
       addressDisplay,
@@ -288,6 +267,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       quietHoursStart,
       quietHoursEnd,
     }
+
+    setThemeMode(payload.themeMode)
+    setNetwork(payload.network)
+    setAddressDisplay(payload.addressDisplay)
+    setToastsEnabled(payload.toastsEnabled)
+    setAutoDismiss(payload.autoDismiss)
+    setQuietHoursEnabled(payload.quietHoursEnabled)
+    setQuietHoursStart(payload.quietHoursStart)
+    setQuietHoursEnd(payload.quietHoursEnd)
     setPersistedSettings(payload)
     setOriginalSettings(payload)
     if (typeof window !== 'undefined') {

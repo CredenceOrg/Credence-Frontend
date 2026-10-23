@@ -367,21 +367,16 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     expect(toasts(container)).toHaveLength(1)
   })
 
-  it('falls back to the severity default for a malformed autoDismiss value', () => {
+  it('keeps a toast sticky when autoDismiss is a malformed string', () => {
     const harness = makeHarness()
     const { container } = renderProvider({ harness, settings: { autoDismiss: 'soon' as never } })
 
     act(() => harness.api.addToast('info', 'Info'))
 
     act(() => {
-      vi.advanceTimersByTime(INFO_TIMEOUT - 1)
+      vi.advanceTimersByTime(100000)
     })
     expect(toasts(container)).toHaveLength(1)
-
-    act(() => {
-      vi.advanceTimersByTime(1)
-    })
-    expect(toasts(container)).toHaveLength(0)
   })
 
   it('falls back to the severity default for a non-string autoDismiss value', () => {
@@ -1236,6 +1231,27 @@ describe('ToastProvider announcements', () => {
     expect(politeRegion(container).textContent).toBe('repeatable')
   })
 
+  it('keeps announcement B after announcement A reaches its original clear deadline', () => {
+    const harness = makeHarness()
+    const { container } = renderProvider({ harness, settings: { autoDismiss: 'off' } })
+
+    act(() => harness.api.announce('A'))
+    act(() => {
+      vi.advanceTimersByTime(2500)
+    })
+    act(() => harness.api.announce('B'))
+
+    act(() => {
+      vi.advanceTimersByTime(ANNOUNCEMENT_CLEAR_DELAY - 1)
+    })
+    expect(politeRegion(container).textContent).toBe('B')
+
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(politeRegion(container).textContent).toBe('')
+  })
+
   it('resets the clear delay when a new announcement supersedes a pending one', () => {
     const harness = makeHarness()
     const { container } = renderProvider({ harness, settings: { autoDismiss: 'off' } })
@@ -1383,14 +1399,6 @@ describe('ToastProvider gating', () => {
   })
 })
 
-describe('ToastProvider quiet hours', () => {
-  beforeEach(() => {
-    // Pin the fake clock inside the default quiet hours window
-    // (22:00 - 07:00) so silence assertions are deterministic regardless
-    // of the host machine's local timezone (use the UTC suffix).
-    vi.setSystemTime(new Date('2024-01-01T23:00:00Z'))
-  })
-
   function renderWithQuietHours(overrides: Partial<MockSettings> = {}) {
     const harness = makeHarness()
     const rendered = renderProvider({
@@ -1399,6 +1407,14 @@ describe('ToastProvider quiet hours', () => {
     })
     return { ...rendered, harness }
   }
+
+describe('ToastProvider quiet hours', () => {
+  beforeEach(() => {
+    // Pin the fake clock inside the default quiet hours window
+    // (22:00 - 07:00) so silence assertions are deterministic regardless
+    // of the host machine's local timezone (construct a local wall-clock time).
+    vi.setSystemTime(new Date(2024, 0, 1, 23, 0, 0))
+  })
 
   it('silences non-danger toasts while quiet hours are active', () => {
     const { container, harness } = renderWithQuietHours()
@@ -1434,7 +1450,7 @@ describe('ToastProvider quiet hours', () => {
   })
 
   it('includes the end of the window, matching isWithinQuietHours', () => {
-    vi.setSystemTime(new Date('2024-01-01T07:00:00Z'))
+    vi.setSystemTime(new Date(2024, 0, 1, 7, 0, 0))
     const { container, harness } = renderWithQuietHours()
     act(() => harness.api.addToast('info', 'Info'))
 
@@ -1443,7 +1459,7 @@ describe('ToastProvider quiet hours', () => {
   })
 
   it('lets non-danger toasts through one minute past the end of the window', () => {
-    vi.setSystemTime(new Date('2024-01-01T07:01:00Z'))
+    vi.setSystemTime(new Date(2024, 0, 1, 7, 1, 0))
     const { container, harness } = renderWithQuietHours()
     act(() => harness.api.addToast('info', 'Info'))
 
@@ -1451,7 +1467,7 @@ describe('ToastProvider quiet hours', () => {
   })
 
   it('lets non-danger toasts through when the clock is well outside the window', () => {
-    vi.setSystemTime(new Date('2024-01-01T12:00:00Z'))
+    vi.setSystemTime(new Date(2024, 0, 1, 12, 0, 0))
     const { container, harness } = renderWithQuietHours()
     act(() => harness.api.addToast('info', 'Info'))
 
@@ -1491,7 +1507,7 @@ describe('ToastProvider quiet hours', () => {
   })
 
   it('does not honour quiet hours when the feature is disabled, even with malformed times', () => {
-    vi.setSystemTime(new Date('2024-01-01T23:00:00Z'))
+    vi.setSystemTime(new Date(2024, 0, 1, 23, 0, 0))
     const { container, harness } = renderWithQuietHours({
       quietHoursEnabled: false,
       quietHoursStart: '',
@@ -1730,25 +1746,26 @@ describe('ToastProvider error recovery', () => {
 
   it('silences non-danger toasts when quiet hours wrap around midnight', () => {
     // 23:00 is inside 22:00–07:00 and the default window wraps around midnight
-    const { container } = renderWithQuietHours()
-    fireEvent.click(screen.getByText('Add Info'))
+    const { container, harness } = renderWithQuietHours()
+    act(() => harness.api.addToast('info', 'Info Message'))
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
 
   it('treats malformed quiet hours times as non-silencing when enabled', () => {
-    const { container } = renderWithQuietHours({
+    const { container, harness } = renderWithQuietHours({
       quietHoursStart: 'not-a-time',
       quietHoursEnd: '',
     })
-    fireEvent.click(screen.getByText('Add Info'))
+    act(() => harness.api.addToast('info', 'Info Message'))
     expect(container.querySelector('.toast--info')).toBeInTheDocument()
   })
 
   it('still announces danger toasts during quiet hours even when toasts are disabled', () => {
     // Danger toasts are safety-critical and must not be silenced by the
     // general toastsEnabled flag.
-    const { container } = renderWithQuietHours({ toastsEnabled: false })
-    fireEvent.click(screen.getByText('Add Danger'))
+    const { container, harness } = renderWithQuietHours({ toastsEnabled: false })
+    act(() => harness.api.addToast('danger', 'Danger Message'))
     expect(container.querySelector('.toast--danger')).toBeInTheDocument()
+    expect(assertiveRegion(container)).toHaveTextContent('Danger Message')
   })
 })

@@ -8,6 +8,8 @@ export type { ToastSeverity, ToastData }
 export interface ToastOptions {
   txHash?: string
   network?: string
+  /** Auto-dismiss delay in milliseconds. Zero keeps the toast until dismissed. */
+  timeoutMs?: number
 }
 
 const ICONS: Record<ToastSeverity, React.ReactNode> = {

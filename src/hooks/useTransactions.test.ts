@@ -524,4 +524,18 @@ describe('useTransactions pending transactions and boundaries', () => {
     unmount()
     expect(capturedSignal!.aborted).toBe(true)
   })
+
+  it('preserves data referential equality across rerender calls without state change', async () => {
+    const tx = makeTx()
+    apiFetchMock.mockResolvedValueOnce({ items: [tx], nextCursor: undefined })
+
+    const { result, rerender } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    const firstData = result.current.data
+    rerender()
+    const secondData = result.current.data
+
+    expect(secondData).toBe(firstData)
+  })
 })

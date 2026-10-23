@@ -5,9 +5,11 @@ import ActivityTimeline from '../components/ActivityTimeline'
 import { ACTIVITY_ITEMS } from '../data/activity'
 import Select from '../components/controls/Select'
 import { ATTESTATION_EVENTS, type AttestationPayload, type ActivityItem } from '../events'
+import { useDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function Attestations() {
   const { t } = useTranslation()
+  useDocumentTitle(t('attestations.title', 'Attestations'))
   const [items, setItems] = useState<ActivityItem[]>(ACTIVITY_ITEMS)
   const [filterTone, setFilterTone] = useState<string>('all')
 

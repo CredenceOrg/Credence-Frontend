@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TEST_IDS } from '../config/testIds'
 import Transactions from './Transactions'
 import type { Transaction } from '../api/types'
+import type { TransactionWithNetwork } from '../lib/pendingTransactionsStorage'
 
 // ── Mocks ───────────────────────────────────────────────────────────
 const mockUseTransactions = vi.fn()
@@ -82,6 +83,8 @@ function mockLoaded(transactions: any = [TX1, TX2, TX3]) {
     isLoading: false,
     error: null,
     refetch: vi.fn(),
+    addPendingTransaction: vi.fn(),
+    removePendingTransaction: vi.fn(),
     page: 1,
     totalPages: 1,
     hasNextPage: false,
@@ -97,6 +100,8 @@ function mockLoading() {
     isLoading: true,
     error: null,
     refetch: vi.fn(),
+    addPendingTransaction: vi.fn(),
+    removePendingTransaction: vi.fn(),
     page: 1,
     totalPages: 0,
     hasNextPage: true,
@@ -112,6 +117,8 @@ function mockError() {
     isLoading: false,
     error: { status: 500, message: 'Boom' },
     refetch: vi.fn(),
+    addPendingTransaction: vi.fn(),
+    removePendingTransaction: vi.fn(),
     page: 1,
     totalPages: 0,
     hasNextPage: false,
@@ -127,6 +134,8 @@ function mockEmpty() {
     isLoading: false,
     error: null,
     refetch: vi.fn(),
+    addPendingTransaction: vi.fn(),
+    removePendingTransaction: vi.fn(),
     page: 1,
     totalPages: 0,
     hasNextPage: false,
@@ -544,6 +553,50 @@ describe('Transactions page', () => {
       // visible by toggling a row first.
       await user.click(rowCheckboxFor('tx-1'))
       expect(screen.getByRole('region', { name: /bulk actions/i })).toBe(getBulkBar())
+    })
+  })
+
+  describe('pending row explorer links', () => {
+    it('pending row recorded on testnet links to testnet explorer even when settings are on public', () => {
+      const pendingTx = {
+        ...TX3,
+        _network: 'test' as const,
+      } as TransactionWithNetwork
+
+      mockLoaded([TX1, TX2, pendingTx])
+      mockUseSettings.mockReturnValue({ network: 'public' })
+
+      render(<Transactions />)
+
+      const testnetExplorerLink = screen
+        .getAllByRole('link')
+        .find((link) => link.getAttribute('href')?.includes('testnet'))
+
+      expect(testnetExplorerLink).toBeInTheDocument()
+      expect(testnetExplorerLink?.getAttribute('href')).toContain(
+        'https://stellar.expert/explorer/testnet/tx'
+      )
+    })
+
+    it('pending row recorded on public links to public explorer', () => {
+      const pendingTx = {
+        ...TX3,
+        _network: 'public' as const,
+      } as TransactionWithNetwork
+
+      mockLoaded([TX1, TX2, pendingTx])
+      mockUseSettings.mockReturnValue({ network: 'public' })
+
+      render(<Transactions />)
+
+      const publicExplorerLink = screen
+        .getAllByRole('link')
+        .find((link) => link.getAttribute('href')?.includes('public/tx'))
+
+      expect(publicExplorerLink).toBeInTheDocument()
+      expect(publicExplorerLink?.getAttribute('href')).toContain(
+        'https://stellar.expert/explorer/public/tx'
+      )
     })
   })
 })

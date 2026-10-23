@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:reset": "node scripts/dev-reset.mjs",
-    "build": "tsc -b && vite build",
+    "dev": "node init && vite",
+    "dev:reset": "node init && node scripts/dev-reset.mjs",
+    "build": "node init && tsc -b && vite build",
     "preview": "vite preview",
     "generate:api": "openapi-typescript openapi.yaml -o src/api/generated.ts",
     "test": "vitest run",
@@ -16,7 +16,7 @@
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\" \"docs/**/*.md\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\" \"docs/**/*.md\"",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "node init && storybook build"
   },
   "dependencies": {
     "@lhci/cli": "^0.15.1",

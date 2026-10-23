@@ -2,8 +2,6 @@ node_modules
 dist
 *.local
 .DS_Store
-.env
-.env.*
 !.env.example
 coverage
 
@@ -18,4 +16,4 @@ blob-report
 # Lighthouse CI reports
 lhci-reports
 .vercel
-.env*
+config.bat

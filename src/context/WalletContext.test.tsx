@@ -10,7 +10,7 @@ import type { UseWalletState, WalletError } from '../hooks/useWallet'
 const h = vi.hoisted(() => ({
   state: {
     wallet: null as unknown as UseWalletState,
-    settings: { network: 'public', reauthThresholdMinutes: 30 } as {
+    settings: { network: 'public', reauthThresholdMinutes: 15 } as {
       network: string
       reauthThresholdMinutes: number
     },
@@ -135,7 +135,7 @@ function Tree() {
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000
 const WARNING_THRESHOLD_MS = 60 * 1000
-const THRESHOLD_MINUTES = 30
+const THRESHOLD_MINUTES = 15
 
 describe('WalletProvider', () => {
   beforeEach(() => {

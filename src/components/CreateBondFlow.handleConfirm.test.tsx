@@ -70,6 +70,7 @@ function mockWallet(overrides: Record<string, unknown> = {}) {
     network: 'public',
     lastReauthTime: Date.now(),
     reauth,
+    requestReauth: vi.fn(async () => false),
     isReauthRequired: vi.fn(() => false),
     ...overrides,
   } as unknown as ReturnType<typeof useWallet>)
@@ -362,53 +363,68 @@ describe('handleConfirm – rejection: network offline', () => {
 // ---------------------------------------------------------------------------
 
 describe('handleConfirm – session staleness', () => {
-  it('shows a stale-session error and calls reauth instead of onComplete', async () => {
-    const mockReauth = vi.fn(async () => {})
-    mockWallet({ isReauthRequired: vi.fn(() => true), reauth: mockReauth })
+  it('shows a stale-session error and requests re-authentication instead of onComplete', async () => {
+    mockWallet()
     const onComplete = vi.fn()
-    renderFlow({ onComplete })
+    const view = renderFlow({ onComplete })
     const user = await goToConfirmReady()
+    const requestReauth = vi.fn(async () => false)
+    mockWallet({ isReauthRequired: vi.fn(() => true), requestReauth })
+    view.rerender(<CreateBondFlow onComplete={onComplete} />)
 
     await user.click(confirmButton())
 
     expect(onComplete).not.toHaveBeenCalled()
-    expect(mockReauth).toHaveBeenCalledTimes(1)
+    expect(requestReauth).toHaveBeenCalledTimes(1)
   })
 
-  it('shows a session-refreshed toast after successful reauth', async () => {
-    const mockReauth = vi.fn(async () => {})
-    mockWallet({ isReauthRequired: vi.fn(() => true), reauth: mockReauth })
-    renderFlow()
+  it('does not claim the session was refreshed while funding remains gated', async () => {
+    mockWallet()
+    const onComplete = vi.fn()
+    const view = renderFlow({ onComplete })
     const user = await goToConfirmReady()
+    const requestReauth = vi.fn(async () => true)
+    mockWallet({ isReauthRequired: vi.fn(() => true), requestReauth })
+    view.rerender(<CreateBondFlow onComplete={onComplete} />)
 
     await user.click(confirmButton())
 
-    expect(addToast).toHaveBeenCalledWith('info', 'Session refreshed. You may now confirm your bond.')
+    expect(requestReauth).toHaveBeenCalledOnce()
+    expect(onComplete).not.toHaveBeenCalled()
+    expect(addToast).not.toHaveBeenCalledWith(
+      'info',
+      'Session refreshed. You may now confirm your bond.'
+    )
   })
 
-  it('shows a reauth-failure error when reauth throws', async () => {
-    const mockReauth = vi.fn(async () => {
-      throw new Error('Wallet rejected')
-    })
-    mockWallet({ isReauthRequired: vi.fn(() => true), reauth: mockReauth })
-    renderFlow()
+  it('keeps the action blocked when re-authentication is rejected', async () => {
+    mockWallet()
+    const view = renderFlow()
     const user = await goToConfirmReady()
+    const requestReauth = vi.fn(async () => false)
+    mockWallet({ isReauthRequired: vi.fn(() => true), requestReauth })
+    view.rerender(<CreateBondFlow />)
 
     await user.click(confirmButton())
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/Re-authentication failed/)
+    expect(screen.getByRole('alert')).toHaveTextContent(/Wallet session expired/)
   })
 
-  it('records BOND_CREATE_REJECTED with SESSION_STALE in the audit log', async () => {
+  it('records BOND_CREATE_REJECTED with FUNDING_UNAVAILABLE in the audit log', async () => {
+    mockWallet()
     const auditSink: BondAuditRecord[] = []
-    mockWallet({ isReauthRequired: vi.fn(() => true), reauth: vi.fn(async () => {}) })
-    renderFlow({ onAudit: (r) => auditSink.push(r) })
+    const view = renderFlow({ onAudit: (r) => auditSink.push(r) })
     const user = await goToConfirmReady()
+    mockWallet({
+      isReauthRequired: vi.fn(() => true),
+      requestReauth: vi.fn(async () => false),
+    })
+    view.rerender(<CreateBondFlow onAudit={(r) => auditSink.push(r)} />)
 
     await user.click(confirmButton())
 
     const stale = auditSink.find(
-      (r) => r.event === 'BOND_CREATE_REJECTED' && r.payload.error === 'SESSION_STALE'
+      (r) => r.event === 'BOND_CREATE_REJECTED' && r.payload.error === 'FUNDING_UNAVAILABLE'
     )
     expect(stale).toBeDefined()
   })
@@ -479,7 +495,7 @@ describe('handleConfirm – failure: onComplete throws', () => {
 
   it('falls back to a generic message when the error is not an Error instance', async () => {
     const onComplete = vi.fn(async () => {
-      throw 'string rejection' // eslint-disable-line no-throw-literal
+      throw 'string rejection'
     })
     renderFlow({ onComplete })
     const user = await goToConfirmReady()

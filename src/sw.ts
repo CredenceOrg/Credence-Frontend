@@ -26,67 +26,17 @@ registerRoute(
   })
 )
 
-// IndexedDB setup for write queuing
-const DB_NAME = 'credence-offline-db'
-const STORE_NAME = 'pending-writes'
-
-function openDB() {
-  return new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1)
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true })
-    }
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+export function registerHandlers(scope: ServiceWorkerGlobalScope) {
+  scope.addEventListener('activate', (event) => {
+    event.waitUntil(
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.deleteDatabase('credence-offline-db')
+        request.onsuccess = () => resolve()
+        request.onerror = () => reject(request.error)
+        request.onblocked = () => reject(new Error('Deleting the offline write database was blocked'))
+      })
+    )
   })
 }
 
-// Intercept write operations
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' && event.request.url.includes('/api/')) {
-    event.respondWith(
-      fetch(event.request).catch(async () => {
-        // Queue the write request if fetch fails (offline)
-        const db = await openDB()
-        const tx = db.transaction(STORE_NAME, 'readwrite')
-        const store = tx.objectStore(STORE_NAME)
-        
-        const requestData = {
-          url: event.request.url,
-          method: event.request.method,
-          body: await event.request.clone().json(), // Clone to read body
-          timestamp: Date.now()
-        }
-        
-        store.add(requestData)
-        return new Response(JSON.stringify({ queued: true }), { status: 202 })
-      })
-    )
-  }
-})
-
-// Handle reconnect: Replay queued writes
-self.addEventListener('online', async () => {
-  const db = await openDB()
-  const tx = db.transaction(STORE_NAME, 'readonly')
-  const store = tx.objectStore(STORE_NAME)
-  const allRequests = await new Promise<unknown[]>((resolve) => {
-    const request = store.getAll()
-    request.onsuccess = () => resolve(request.result as unknown[])
-  })
-  
-  for (const req of allRequests as any[]) {
-    try {
-      await fetch(req.url, {
-        method: req.method,
-        body: JSON.stringify(req.body),
-        headers: { 'Content-Type': 'application/json' }
-      })
-      // Delete from store if successful
-      const deleteTx = db.transaction(STORE_NAME, 'readwrite')
-      deleteTx.objectStore(STORE_NAME).delete(req.id)
-    } catch (e) {
-      console.error('Failed to replay request', e)
-    }
-  }
-})
+registerHandlers(self)

@@ -1,10 +1,12 @@
-import { lazy, Suspense, type ReactNode } from 'react'
+import { Suspense, lazy, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { SettingsProvider } from './context/SettingsContext'
 import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
+import { WidgetCacheProvider } from './widgetCache'
+import { lazyWithRetry } from './lib/lazyWithRetry'
 
 const Home = lazy(() => import('./pages/Home'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -28,7 +30,7 @@ const DebugOverlay = import.meta.env.DEV
 const AmountInputTestPage = import.meta.env.DEV
   ? lazy(() => import('./pages/AmountInputTestPage'))
   : null
-const ToastTest = import.meta.env.DEV ? lazy(() => import('./pages/ToastTest')) : null
+const ToastTest = import.meta.env.DEV ? lazyWithRetry(() => import('./pages/ToastTest')) : null
 
 export interface AppProps {
   /** Optional custom subtree to render instead of default Routes for testing and boundary harnesses. */
@@ -55,10 +57,6 @@ export interface AppProps {
  *  - `<Suspense>` displays an accessible loading fallback (`role="status"`)
  *    while route components resolve dynamically.
  */
-const WidgetCacheProvider = lazy(() =>
-  import('./widgetCache').then((m) => ({ default: m.WidgetCacheProvider })),
-)
-
 export function App({ children, errorFallback, loadingFallback }: AppProps = {}) {
   return (
     <BrowserRouter>

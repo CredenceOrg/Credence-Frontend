@@ -6,9 +6,9 @@ import noDangerouslySetInnerHtml from './src/eslint-rules/no-dangerously-set-inn
 export default tseslint.config({
   ignores: ['dist', 'node_modules', 'storybook-static'],
 }, js.configs.recommended, ...tseslint.configs.recommended, {
-  files: ['**/*.{ts,tsx}'],
+  files: ['**/*.ts', '**/*.tsx'],
   languageOptions: {
-    ecmaVersion: 'latest',
+    ecvaVersion: 'latest',
     sourceType: 'module',
     parserOptions: {
       ecmaFeatures: {
@@ -43,7 +43,7 @@ export default tseslint.config({
 }, {
   files: ['**/*.mjs'],
   languageOptions: {
-    ecmaVersion: 'latest',
+    ecvaVersion: 'latest',
     sourceType: 'module',
     globals: {
       ...globals.node,

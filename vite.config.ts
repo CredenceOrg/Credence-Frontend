@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 import { CSP } from './src/config/security'
 
-const apiProxyTarget = process.env.VITE_API_BASE_URL || 'http://localhost:3000'
+const apiProxyTarget = process.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 
 export default defineConfig({
   plugins: [
@@ -15,7 +15,7 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      manifest: {
+      manifest:{
         name: 'Credence',
         short_name: 'Credence',
         theme_color: '#ffffff',
@@ -51,6 +51,32 @@ export default defineConfig({
         : {}),
     },
   },
+  build: {
+    manifest: true,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            if (
+              /node_modules[/\\](?:react-dom|react|react-router|remix-router|react-router-dom|scheduler)/.test(
+                id
+              )
+            ) {
+              return 'vendor-react'
+            }
+            if (
+              /node_modules[/\\](?:ii8next|ii8next-browser-languagedetector|react-i18next)/.test(
+                id
+              )
+            ) {
+              return 'vendor-i18n'
+            }
+          }
+          return undefined
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     headers: {
@@ -80,10 +106,10 @@ export default defineConfig({
       provider: 'v8',
       include: [
         'src/api/client.ts',
-        'src/components/AddressInput.tsx',
+        'src/components/AddressInput.ts',
         'src/components/AmountInput.tsx',
         'src/components/Badge.tsx',
-        'src/components/BackToTop.tsx',
+        'src/components/BackToTop.ts',
         'src/components/controls/Select.tsx',
         'src/components/controls/Toggle.tsx',
         'src/hooks/useLocalStorage.ts',
@@ -133,7 +159,7 @@ export default defineConfig({
         'src/hooks/useLocalStorage.ts': { lines: 95, branches: 95 },
         'src/hooks/useReducedMotion.ts': { branches: 90 },
         'src/lib/bondPenalty.ts': { lines: 95, branches: 95, functions: 95 },
-        'src/lib/createBondFlowSteps.ts': { lines: 100, branches: 100, functions: 100 },
+        'src/lib/createBondFlowSteps.ts': { lines: 100, branches: 100, functions: 100, statements: 100 },
       },
     },
   },

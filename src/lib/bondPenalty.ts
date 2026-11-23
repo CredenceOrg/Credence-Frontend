@@ -126,7 +126,7 @@ export type BondStatus = 'active' | 'locked' | 'grace-period'
  */
 export interface MockBond {
   /** Unique identifier for the bond */
-  id: number
+  id: number | string
   /** Locked principal amount in USDC */
   amountUsdc: number
   /** Current status of the bond */

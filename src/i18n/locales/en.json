@@ -159,6 +159,8 @@
     "activeBonds": "Active Bonds",
     "manageBonds": "Manage bonds",
     "connectToManageBonds": "Connect your wallet to view and manage your active bonds.",
+    "unableToLoad": "Unable to load bonds",
+    "tryAgain": "Try again",
     "noActiveBonds": "No active bonds",
     "noActiveBondsDescription": "You do not have any active bonds yet. Create your first bond to start building on-chain reputation.",
     "createFirstBond": "Create your first bond",

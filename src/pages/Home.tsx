@@ -1,21 +1,31 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useWallet } from '../context/WalletContext'
+import { useUsdcBalance } from '../hooks/useUsdcBalance'
+import { useTrustScore } from '../hooks/useTrustScore'
+import Badge from '../components/Badge'
+import LoadingSkeleton from '../components/states/LoadingSkeleton'
+import ErrorState from '../components/states/ErrorState'
+import { formatUsdc } from '../lib/format'
+import { formatAddressForDisplay } from '@/lib/stellar'
 import './Home.css'
 
-export default function Home() {
+// ─── Hero (disconnected / connecting) ───────────────────────────────────────
+
+function HomeHero() {
   return (
     <div className="home">
       <div>
         <h1 className="home__title">Credence — Economic Trust</h1>
         <p className="home__description">
-          On-chain economic identity on Stellar. Stake USDC as a programmable reputation bond and
-          build verifiable trust.
+          On-chain economic identity on Stellar. Stake USDC as a programmable reputation bond.
         </p>
       </div>
       <div className="home__ctaRow">
-        <Link to="/bond" role="button" className="home__cta home__cta--primary">
+        <Link to="/bond" className="home__cta home__cta--primary">
           Create bond
         </Link>
-        <Link to="/trust" role="button" className="home__cta home__cta--secondary">
+        <Link to="/trust" className="home__cta home__cta--secondary">
           View trust score
         </Link>
       </div>
@@ -23,131 +33,123 @@ export default function Home() {
   )
 }
 
-// ---------------------------------------------------------------------------
-// DashboardPreview — shown to connected users
-// ---------------------------------------------------------------------------
+// ─── Dashboard preview (connected users) ────────────────────────────────────
 
-function DashboardPreview({ address }: { address: string }) {
-  const totalBonded = MOCK_BONDS.reduce((sum, b) => sum + b.amountUsdc, 0)
-  const tierLabel = `${MOCK_TRUST_TIER.charAt(0).toUpperCase()}${MOCK_TRUST_TIER.slice(1)} Tier`
+interface HomeDashboardPreviewProps {
+  address: string
+}
+
+function HomeDashboardPreview({ address }: HomeDashboardPreviewProps) {
+  const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
+  const { data: trustData, isLoading: trustLoading, error: trustError, refetch: refetchTrust } = useTrustScore(address)
+
+  // Trigger trust score fetch on mount and whenever the address changes.
+  // Stale data from the previous address is cleared inside useTrustScore
+  // before the new request lands, so old scores are never shown.
+  useEffect(() => {
+    refetchTrust()
+  }, [address, refetchTrust])
+
+  const friendlyAddress = formatAddressForDisplay(address, 'friendly')
 
   return (
     <div className="home home--dashboard">
-      {/* Page header */}
-      <header className="home__dashHeader">
+      {/* Header */}
+      <div className="home__dashHeader">
         <div>
-          <h1 className="home__title">Welcome back</h1>
-          <p className="home__description">Here's a snapshot of your Credence account.</p>
+          <h1 className="home__title">Credence — Economic Trust</h1>
         </div>
-        <div className="home__walletChip" aria-label="Connected wallet address">
-          <span className="home__walletChipLabel">Wallet</span>
-          <code className="home__walletChipAddress">
-            {address.slice(0, 8)}&hellip;{address.slice(-6)}
-          </code>
+        <div className="home__walletChip">
+          <span className="home__walletChipLabel">Connected wallet</span>
+          <span className="home__walletChipAddress">{friendlyAddress}</span>
         </div>
-      </header>
+      </div>
 
-      {/* Stat cards */}
-      <section aria-labelledby="home-stats-heading">
-        <h2 id="home-stats-heading" className="home__sectionTitle">
-          Account summary
-        </h2>
+      {/* Stat grid */}
+      <section aria-label="Account overview">
+        <p className="home__sectionTitle">Your account</p>
         <div className="home__statGrid">
-          {/* Trust tier */}
-          <article className="home__statCard" aria-label="Trust tier">
-            <p className="home__statLabel">Trust tier</p>
-            <div className="home__statValue home__statValue--tier">
-              <span className="home__statNumber">{MOCK_TRUST_SCORE}</span>
-              <Badge variant={MOCK_TRUST_TIER} label={tierLabel} />
+          {/* Trust score card */}
+          <div className="home__statCard">
+            <span className="home__statLabel">Trust score</span>
+            {trustLoading && <LoadingSkeleton variant="stat-widget" />}
+            {!trustLoading && trustError && (
+              <ErrorState
+                type="network"
+                message="Couldn't load your trust score."
+                action={{ label: 'Try again', onClick: refetchTrust }}
+                hideHeading
+              />
+            )}
+            {!trustLoading && !trustError && trustData && (
+              <>
+                <span className="home__statNumber">{trustData.score}</span>
+                <div className="home__statValue--tier">
+                  <Badge variant={trustData.tier} />
+                  <Link
+                    to={`/trust?address=${encodeURIComponent(address)}`}
+                    className="home__activityLink"
+                  >
+                    View details
+                  </Link>
+                </div>
+              </>
+            )}
+            {!trustLoading && !trustError && !trustData && (
+              <span className="home__statLabel">No trust score yet.</span>
+            )}
+          </div>
+
+          {/* USDC balance card */}
+          <div className="home__statCard">
+            <span className="home__statLabel">USDC balance</span>
+            {balanceStatus === 'loading' && <LoadingSkeleton variant="stat-widget" />}
+            {balanceStatus === 'error' && (
+              <ErrorState
+                type="network"
+                message="Couldn't load your balance."
+                action={{ label: 'Retry', onClick: refetchBalance }}
+                hideHeading
+              />
+            )}
+            {(balanceStatus === 'ready' || balanceStatus === 'idle') && (
+              <span className="home__statNumber">{formatUsdc(balance)}</span>
+            )}
+          </div>
+
+          {/* Next steps card */}
+          <div className="home__statCard">
+            <span className="home__statLabel">Next steps</span>
+            <div className="home__ctaRow">
+              <Link to="/bond" className="home__cta home__cta--primary">
+                Create bond
+              </Link>
+              <Link to="/dashboard" className="home__cta home__cta--secondary">
+                Open dashboard
+              </Link>
             </div>
-          </article>
-
-          {/* Total bonded */}
-          <article className="home__statCard" aria-label="Total bonded USDC">
-            <p className="home__statLabel">Total bonded</p>
-            <p className="home__statNumber">{formatUsdc(totalBonded)}</p>
-          </article>
-
-          {/* Active bonds */}
-          <article className="home__statCard" aria-label="Active bond count">
-            <p className="home__statLabel">Active bonds</p>
-            <p className="home__statNumber">{MOCK_BONDS.length}</p>
-            <ul className="home__bondList" aria-label="Active bond breakdown">
-              {MOCK_BONDS.map((bond) => (
-                <li key={bond.id} className="home__bondRow">
-                  <span className="home__bondAmount">{formatUsdc(bond.amountUsdc)}</span>
-                  <span className="home__bondUnlock">Unlocks {bond.unlockLabel}</span>
-                  <Badge variant={bond.status} />
-                </li>
-              ))}
-            </ul>
-          </article>
+          </div>
         </div>
       </section>
 
-      {/* Quick actions */}
-      <section aria-labelledby="home-actions-heading">
-        <h2 id="home-actions-heading" className="home__sectionTitle">
-          Quick actions
-        </h2>
-        <div className="home__ctaRow">
-          <Link to="/bond/new" role="button" className="home__cta home__cta--primary">
-            Create bond
-          </Link>
-          <Link to="/dashboard" role="button" className="home__cta home__cta--secondary">
-            Open dashboard
-          </Link>
-          <Link to="/trust" role="button" className="home__cta home__cta--secondary">
-            View trust score
-          </Link>
-        </div>
-      </section>
-
-      {/* Activity preview */}
-      <section aria-labelledby="home-activity-heading">
-        <h2 id="home-activity-heading" className="home__sectionTitle">
-          Recent activity
-        </h2>
-        {/*
-          ActivityTimeline renders at most the SAMPLE_ACTIVITY items when no
-          real data is passed. A compact prop keeps the list concise.
-          Replace `items` with a real data source when the API is wired up.
-        */}
-        <ActivityTimeline compact />
-        <div className="home__activityFooter">
-          <Link to="/attestations" className="home__activityLink">
-            View all attestations
-          </Link>
-        </div>
-      </section>
+      {/* Footer */}
+      <div className="home__activityFooter">
+        <Link to="/transactions" className="home__activityLink">
+          View transaction history
+        </Link>
+      </div>
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Home — top-level entry point, adaptive on connection state
-// ---------------------------------------------------------------------------
+// ─── Page root ───────────────────────────────────────────────────────────────
 
 export default function Home() {
-  useSeo({
-    title: 'Home',
-    description:
-      'Credence — on-chain economic identity on Stellar. Stake USDC as a programmable reputation bond and build verifiable trust.',
-  })
+  const { isConnected, address } = useWallet()
 
-  const { connected, address, isConnecting } = useWallet()
-
-  if (isConnecting) {
-    return (
-      <div className="home home--loading" aria-label="Loading dashboard">
-        <LoadingSkeleton variant="dashboard" rows={3} />
-      </div>
-    )
+  if (isConnected && address) {
+    return <HomeDashboardPreview address={address} />
   }
 
-  if (connected && address) {
-    return <DashboardPreview address={address} />
-  }
-
-  return <Hero />
+  return <HomeHero />
 }

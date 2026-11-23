@@ -17,15 +17,31 @@ export {
   apiFetch,
   ApiError,
   ApiRateLimitError,
+  ApiAmountError,
   ApiSessionConflictError,
   ApiBodyTooLargeError,
   MAX_REQUEST_BODY_BYTES,
   getIdentityEpoch,
   advanceIdentityEpoch,
-  resetApiRateLimiter,
-  apiRateLimiterSnapshot,
 } from './client'
-export type { ApiFetchOptions } from './client'
+export type { ApiFetchOptions, ApiAmountFields, ApiAmountErrorCode } from './client'
+
+export {
+  AmountError,
+  parseAmount,
+  tryParseAmount,
+  compareAmounts,
+  resolveAmountRules,
+  MAX_INT64,
+  USDC_SCALE,
+  MAX_SCALE,
+} from './amount'
+export type {
+  AmountRules,
+  ResolvedAmountRules,
+  AmountErrorCode,
+  TryParseAmountResult,
+} from './amount'
 
 export { ApiRateLimiter } from './rateLimit'
 export type { ApiRateLimiterDecision, ApiRateLimiterOptions } from './rateLimit'

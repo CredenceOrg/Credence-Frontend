@@ -87,12 +87,27 @@ export default function ConfirmDialog({
   const [confirmText, setConfirmText] = useState('')
   const [announcement, setAnnouncement] = useState('')
   const [prevConfirmEnabled, setPrevConfirmEnabled] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
+  const isSubmittingRef = useRef(isSubmitting)
+  const isMountedRef = useRef(true)
 
   const handleCancel = useCallback(() => {
     onCancel()
   }, [onCancel])
 
   useScrollPreserver({ isActive: open })
+
+  useEffect(() => {
+    isSubmittingRef.current = isSubmitting
+  }, [isSubmitting])
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   useFocusTrap({
     containerRef: dialogRef,
@@ -107,6 +122,8 @@ export default function ConfirmDialog({
       setConfirmText('')
       setAnnouncement('')
       setPrevConfirmEnabled(false)
+      setSubmitError(null)
+      setIsRetrying(false)
       return
     }
 
@@ -131,22 +148,75 @@ export default function ConfirmDialog({
     }
   }, [isConfirmEnabled, prevConfirmEnabled, confirmPhrase, t])
 
+  useEffect(() => {
+    if (!open) return
+    if (isSubmitting) {
+      setSubmitError(null)
+      setIsRetrying(false)
+    }
+  }, [isSubmitting, open])
+
   const handleConfirm = () => {
     if (!isConfirmEnabled) return
-    onConfirm()
+    if (isSubmitting) return
+    if (isSubmittingRef.current) return
+    setSubmitError(null)
+    try {
+      const result = onConfirm() as unknown
+      if (result && typeof (result as Promise<unknown>).then === 'function') {
+        ;(result as Promise<unknown>).catch((err: unknown) => {
+          if (!isMountedRef.current) return
+          const message =
+            err instanceof Error && err.message
+              ? err.message
+              : t('confirmDialog.errors.submitFailed')
+          setSubmitError(message)
+          setAnnouncement(t('confirmDialog.announcements.submitFailed'))
+        })
+      }
+    } catch (err) {
+      if (!isMountedRef.current) return
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : t('confirmDialog.errors.submitFailed')
+      setSubmitError(message)
+      setAnnouncement(t('confirmDialog.announcements.submitFailed'))
+    }
+  }
+
+  const handleRetry = () => {
+    if (isSubmitting) return
+    if (isSubmittingRef.current) return
+    setIsRetrying(true)
+    setSubmitError(null)
+    setAnnouncement(t('confirmDialog.announcements.retrying'))
+    handleConfirm()
   }
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (isSubmitting) return
-    if (event.target === event.currentTarget) {
-      handleCancel()
-    }
+    // Deterministic failure-boundary: ignore any backdrop interaction unless
+    // the pointer event both starts and ends on the backdrop itself. This
+    // prevents drag-release, multi-touch, and synthetic events from closing
+    // the dialog while a submission is in flight or when the click originated
+    // inside the dialog content.
+    if (isSubmittingRef.current || isSubmitting) return
+    if (event.button !== 0) return
+    if (event.defaultPrevented) return
+    if (event.target !== event.currentTarget) return
+    if (event.currentTarget !== event.target) return
+    handleCancel()
   }
 
   if (!open) return null
 
   return createPortal(
-    <div className="confirm-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
+    <div
+      className="confirm-dialog__backdrop"
+      onClick={handleBackdropClick}
+      onMouseDown={(e) => e.stopPropagation()}
+      aria-hidden={false}
+    >
       <div
         ref={dialogRef}
         role="dialog"
@@ -159,6 +229,15 @@ export default function ConfirmDialog({
         <div id={announcementId} className="sr-only" aria-live="assertive" aria-atomic="true">
           {announcement}
         </div>
+
+        {submitError && (
+          <div role="alert" className="confirm-dialog__error">
+            <p>{submitError}</p>
+            <Button type="button" variant="secondary" onClick={handleRetry} disabled={isSubmitting}>
+              {t('confirmDialog.retry')}
+            </Button>
+          </div>
+        )}
 
         <header className="confirm-dialog__header">
           <h2 id={titleId} className="confirm-dialog__title">
@@ -234,7 +313,7 @@ export default function ConfirmDialog({
             type="button"
             variant={variant === 'danger' ? 'danger' : 'primary'}
             disabled={!isConfirmEnabled || isSubmitting}
-            isLoading={isSubmitting}
+            isLoading={isSubmitting || isRetrying}
             onClick={handleConfirm}
             aria-disabled={!isConfirmEnabled || isSubmitting}
           >

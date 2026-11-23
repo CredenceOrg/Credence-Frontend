@@ -9,6 +9,8 @@ const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H' // 
 // A 56-char G-prefixed uppercase alphanumeric key that fails the CRC-16 checksum
 const INVALID_CHECKSUM_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
 
+const SUSPICIOUS_ZERO_WIDTH = '​'
+
 // --- useDebouncedValue mocking ---
 
 function mockDebouncedValue<T>(value: T, _delayMs?: number): T {
@@ -36,7 +38,7 @@ vi.mock('./QRScannerDialog', () => ({
         <button data-testid="mock-scan" onClick={() => onScan(VALID_KEY)}>
           Mock Scan
         </button>
-        <button data-testid="mock-close" onClick={onClose}>
+        <button data-testid="mock-close" onClick={() => onClose()}>
           Close
         </button>
       </div>
@@ -304,10 +306,14 @@ describe('paste button', () => {
 
     await user.click(input)
     // Paste with stellar: prefix and a suspicious non-ASCII character
-    await user.paste('stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+    await user.paste(
+      `stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H${SUSPICIOUS_ZERO_WIDTH}`
+    )
 
     // The value should be updated without "stellar:"
-    expect(input).toHaveValue('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+    expect(input).toHaveValue(
+      `GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H${SUSPICIOUS_ZERO_WIDTH}`
+    )
 
     // And it should show a warning
     const alert = screen.getByRole('alert')
@@ -345,17 +351,17 @@ describe('echo display respects addressDisplay setting', () => {
 
   it('shows friendly address when addressDisplay is "friendly"', async () => {
     const text = await renderAndTriggerEcho('friendly')
-    // formatAddressForDisplay friendly: first 6 + "…" + last 4
+    // formatAddressForDisplay falls back to truncated form until on-chain names exist
     expect(text).toBe(
-      `${VALID_KEY.substring(0, 6)}\u2026${VALID_KEY.substring(VALID_KEY.length - 4)}`
+      `${VALID_KEY.substring(0, 6)}…${VALID_KEY.substring(VALID_KEY.length - 4)}`
     )
   })
 
   it('re-renders echo when addressDisplay setting changes', async () => {
-    const user = userEvent.setup()
     mockAddressDisplay = 'full'
-
+    const user = userEvent.setup()
     const { rerender } = render(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+
     await user.click(screen.getByRole('textbox'))
     await user.tab()
 
@@ -371,5 +377,123 @@ describe('echo display respects addressDisplay setting', () => {
     expect(code?.textContent).toBe(
       `${VALID_KEY.substring(0, 12)}...${VALID_KEY.substring(VALID_KEY.length - 8)}`
     )
+  })
+})
+
+// --- Boundary and recovery coverage ---
+describe('boundary and recovery', () => {
+  it('recovers from an invalid external error once the value is corrected', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <AddressInput id="addr" value="" onChange={vi.fn()} error="Address is required" />
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Address is required')
+
+    // Simulate the parent clearing the external error and providing a valid value
+    rerender(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByText('Recognized:')).toBeInTheDocument()
+  })
+
+  it('retains the external error and suppresses the success echo while it is set', async () => {
+    const user = userEvent.setup()
+    render(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY}
+        onChange={vi.fn()}
+        error="Address already registered"
+      />
+    )
+
+    await user.click(screen.getByRole('textbox'))
+    await user.tab()
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Address already registered')
+    expect(screen.queryByText('Recognized:')).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('keeps the latest paste result when clipboard resolves after a second click', async () => {
+    const onChange = vi.fn()
+    clipboardReadTextMock.mockResolvedValueOnce('  first-paste  ').mockResolvedValueOnce(VALID_KEY)
+
+    render(<AddressInput id="addr" value="" onChange={onChange} />)
+
+    const pasteButton = screen.getByRole('button', { name: /paste address from clipboard/i })
+
+    await act(async () => {
+      fireEvent.click(pasteButton)
+    })
+    await act(async () => {
+      fireEvent.click(pasteButton)
+    })
+
+    expect(onChange).toHaveBeenCalledWith('first-paste')
+    expect(onChange).toHaveBeenCalledWith(VALID_KEY)
+    expect(onChange.mock.calls.length).toBe(2)
+  })
+
+  it('never overwrites the existing value with an empty clipboard result', async () => {
+    const onChange = vi.fn()
+    const onPasteError = vi.fn()
+    clipboardReadTextMock.mockResolvedValue('   \n  ')
+
+    render(<AddressInput id="addr" value={VALID_KEY} onChange={onChange} onPasteError={onPasteError} />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /paste address from clipboard/i }))
+    })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('does not call onValidationChange with a stale value after a rapid sequence of changes', async () => {
+    const onV = vi.fn()
+    const { rerender } = render(
+      <AddressInput id="addr" value="" onChange={vi.fn()} onValidationChange={onV} />
+    )
+
+    onV.mockClear()
+
+    rerender(
+      <AddressInput
+        id="addr"
+        value={VALID_KEY.slice(0, 10)}
+        onChange={vi.fn()}
+        onValidationChange={onV}
+      />
+    )
+    rerender(
+      <AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} onValidationChange={onV} />
+    )
+
+    // The last call reflects the final valid state, not the intermediate one
+    expect(onV).toHaveBeenLastCalledWith(true)
+  })
+
+  it('renders an empty echo for a zero-length value without throwing', () => {
+    expect(() =>
+      render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
+    ).not.toThrow()
+    expect(screen.queryByText('Recognized:')).toBeNull()
+  })
+
+  it('strips a leading stellar: prefix when the address is pasted via the clipboard button', async () => {
+    const onChange = vi.fn()
+    clipboardReadTextMock.mockResolvedValue(`stellar:${VALID_KEY}`)
+
+    render(<AddressInput id="addr" value="" onChange={onChange} />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /paste address from clipboard/i }))
+    })
+
+    expect(onChange).toHaveBeenCalledWith(VALID_KEY)
   })
 })

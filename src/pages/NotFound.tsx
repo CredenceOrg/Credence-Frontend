@@ -134,7 +134,7 @@ export default function NotFound() {
   return (
     <div className="not-found-page">
       {/* Subheading / error code badge — calm, not loud. */}
-      <p className="not-found-page__code">Error 404</p>
+      <p className="not-found-page__code">Error <span className="not-found-code">404</span></p>
 
       {/* Page-level heading. Single <h1> on this page; the ErrorState panel
           omits its inner heading to keep the document outline unique. */}

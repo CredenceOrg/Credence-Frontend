@@ -179,6 +179,7 @@ Per-file thresholds are enforced in `vite.config.ts`. The current targets are:
 
 | File                               | Lines | Branches |
 | ---------------------------------- | ----- | -------- |
+| `src/api/client.ts`                | 100%  | 100%     |
 | `src/components/AddressInput.tsx`  | 90%   | 90%      |
 | `src/components/AmountInput.tsx`   | 80%   | 80%      |
 | `src/components/ConfirmDialog.tsx` | —     | 90%      |

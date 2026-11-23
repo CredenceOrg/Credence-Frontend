@@ -401,3 +401,36 @@
     height: 24px;
   }
 }
+
+.address-input-focus-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--credence-space-2);
+  padding: var(--credence-space-2) var(--credence-space-3);
+  background: var(--credence-color-danger-surface);
+  border: 1px solid var(--credence-color-danger-border);
+  border-radius: var(--credence-radius-md);
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-color-danger-text, #ef4444);
+}
+
+.address-input-focus-error-message {
+  flex: 1;
+}
+
+.address-input-retry-button {
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--credence-radius-sm);
+  color: inherit;
+  font-size: var(--credence-font-size-xs);
+  font-weight: var(--credence-font-weight-semibold);
+  cursor: pointer;
+  transition: opacity var(--credence-motion-duration-base);
+}
+
+.address-input-retry-button:hover {
+  opacity: 0.8;
+}

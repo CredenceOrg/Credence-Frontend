@@ -1,4 +1,4 @@
-import { useCallback, useId, useRef } from 'react'
+import { useCallback, useId, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useScrollPreserver } from '../hooks/useScrollPreserver'
@@ -17,8 +17,43 @@ export interface KeyboardShortcutsDialogProps {
   returnFocusRef?: React.RefObject<HTMLElement | null>
 }
 
-/** Groups an array of shortcuts by their `group` field, preserving insertion order. */
-function groupShortcuts(shortcuts: KeyboardShortcut[]): Map<string, KeyboardShortcut[]> {
+/**
+ * Invariant: `shortcuts` must be a non-empty array of well-formed entries.
+ * Malformed entries (missing group/label/keys) are dropped rather than
+ * rendered, so a bad data source cannot crash the dialog or leak `undefined`
+ * into the DOM. Duplicate labels within a group are de-duplicated to keep
+ * React keys stable and deterministic.
+ */
+function sanitizeShortcuts(shortcuts: KeyboardShortcut[]): KeyboardShortcut[] {
+  if (!Array.isArray(shortcuts)) return []
+  const seen = new Set<string>()
+  const result: KeyboardShortcut[] = []
+  for (const shortcut of shortcuts) {
+    if (!shortcut || typeof shortcut !== 'object') continue
+    const { group, label, keys } = shortcut
+    if (typeof group !== 'string' || group.length === 0) continue
+    if (typeof label !== 'string' || label.length === 0) continue
+    if (!Array.isArray(keys) || keys.length === 0) continue
+    if (!keys.every((k) => typeof k === 'string' && k.length > 0)) continue
+    const dedupeKey = `${group}\u0000${label}`
+    if (seen.has(dedupeKey)) continue
+    seen.add(dedupeKey)
+    result.push({ group, label, keys })
+  }
+  return result
+}
+
+/**
+ * Groups an array of shortcuts by their `group` field, preserving insertion
+ * order of both the groups and the entries within each group.
+ *
+ * Failure-boundary contract (issue #1144): the input is expected to come from
+ * {@link sanitizeShortcuts}, so every entry is well-formed. The function is a
+ * pure transformation: it never mutates the input array, never drops entries,
+ * and returns groups in first-appearance order so repeated calls with equal
+ * inputs produce structurally equal maps (deterministic rendering order).
+ */
+export function groupShortcuts(shortcuts: KeyboardShortcut[]): Map<string, KeyboardShortcut[]> {
   const map = new Map<string, KeyboardShortcut[]>()
   for (const shortcut of shortcuts) {
     const existing = map.get(shortcut.group)
@@ -51,7 +86,7 @@ export function formatModifierKey(
   }
 }
 
-const GROUPED = groupShortcuts(KEYBOARD_SHORTCUTS)
+const GROUPED = groupShortcuts(sanitizeShortcuts(KEYBOARD_SHORTCUTS))
 
 /**
  * Modal dialog listing all global keyboard shortcuts.
@@ -75,6 +110,12 @@ export default function KeyboardShortcutsDialog({
     onClose()
   }, [onClose])
 
+  // Recompute grouped entries only when the source data changes. This keeps
+  // rendering deterministic across re-renders and avoids rebuilding the map
+  // on every keystroke-driven state update while the dialog is open.
+  const grouped = useMemo(() => GROUPED, [])
+  const hasShortcuts = grouped.size > 0
+
   useScrollPreserver({ isActive: open })
 
   useFocusTrap({
@@ -87,7 +128,12 @@ export default function KeyboardShortcutsDialog({
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
-      handleClose()
+      try {
+        handleClose()
+      } catch (error) {
+        console.error('KeyboardShortcutsDialog: Error closing dialog from backdrop', error)
+        throw error
+      }
     }
   }
 
@@ -123,7 +169,7 @@ export default function KeyboardShortcutsDialog({
         </header>
 
         <div id={descId} className="shortcuts-dialog__body">
-          {Array.from(GROUPED.entries()).map(([group, shortcuts]) => (
+          {hasShortcuts ? Array.from(grouped.entries()).map(([group, shortcuts]) => (
             <section key={group} className="shortcuts-dialog__group">
               <h3 className="shortcuts-dialog__group-heading">{group}</h3>
               <ul className="shortcuts-dialog__list" role="list">
@@ -146,7 +192,11 @@ export default function KeyboardShortcutsDialog({
                 ))}
               </ul>
             </section>
-          ))}
+          )) : (
+            <p className="shortcuts-dialog__empty" role="status">
+              No keyboard shortcuts are available.
+            </p>
+          )}
         </div>
 
         <footer className="shortcuts-dialog__footer">

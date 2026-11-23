@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import { WIDGET_CACHE_DEFAULTS } from '../config/widgetCache'
+import { useSettings } from '../context/SettingsContext'
+import { useWallet } from '../context/WalletContext'
 import { scrubPII } from '../lib/piiScrub'
 
 // ── Cache ───────────────────────────────────────────────────────────────────
@@ -11,6 +13,10 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<unknown>>()
+
+function buildCacheKey(path: string, network: string, address: string): string {
+  return `${network}:${address || 'anon'}:${path}`
+}
 
 function getCacheEntry<T>(key: string): CacheEntry<T> | undefined {
   return cache.get(key) as CacheEntry<T> | undefined
@@ -68,16 +74,19 @@ export function useApiQuery<T>(
   options: UseApiQueryOptions = {}
 ): UseApiQueryResult<T> {
   const { enabled = true, staleTimeMs = WIDGET_CACHE_DEFAULTS.STALE_TIME_MS } = options
+  const { network } = useSettings()
+  const { address } = useWallet()
+  const cacheKey = buildCacheKey(path, network, address)
 
   const [data, setData] = useState<T | undefined>(() => {
-    const cached = getCacheEntry<T>(path)
+    const cached = getCacheEntry<T>(cacheKey)
     return cached?.data
   })
   const [error, setError] = useState<ApiError | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(enabled)
   const [isStale, setIsStale] = useState<boolean>(() => {
-    const cached = getCacheEntry<T>(path)
-    return cached !== undefined && !isCacheFresh(path, staleTimeMs)
+    const cached = getCacheEntry<T>(cacheKey)
+    return cached !== undefined && !isCacheFresh(cacheKey, staleTimeMs)
   })
 
   const mountedRef = useRef(true)
@@ -85,6 +94,9 @@ export function useApiQuery<T>(
   const abortRef = useRef<AbortController | null>(null)
   const pathRef = useRef(path)
   pathRef.current = path
+  const cacheKeyRef = useRef(cacheKey)
+  const prevCacheKeyRef = useRef(cacheKey)
+  cacheKeyRef.current = cacheKey
 
   // Cleanup: mark unmounted, abort any in-flight request
   useEffect(() => {
@@ -96,13 +108,29 @@ export function useApiQuery<T>(
     }
   }, [])
 
+  // Abort in-flight requests and reset state when network, address, or path changes
+  useEffect(() => {
+    if (prevCacheKeyRef.current === cacheKey) return
+    prevCacheKeyRef.current = cacheKey
+
+    abortRef.current?.abort('context-changed')
+    abortRef.current = null
+    runIdRef.current += 1
+
+    const cached = getCacheEntry<T>(cacheKey)
+    setData(cached?.data)
+    setIsStale(cached !== undefined && !isCacheFresh(cacheKey, staleTimeMs))
+    setError(null)
+  }, [cacheKey, staleTimeMs])
+
   const fetch = useCallback(
     async (bypassCache = false): Promise<void> => {
       const currentPath = pathRef.current
+      const currentKey = cacheKeyRef.current
 
       // Serve from cache unless bypassed
-      if (!bypassCache && isCacheFresh(currentPath, staleTimeMs)) {
-        const cached = getCacheEntry<T>(currentPath)
+      if (!bypassCache && isCacheFresh(currentKey, staleTimeMs)) {
+        const cached = getCacheEntry<T>(currentKey)
         if (cached) {
           setData(cached.data)
           setIsStale(false)
@@ -138,7 +166,7 @@ export function useApiQuery<T>(
 
         if (mountedRef.current && currentRunId === runIdRef.current) {
           setData(sanitized)
-          setCacheEntry(currentPath, sanitized)
+          setCacheEntry(currentKey, sanitized)
           setIsStale(false)
           setError(null)
         }
@@ -154,7 +182,7 @@ export function useApiQuery<T>(
         }
       }
     },
-    [staleTimeMs]
+    [staleTimeMs, cacheKey]
   )
 
   // Initial fetch
@@ -178,7 +206,12 @@ export function useApiQuery<T>(
  * ```
  */
 export function invalidateApiQuery(path: string): void {
-  cache.delete(path)
+  const suffix = `:${path}`
+  for (const key of cache.keys()) {
+    if (key === path || key.endsWith(suffix)) {
+      cache.delete(key)
+    }
+  }
 }
 
 /**

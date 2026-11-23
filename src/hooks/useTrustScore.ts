@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import type { TrustScore } from '../api/types'
+import { useSettings } from '../context/SettingsContext'
 import { isValidStellarAddress } from '@/lib/stellar'
 import { normalizeTrustScore } from '@/lib/trustScore'
 
@@ -34,6 +35,7 @@ function isAbortError(error: unknown): boolean {
  * In-flight requests are cancelled when `refetch` is called again or the hook unmounts.
  */
 export function useTrustScore(address: string): UseTrustScoreResult {
+  const { network } = useSettings()
   const [data, setData] = useState<TrustScore | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
@@ -42,6 +44,7 @@ export function useTrustScore(address: string): UseTrustScoreResult {
   const fetchIdRef = useRef(0)
   const mountedRef = useRef(true)
   const addressRef = useRef(address)
+  const prevNetworkRef = useRef(network)
 
   addressRef.current = address
 
@@ -104,6 +107,17 @@ export function useTrustScore(address: string): UseTrustScoreResult {
   const refetch = useCallback(() => {
     void fetchScore()
   }, [fetchScore])
+
+  useEffect(() => {
+    if (prevNetworkRef.current === network) return
+    prevNetworkRef.current = network
+    abortRef.current?.abort()
+    abortRef.current = null
+    fetchIdRef.current += 1
+    setData(null)
+    setError(null)
+    setIsLoading(false)
+  }, [network])
 
   useEffect(() => {
     mountedRef.current = true

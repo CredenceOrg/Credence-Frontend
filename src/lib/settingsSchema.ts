@@ -1,6 +1,8 @@
 import { QUIET_HOURS_TIME_PATTERN } from '../config/notifications'
+import { SUPPORTED_LOCALES, type SupportedLocale } from '../i18n/config'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+export type { SupportedLocale }
 
 export interface SettingsBlob {
   themeMode: ThemeMode
@@ -14,6 +16,8 @@ export interface SettingsBlob {
   quietHoursStart: string
   /** Inclusive `HH:mm` end of the quiet window. */
   quietHoursEnd: string
+  /** UI display language. Defaults to `'en'`. */
+  locale: SupportedLocale
 }
 
 const VALID_THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system']
@@ -32,6 +36,7 @@ const DEFAULT_SETTINGS: SettingsBlob = {
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
+  locale: 'en',
 }
 
 export function defaultSettings(): SettingsBlob {
@@ -113,6 +118,15 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
       result.quietHoursEnd = input.quietHoursEnd
     } else {
       errors.push('quietHoursEnd must match HH:mm (24-hour)')
+    }
+  }
+
+  // locale is optional for backwards-compatibility with exports that predate this field.
+  if (input.locale !== undefined) {
+    if ((SUPPORTED_LOCALES as readonly string[]).includes(input.locale as string)) {
+      result.locale = input.locale as SupportedLocale
+    } else {
+      errors.push(`locale must be one of: ${SUPPORTED_LOCALES.join(', ')}`)
     }
   }
 

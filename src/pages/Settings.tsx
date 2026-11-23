@@ -30,6 +30,7 @@ function computeDiff(current: Omit<SettingsBlob, keyof unknown>, incoming: Setti
     'quietHoursEnabled',
     'quietHoursStart',
     'quietHoursEnd',
+    'locale',
   ]
   for (const key of keys) {
     if (String(current[key as keyof typeof current]) !== String(incoming[key])) {
@@ -50,6 +51,7 @@ const FIELD_LABELS: Record<string, string> = {
   quietHoursEnabled: 'Quiet hours enabled',
   quietHoursStart: 'Quiet hours start',
   quietHoursEnd: 'Quiet hours end',
+  locale: 'Language',
 }
 
 export default function Settings() {
@@ -70,6 +72,8 @@ export default function Settings() {
     setQuietHoursStart,
     quietHoursEnd,
     setQuietHoursEnd,
+    locale,
+    setLocale,
     saveSettings,
   } = useSettings()
   const { addToast } = useToast()
@@ -92,6 +96,7 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    locale,
   }))
 
   const isDirty =
@@ -102,7 +107,8 @@ export default function Settings() {
     draft.autoDismiss !== autoDismiss ||
     draft.quietHoursEnabled !== quietHoursEnabled ||
     draft.quietHoursStart !== quietHoursStart ||
-    draft.quietHoursEnd !== quietHoursEnd
+    draft.quietHoursEnd !== quietHoursEnd ||
+    draft.locale !== locale
 
   const updateDraft = (key: string, value: string | boolean | number) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -147,7 +153,8 @@ export default function Settings() {
       a.autoDismiss === b.autoDismiss &&
       a.quietHoursEnabled === b.quietHoursEnabled &&
       a.quietHoursStart === b.quietHoursStart &&
-      a.quietHoursEnd === b.quietHoursEnd,
+      a.quietHoursEnd === b.quietHoursEnd &&
+      a.locale === b.locale,
     [],
   )
 
@@ -201,6 +208,7 @@ export default function Settings() {
     setQuietHoursEnabled(draft.quietHoursEnabled)
     setQuietHoursStart(draft.quietHoursStart)
     setQuietHoursEnd(draft.quietHoursEnd)
+    void setLocale(draft.locale)
     saveSettings()
     addToast('success', 'Settings saved successfully')
   }
@@ -221,6 +229,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      locale,
     })
     addToast('info', 'Settings reverted to last saved state')
   }
@@ -260,6 +269,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      locale,
     }
   }, [
     themeMode,
@@ -270,6 +280,7 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    locale,
   ])
 
   const handleExport = useCallback(() => {
@@ -282,6 +293,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      locale,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -345,6 +357,7 @@ export default function Settings() {
     setQuietHoursEnabled(importPreview.quietHoursEnabled ?? false)
     setQuietHoursStart(importPreview.quietHoursStart ?? '22:00')
     setQuietHoursEnd(importPreview.quietHoursEnd ?? '07:00')
+    void setLocale(importPreview.locale ?? 'en')
     saveSettings()
     addToast('success', 'Settings imported successfully')
     resetImportState()
@@ -358,6 +371,7 @@ export default function Settings() {
     setQuietHoursEnabled,
     setQuietHoursStart,
     setQuietHoursEnd,
+    setLocale,
     saveSettings,
     addToast,
     resetImportState,
@@ -507,6 +521,19 @@ export default function Settings() {
             </div>
           </FormField>
         </fieldset>
+
+        <FormField id="language-select" label="Language">
+          <Select
+            id="language-select"
+            value={draft.locale}
+            onChange={(v) => updateDraft('locale', v)}
+            options={[
+              { value: 'en', label: 'English' },
+              { value: 'es', label: 'Español' },
+            ]}
+            ariaLabel="Display language"
+          />
+        </FormField>
       </section>
 
       <section className="settings-section" aria-labelledby="notifications-heading">

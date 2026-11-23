@@ -56,6 +56,20 @@ describe('transactionsToCsv', () => {
   it('terminates with a trailing CRLF', () => {
     expect(transactionsToCsv(sample).endsWith('\r\n')).toBe(true)
   })
+
+  it('neutralises spreadsheet formula-injection prefixes', () => {
+    const formulaTx: Transaction = {
+      id: 'tx-formula',
+      type: 'bond',
+      amountUsdc: 50,
+      status: 'pending',
+      timestamp: '2026-01-17T09:00:00Z',
+      hash: '=SUM(A1:A2)',
+    }
+    const csv = transactionsToCsv([formulaTx])
+    expect(csv).toContain("'=SUM(A1:A2)")
+    expect(csv).not.toContain(',=SUM(A1:A2)')
+  })
 })
 
 describe('buildExportFilename', () => {

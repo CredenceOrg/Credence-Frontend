@@ -44,6 +44,8 @@ function cellValue(tx: Transaction, key: (typeof EXPORT_COLUMNS)[number]['key'])
  * and escapes embedded double quotes by doubling them.
  */
 function escapeCsvField(value: string): string {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  value = safe
   if (/[",\r\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`
   }

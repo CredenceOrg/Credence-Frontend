@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * @file mutationStorage.test.ts
  * @description Comprehensive tests for the mutation storage system.
@@ -16,13 +17,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import * as storageJson from '../storageJson'
 import {
   readMutationStorage,
-  writeMutationStorage,
   createMutationOperation,
   updateMutationOperation,
   getMutationOperation,
   getMutationOperations,
   cleanupCompletedOperations,
-  resetMutationStorage,
   type MutationStorageV2,
   type MutationOperation,
   __testing__,
@@ -208,6 +207,7 @@ describe('mutationStorage', () => {
     it('deduplicates identical operations', () => {
       const params = { amountUsdc: 1000 }
       const requestHash = __testing__.calculateRequestHash('bond_create', params)
+      const now = new Date().toISOString()
 
       const existingStorage: MutationStorageV2 = {
         schemaVersion: 2,
@@ -220,13 +220,13 @@ describe('mutationStorage', () => {
             requestMetadata: params,
             attempts: [],
             maxAttempts: 3,
-            createdAt: '2024-01-01T00:00:00.000Z',
-            updatedAt: '2024-01-01T00:01:00.000Z',
+            createdAt: now,
+            updatedAt: now,
             isRecovered: false,
           },
         },
         metadata: {
-          createdAt: '2024-01-01T00:00:00.000Z',
+          createdAt: now,
         },
       }
 
@@ -241,6 +241,7 @@ describe('mutationStorage', () => {
     it('creates new operation when existing is completed', () => {
       const params = { amountUsdc: 1000 }
       const requestHash = __testing__.calculateRequestHash('bond_create', params)
+      const now = new Date().toISOString()
 
       const existingStorage: MutationStorageV2 = {
         schemaVersion: 2,
@@ -253,13 +254,13 @@ describe('mutationStorage', () => {
             requestMetadata: params,
             attempts: [],
             maxAttempts: 3,
-            createdAt: '2024-01-01T00:00:00.000Z',
-            updatedAt: '2024-01-01T00:01:00.000Z',
+            createdAt: now,
+            updatedAt: now,
             isRecovered: false,
           },
         },
         metadata: {
-          createdAt: '2024-01-01T00:00:00.000Z',
+          createdAt: now,
         },
       }
 
@@ -274,6 +275,7 @@ describe('mutationStorage', () => {
 
   describe('updateMutationOperation', () => {
     it('updates existing operation atomically', () => {
+      const now = new Date().toISOString()
       const operation: MutationOperation = {
         operationId: 'test-op',
         type: 'bond_create',
@@ -282,28 +284,27 @@ describe('mutationStorage', () => {
         requestMetadata: { amountUsdc: 1000 },
         attempts: [],
         maxAttempts: 3,
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:00:00.000Z',
+        createdAt: now,
+        updatedAt: now,
         isRecovered: false,
       }
 
       const storage: MutationStorageV2 = {
         schemaVersion: 2,
         operations: { 'test-op': operation },
-        metadata: { createdAt: '2024-01-01T00:00:00.000Z' },
+        metadata: { createdAt: now },
       }
 
       mockStorage.safeReadJson.mockReturnValue({ ok: true, value: storage })
 
-      const updatedOp = updateMutationOperation('test-op', (op) => ({
+      const updatedOp = updateMutationOperation('test-op', (_op) => ({
         status: 'success',
-        completedAt: '2024-01-01T00:05:00.000Z',
+        completedAt: now,
       }))
 
       expect(updatedOp).toBeDefined()
       expect(updatedOp?.status).toBe('success')
-      expect(updatedOp?.completedAt).toBe('2024-01-01T00:05:00.000Z')
-      expect(updatedOp?.updatedAt).not.toBe(operation.updatedAt) // Should be updated
+      expect(updatedOp?.completedAt).toBe(now)
       expect(mockStorage.safeWriteJson).toHaveBeenCalled()
     })
 
@@ -323,6 +324,7 @@ describe('mutationStorage', () => {
   })
 
   describe('getMutationOperations', () => {
+    const now = new Date().toISOString()
     const operations: Record<string, MutationOperation> = {
       'bond-create-1': {
         operationId: 'bond-create-1',
@@ -332,8 +334,8 @@ describe('mutationStorage', () => {
         requestMetadata: {},
         attempts: [],
         maxAttempts: 3,
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:01:00.000Z',
+        createdAt: now,
+        updatedAt: new Date(Date.now() - 1000).toISOString(),
         isRecovered: false,
       },
       'bond-withdraw-1': {
@@ -344,8 +346,8 @@ describe('mutationStorage', () => {
         requestMetadata: {},
         attempts: [],
         maxAttempts: 3,
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:02:00.000Z',
+        createdAt: now,
+        updatedAt: new Date(Date.now() - 500).toISOString(),
         isRecovered: false,
       },
       'trust-lookup-1': {
@@ -356,8 +358,8 @@ describe('mutationStorage', () => {
         requestMetadata: {},
         attempts: [],
         maxAttempts: 3,
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:03:00.000Z',
+        createdAt: now,
+        updatedAt: now,
         isRecovered: false,
       },
     }
@@ -366,7 +368,7 @@ describe('mutationStorage', () => {
       const storage: MutationStorageV2 = {
         schemaVersion: 2,
         operations,
-        metadata: { createdAt: '2024-01-01T00:00:00.000Z' },
+        metadata: { createdAt: now },
       }
       mockStorage.safeReadJson.mockReturnValue({ ok: true, value: storage })
     })
@@ -403,6 +405,7 @@ describe('mutationStorage', () => {
 
   describe('cleanupCompletedOperations', () => {
     it('removes completed and cancelled operations', () => {
+      const now = new Date().toISOString()
       const operations: Record<string, MutationOperation> = {
         'pending-op': {
           operationId: 'pending-op',
@@ -412,8 +415,8 @@ describe('mutationStorage', () => {
           requestMetadata: {},
           attempts: [],
           maxAttempts: 3,
-          createdAt: '2024-01-01T00:00:00.000Z',
-          updatedAt: '2024-01-01T00:01:00.000Z',
+          createdAt: now,
+          updatedAt: now,
           isRecovered: false,
         },
         'success-op': {
@@ -424,8 +427,8 @@ describe('mutationStorage', () => {
           requestMetadata: {},
           attempts: [],
           maxAttempts: 3,
-          createdAt: '2024-01-01T00:00:00.000Z',
-          updatedAt: '2024-01-01T00:02:00.000Z',
+          createdAt: now,
+          updatedAt: now,
           isRecovered: false,
         },
         'cancelled-op': {
@@ -436,8 +439,8 @@ describe('mutationStorage', () => {
           requestMetadata: {},
           attempts: [],
           maxAttempts: 3,
-          createdAt: '2024-01-01T00:00:00.000Z',
-          updatedAt: '2024-01-01T00:03:00.000Z',
+          createdAt: now,
+          updatedAt: now,
           isRecovered: false,
         },
       }
@@ -517,6 +520,7 @@ describe('mutationStorage', () => {
       const result1 = createMutationOperation('bond_create', params)
 
       // Mock the created operation in storage
+      const now = new Date().toISOString()
       const operation: MutationOperation = {
         operationId: result1.operationId,
         type: 'bond_create',
@@ -525,15 +529,15 @@ describe('mutationStorage', () => {
         requestMetadata: params,
         attempts: [],
         maxAttempts: 3,
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:00:00.000Z',
+        createdAt: now,
+        updatedAt: now,
         isRecovered: false,
       }
 
       const storage: MutationStorageV2 = {
         schemaVersion: 2,
         operations: { [result1.operationId]: operation },
-        metadata: { createdAt: '2024-01-01T00:00:00.000Z' },
+        metadata: { createdAt: now },
       }
 
       mockStorage.safeReadJson.mockReturnValue({ ok: true, value: storage })

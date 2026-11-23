@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { truncateAddress } from '../lib/stellar'
 import TooltipOnOverflow from './TooltipOnOverflow'
-import { CopyIcon, CheckIcon, ExternalLinkIcon } from './icons'
 import './CopyableHash.css'
 
 export interface CopyableHashProps {
@@ -42,9 +40,9 @@ export default function CopyableHash({
         displayHash = truncateAddress(hash)
       }
     } else {
-      // Transaction hash truncation: use canonical middle truncation
-      if (hash.length > 20) {
-        displayHash = truncateAddress(hash)
+      // Transaction hash truncation: head…tail
+      if (hash.length > 10) {
+        displayHash = `${hash.slice(0, 6)}…${hash.slice(-4)}`
       }
     }
   }

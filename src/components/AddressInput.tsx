@@ -20,6 +20,11 @@ interface AddressInputProps {
   onChange: (value: string) => void
   onValidationChange?: (isValid: boolean) => void
   disabled?: boolean
+  /**
+   * Renders the field in a busy state and suppresses interaction while a
+   * read/resolve is in flight. Never masks the user's current value.
+   */
+  isLoading?: boolean
   className?: string
   /**
    * External validation message (e.g. required-on-submit).
@@ -152,7 +157,7 @@ function AddressInputInner({
           aria-hidden="true"
         >
           <path
-            d="M10.5 1H5.5C4.67157 1 4 1.67157 4 2.5V3H2.5C1.67157 3 1 3.67157 1 4.5V13.5C1 14.3284 1.67157 15 2.5 15H10.5C11.3284 15 12 14.3284 12 13.5V12H13.5C14.3284 12 15 11.3284 15 10.5V2.5C15 1.67157 14.3284 1 13.5 1H10.5Z"
+            d="M10.5 9H5.5C4.67157 9 4 9.67157 4 10.5V11.5C4 12.3284 4.67157 13 5.5 13H10.5C11.3284 13 12 12.3284 12 11.5V10.5C12 9.67157 11.3284 9 10.5 9Z"
             stroke="currentColor"
             strokeWidth="1.2"
             strokeLinecap="round"
@@ -171,8 +176,10 @@ export default function AddressInput({
   onChange,
   onValidationChange,
   disabled = false,
+  isLoading = false,
   className = '',
   error: externalError,
+  onPasteError,
 }: AddressInputProps) {
   const { addressDisplay } = useSettings()
   const { entries: addressBookEntries } = useAddressBook()
@@ -260,6 +267,10 @@ export default function AddressInput({
     if (!attempted) {
       setAttempted(true)
     }
+    // Any manual edit clears a prior paste failure.
+    if (pasteFailed) {
+      setPasteFailed(false)
+    }
   }
 
   const handleNativePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -279,7 +290,17 @@ export default function AddressInput({
     setFocused(true)
   }
 
-  const handlePaste = async () => {
+  /**
+   * Paste handler.
+   *
+   * Invariants:
+   * - Never overwrite the existing value with an empty clipboard result.
+   * - Never clear or corrupt the existing value on failure.
+   * - On failure, focus the input so the user can manually paste.
+   * - Always route accepted clipboard text through the shared sanitizer so a
+   *   `stellar:` prefix is stripped and suspicious characters are flagged.
+   */
+  const handlePaste = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText()
       applySanitizedValue(text)
@@ -288,14 +309,17 @@ export default function AddressInput({
       if (inputRef.current) {
         inputRef.current.focus()
       }
-    } catch {
-      // Clipboard API not available or permission denied
-      // Fallback: focus input for manual paste
+    } catch (err) {
+      // Clipboard API not available or permission denied.
+      // Fallback: focus input for manual paste and surface a diagnostic
+      // without exposing clipboard contents.
+      setPasteFailed(true)
+      onPasteError?.(err)
       if (inputRef.current) {
         inputRef.current.focus()
       }
     }
-  }
+  }, [acceptSanitizedValue, onPasteError])
 
   const handleSelectEntry = (address: string) => {
     setSanitizationError(undefined)
@@ -379,7 +403,7 @@ export default function AddressInput({
           onPaste={handleNativePaste}
           onBlur={handleBlur}
           onFocus={handleFocus}
-          disabled={disabled}
+          disabled={isDisabled}
           handlePaste={handlePaste}
           focused={focused}
           showError={Boolean(error)}

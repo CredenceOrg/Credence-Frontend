@@ -111,4 +111,50 @@ describe('ErrorBoundary', () => {
     })
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
+
+  it.each([
+    'Loading chunk 123 failed',
+    'Failed to load dynamically imported module',
+    'Loading module failed',
+    'Dynamically imported route failed',
+    'Failed to fetch route module',
+    'Import(./route) failed',
+    'Network error while loading route',
+    'chunk-load failed',
+  ])('classifies network loading failure: %s', async (message) => {
+    const FailChild = () => {
+      throw new Error(message)
+    }
+
+    render(
+      <ErrorBoundary>
+        <FailChild />
+      </ErrorBoundary>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveAttribute('data-error-kind', 'network')
+    })
+  })
+
+  it('keeps ordinary errors mentioning a chunk generic and isolates the failed subtree', async () => {
+    const FailChild = () => {
+      throw new Error('Invalid chunk of user input')
+    }
+
+    render(
+      <>
+        <ErrorBoundary>
+          <FailChild />
+        </ErrorBoundary>
+        <p>Unaffected sibling</p>
+      </>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveAttribute('data-error-kind', 'generic')
+    })
+    expect(screen.getByText('Unaffected sibling')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /go to home page/i })).toHaveAttribute('href', '/')
+  })
 })

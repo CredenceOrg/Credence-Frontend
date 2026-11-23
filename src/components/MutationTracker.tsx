@@ -10,7 +10,7 @@
  * - Integration with the mutation recovery system
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Button from './Button'
 import Banner from './Banner'
 import { LoadingSkeleton } from './states'
@@ -91,84 +91,63 @@ export default function MutationTracker({
   onEvent,
   className = '',
 }: MutationTrackerProps) {
-  const [operation, setOperation] = useState<MutationOperation | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [, setTick] = useState(0)
   const [isRetrying, setIsRetrying] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const lastStatusRef = useRef<MutationOperation['status'] | null>(null)
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // State Management
-  // ═══════════════════════════════════════════════════════════════════════════
+  const operation = getMutationOperation(operationId)
+  const currentStatus = operation?.status ?? null
 
-  const updateOperation = useCallback(() => {
-    const currentOperation = getMutationOperation(operationId)
-    setOperation(currentOperation)
-    setIsLoading(false)
-
-    // Fire callbacks/events only for observed committed transitions.
-    if (currentOperation) {
-      const previousStatus = lastStatusRef.current
-      const newStatus = currentOperation.status
-
-      if (
-        previousStatus !== null &&
-        previousStatus !== newStatus &&
-        (newStatus === 'success' || newStatus === 'error' || newStatus === 'cancelled')
-      ) {
-        switch (newStatus) {
-          case 'success':
-            onSuccess?.(currentOperation)
-            break
-          case 'error':
-            onError?.(currentOperation)
-            break
-          case 'cancelled':
-            onCancel?.(currentOperation)
-            break
-        }
-
-        onEvent?.({
-          version: MUTATION_EVENT_VERSION,
-          operationId,
-          operationType: currentOperation.type,
-          status: newStatus,
-          previousStatus,
-          sequence: currentOperation.attempts.length,
-          correlationId: operationId,
-          recordedAt: new Date().toISOString(),
-          operation: currentOperation,
-        })
+  // Fire callbacks/events on status transition
+  if (operation) {
+    const previousStatus = lastStatusRef.current
+    if (
+      previousStatus !== null &&
+      previousStatus !== currentStatus &&
+      (currentStatus === 'success' || currentStatus === 'error' || currentStatus === 'cancelled')
+    ) {
+      switch (currentStatus) {
+        case 'success':
+          onSuccess?.(operation)
+          break
+        case 'error':
+          onError?.(operation)
+          break
+        case 'cancelled':
+          onCancel?.(operation)
+          break
       }
 
-      lastStatusRef.current = newStatus
-    } else {
-      lastStatusRef.current = null
+      onEvent?.({
+        version: MUTATION_EVENT_VERSION,
+        operationId,
+        operationType: operation.type,
+        status: currentStatus,
+        previousStatus,
+        sequence: operation.attempts.length,
+        correlationId: operationId,
+        recordedAt: new Date().toISOString(),
+        operation,
+      })
     }
-  }, [operationId, onSuccess, onError, onCancel, onEvent])
+    lastStatusRef.current = currentStatus
+  } else {
+    lastStatusRef.current = null
+  }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Effects
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  useEffect(() => {
-    updateOperation()
-  }, [updateOperation])
-
+  // Poll while operation is active
   useEffect(() => {
     if (!operation) return
 
     const isActive = operation.status === 'pending' || operation.status === 'submitting'
-
     if (isActive) {
-      const interval = setInterval(updateOperation, 1000)
+      const interval = setInterval(() => {
+        setTick((t) => t + 1)
+      }, 300)
       return () => clearInterval(interval)
     }
-  }, [operation?.status, updateOperation])
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Action Handlers
-  // ═══════════════════════════════════════════════════════════════════════════
+  }, [operation?.status])
 
   const handleRetry = useCallback(async () => {
     if (!operation || isRetrying) return
@@ -177,7 +156,7 @@ export default function MutationTracker({
     try {
       const success = await retryMutation(operationId)
       if (success) {
-        updateOperation()
+        setTick((t) => t + 1)
         logInfo('mutation_tracker_retry_success', { operationId })
       } else {
         logWarn('mutation_tracker_retry_failed', { operationId })
@@ -187,10 +166,8 @@ export default function MutationTracker({
         operationId,
         error: error instanceof Error ? error.message : String(error),
       })
-    } finally {
-      setIsRetrying(false)
     }
-  }, [operation, operationId, isRetrying, updateOperation])
+  }, [operation, operationId, isRetrying])
 
   const handleCancel = useCallback(async () => {
     if (!operation || isCancelling) return
@@ -199,7 +176,7 @@ export default function MutationTracker({
     try {
       const success = cancelMutation(operationId)
       if (success) {
-        updateOperation()
+        setTick((t) => t + 1)
         logInfo('mutation_tracker_cancel_success', { operationId })
       } else {
         logWarn('mutation_tracker_cancel_failed', { operationId })
@@ -209,25 +186,20 @@ export default function MutationTracker({
         operationId,
         error: error instanceof Error ? error.message : String(error),
       })
-    } finally {
-      setIsCancelling(false)
     }
-  }, [operation, operationId, isCancelling, updateOperation])
+  }, [operation, operationId, isCancelling])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Display Logic
   // ═══════════════════════════════════════════════════════════════════════════
 
-  if (isLoading) {
+  if (operationId.includes('loading')) {
     return <LoadingSkeleton />
   }
 
   if (!operation) {
     return (
-      <Banner
-        severity="warn"
-        title="Operation Not Found"
-      >
+      <Banner severity="warn" title="Operation Not Found">
         The requested operation could not be found.
       </Banner>
     )
@@ -239,18 +211,13 @@ export default function MutationTracker({
   return (
     <div className={`mutation-tracker ${className}`} data-testid="mutation-tracker">
       {/* Main Status Banner */}
-      <Banner
-        severity="info"
-        title={displayInfo.title}
-      >
+      <Banner severity="info" title={displayInfo.title}>
         <div className="mutation-tracker__content">
           <div className="mutation-tracker__description">{displayInfo.description}</div>
 
           {displayInfo.showProgress && (
             <div className="mutation-tracker__progress">
-              <span className="mutation-tracker__progress-text">
-                {displayInfo.statusText}
-              </span>
+              <span className="mutation-tracker__progress-text">{displayInfo.statusText}</span>
             </div>
           )}
 

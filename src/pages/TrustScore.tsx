@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from '
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
@@ -13,8 +13,8 @@ import Button from '../components/Button'
 import AddressInput from '../components/AddressInput'
 import ConnectGate from '../components/ConnectGate'
 import TierLadder from '../components/TierLadder'
-import TrustGauge, { TIER_CONFIG, pointsToNextTier } from '../components/TrustGauge'
-import { TIER_ORDER, MAX_SCORE } from '../lib/tiers'
+import TrustGauge from '../components/TrustGauge'
+import { describeTierProgress, MAX_SCORE, normalizeScore } from '../lib/tiers'
 import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
@@ -24,9 +24,11 @@ import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { useTrustScore } from '../hooks/useTrustScore'
 import { ApiError } from '../api/client'
+import { normalizeTrustScore } from '../lib/trustScore'
 import { useToast } from '../components/ToastProvider'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
-import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useRecentLookups } from '../hooks/useRecentLookups'
+import { addRecentLookup, sanitizeRecentLookups } from '../lib/recentLookupsStorage'
 
 export interface RecentLookupItem {
   address: string
@@ -86,20 +88,16 @@ export default function TrustScore() {
   const [lookupAddress, setLookupAddress] = useState('')
   const pendingLookupRef = useRef(false)
 
-  const [history, setHistory] = useLocalStorage<RecentLookupItem[]>('credence:recent-lookups', [])
+  const [history, setHistory] = useRecentLookups()
+  const safeHistory = sanitizeRecentLookups(history)
+  const recordedResultRef = useRef<string | null>(null)
 
-  const safeHistory = useMemo(() => {
-    if (!Array.isArray(history)) return []
-    return history.filter(
-      (item): item is RecentLookupItem =>
-        item &&
-        typeof item === 'object' &&
-        typeof item.address === 'string' &&
-        isValidStellarAddress(item.address)
-    )
-  }, [history])
+  const { data: rawData, isLoading, error, refetch } = useTrustScore(lookupAddress)
 
-  const { data, isLoading, error, refetch } = useTrustScore(lookupAddress)
+  // The API response is unvalidated at runtime. Normalise it once at the
+  // render boundary so every downstream expression (hero badge, gauge,
+  // history) sees a valid tier and a clamped score.
+  const data = useMemo(() => normalizeTrustScore(rawData), [rawData])
 
   useEffect(() => {
     if (!pendingLookupRef.current || !lookupAddress) {
@@ -110,22 +108,21 @@ export default function TrustScore() {
   }, [lookupAddress, refetch])
 
   useEffect(() => {
-    if (!isLoading && !error && data && lookupAddress) {
-      if (isValidStellarAddress(lookupAddress)) {
-        const current = Array.isArray(history) ? history : []
-        const filtered = current.filter(
-          (item) =>
-            item &&
-            typeof item === 'object' &&
-            item.address.toLowerCase() !== lookupAddress.toLowerCase()
-        )
-        const newItem: RecentLookupItem = {
-          address: lookupAddress,
-          timestamp: Date.now(),
-        }
-        setHistory([newItem, ...filtered].slice(0, 5))
-      }
+    if (
+      isLoading ||
+      error ||
+      !data ||
+      !lookupAddress ||
+      !isValidStellarAddress(data.address) ||
+      data.address.toLowerCase() !== lookupAddress.toLowerCase() ||
+      !isValidStellarAddress(lookupAddress)
+    ) {
+      return
     }
+    const resultIdentity = `${data.address.toLowerCase()}:${data.updatedAt}`
+    if (recordedResultRef.current === resultIdentity) return
+    recordedResultRef.current = resultIdentity
+    setHistory(addRecentLookup(history, lookupAddress))
   }, [isLoading, error, data, lookupAddress, history, setHistory])
 
   const commitAddressParam = (value: string) => {
@@ -168,6 +165,7 @@ export default function TrustScore() {
   }
 
   const handleSelectRecent = (item: RecentLookupItem) => {
+    const isCurrentLookup = item.address.toLowerCase() === lookupAddress.toLowerCase()
     setAddress(item.address)
     setIsAddressValid(true)
     setHasAttemptedLookup(true)
@@ -176,18 +174,8 @@ export default function TrustScore() {
     commitAddressParam(item.address)
 
     // Move to top of history immediately
-    const current = Array.isArray(history) ? history : []
-    const filtered = current.filter(
-      (h) =>
-        h &&
-        typeof h === 'object' &&
-        h.address.toLowerCase() !== item.address.toLowerCase()
-    )
-    const newItem: RecentLookupItem = {
-      address: item.address,
-      timestamp: Date.now(),
-    }
-    setHistory([newItem, ...filtered].slice(0, 5))
+    setHistory(addRecentLookup(history, item.address))
+    if (isCurrentLookup) refetch()
   }
 
   const handleClearHistory = () => {
@@ -196,7 +184,13 @@ export default function TrustScore() {
 
   const activity: ActivityItem[] = data ? SAMPLE_ACTIVITY : []
 
-  const tierLabel = data ? `${TIER_CONFIG[data.tier].label} Tier` : undefined
+  // `data.tier` comes from an unvalidated API payload, so never index
+  // TIER_CONFIG / TIER_ORDER with it directly. The helper resolves unknown
+  // tiers from the score and reports progress without ever reading past the
+  // final tier (platinum has no "next tier").
+  const tierProgress = data ? describeTierProgress(data.score, data.tier) : null
+  const displayScore = data ? normalizeScore(data.score) : 0
+  const tierLabel = tierProgress ? `${tierProgress.label} Tier` : undefined
   const mismatchBannerId = 'trust-score-network-mismatch'
 
   return (
@@ -250,23 +244,29 @@ export default function TrustScore() {
           {data && lookupAddress === address.trim() && (
             <div className="trustScore__hero" role="region" aria-label="Trust score result">
               <div className="trustScore__heroScore">
-                <span className="trustScore__heroScoreValue">{data.score}</span>
+                <span className="trustScore__heroScoreValue">{displayScore}</span>
                 <span className="trustScore__heroScoreTotal">/ {MAX_SCORE}</span>
               </div>
 
               <div className="trustScore__heroMeta">
-                <Badge variant={data.tier} label={tierLabel!} className="trustScore__heroBadge" />
+                <Badge
+                  variant={tierProgress?.tier ?? data.tier}
+                  label={tierLabel!}
+                  className="trustScore__heroBadge"
+                />
                 <p className="trustScore__heroNext">
-                  {data.tier === 'platinum' && data.score >= MAX_SCORE
-                    ? 'Platinum tier \u2014 maximum score achieved'
-                    : `${pointsToNextTier(data.score, data.tier)} points to ${
-                        TIER_CONFIG[TIER_ORDER[TIER_ORDER.indexOf(data.tier) + 1]].label
-                      }`}
+                  {tierProgress === null
+                    ? null
+                    : tierProgress.nextLabel === null
+                      ? tierProgress.pointsRemaining === 0
+                        ? 'Platinum tier \u2014 maximum score achieved'
+                        : `Top tier \u2014 ${tierProgress.pointsRemaining} points to maximum score`
+                      : `${tierProgress.pointsRemaining} points to ${tierProgress.nextLabel}`}
                 </p>
               </div>
 
               <div className="trustScore__heroGauge">
-                <TrustGauge score={data.score} tier={data.tier} />
+                <TrustGauge score={displayScore} tier={tierProgress?.tier ?? data.tier} />
               </div>
 
               <div className="trustScore__heroFooter">

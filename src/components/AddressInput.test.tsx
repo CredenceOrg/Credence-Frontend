@@ -9,6 +9,8 @@ const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H' // 
 // A 56-char G-prefixed uppercase alphanumeric key that fails the CRC-16 checksum
 const INVALID_CHECKSUM_KEY = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
 
+const SUSPICIOUS_ZERO_WIDTH = '​'
+
 // --- useDebouncedValue mocking ---
 
 function mockDebouncedValue<T>(value: T, _delayMs?: number): T {
@@ -36,7 +38,7 @@ vi.mock('./QRScannerDialog', () => ({
         <button data-testid="mock-scan" onClick={() => onScan(VALID_KEY)}>
           Mock Scan
         </button>
-        <button data-testid="mock-close" onClick={onClose}>
+        <button data-testid="mock-close" onClick={() => onClose()}>
           Close
         </button>
       </div>
@@ -304,10 +306,14 @@ describe('paste button', () => {
 
     await user.click(input)
     // Paste with stellar: prefix and a suspicious non-ASCII character
-    await user.paste('stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+    await user.paste(
+      `stellar:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H${SUSPICIOUS_ZERO_WIDTH}`
+    )
 
     // The value should be updated without "stellar:"
-    expect(input).toHaveValue('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H\u200B')
+    expect(input).toHaveValue(
+      `GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H${SUSPICIOUS_ZERO_WIDTH}`
+    )
 
     // And it should show a warning
     const alert = screen.getByRole('alert')
@@ -345,17 +351,17 @@ describe('echo display respects addressDisplay setting', () => {
 
   it('shows friendly address when addressDisplay is "friendly"', async () => {
     const text = await renderAndTriggerEcho('friendly')
-    // formatAddressForDisplay friendly: first 6 + "…" + last 4
+    // formatAddressForDisplay falls back to truncated form until on-chain names exist
     expect(text).toBe(
-      `${VALID_KEY.substring(0, 6)}\u2026${VALID_KEY.substring(VALID_KEY.length - 4)}`
+      `${VALID_KEY.substring(0, 6)}…${VALID_KEY.substring(VALID_KEY.length - 4)}`
     )
   })
 
   it('re-renders echo when addressDisplay setting changes', async () => {
-    const user = userEvent.setup()
     mockAddressDisplay = 'full'
-
+    const user = userEvent.setup()
     const { rerender } = render(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
+
     await user.click(screen.getByRole('textbox'))
     await user.tab()
 

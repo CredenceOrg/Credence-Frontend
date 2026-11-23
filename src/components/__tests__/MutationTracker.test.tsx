@@ -17,23 +17,28 @@ import userEvent from '@testing-library/user-event'
 import MutationTracker from '../MutationTracker'
 import type { MutationOperation } from '../../lib/mutationStorage'
 
-// Mock the modules
-vi.mock('../../lib/mutationStorage')
-vi.mock('../../lib/mutationRecovery')
-
 // Create mock functions with proper typing
 const mockGetMutationOperation = vi.fn() as Mock<[string], MutationOperation | null>
 const mockRetryMutation = vi.fn() as Mock<[string], Promise<boolean>>
 const mockCancelMutation = vi.fn() as Mock<[string], boolean>
 
-// Mock the actual imports
-vi.mocked(await import('../../lib/mutationStorage')).getMutationOperation = mockGetMutationOperation
-vi.mocked(await import('../../lib/mutationRecovery')).retryMutation = mockRetryMutation
-vi.mocked(await import('../../lib/mutationRecovery')).cancelMutation = mockCancelMutation
+const mockMutationStorage = {
+  getMutationOperation: mockGetMutationOperation,
+}
+
+const mockMutationRecovery = {
+  retryMutation: mockRetryMutation,
+  cancelMutation: mockCancelMutation,
+}
 
 // Mock dependencies
-vi.mock('../../lib/mutationStorage')
-vi.mock('../../lib/mutationRecovery')
+vi.mock('../../lib/mutationStorage', () => ({
+  getMutationOperation: (...args: [string]) => mockGetMutationOperation(...args),
+}))
+vi.mock('../../lib/mutationRecovery', () => ({
+  retryMutation: (...args: [string]) => mockRetryMutation(...args),
+  cancelMutation: (...args: [string]) => mockCancelMutation(...args),
+}))
 vi.mock('../../lib/log', () => ({
   logInfo: vi.fn(),
   logWarn: vi.fn(),
@@ -41,7 +46,6 @@ vi.mock('../../lib/log', () => ({
 }))
 
 describe('MutationTracker', () => {
-
   const mockBondCreateOperation = {
     operationId: 'bond-create-123',
     type: 'bond_create',
@@ -147,7 +151,7 @@ describe('MutationTracker', () => {
       render(<MutationTracker operationId="bond-create-123" showControls={true} />)
 
       expect(screen.getByText('Create Bond (1,000 USDC) Failed')).toBeInTheDocument()
-      expect(screen.getByText('Network connection failed')).toBeInTheDocument()
+      expect(screen.getAllByText('Network connection failed').length).toBeGreaterThan(0)
       expect(screen.getByRole('button', { name: 'Retry operation' })).toBeInTheDocument()
     })
 
@@ -288,11 +292,7 @@ describe('MutationTracker', () => {
       mockRetryMutation.mockResolvedValue(true)
 
       render(
-        <MutationTracker
-          operationId="bond-create-123"
-          showControls={true}
-          onSuccess={onSuccess}
-        />
+        <MutationTracker operationId="bond-create-123" showControls={true} onSuccess={onSuccess} />
       )
 
       await user.click(screen.getByRole('button', { name: 'Retry operation' }))
@@ -421,7 +421,7 @@ describe('MutationTracker', () => {
       expect(screen.getByText('Transaction:')).toBeInTheDocument()
       expect(screen.getByText('tx-hash-123')).toBeInTheDocument()
       expect(screen.getByText('Error:')).toBeInTheDocument()
-      expect(screen.getByText('Connection timeout')).toBeInTheDocument()
+      expect(screen.getAllByText('Connection timeout').length).toBeGreaterThan(0)
       expect(screen.getByText('Recovered:')).toBeInTheDocument()
       expect(screen.getByText('From storage')).toBeInTheDocument()
     })
@@ -482,7 +482,7 @@ describe('MutationTracker', () => {
       // Wait for polling to detect completion
       await waitFor(
         () => {
-          expect(screen.getByText(/completed/i)).toBeInTheDocument()
+          expect(screen.getByText('Create Bond (1,000 USDC) Completed')).toBeInTheDocument()
         },
         { timeout: 3000 }
       )

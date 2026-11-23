@@ -1,0 +1,66 @@
+@import './ConnectWalletDialog.css';
+
+/* ─── Deterministic Failure Boundary Styles ─────────────────────────────────── */
+
+.connect-wallet-dialog__error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-2, 0.5rem);
+}
+
+.connect-wallet-dialog__error-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-1, 0.25rem);
+}
+
+.connect-wallet-dialog__error-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: var(--credence-space-1, 0.25rem);
+}
+
+.connect-wallet-dialog__retry-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--credence-radius-sm, 0.25rem);
+  color: inherit;
+  font-size: var(--credence-font-size-xs, 0.75rem);
+  font-weight: var(--credence-font-weight-medium, 500);
+  line-height: 1;
+  padding: var(--credence-space-1, 0.25rem) var(--credence-space-3, 0.75rem);
+  cursor: pointer;
+  transition: opacity var(--credence-motion-duration-fast, 150ms) ease;
+}
+
+.connect-wallet-dialog__retry-button:hover:not(:disabled) {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.connect-wallet-dialog__retry-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.connect-wallet-dialog__error--stale {
+  border-color: var(--credence-color-warning-border, #f59e0b);
+  background: var(--credence-color-warning-surface, #fffbeb);
+  color: var(--credence-color-warning-text, #92400e);
+}
+
+.connect-wallet-dialog__error--permission {
+  border-color: var(--credence-color-danger-border, #ef4444);
+  background: var(--credence-color-danger-surface, #fef2f2);
+  color: var(--credence-color-danger-text, #991b1b);
+}
+
+.connect-wallet-dialog__error--error {
+  border-color: var(--credence-color-danger-border, #ef4444);
+  background: var(--credence-color-danger-surface, #fef2f2);
+  color: var(--credence-color-danger-text, #991b1b);
+}

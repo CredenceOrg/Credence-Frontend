@@ -213,6 +213,30 @@ describe('LoadingSkeleton', () => {
       )
       expect((container.firstElementChild as HTMLElement).style.height).toBe('4rem')
     })
+
+    it('uses safe defaults for empty width and height values', () => {
+      const { container } = render(
+        // @ts-expect-error — intentionally bypassing the variant union to exercise the fallback branch
+        <LoadingSkeleton variant="__unknown__" width="" height="" />
+      )
+      expect((container.firstElementChild as HTMLElement).style.width).toBe('100%')
+      expect((container.firstElementChild as HTMLElement).style.height).toBe('4rem')
+    })
+  })
+
+  describe('boundary normalization', () => {
+    it.each([0, -3, Number.NaN, Number.POSITIVE_INFINITY, 1.8])(
+      'falls back to the default row count for invalid rows=%p',
+      (rows) => {
+        const { container } = render(<LoadingSkeleton variant="text" rows={rows as number} />)
+        expect(rootChildren(container)).toHaveLength(3)
+      }
+    )
+
+    it('clamps oversized row counts to the safe maximum', () => {
+      const { container } = render(<LoadingSkeleton variant="text" rows={999} />)
+      expect(rootChildren(container)).toHaveLength(24)
+    })
   })
 
   // ─── shimmer / reduced-motion contract ───────────────────────────────────

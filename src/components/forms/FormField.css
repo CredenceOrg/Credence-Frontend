@@ -37,3 +37,41 @@
   ) {
   border-color: var(--credence-color-success-border);
 }
+
+
+.form-field.is-loading :is(input, select, textarea) {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.form-field.is-stale :is(input, select, textarea) {
+  opacity: 0.8;
+}
+
+.form-field-boundary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-2);
+  padding: var(--credence-space-2);
+  border: 1px solid var(--credence-color-danger-border);
+  border-radius: var(--credence-radius-md);
+  background-color: var(--credence-color-danger-bg);
+}
+
+.form-field-retry-btn, .form-field-retry-button-inline {
+  align-self: flex-start;
+  margin-top: var(--credence-space-1);
+  padding: var(--credence-space-1) var(--credence-space-3);
+  font-size: var(--credence-font-size-sm);
+  background: transparent;
+  border: 1px solid var(--credence-color-danger-border);
+  color: var(--credence-color-danger-text);
+  border-radius: var(--credence-radius-sm);
+  cursor: pointer;
+}
+
+.form-field-retry-btn:hover, .form-field-retry-button-inline:hover {
+  background: var(--credence-color-danger-border);
+  color: var(--credence-color-white, #fff);
+}
+

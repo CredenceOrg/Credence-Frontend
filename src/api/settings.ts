@@ -5,7 +5,7 @@ import type { SettingsBlob } from '../lib/settingsSchema'
 export function updateSettings(settings: SettingsBlob, signal?: AbortSignal): Promise<void> {
   return apiFetch<void>('/settings', {
     method: 'PATCH',
-    body: settings,
+    body: settings as unknown as Record<string, unknown>,
     signal,
   })
 }

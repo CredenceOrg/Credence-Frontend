@@ -10,6 +10,7 @@
  * 3. Denied, forged-identity, and cross-tenant attempts result in explicit no-mutation state.
  * 4. Stale identity epoch rejections prevent network dispatch or discard in-flight responses.
  * 5. Replay and repeated operations leave zero unauthorized side-effects.
+ * 6. errorMessage produces deterministic, non-sensitive failure-boundary output.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -17,6 +18,7 @@ import {
   ApiSessionConflictError,
   advanceIdentityEpoch,
   apiFetch,
+  errorMessage,
   getIdentityEpoch,
   resetApiRateLimiter,
   resetIdentityEpoch,
@@ -266,5 +268,143 @@ describe('Authorization boundaries & tenant identity invariants (QE-2026-08)', (
     expect(failEvent).toBeDefined()
     expect(successEvent?.correlationId).toMatch(/^api-fetch-/)
     expect(failEvent?.metadata).toMatchObject({ status: 401 })
+  })
+
+  // -------------------------------------------------------------------------
+  // 6. errorMessage failure-boundary determinism
+  // -------------------------------------------------------------------------
+  describe('errorMessage failure-boundary coverage', () => {
+    it('returns the message from a well-formed ApiError', () => {
+      const err = Object.assign(new Error('Bond not found'), {
+        name: 'ApiError',
+        status: 404,
+      })
+
+      expect(errorMessage(err)).toBe('Bond not found')
+    })
+
+    it('returns a deterministic fallback for null and undefined inputs', () => {
+      const fromNull = errorMessage(null)
+      const fromUndefined = errorMessage(undefined)
+
+      expect(typeof fromNull).toBe('string')
+      expect(fromNull.length).toBeGreaterThan(0)
+      expect(fromNull).toBe(fromUndefined)
+    })
+
+    it('returns a deterministic fallback for non-Error primitives', () => {
+      const fromNumber = errorMessage(42)
+      const fromBoolean = errorMessage(false)
+      const fromSymbol = errorMessage(Symbol('boom'))
+
+      expect(typeof fromNumber).toBe('string')
+      expect(fromNumber).toBe(fromBoolean)
+      expect(fromNumber).toBe(fromSymbol)
+    })
+
+    it('returns a deterministic fallback for an Error with an empty message', () => {
+      const empty = new Error('')
+      const blank = new Error('   ')
+
+      expect(errorMessage(empty)).toBe(errorMessage(blank))
+      expect(errorMessage(empty).length).toBeGreaterThan(0)
+    })
+
+    it('does not leak stack traces, tokens, or internal fields', () => {
+      const err = Object.assign(new Error('Request failed'), {
+        name: 'ApiError',
+        status: 500,
+        stack: 'Error: Request failed\n    at secret-internal.ts:1:1',
+        token: 'super-secret-token',
+        authorization: 'Bearer super-secret-token',
+      })
+
+      const message = errorMessage(err)
+
+      expect(message).not.toContain('super-secret-token')
+      expect(message).not.toContain('secret-internal.ts')
+      expect(message).not.toContain('Bearer')
+    })
+
+    it('is deterministic across repeated invocations for the same input', () => {
+      const err = Object.assign(new Error('Conflict'), {
+        name: 'ApiError',
+        status: 409,
+      })
+
+      const first = errorMessage(err)
+      const second = errorMessage(err)
+      const third = errorMessage(err)
+
+      expect(first).toBe(second)
+      expect(second).toBe(third)
+    })
+
+    it('is deterministic for concurrent invocations across mixed inputs', async () => {
+      const inputs: unknown[] = [
+        Object.assign(new Error('A'), { name: 'ApiError', status: 400 }),
+        null,
+        undefined,
+        'string-error',
+        123,
+        Object.assign(new Error('B'), { name: 'ApiError', status: 403 }),
+      ]
+
+      const results = await Promise.all(
+        inputs.map((input) => Promise.resolve().then(() => errorMessage(input)))
+      )
+
+      const again = await Promise.all(
+        inputs.map((input) => Promise.resolve().then(() => errorMessage(input)))
+      )
+
+      expect(results).toEqual(again)
+      results.forEach((value) => {
+        expect(typeof value).toBe('string')
+        expect(value.length).toBeGreaterThan(0)
+      })
+    })
+
+    it('produces a stable message for a rejected apiFetch authorization failure', async () => {
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ message: 'Access denied' }, { status: 403 })
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      const epoch = getIdentityEpoch()
+
+      let caught: unknown
+      try {
+        await apiFetch('/tenantB/withdraw', {
+          method: 'POST',
+          body: { amount: 50 },
+          identityEpoch: epoch,
+          headers: { 'X-Tenant-ID': 'tenantA' },
+        })
+      } catch (err) {
+        caught = err
+      }
+
+      expect(caught).toBeDefined()
+      const message = errorMessage(caught)
+      expect(typeof message).toBe('string')
+      expect(message.length).toBeGreaterThan(0)
+      expect(message).toBe(errorMessage(caught))
+    })
+
+    it('does not throw for adversarial inputs (regression guard)', () => {
+      const adversarial: unknown[] = [
+        { toString: () => { throw new Error('boom') } },
+        Object.create(null),
+        [],
+        () => undefined,
+        new Proxy({}, { get: () => { throw new Error('trap') } }),
+      ]
+
+      adversarial.forEach((input) => {
+        expect(() => errorMessage(input)).not.toThrow()
+        expect(typeof errorMessage(input)).toBe('string')
+      })
+    })
   })
 })

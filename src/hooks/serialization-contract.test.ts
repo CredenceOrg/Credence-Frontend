@@ -49,7 +49,8 @@ vi.mock('../api/client', async (importOriginal) => {
   }
 })
 
-const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
+// Must be a checksum-valid StrKey: useTrustScore bails out early otherwise.
+const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
 
 const mockTrustScore: TrustScore = {
   address: VALID_ADDRESS,

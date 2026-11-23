@@ -1,12 +1,44 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatUsdc,
+  formatAmount,
   formatMoney,
   normalizeUSDC,
   formatUSDC,
   formatUSDCDisplay,
   sanitizeUSDCInput,
 } from './format'
+
+describe('formatAmount', () => {
+  it('formats standard positive numbers with USDC suffix', () => {
+    expect(formatAmount(1500)).toBe('1,500 USDC')
+    expect(formatAmount(0)).toBe('0 USDC')
+    expect(formatAmount(100)).toBe('100 USDC')
+    expect(formatAmount(1_000_000)).toBe('1,000,000 USDC')
+  })
+
+  it('formats fractional amounts up to 2 decimal places', () => {
+    expect(formatAmount(1234.567)).toBe('1,234.57 USDC')
+    expect(formatAmount(0.5)).toBe('0.5 USDC')
+    expect(formatAmount(99.99)).toBe('99.99 USDC')
+  })
+
+  it('returns dash placeholder for invalid, negative, NaN, and infinite inputs', () => {
+    expect(formatAmount(NaN)).toBe('—')
+    expect(formatAmount(Infinity)).toBe('—')
+    expect(formatAmount(-Infinity)).toBe('—')
+    expect(formatAmount(-5)).toBe('—')
+    expect(formatAmount(-0.01)).toBe('—')
+    expect(formatAmount(undefined)).toBe('—')
+    expect(formatAmount(null)).toBe('—')
+  })
+
+  it('clamps values exceeding MAX_SAFE_INTEGER to MAX_SAFE_INTEGER', () => {
+    expect(formatAmount(Number.MAX_SAFE_INTEGER + 1000)).toBe(
+      `${Number.MAX_SAFE_INTEGER.toLocaleString('en-US')} USDC`
+    )
+  })
+})
 
 describe('formatUsdc', () => {
   it('formats numeric USDC amounts with suffix', () => {

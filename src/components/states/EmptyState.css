@@ -75,7 +75,9 @@
   font-weight: var(--credence-font-weight-semibold);
   font-size: var(--credence-font-size-sm);
   cursor: pointer;
-  transition: opacity 0.15s ease, background 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
   background: var(--credence-color-primary-soft);
   color: var(--credence-color-white);
 }
@@ -103,11 +105,61 @@
   background: var(--credence-border-default-hover, var(--credence-border-default));
 }
 
-
 @media (prefers-reduced-motion: reduce) {
   .empty-state__action {
     transition: none;
   }
+}
+
+/* ── Failure-boundary kind variants ─────────────────────────────────────── */
+
+/* loading — muted tone; spinner animation on the icon */
+.empty-state--loading .empty-state__icon {
+  background: var(--credence-skeleton-gradient, rgba(0, 0, 0, 0.06));
+  color: var(--credence-text-secondary);
+}
+
+/* Spin animation for the loading icon — respects prefers-reduced-motion */
+@keyframes empty-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state__spinner-icon {
+  animation: empty-state-spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-state__spinner-icon {
+    animation: none;
+  }
+}
+
+/* error — danger surface, warm icon background */
+.empty-state--error .empty-state__icon {
+  background: var(--credence-color-danger-surface-strong);
+  color: var(--credence-color-danger, #c0392b);
+}
+
+.empty-state--error .empty-state__title {
+  color: var(--credence-color-danger, #c0392b);
+}
+
+/* stale — warning surface, muted amber icon */
+.empty-state--stale .empty-state__icon {
+  background: var(--credence-color-warning-surface, rgba(255, 165, 0, 0.1));
+  color: var(--credence-color-warning, #e67e22);
+}
+
+.empty-state--stale .empty-state__title {
+  color: var(--credence-color-warning, #e67e22);
+}
+
+/* permission — subdued; lock icon on a neutral surface */
+.empty-state--permission .empty-state__icon {
+  background: var(--credence-color-platinum-surface);
+  color: var(--credence-text-secondary);
 }
 
 /* ── Mobile: prevent overlap with fixed bottom nav ──────────────────────── */

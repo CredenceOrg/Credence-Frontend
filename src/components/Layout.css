@@ -44,6 +44,36 @@
   margin-bottom: var(--credence-space-1);
 }
 
+/* Mobile: the hamburger (MobileNav) and BottomNav replace the inline nav */
+@media (max-width: 639px) {
+  .appHeader-inner {
+    gap: var(--credence-space-3);
+  }
+  .appNav,
+  .appHeader-shortcuts-btn {
+    display: none;
+  }
+  .appBrand {
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .appHeader-inner {
+    gap: var(--credence-space-2);
+  }
+  .appHeader .networkIndicator {
+    display: none;
+  }
+}
+
+/* Keep the fixed BottomNav from covering the footer */
+@media (max-width: 768px) {
+  .appShell {
+    padding-bottom: 64px;
+  }
+}
+
 @media (max-width: 480px) {
   .appHeader {
     padding: var(--credence-space-4) var(--credence-space-4);

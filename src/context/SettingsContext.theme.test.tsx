@@ -280,8 +280,8 @@ describe('SettingsContext — theme application and media-query sync', () => {
     })
   })
 
-  describe('persistence — data-theme and localStorage stay in sync', () => {
-    it('setting dark via setter updates both data-theme and localStorage payload', async () => {
+  describe('setters update data-theme immediately while persistence is deferred to save', () => {
+    it('setting dark updates data-theme but does not write localStorage', async () => {
       const user = userEvent.setup()
       const mql = createMatchMediaMock(false)
       installMatchMedia(mql)
@@ -290,11 +290,12 @@ describe('SettingsContext — theme application and media-query sync', () => {
       await user.click(screen.getByRole('button', { name: 'set dark' }))
 
       expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
-      expect(stored.themeMode).toBe('dark')
+      // In-memory only: the committed baseline is written by saveSettings, not
+      // by the individual setters.
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
     })
 
-    it('setting light via setter updates both data-theme and localStorage payload', async () => {
+    it('setting light updates data-theme but leaves the committed localStorage value untouched', async () => {
       const user = userEvent.setup()
       const mql = createMatchMediaMock(false)
       installMatchMedia(mql)
@@ -304,10 +305,10 @@ describe('SettingsContext — theme application and media-query sync', () => {
 
       expect(document.documentElement.getAttribute('data-theme')).toBe('light')
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
-      expect(stored.themeMode).toBe('light')
+      expect(stored.themeMode).toBe('dark')
     })
 
-    it('setting system via setter updates data-theme based on OS preference and localStorage', async () => {
+    it('setting system resolves data-theme from the OS preference but does not persist', async () => {
       const user = userEvent.setup()
       const mql = createMatchMediaMock(true) // OS dark
       installMatchMedia(mql)
@@ -317,7 +318,7 @@ describe('SettingsContext — theme application and media-query sync', () => {
 
       expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
-      expect(stored.themeMode).toBe('system')
+      expect(stored.themeMode).toBe('light')
     })
 
     it('initializes from localStorage on mount and applies the stored theme', () => {

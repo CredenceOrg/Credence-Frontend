@@ -94,4 +94,95 @@ describe('useScrollToTop', () => {
     unmount()
     expect(capturedHandler).toBeNull()
   })
+
+  describe('boundary and recovery', () => {
+    it('registers the scroll listener as passive', () => {
+      renderHook(() => useScrollToTop())
+
+      const calls = vi.mocked(window.addEventListener).mock.calls
+      const scrollCall = calls.find(([type]) => type === 'scroll')
+      expect(scrollCall).toBeDefined()
+      expect(scrollCall?.[2]).toEqual({ passive: true })
+    })
+
+    it('removes exactly the handler it registered', () => {
+      const { unmount } = renderHook(() => useScrollToTop())
+      const registered = capturedHandler
+
+      unmount()
+
+      const removeCalls = vi.mocked(window.removeEventListener).mock.calls
+      const scrollRemove = removeCalls.find(([type]) => type === 'scroll')
+      expect(scrollRemove?.[1]).toBe(registered)
+    })
+
+    it('ignores non-scroll window events even when the position changed', () => {
+      setScrollY(0)
+      const { result } = renderHook(() => useScrollToTop())
+      expect(result.current).toBe(false)
+
+      act(() => {
+        setScrollY(5000)
+        window.dispatchEvent(new Event('resize'))
+        window.dispatchEvent(new Event('orientationchange'))
+      })
+
+      expect(result.current).toBe(false)
+    })
+
+    it('hides again when scrolled back to exactly the threshold', () => {
+      setScrollY(900)
+      const { result } = renderHook(() => useScrollToTop())
+      expect(result.current).toBe(true)
+
+      act(() => {
+        setScrollY(BACK_TO_TOP_SCROLL_THRESHOLD)
+        capturedHandler?.()
+      })
+
+      // The predicate is strictly greater-than, so the boundary is hidden.
+      expect(result.current).toBe(false)
+    })
+
+    it('settles on the final position across a burst of scroll events', () => {
+      setScrollY(0)
+      const { result } = renderHook(() => useScrollToTop())
+
+      act(() => {
+        setScrollY(900)
+        capturedHandler?.()
+        setScrollY(100)
+        capturedHandler?.()
+        setScrollY(1200)
+        capturedHandler?.()
+      })
+      expect(result.current).toBe(true)
+
+      act(() => {
+        setScrollY(1000)
+        capturedHandler?.()
+        setScrollY(10)
+        capturedHandler?.()
+      })
+      expect(result.current).toBe(false)
+    })
+
+    it('treats a negative scroll position as not visible', () => {
+      setScrollY(-50)
+      const { result } = renderHook(() => useScrollToTop())
+      expect(result.current).toBe(false)
+    })
+
+    it('re-reads the live position on remount', () => {
+      setScrollY(0)
+      const first = renderHook(() => useScrollToTop())
+      expect(first.result.current).toBe(false)
+      first.unmount()
+
+      setScrollY(2000)
+      const second = renderHook(() => useScrollToTop())
+      expect(second.result.current).toBe(true)
+      second.unmount()
+    })
+  })
 })

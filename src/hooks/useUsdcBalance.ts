@@ -56,7 +56,12 @@ function isAbortError(error: unknown): boolean {
  * SSR-safe: no DOM access during render; Horizon calls are guarded by browser checks.
  */
 export function useUsdcBalance(): UseUsdcBalanceResult {
-  const { address, isConnected, isReauthRequired: checkIsReauthRequired } = useWallet()
+  const {
+    address,
+    isConnected,
+    lastReauthTime,
+    isReauthRequired: checkIsReauthRequired,
+  } = useWallet()
   const { network } = useSettings()
 
   const [balance, setBalance] = useState(0)
@@ -123,7 +128,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
         setStatus((prev) => (prev === 'loading' ? 'error' : prev))
       }
     }
-  }, [address, isConnected, network, checkIsReauthRequired])
+  }, [address, isConnected, lastReauthTime, network, checkIsReauthRequired])
 
   const refetch = useCallback(() => {
     void fetchBalance()

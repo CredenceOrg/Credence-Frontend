@@ -86,13 +86,9 @@ const ADDRESS_OPTIONS: { value: 'full' | 'short' | 'friendly'; label: string }[]
 export default function Settings() {
   const {
     themeMode,
-    setThemeMode,
     network,
-    setNetwork,
     addressDisplay,
-    setAddressDisplay,
     toastsEnabled,
-    setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
     quietHoursEnabled,
@@ -244,14 +240,39 @@ export default function Settings() {
     []
   )
 
-  // Debounced auto-save: every field change triggers a PATCH against the
-  // backend after AUTO_SAVE_DEFAULTS.DEBOUNCE_MS of stability. The hook
-  // owns the AbortController lifecycle and supersedes in-flight saves per
-  // change. This flow is *additive* — the existing manual `Save` button
-  // still commits to `localStorage` via `SettingsContext` so it is also
-  // available offline.
-  const autoSave = useDebouncedAutoSave({
-    value: draft,
+  // Committed settings live in the context; they only change when the user
+  // saves or imports. The auto-save hook syncs *these*, never the draft, so an
+  // in-progress edit can never be PATCHed before it is committed.
+  const committedSettings = useMemo<SettingsPayload>(
+    () => ({
+      themeMode: themeMode as SettingsPayload['themeMode'],
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
+    }),
+    [
+      themeMode,
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
+    ]
+  )
+
+  // Server sync is opt-in. Deployments without an API leave this unset, so the
+  // hook stays parked (`value: undefined`) and the indicator never errors. When
+  // enabled, an invalid quiet-hours draft also parks the hook.
+  const settingsSyncEnabled = import.meta.env.VITE_SETTINGS_SYNC_ENABLED === 'true'
+
+  const autoSave = useDebouncedAutoSave<SettingsPayload>({
+    value: settingsSyncEnabled && !quietHoursError ? committedSettings : undefined,
     save: updateSettings,
     delayMs: AUTO_SAVE_DEFAULTS.DEBOUNCE_MS,
     isEqual: draftIsEqual,
@@ -275,25 +296,10 @@ export default function Settings() {
   const handleSave = () => {
     if (!isDirty) return
     if (quietHoursError) return
-    const payload = {
-      themeMode: draft.themeMode,
-      network: draft.network,
-      addressDisplay: draft.addressDisplay,
-      toastsEnabled: draft.toastsEnabled,
-      autoDismiss: draft.autoDismiss,
-      quietHoursEnabled: draft.quietHoursEnabled,
-      quietHoursStart: draft.quietHoursStart,
-      quietHoursEnd: draft.quietHoursEnd,
-    }
-    setThemeMode(payload.themeMode)
-    setNetwork(payload.network)
-    setAddressDisplay(payload.addressDisplay)
-    setToastsEnabled(payload.toastsEnabled)
-    setAutoDismiss(payload.autoDismiss)
-    setQuietHoursEnabled(draft.quietHoursEnabled)
-    setQuietHoursStart(draft.quietHoursStart)
-    setQuietHoursEnd(draft.quietHoursEnd)
-    saveSettings()
+    // Pass the explicit payload: `saveSettings` persists and commits exactly
+    // this snapshot, avoiding the stale-render race that previously reverted
+    // the change that was just made.
+    saveSettings({ ...draft })
     addToast('success', 'Settings saved successfully')
   }
 
@@ -563,8 +569,8 @@ export default function Settings() {
           hint="Changing to Testnet uses isolated, non-real assets."
         >
           <Select
-            value={network}
-            onChange={setNetwork}
+            value={draft.network}
+            onChange={(v) => updateDraft('network', v as NetworkOption)}
             options={[
               { value: 'public', label: 'Public (Mainnet)' },
               { value: 'test', label: 'Test (Testnet)' },
@@ -740,7 +746,11 @@ export default function Settings() {
         </p>
 
         <FormField id="toasts-enabled" label="Enable toasts">
-          <Toggle checked={toastsEnabled} onChange={setToastsEnabled} ariaLabel="Enable toasts" />
+          <Toggle
+            checked={draft.toastsEnabled}
+            onChange={(v) => updateDraft('toastsEnabled', v)}
+            ariaLabel="Enable toasts"
+          />
         </FormField>
 
         <FormField
@@ -749,8 +759,8 @@ export default function Settings() {
           hint="How long before a toast automatically closes. Danger toasts always require manual dismissal."
         >
           <Select
-            value={autoDismiss}
-            onChange={setAutoDismiss}
+            value={draft.autoDismiss}
+            onChange={(v) => updateDraft('autoDismiss', v as AutoDismissOption)}
             options={[
               { value: 'off', label: 'Off (require manual dismiss)' },
               { value: '3s', label: '3 seconds' },
@@ -912,6 +922,15 @@ export default function Settings() {
           Cancel
         </button>
       </div>
+
+      <ConfirmDialog
+        open={importConfirmOpen}
+        title="Import settings?"
+        description={confirmDescription}
+        confirmLabel="Apply settings"
+        onConfirm={handleImportConfirm}
+        onCancel={handleImportCancel}
+      />
     </div>
   )
 }

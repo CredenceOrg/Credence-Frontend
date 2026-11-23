@@ -12,6 +12,32 @@ vi.mock('../lib/stellar', () => ({
     if (addr.length <= 20) return addr
     return `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`
   },
+  formatAddressForDisplay: (addr: string, mode?: string) => {
+    if (!addr) return ''
+    if (mode === 'full') return addr
+    if (mode === 'friendly') {
+      return addr.length <= 10
+        ? addr
+        : `${addr.substring(0, 6)}\u2026${addr.substring(addr.length - 4)}`
+    }
+    if (addr.length <= 20) return addr
+    return `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`
+  },
+  sanitizeAddressInput: (input: string) => {
+    let sanitized = input.trim()
+    if (sanitized.toLowerCase().startsWith('stellar:')) sanitized = sanitized.slice(8)
+    if (/[^\x20-\x7E]/.test(sanitized)) {
+      return {
+        ok: false as const,
+        error: {
+          type: 'SUSPICIOUS_CHARACTERS' as const,
+          message: 'Suspicious characters detected in address.',
+        },
+        fallbackValue: sanitized,
+      }
+    }
+    return { ok: true as const, value: sanitized }
+  },
 }))
 
 // A valid 56-character Stellar public key

@@ -9,7 +9,6 @@ import {
 import Button from './Button'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { formatAddressForDisplay } from '../lib/stellar'
-import { WalletIcon } from './icons'
 import './WalletConnect.css'
 
 /** Spec-only demo address — no Freighter / SDK calls (issue #832 UI/UX scope). */
@@ -59,13 +58,31 @@ function avatarHue(address: string): number {
 export default function WalletConnect({
   status: controlledStatus,
   address: controlledAddress,
-  balanceHint = '128.4 XLM',
+  balanceHint,
   network = 'public',
   onConnect,
   onDisconnect,
   className = '',
 }: WalletConnectProps) {
   const isControlled = controlledStatus !== undefined
+
+  // Guard: uncontrolled mode is for Storybook / local demos only.
+  // In production renders, always pass an explicit `status` prop so the
+  // component is driven by real wallet state rather than the internal
+  // demo state machine. This fires in dev/test but never in production.
+  if (
+    !isControlled &&
+    typeof process !== 'undefined' &&
+    process.env.NODE_ENV !== 'production' &&
+    typeof window !== 'undefined' &&
+    !(window as unknown as Record<string, unknown>).__STORYBOOK_ADDONS_CHANNEL__
+  ) {
+    console.warn(
+      '[WalletConnect] Rendered without a `status` prop outside Storybook. ' +
+        'This activates the internal demo state machine and must not be used in ' +
+        'production. Use <HeaderWallet /> in Layout instead.'
+    )
+  }
   const [internalStatus, setInternalStatus] = useState<WalletConnectStatus>('disconnected')
   const [internalAddress, setInternalAddress] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -176,14 +193,12 @@ export default function WalletConnect({
           isLoading={status === 'connecting'}
           loadingText="Connecting…"
           onClick={handleConnect}
-          aria-label={status === 'connecting' ? 'Connecting wallet' : 'Connect wallet'}
-          title="Connect your Stellar wallet to create bonds and view your trust score"
+          aria-label={
+            status === 'connecting' ? 'Connecting wallet' : 'Connect wallet'
+          }
           className="walletConnect__connectBtn"
           data-testid="wallet-connect-btn"
         >
-          {status !== 'connecting' && (
-            <WalletIcon width={16} height={16} className="walletConnect__connectIcon" />
-          )}
           Connect wallet
         </Button>
         <span className="sr-only" aria-live="polite" aria-atomic="true">
@@ -221,7 +236,9 @@ export default function WalletConnect({
           <span className="walletConnect__address" title={address}>
             {truncated}
           </span>
-          {balanceHint ? <span className="walletConnect__balance">{balanceHint}</span> : null}
+          {balanceHint ? (
+            <span className="walletConnect__balance">{balanceHint}</span>
+          ) : null}
         </span>
         <span className="walletConnect__chevron" aria-hidden="true">
           ▾

@@ -277,11 +277,11 @@ describe('Button – isLoading state', () => {
     expect(spinner).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('announces "Sending…" to screen readers when isLoading=true', () => {
+  it('announces "Loading…" to screen readers when isLoading=true', () => {
     const { container } = render(<Button isLoading>Loading</Button>)
     const liveRegion = container.querySelector('.sr-only[aria-live="polite"]')
     expect(liveRegion).toBeInTheDocument()
-    expect(liveRegion?.textContent).toBe('Sending…')
+    expect(liveRegion?.textContent).toBe('Loading…')
   })
 
   it('does not announce "Sending…" when isLoading is false', () => {

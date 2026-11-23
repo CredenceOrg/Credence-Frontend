@@ -1,10 +1,15 @@
-import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, beforeEach, beforeAll, afterEach, vi } from 'vitest'
+import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import Layout from './Layout'
+import ErrorBoundary from './ErrorBoundary'
+import { INSTALL_PROMPT_SESSION_KEY } from '../config/installPrompt'
 
 // Mock matchMedia for JSDOM
 beforeAll(() => {
+  // jsdom does not implement scroll positioning (BackToTop / skip link).
+  window.scrollTo = vi.fn() as unknown as typeof window.scrollTo
+
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query) => ({
@@ -56,7 +61,7 @@ describe('Layout Integration', () => {
 
   it('renders theme toggle button', () => {
     renderLayout()
-    expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /switch to .* mode/i })).toBeInTheDocument()
   })
 
   it('renders desktop navigation links', () => {
@@ -148,6 +153,15 @@ describe('Layout Integration', () => {
     expect(drawer).toHaveAttribute('aria-hidden', 'true')
   })
 
+  // --- HeaderWallet / WalletConnect demo guard ---
+
+  it('does not render the fake demo balance "128.4 XLM" in the header', () => {
+    // The header must never show the hard-coded placeholder from the old
+    // uncontrolled WalletConnect demo path.
+    renderLayout()
+    expect(screen.queryByText(/128\.4 XLM/)).not.toBeInTheDocument()
+  })
+
   // --- BottomNav integration ---
 
   it('renders BottomNav inside the layout', () => {
@@ -160,5 +174,116 @@ describe('Layout Integration', () => {
     const bottomNav = screen.getByRole('navigation', { name: /bottom navigation/i })
     const tabs = Array.from(bottomNav.querySelectorAll('a'))
     expect(tabs).toHaveLength(5)
+  })
+})
+
+describe('Layout boundary and recovery conditions', () => {
+  beforeEach(() => {
+    document.body.style.overflow = ''
+    window.localStorage.clear()
+    window.sessionStorage.clear()
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('renders and recovers when a navigation link has a malformed path', () => {
+    // Boundary: ensure layout still renders when a route is unknown.
+    render(
+      <MemoryRouter initialEntries={['/not-a-real-route']}>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<div>Home Page Content</div>} />
+            <Route path="*" element={<div>Not Found</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    )
+    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInTheDocument()
+    expect(screen.getByText('Not Found')).toBeInTheDocument()
+  })
+
+  it('dismisses install prompt and persists the decision', () => {
+    window.localStorage.clear()
+    renderLayout()
+
+    // Simulate the browser firing the install prompt event.
+    act(() => {
+      const event = new Event('beforeinstallprompt', { cancelable: true })
+      window.dispatchEvent(event)
+    })
+
+    const dismissButton = screen.getByRole('button', { name: /dismiss/i })
+    expect(dismissButton).toBeInTheDocument()
+    fireEvent.click(dismissButton)
+
+    // The prompt must be removed and the decision persisted.
+    expect(screen.queryByText(/install this app/i)).not.toBeInTheDocument()
+    expect(window.sessionStorage.getItem('credence:install-prompt-handled')).toBe('handled')
+  })
+
+  it('does not re-show the install prompt after it has been handled', () => {
+    window.sessionStorage.setItem('credence:install-prompt-handled', 'handled')
+    renderLayout()
+
+    act(() => {
+      const event = new Event('beforeinstallprompt', { cancelable: true })
+      window.dispatchEvent(event)
+    })
+
+    expect(screen.queryByText(/install this app/i)).not.toBeInTheDocument()
+  })
+
+  it('recovers mobile nav state when the drawer is closed and reopened', () => {
+    renderLayout()
+    const hamburger = screen.getByRole('button', { name: /open navigation menu/i })
+    const drawer = document.getElementById('mobile-nav-drawer') as HTMLElement
+
+    fireEvent.click(hamburger)
+    expect(drawer).toHaveAttribute('aria-hidden', 'false')
+
+    const closeBtn = screen.getByRole('button', { name: /close navigation menu/i })
+    fireEvent.click(closeBtn)
+    expect(drawer).toHaveAttribute('aria-hidden', 'true')
+
+    // Reopen and confirm the drawer is in a consistent state.
+    fireEvent.click(hamburger)
+    expect(drawer).toHaveAttribute('aria-hidden', 'false')
+    expect(document.body.style.overflow).toBe('hidden')
+  })
+
+  it('restores body overflow when the drawer is closed via Escape', () => {
+    renderLayout()
+    const hamburger = screen.getByRole('button', { name: /open navigation menu/i })
+    const drawer = document.getElementById('mobile-nav-drawer') as HTMLElement
+
+    fireEvent.click(hamburger)
+    expect(document.body.style.overflow).toBe('hidden')
+
+    fireEvent.keyDown(drawer, { key: 'Escape' })
+    expect(drawer).toHaveAttribute('aria-hidden', 'true')
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it('toggles the action launcher with the Ctrl+K keyboard shortcut', () => {
+    renderLayout()
+
+    fireEvent.keyDown(document, { key: 'k', ctrlKey: true })
+
+    // The launcher is expected to render a dialog when opened.
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('recovers from a failed install prompt event without losing the layout', () => {
+    renderLayout()
+
+    // Dispatch a malformed event to verify the layout stays functional.
+    act(() => {
+      window.dispatchEvent(new Event('beforeinstallprompt'))
+    })
+
+    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: /bottom navigation/i })).toBeInTheDocument()
   })
 })

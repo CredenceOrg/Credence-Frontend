@@ -21,6 +21,7 @@ export interface SettingsPayload {
   quietHoursEnabled: boolean
   quietHoursStart: string
   quietHoursEnd: string
+  unlockRemindersEnabled: boolean
 }
 
 export interface SettingsState {
@@ -32,6 +33,7 @@ export interface SettingsState {
   quietHoursEnabled: boolean
   quietHoursStart: string
   quietHoursEnd: string
+  unlockRemindersEnabled: boolean
   setThemeMode: (m: ThemeMode) => void
   setNetwork: (n: NetworkOption) => void
   setAddressDisplay: (s: AddressDisplayOption) => void
@@ -40,6 +42,7 @@ export interface SettingsState {
   setQuietHoursEnabled: (b: boolean) => void
   setQuietHoursStart: (value: string) => void
   setQuietHoursEnd: (value: string) => void
+  setUnlockRemindersEnabled: (b: boolean) => void
   /**
    * Persist settings. Pass an explicit payload to save immediately (avoids the
    * stale-state race when called right after the individual setters); omit it to
@@ -60,6 +63,7 @@ type PersistedSettings = {
   quietHoursEnabled: boolean
   quietHoursStart: string
   quietHoursEnd: string
+  unlockRemindersEnabled: boolean
 }
 
 const STORAGE_KEY = 'credence:settings'
@@ -76,6 +80,7 @@ const defaultPersistedSettings: PersistedSettings = {
   quietHoursEnabled: false,
   quietHoursStart: QUIET_HOURS_DEFAULTS.start,
   quietHoursEnd: QUIET_HOURS_DEFAULTS.end,
+  unlockRemindersEnabled: false,
 }
 
 const defaultState: SettingsState = {
@@ -88,6 +93,7 @@ const defaultState: SettingsState = {
   setQuietHoursEnabled: () => {},
   setQuietHoursStart: () => {},
   setQuietHoursEnd: () => {},
+  setUnlockRemindersEnabled: () => {},
   saveSettings: (_payload?: SettingsPayload) => {},
   resetToDefaults: () => {},
   cancelSettings: () => {},
@@ -200,6 +206,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (key === 'quietHoursEnabled' && typeof entryValue !== 'boolean') return false
       if (key === 'quietHoursStart' && typeof entryValue !== 'string') return false
       if (key === 'quietHoursEnd' && typeof entryValue !== 'string') return false
+      if (key === 'unlockRemindersEnabled' && typeof entryValue !== 'boolean') return false
     }
 
     return true
@@ -239,6 +246,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   )
   const [quietHoursStart, setQuietHoursStart] = useState<string>(persistedSettings.quietHoursStart)
   const [quietHoursEnd, setQuietHoursEnd] = useState<string>(persistedSettings.quietHoursEnd)
+  const [unlockRemindersEnabled, setUnlockRemindersEnabled] = useState<boolean>(
+    persistedSettings.unlockRemindersEnabled
+  )
 
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
   const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)
@@ -251,7 +261,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     autoDismiss !== originalSettings.autoDismiss ||
     quietHoursEnabled !== originalSettings.quietHoursEnabled ||
     quietHoursStart !== originalSettings.quietHoursStart ||
-    quietHoursEnd !== originalSettings.quietHoursEnd
+    quietHoursEnd !== originalSettings.quietHoursEnd ||
+    unlockRemindersEnabled !== originalSettings.unlockRemindersEnabled
 
   const saveSettings = (next?: SettingsPayload) => {
     // A caller that just changed state in the same event handler cannot rely on
@@ -266,6 +277,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
     }
 
     setThemeMode(payload.themeMode)
@@ -276,6 +288,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursEnabled(payload.quietHoursEnabled)
     setQuietHoursStart(payload.quietHoursStart)
     setQuietHoursEnd(payload.quietHoursEnd)
+    setUnlockRemindersEnabled(payload.unlockRemindersEnabled)
     setPersistedSettings(payload)
     setOriginalSettings(payload)
     if (typeof window !== 'undefined') {
@@ -293,6 +306,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       quietHoursEnabled: defaultPersistedSettings.quietHoursEnabled,
       quietHoursStart: defaultPersistedSettings.quietHoursStart,
       quietHoursEnd: defaultPersistedSettings.quietHoursEnd,
+      unlockRemindersEnabled: defaultPersistedSettings.unlockRemindersEnabled,
     }
 
     setThemeMode(defaults.themeMode)
@@ -303,6 +317,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursEnabled(defaults.quietHoursEnabled)
     setQuietHoursStart(defaults.quietHoursStart)
     setQuietHoursEnd(defaults.quietHoursEnd)
+    setUnlockRemindersEnabled(defaults.unlockRemindersEnabled)
     setPersistedSettings(defaults)
     setOriginalSettings(defaults)
 
@@ -320,6 +335,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursEnabled(originalSettings.quietHoursEnabled)
     setQuietHoursStart(originalSettings.quietHoursStart)
     setQuietHoursEnd(originalSettings.quietHoursEnd)
+    setUnlockRemindersEnabled(originalSettings.unlockRemindersEnabled)
   }
 
   // Apply theme to document and keep it in sync with the system preference.
@@ -355,6 +371,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    unlockRemindersEnabled,
     setThemeMode,
     setNetwork,
     setAddressDisplay,
@@ -363,6 +380,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursEnabled,
     setQuietHoursStart,
     setQuietHoursEnd,
+    setUnlockRemindersEnabled,
     saveSettings,
     resetToDefaults,
     cancelSettings,

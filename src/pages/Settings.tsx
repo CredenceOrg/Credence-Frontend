@@ -11,6 +11,11 @@ import { ErrorState } from '../components/states'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
 import { isQuietHoursActive, parseHHmm } from '../lib/quietHours'
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  type NotificationPermissionState,
+} from '../lib/unlockReminders'
 import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
 import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
 import { updateSettings } from '../api/settings'
@@ -37,6 +42,7 @@ function computeDiff(
     'quietHoursEnabled',
     'quietHoursStart',
     'quietHoursEnd',
+    'unlockRemindersEnabled',
   ]
   for (const key of keys) {
     if (String(current[key]) !== String(incoming[key])) {
@@ -57,6 +63,7 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    unlockRemindersEnabled,
     saveSettings,
   } = useSettings()
   const { addToast } = useToast()
@@ -75,6 +82,7 @@ export default function Settings() {
       quietHoursEnabled: t('settings.fieldLabels.quietHoursEnabled'),
       quietHoursStart: t('settings.fieldLabels.quietHoursStart'),
       quietHoursEnd: t('settings.fieldLabels.quietHoursEnd'),
+      unlockRemindersEnabled: t('settings.fieldLabels.unlockRemindersEnabled'),
     }),
     [t]
   )
@@ -112,6 +120,7 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    unlockRemindersEnabled,
   }))
 
   const isDirty =
@@ -122,7 +131,8 @@ export default function Settings() {
     draft.autoDismiss !== autoDismiss ||
     draft.quietHoursEnabled !== quietHoursEnabled ||
     draft.quietHoursStart !== quietHoursStart ||
-    draft.quietHoursEnd !== quietHoursEnd
+    draft.quietHoursEnd !== quietHoursEnd ||
+    draft.unlockRemindersEnabled !== unlockRemindersEnabled
 
   const updateDraft = (key: string, value: string | boolean | number) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -156,6 +166,25 @@ export default function Settings() {
     })
   }, [draft.quietHoursEnabled, draft.quietHoursStart, draft.quietHoursEnd, quietHoursError])
 
+  // Notification permission is a browser-level grant rather than a setting, so
+  // it is read from the Notification API. The button below (and enabling the
+  // toggle) updates it; a denial simply leaves the feature inert.
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermissionState>(getNotificationPermission)
+
+  const requestUnlockReminderPermission = useCallback(async () => {
+    setNotificationPermission(await requestNotificationPermission())
+  }, [])
+
+  const handleUnlockRemindersToggle = (enabled: boolean) => {
+    updateDraft('unlockRemindersEnabled', enabled)
+    // Ask while the click/keypress gesture is still active, otherwise browsers
+    // may suppress the permission prompt.
+    if (enabled && notificationPermission === 'default') {
+      void requestUnlockReminderPermission()
+    }
+  }
+
   // Field-by-field equality. Memoized so reference stability keeps the auto-save
   // hook's internal effect from re-firing on every parent render.
   const draftIsEqual = useCallback(
@@ -167,7 +196,8 @@ export default function Settings() {
       a.autoDismiss === b.autoDismiss &&
       a.quietHoursEnabled === b.quietHoursEnabled &&
       a.quietHoursStart === b.quietHoursStart &&
-      a.quietHoursEnd === b.quietHoursEnd,
+      a.quietHoursEnd === b.quietHoursEnd &&
+      a.unlockRemindersEnabled === b.unlockRemindersEnabled,
     []
   )
 
@@ -184,6 +214,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
     }),
     [
       themeMode,
@@ -194,6 +225,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
     ]
   )
 
@@ -248,6 +280,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
     })
     addToast('info', t('settings.toasts.reverted'))
   }
@@ -287,6 +320,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
     }
   }, [
     themeMode,
@@ -297,6 +331,7 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    unlockRemindersEnabled,
   ])
 
   const handleExport = useCallback(() => {
@@ -309,6 +344,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -329,6 +365,7 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    unlockRemindersEnabled,
     addToast,
     t,
   ])
@@ -384,6 +421,7 @@ export default function Settings() {
       quietHoursEnabled: importPreview.quietHoursEnabled ?? false,
       quietHoursStart: importPreview.quietHoursStart ?? '22:00',
       quietHoursEnd: importPreview.quietHoursEnd ?? '07:00',
+      unlockRemindersEnabled: importPreview.unlockRemindersEnabled ?? false,
     }
 
     // Import is a commit path: mirror the imported values into the draft and
@@ -614,6 +652,65 @@ export default function Settings() {
               aria-describedby={quietHoursError ? 'quiet-hours-start-error' : undefined}
             />
           </FormField>
+        </fieldset>
+
+        {/* Unlock reminders sub-section */}
+        <fieldset className="settings-fieldset settings-fieldset--card">
+          <legend className="settings-fieldset__legend settings-fieldset__legend--card">
+            {t('settings.notifications.unlockReminders.heading')}
+          </legend>
+          <p className="settings-section__description">
+            {t('settings.notifications.unlockReminders.description')}
+          </p>
+
+          <FormField
+            id="unlock-reminders-enabled"
+            label={t('settings.notifications.unlockReminders.enable')}
+            hint={t('settings.notifications.unlockReminders.hint')}
+          >
+            <Toggle
+              checked={draft.unlockRemindersEnabled}
+              onChange={handleUnlockRemindersToggle}
+              ariaLabel={t('settings.notifications.unlockReminders.enable')}
+            />
+          </FormField>
+
+          {draft.unlockRemindersEnabled && (
+            <>
+              {notificationPermission === 'granted' && (
+                <p className="settings-field-hint" role="status">
+                  {t('settings.notifications.unlockReminders.permission.granted')}
+                </p>
+              )}
+
+              {notificationPermission === 'denied' && (
+                <p className="settings-field-hint" role="status">
+                  {t('settings.notifications.unlockReminders.permission.denied')}
+                </p>
+              )}
+
+              {notificationPermission === 'unsupported' && (
+                <p className="settings-field-hint" role="status">
+                  {t('settings.notifications.unlockReminders.permission.unsupported')}
+                </p>
+              )}
+
+              {notificationPermission === 'default' && (
+                <div className="settings-preview-row">
+                  <button
+                    type="button"
+                    className="settings-btn settings-btn--secondary"
+                    onClick={() => void requestUnlockReminderPermission()}
+                  >
+                    {t('settings.notifications.unlockReminders.permission.request')}
+                  </button>
+                  <span className="settings-field-hint">
+                    {t('settings.notifications.unlockReminders.permission.requestHint')}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
         </fieldset>
       </section>
 

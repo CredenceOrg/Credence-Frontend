@@ -82,7 +82,8 @@
       "autoDismiss": "Auto-dismiss",
       "quietHoursEnabled": "Quiet hours enabled",
       "quietHoursStart": "Quiet hours start",
-      "quietHoursEnd": "Quiet hours end"
+      "quietHoursEnd": "Quiet hours end",
+      "unlockRemindersEnabled": "Unlock reminders enabled"
     },
     "appearance": {
       "heading": "Appearance",
@@ -137,6 +138,19 @@
         "inactive": "Quiet hours are not currently active.",
         "invalidRange": "Start and end times must differ.",
         "invalidFormat": "Start and end times must be in HH:mm format (e.g. 22:00, 07:30)."
+      },
+      "unlockReminders": {
+        "heading": "Unlock reminders",
+        "description": "Get a local browser notification before a bond unlocks. Reminders follow your quiet hours and are never sent twice for the same bond.",
+        "enable": "Enable unlock reminders",
+        "hint": "Reminders appear while this app is open in a tab. Nothing is sent to a server.",
+        "permission": {
+          "granted": "Browser notifications are allowed for this site.",
+          "denied": "Browser notifications are blocked for this site. Allow them in your browser's site settings to receive reminders.",
+          "unsupported": "This browser does not support notifications, so reminders will not be shown.",
+          "request": "Allow browser notifications",
+          "requestHint": "Your browser will ask for permission before any reminder is shown."
+        }
       }
     },
     "backup": {
@@ -450,5 +464,11 @@
     "backend": "Backend error",
     "validation": "Validation error",
     "generic": "An error occurred"
+  },
+  "notifications": {
+    "unlockReminder": {
+      "title": "Bond unlock reminder",
+      "body": "One of your bonds unlocks on {{date}}."
+    }
   }
 }

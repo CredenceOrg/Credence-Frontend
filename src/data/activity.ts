@@ -47,7 +47,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
     id: 'evt-001',
     eventVersion: '1.0',
     correlationId: 'corr-001',
-    timestamp: 'Apr 28, 14:22 UTC',
+    timestamp: '2026-04-28T14:22:00.000Z',
     title: 'Attestation submitted',
     description:
       'Identity evidence package uploaded and signed for review. Proof matched the on-chain checksum.',
@@ -59,7 +59,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
     id: 'evt-002',
     eventVersion: '1.0',
     correlationId: 'corr-002',
-    timestamp: 'Apr 27, 09:48 UTC',
+    timestamp: '2026-04-27T09:48:00.000Z',
     title: 'Proof mismatch detected',
     description:
       'Signature payload differed from expected checksum for one field. Re-submit evidence with the corrected address.',
@@ -71,7 +71,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
     id: 'evt-003',
     eventVersion: '1.0',
     correlationId: 'corr-003',
-    timestamp: 'Apr 26, 20:11 UTC',
+    timestamp: '2026-04-26T20:11:00.000Z',
     title: 'Credential refreshed',
     description:
       'Expiration window extended after successful periodic check. Waiting on quorum review to finalize.',
@@ -83,7 +83,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
     id: 'evt-004',
     eventVersion: '1.0',
     correlationId: 'corr-004',
-    timestamp: 'Apr 25, 12:01 UTC',
+    timestamp: '2026-04-25T12:01:00.000Z',
     title: 'Bond-backed identity confirmed',
     description:
       'USDC bond locked against your wallet address. Validator quorum accepted the proof on the first round.',
@@ -95,7 +95,7 @@ export const SAMPLE_ACTIVITY: ActivityItem[] = [
     id: 'evt-005',
     eventVersion: '1.0',
     correlationId: 'corr-005',
-    timestamp: 'Apr 24, 16:33 UTC',
+    timestamp: '2026-04-24T16:33:00.000Z',
     title: 'Stale credential flagged',
     description:
       'Certification document is older than the 90-day threshold. Provide a renewed credential to clear this status.',

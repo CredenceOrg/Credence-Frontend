@@ -166,6 +166,22 @@ Adding a new widget should feel like the existing Bond / TrustScore widgets —
 just import `useWidgetCache` + `WidgetRefreshButton` and use `data-testid` if
 you need a hook for end-to-end tests.
 
+## API query cache environment overrides
+
+`useApiQuery` uses `src/config/queryCache.ts` for its in-memory cache lifecycle:
+
+- `VITE_QUERY_CACHE_DEFAULT_TTL_MS` controls how long stale data remains
+  usable and is revalidated in the background. Default: `60000` ms.
+- `VITE_QUERY_CACHE_STALE_TIME_MS` controls when an entry stops being fresh.
+  Default: `30000` ms.
+- `VITE_QUERY_CACHE_GC_TIME_MS` controls garbage collection eviction.
+  Default: `300000` ms.
+
+Each `useApiQuery` call may override these values with `staleTimeMs`, `ttlMs`,
+and `gcTimeMs`. Fresh entries are returned without a network request. Entries
+past `staleTimeMs` but within `ttlMs` are returned immediately and refreshed in
+the background. Entries past `ttlMs` are evicted and fetched normally.
+
 ## Out of scope / future work
 
 - LRU eviction on `MAX_ENTRIES` (currently FIFO; documented in

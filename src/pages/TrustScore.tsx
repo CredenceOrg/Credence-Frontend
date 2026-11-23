@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { useEffect, useRef, useState, useMemo } from '
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'

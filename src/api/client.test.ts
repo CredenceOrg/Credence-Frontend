@@ -6,8 +6,8 @@ import {
   ApiError,
   ApiRateLimitError,
   MAX_REQUEST_BODY_BYTES,
-  API_BASE_URL,
   apiFetch,
+  errorMessage,
   apiRateLimiterSnapshot,
   buildUrl,
   defaultApiRateLimiter,
@@ -1767,10 +1767,10 @@ describe('state consistency across call chain', () => {
     const methods: string[] = []
     const correlationIds: string[] = []
 
-    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
-      paths.push(url)
-      methods.push(init.method || '')
-      const headers = init.headers as Headers
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      paths.push(String(input))
+      methods.push(init?.method || '')
+      const headers = init?.headers as Headers
       correlationIds.push(headers.get('X-Correlation-ID') || 'missing')
       return jsonResponse({ ok: true })
     })
@@ -1791,8 +1791,8 @@ describe('state consistency across call chain', () => {
   it('distinct calls use distinct correlationIds even with idempotency caching', async () => {
     const correlationIds: string[] = []
 
-    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
-      const headers = init.headers as Headers
+    fetchMock.mockImplementation(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const headers = init?.headers as Headers
       correlationIds.push(headers.get('X-Correlation-ID') || 'missing')
       return jsonResponse({ ok: true })
     })
@@ -1821,8 +1821,8 @@ describe('state consistency across call chain', () => {
   it('correlationId is set before rate limiting decision', async () => {
     let capturedCorrelationId: string | null = null
 
-    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
-      const headers = init.headers as Headers
+    fetchMock.mockImplementation(async (_url: URL | RequestInfo, init?: RequestInit) => {
+      const headers = init?.headers as Headers
       capturedCorrelationId = headers.get('X-Correlation-ID')
       return jsonResponse({ ok: true })
     })

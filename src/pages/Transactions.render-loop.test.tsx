@@ -38,26 +38,29 @@ vi.mock('../lib/transactionsExport', async (importOriginal) => {
 })
 
 const TX_BASE = {
-  type: 'bond_create',
+  type: 'bond',
   amountUsdc: 1000,
   status: 'confirmed',
   timestamp: '2026-01-15T12:00:00Z',
+  hash: 'hash-1',
 } as const
 
 const TX1: Transaction = { id: 'tx-1', ...TX_BASE }
 const TX2: Transaction = {
   id: 'tx-2',
   type: 'withdraw',
-  amountUsdc: null,
+  amountUsdc: undefined,
   status: 'failed',
   timestamp: '2026-01-16T08:30:00Z',
+  hash: 'hash-2',
 }
 const TX3: Transaction = {
   id: 'tx-3',
-  type: 'attest',
+  type: 'attestation',
   amountUsdc: 250,
   status: 'pending',
   timestamp: '2026-01-17T09:45:00Z',
+  hash: 'hash-3',
 }
 
 describe('Transactions render loop regression (issue #1377)', () => {

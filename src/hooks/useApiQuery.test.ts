@@ -355,7 +355,7 @@ describe('useApiQuery', () => {
   it('isolates cache and aborts in-flight requests on network switch', async () => {
     const publicDeferred = deferred<MockData>()
     const testData: MockData = { score: 410, tier: 'bronze' }
-    let capturedSignal: AbortSignal | undefined
+    let capturedSignal: AbortSignal | null | undefined
 
     apiFetchMock.mockImplementationOnce((_path, init) => {
       capturedSignal = init?.signal

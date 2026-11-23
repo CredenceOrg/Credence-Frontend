@@ -15,7 +15,7 @@ type SelectStory = { args?: Record<string, unknown>; render?: (args: never, ctx:
  */
 function storyArgs(story: SelectStory): SelectProps {
   const metaArgs = (SelectStories.default?.args ?? {}) as Record<string, unknown>
-  return { onChange: vi.fn(), ...metaArgs, ...(story.args ?? {}) } as SelectProps
+  return { onChange: vi.fn(), ...metaArgs, ...(story.args ?? {}) } as unknown as SelectProps
 }
 
 /** Renders a story the way Storybook would, honouring a custom `render`. */

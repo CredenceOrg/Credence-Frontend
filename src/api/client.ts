@@ -370,7 +370,7 @@ export function buildUrl(path: string, baseUrl: string = API_BASE_URL): string {
   return `${normalizeBaseUrl(baseUrl)}${normalizeApiPath(path)}`
 }
 
-function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unknown> | unknown[] {
+export function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unknown> | unknown[] {
   return (
     Boolean(body) &&
     typeof body === 'object' &&
@@ -472,7 +472,10 @@ const MAX_ERROR_MESSAGE_LENGTH = 500
  * - Prefers an explicit `message` string, then a `error` string, then a
  *   non-empty string payload, then a status-derived fallback.
  */
-function errorMessage(status: number, payload: unknown): string {
+export function errorMessage(err: unknown): string
+export function errorMessage(status: number, payload: unknown): string
+export function errorMessage(statusOrErr: number | unknown, payload?: unknown): string {
+  const status = typeof statusOrErr === 'number' ? statusOrErr : 500
   if (payload && typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string') {
     return payload.message
   }

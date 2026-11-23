@@ -50,6 +50,11 @@ interface FetchedPage {
   nextCursor?: string
 }
 
+interface InFlightPage {
+  controller: AbortController
+  promise: Promise<FetchedPage | null>
+}
+
 export interface UseTransactionsResult {
   data: Transaction[]
   isLoading: boolean

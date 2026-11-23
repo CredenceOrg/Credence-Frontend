@@ -117,7 +117,6 @@ describe('ConnectWalletModal — Rendering & A11y', () => {
     renderModal({ open: null })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    // @ts-expect-error testing boundary input
     renderModal({ open: undefined })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })

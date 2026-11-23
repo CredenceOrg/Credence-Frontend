@@ -561,7 +561,7 @@ describe('Transactions page', () => {
       const pendingTx = {
         ...TX3,
         _network: 'test' as const,
-      } as TransactionWithNetwork
+      } as unknown as TransactionWithNetwork
 
       mockLoaded([TX1, TX2, pendingTx])
       mockUseSettings.mockReturnValue({ network: 'public' })
@@ -582,7 +582,7 @@ describe('Transactions page', () => {
       const pendingTx = {
         ...TX3,
         _network: 'public' as const,
-      } as TransactionWithNetwork
+      } as unknown as TransactionWithNetwork
 
       mockLoaded([TX1, TX2, pendingTx])
       mockUseSettings.mockReturnValue({ network: 'public' })

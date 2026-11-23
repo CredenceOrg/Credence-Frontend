@@ -100,8 +100,8 @@ describe('transactionsToCsv', () => {
   it('neutralizes all text columns and preserves RFC 4180 escaping', () => {
     const transaction: Transaction = {
       id: '=H,"Click"',
-      type: '=type',
-      status: '+status',
+      type: '=type' as unknown as Transaction['type'],
+      status: '+status' as unknown as Transaction['status'],
       amountUsdc: undefined,
       timestamp: '@timestamp',
       hash: '\t@SUM(1+1)',

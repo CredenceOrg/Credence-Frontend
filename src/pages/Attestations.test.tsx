@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup, waitFor, within } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import Attestations from './Attestations'
@@ -71,9 +71,10 @@ describe('Attestations Page — filter, drawer, and live region', () => {
     expect(screen.getByText(/showing 2 of 5 attestations/i)).toBeInTheDocument()
   })
 
-  it('shows attestation-specific empty state when filter yields no results', () => {
+  it('shows attestation-specific empty state when filter yields no results', async () => {
+    const user = userEvent.setup()
     render(<Attestations />)
-    const filterSelect = screen.getByRole('combobox', { name: /filter attestations/i })
+    screen.getByRole('combobox', { name: /filter attestations/i })
 
     const rows = screen.getAllByRole('listitem')
     await user.click(rows[0]!)
@@ -92,6 +93,7 @@ describe('Attestations Page — filter, drawer, and live region', () => {
 
     // Panel is hidden — use queryByTestId since CopyableHash is not mocked here
     expect(screen.queryByTestId('copyable-hash')).not.toBeInTheDocument()
+    const expandBtn = screen.getAllByRole('button', { expanded: false })[0]!
     fireEvent.click(expandBtn)
 
     expect(expandBtn).toHaveAttribute('aria-expanded', 'true')

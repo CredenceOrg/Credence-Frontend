@@ -65,7 +65,7 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve, reject }
 }
 
-function makeTx(id: string, type = 'bond'): Transaction {
+function makeTx(id: string, type: Transaction['type'] = 'bond'): Transaction {
   return {
     id,
     hash: `hash-${id}`,
@@ -109,7 +109,7 @@ describe('Transactions pagination prefetch', () => {
       items: Array.from({ length: 20 }, (_, index) => makeTx(`p1-${index}`)),
       nextCursor: 'c1',
     }
-    const pageTwo: Page = { items: [makeTx('p2-0', 'page_two_marker')] }
+    const pageTwo: Page = { items: [makeTx('p2-0', 'page_two_marker' as Transaction['type'])] }
     const deferredPageTwo = deferred<Page>()
 
     apiFetchMock.mockImplementation((path: string) => {

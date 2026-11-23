@@ -10,6 +10,7 @@ Credence Frontend uses [Vitest](https://vitest.dev/) with [React Testing Library
 npm run test          # single run (CI)
 npm run test:watch    # watch mode (development)
 npm run coverage      # single run with coverage report
+npm run typecheck:tests # type-check test files and stories (tsconfig.test.json)
 ```
 
 ---

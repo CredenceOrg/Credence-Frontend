@@ -32,11 +32,11 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve, reject }
 }
 
-function makeTx(id: string, type = 'bond'): Transaction {
+function makeTx(id: string, type: Transaction['type'] | 'page_two' = 'bond'): Transaction {
   return {
     id,
     hash: `hash-${id}`,
-    type,
+    type: type as Transaction['type'],
     status: 'confirmed',
     amountUsdc: 100,
     timestamp: '2026-01-15T12:00:00Z',
@@ -55,13 +55,13 @@ function callsForCursor(cursor: string): number {
 function mockPageOneThenDeferredPageTwo(pageOne: Page, deferredPageTwo: Deferred<Page>) {
   const signals: AbortSignal[] = []
 
-  apiFetchMock.mockImplementation((path: string, init?: RequestInit) => {
+  apiFetchMock.mockImplementation(((path: string, init?: RequestInit) => {
     if (pageParams(path).get('cursor') === 'c1') {
       if (init?.signal) signals.push(init.signal)
       return deferredPageTwo.promise
     }
     return Promise.resolve(pageOne)
-  })
+  }) as unknown as typeof apiFetch)
 
   return { signals }
 }
@@ -216,7 +216,7 @@ describe('useTransactions prefetch deduplication', () => {
     const signals: AbortSignal[] = []
 
     let pageOneCalls = 0
-    apiFetchMock.mockImplementation((path: string, init?: RequestInit) => {
+    apiFetchMock.mockImplementation(((path: string, init?: RequestInit) => {
       if (pageParams(path).get('cursor') === 'c1') {
         if (init?.signal) signals.push(init.signal)
         return deferredPageTwo.promise
@@ -227,7 +227,7 @@ describe('useTransactions prefetch deduplication', () => {
       return Promise.resolve(
         pageOneCalls === 1 ? { items: pageOne, nextCursor: 'c1' } : { items: pageOne }
       )
-    })
+    }) as unknown as typeof apiFetch)
 
     const { result } = renderHook(() => useTransactions())
     await waitFor(() => expect(result.current.isLoading).toBe(false))

@@ -93,28 +93,6 @@ function readV1(): Transaction[] | null {
   return coerceTransactions(res.value.items)
 }
 
-function readLegacy(): Transaction[] | null {
-  const res = safeReadJson<unknown>(PENDING_TXS_LEGACY_KEY)
-  if (!res.ok) return []
-  if (!res.value) return null
-  return coerceTransactions(res.value)
-}
-
-function migrateFromLegacy(items: Transaction[]): void {
-  const payload: PendingTxsV1 = {
-    schemaVersion: 1,
-    items,
-    migratedFrom: 'v0',
-    migratedAt: new Date().toISOString(),
-  }
-  const write = safeWriteJson(PENDING_TXS_V1_KEY, payload)
-  if (write.ok) {
-    logInfo('pending_txs_migrated', { from: 'v0', to: 'v1', count: items.length })
-  } else {
-    logWarn('pending_txs_migration_failed', { message: write.error.message })
-  }
-}
-
 /**
  * One-time migration from v1/v0 to v2 (scoped by network and address).
  * This reads the global v1 key, clears it, and attempts to infer a network

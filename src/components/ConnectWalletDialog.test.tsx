@@ -446,3 +446,19 @@ describe('ConnectWalletDialog — handleBackdropClick failure boundaries', () =>
     expect(onClose).toHaveBeenCalledOnce()
   })
 })
+
+describe('ConnectWalletDialog — wallet provider selection', () => {
+  it('allows switching to xBull and connects with the xbull adapter id', async () => {
+    const user = userEvent.setup()
+    renderModal()
+
+    const xbullOption = screen.getByRole('radio', { name: /xbull/i })
+    await user.click(xbullOption)
+
+    expect(xbullOption).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('heading', { name: /connect xbull wallet/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^connect$/i }))
+    expect(mockConnect).toHaveBeenCalledWith('xbull')
+  })
+})

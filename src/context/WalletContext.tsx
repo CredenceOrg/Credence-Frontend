@@ -9,7 +9,7 @@ import SessionTimeoutDialog from '../components/SessionTimeoutDialog'
 import ReauthPrompt from '../components/ReauthPrompt'
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
 import { clearAppLocalStorage } from '../lib/clearAppLocalStorage'
-import { fetchFreighterAddress, requestFreighterAccess } from '../lib/freighterClient'
+import { getWalletAdapter } from '../lib/wallet/registry'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean
@@ -102,6 +102,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     emitWalletSessionEvent('session_expired', {
       address: null,
       network: null,
+      adapterId: wallet.adapterId ?? null,
       correlationId: generateCorrelationId('session-idle-expiry'),
       metadata: {
         previousAddress: prevAddress || null,
@@ -151,7 +152,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         return true
       }
 
-      const access = await requestFreighterAccess()
+      const adapter = getWalletAdapter(session.adapterId)
+      const access = await adapter.connect()
       if (!access.ok) return false
       if (logoutGenRef.current !== gen) return false
       if (access.address !== session.address) {
@@ -159,7 +161,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         return false
       }
 
-      const activeAddress = await fetchFreighterAddress()
+      const activeAddress = await adapter.getAddress()
       if (logoutGenRef.current !== gen) return false
 
       if (!activeAddress || activeAddress !== session.address) {

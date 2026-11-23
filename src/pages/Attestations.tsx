@@ -7,6 +7,19 @@ import Select from '../components/controls/Select'
 import { ATTESTATION_EVENTS, type AttestationPayload, type ActivityItem } from '../events'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 
+export function formatTimestamp(date: Date = new Date()): string {
+  return (
+    date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'UTC',
+    }) + ' UTC'
+  )
+}
+
 export default function Attestations() {
   const { t } = useTranslation()
   useDocumentTitle(t('attestations.title', 'Attestations'))
@@ -14,19 +27,6 @@ export default function Attestations() {
   const [filterTone, setFilterTone] = useState<string>('all')
 
   const handleSubmitSuccess = (payload: AttestationPayload) => {
-    const formatTimestamp = () => {
-      const now = new Date()
-      return (
-        now.toLocaleDateString(undefined, {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        }) + ' UTC'
-      )
-    }
-
     const newItem: ActivityItem = {
       id: `evt-new-${items.length + 1}`,
       timestamp: formatTimestamp(),

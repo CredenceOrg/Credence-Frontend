@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import Attestations from './Attestations'
+import Attestations, { formatTimestamp } from './Attestations'
 
 vi.mock('../components/AttestationForm', () => ({
   default: () => <div data-testid="attestation-form" />,
@@ -96,5 +96,41 @@ describe('Attestations Page — filter, drawer, and live region', () => {
 
     expect(expandBtn).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText(/Validator/)).toBeVisible()
+  })
+})
+
+describe('formatTimestamp', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  })
+
+  it('formats the current system time in UTC regardless of local timezone', () => {
+    vi.stubEnv('TZ', 'America/New_York')
+    const fixedDate = new Date('2026-06-15T23:45:00Z')
+    vi.useFakeTimers()
+    vi.setSystemTime(fixedDate)
+
+    const localeSpy = vi.spyOn(Date.prototype, 'toLocaleDateString')
+
+    const result = formatTimestamp()
+
+    expect(localeSpy).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ timeZone: 'UTC', hour12: false })
+    )
+    expect(result).toBe(
+      fixedDate.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'UTC',
+      }) + ' UTC'
+    )
+    expect(result).toContain('23:45')
+    expect(result.endsWith(' UTC')).toBe(true)
   })
 })

@@ -21,6 +21,30 @@
     "transactions": "Transactions",
     "settings": "Settings"
   },
+  "signIn": {
+    "title": "Sign In",
+    "heading": "Sign in to continue",
+    "description": "Connect your Freighter wallet to access your dashboard, bonds, and trust score.",
+    "connectWallet": "Connect wallet"
+  },
+  "home": {
+    "title": "Credence — Economic Trust",
+    "description": "On-chain economic identity on Stellar. Stake USDC as a programmable reputation bond.",
+    "createBond": "Create bond",
+    "viewTrustScore": "View trust score",
+    "connectedWallet": "Connected wallet",
+    "yourAccount": "Your account",
+    "trustScore": "Trust score",
+    "usdcBalance": "USDC balance",
+    "nextSteps": "Next steps",
+    "openDashboard": "Open dashboard",
+    "viewTransactionHistory": "View transaction history",
+    "viewDetails": "View details",
+    "noTrustScoreYet": "No trust score yet.",
+    "errorLoadTrustScore": "Couldn't load your trust score.",
+    "errorLoadBalance": "Couldn't load your balance.",
+    "retry": "Try again"
+  },
   "dashboard": {
     "title": "Dashboard",
     "description": "Monitor trust score, active bonds, and recent protocol activity from one place.",
@@ -50,13 +74,24 @@
   },
   "settings": {
     "title": "Settings",
+    "fieldLabels": {
+      "themeMode": "Theme mode",
+      "network": "Network",
+      "addressDisplay": "Address display",
+      "toastsEnabled": "Enable toasts",
+      "autoDismiss": "Auto-dismiss",
+      "quietHoursEnabled": "Quiet hours enabled",
+      "quietHoursStart": "Quiet hours start",
+      "quietHoursEnd": "Quiet hours end"
+    },
     "appearance": {
       "heading": "Appearance",
       "description": "Controls for theme and visual preferences.",
-      "theme": "Theme",
+      "theme": "Theme mode",
       "light": "Light",
       "dark": "Dark",
       "system": "System",
+      "systemHint": "System follows your OS preference automatically.",
       "quickToggle": "Quick toggle",
       "quickToggleHint": "Use the quick toggle to flip light/dark immediately. Theme radio buttons above apply on Save."
     },
@@ -65,15 +100,17 @@
       "description": "Choose the Stellar network to interact with.",
       "stellarNetwork": "Stellar Network",
       "public": "Public (Mainnet)",
-      "test": "Test (Testnet)"
+      "test": "Test (Testnet)",
+      "hint": "Changing to Testnet uses isolated, non-real assets."
     },
     "display": {
       "heading": "Display",
       "description": "How addresses and identifiers are presented in the UI.",
       "addressFormat": "Address format",
-      "full": "Full (G...)",
-      "short": "Short (G...…)",
-      "friendly": "Friendly (when available)"
+      "full": "Full (G…)",
+      "short": "Short (G……)",
+      "friendly": "Friendly",
+      "friendlyHint": "Friendly shows a registered name when available, otherwise falls back to Short."
     },
     "notifications": {
       "heading": "Notifications",
@@ -84,36 +121,44 @@
       "3seconds": "3 seconds",
       "5seconds": "5 seconds",
       "8seconds": "8 seconds",
-      "preview": "Preview",
-      "showPreview": "Show preview",
+      "preview": "Show preview",
       "previewHint": "Preview respects current toast settings.",
+      "autoDismissHint": "How long before a toast automatically closes. Danger toasts always require manual dismissal.",
       "quietHours": {
-        "heading": "Quiet hours",
-        "description": "Silence non-critical toasts between the chosen hours. Critical error toasts are never silenced.",
+        "heading": "Quiet Hours",
+        "description": "When enabled, non-critical toasts will be suppressed during the configured window. Critical (danger) toasts always surface regardless.",
         "enable": "Enable quiet hours",
-        "start": "Start time",
-        "end": "End time",
+        "start": "Start time (HH:mm)",
+        "end": "End time (HH:mm)",
+        "startPlaceholder": "22:00",
+        "endPlaceholder": "07:00",
         "includeCritical": "Danger toasts (critical) are not silenced.",
-        "active": "Quiet hours active now",
-        "inactive": "Quiet hours inactive",
-        "invalidRange": "End time must differ from the start time."
+        "active": "Quiet hours are currently active — non-critical toasts are suppressed.",
+        "inactive": "Quiet hours are not currently active.",
+        "invalidRange": "Start and end times must differ.",
+        "invalidFormat": "Start and end times must be in HH:mm format (e.g. 22:00, 07:30)."
       }
     },
     "backup": {
       "heading": "Backup & Restore",
       "description": "Export your settings as a JSON file, or import settings from a previous export.",
       "exportSettings": "Export settings",
+      "exportAriaLabel": "Export settings to JSON file",
       "importSettings": "Import settings",
+      "importAriaLabel": "Import settings from JSON file",
       "invalidFile": "Invalid settings file",
-      "clearError": "Clear error"
+      "clearError": "Clear error",
+      "fileReadError": "Failed to read file",
+      "invalidJson": "File does not contain valid JSON"
     },
     "actions": {
       "save": "Save",
       "saved": "Saved",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "ariaLabel": "Save or discard settings"
     },
     "importDialog": {
-      "title": "Import Settings",
+      "title": "Import settings?",
       "subtitle": "Review the changes below before applying.",
       "noChanges": "Imported settings match your current settings. No changes will be made.",
       "changesIntro": "The following settings from {{file}} will be applied:",
@@ -121,7 +166,7 @@
       "current": "Current",
       "imported": "Imported",
       "confirmHint": "This will overwrite your current settings with the imported values.",
-      "confirmLabel": "Import settings"
+      "confirmLabel": "Apply settings"
     },
     "autoSave": {
       "saving": "Saving…",
@@ -135,12 +180,51 @@
       "reverted": "Settings reverted to last saved state",
       "exported": "Settings exported successfully",
       "imported": "Settings imported successfully",
-      "importCancelled": "Import cancelled"
-    }
+      "importCancelled": "Import cancelled",
+      "preview": "This is a preview notification"
+    },
+    "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
   },
   "bond": {
     "title": "Bond USDC",
     "description": "Lock USDC into the Credence contract to build your economic reputation.",
+    "detail": {
+      "title": "Manage Bond #{{id}}",
+      "backToBonds": "← Back to Bonds",
+      "notFound": "Bond Not Found",
+      "notFoundMessage": "The requested bond with ID #{{id}} does not exist or has been removed.",
+      "connectRequired": "Connect wallet required",
+      "connectRequiredDescription": "Withdrawal and lock extensions require a connected Stellar wallet.",
+      "earlyWithdrawalWarning": "Early Withdrawal Penalty Active",
+      "earlyWithdrawalDescription": "This bond is currently locked. Withdrawing early will slash {{penaltyAmount}} ({{percent}}% penalty).",
+      "specification": "Bond Specification",
+      "bondedAmount": "Bonded Amount",
+      "timeRemaining": "Time Remaining",
+      "lockDuration": "Lock Duration",
+      "durationDays": "{{duration}} Days",
+      "lockStartDate": "Lock Start Date",
+      "estimatedUnlockDate": "Estimated Unlock Date",
+      "extendLockDuration": "Extend Lock Duration",
+      "plus30Days": "+30 Days",
+      "plus90Days": "+90 Days",
+      "extendTooltip": "Connect your wallet to extend the lock duration",
+      "topUpBond": "Top-Up Bond",
+      "addUsdc": "Add USDC",
+      "topUpTooltip": "Connect your wallet to top up this bond",
+      "redeemOrSettle": "Redeem or Settle",
+      "withdraw": "Withdraw",
+      "connectToWithdraw": "Connect wallet to withdraw",
+      "slashRiskPanel": "Slash-Risk Panel",
+      "currentPenalty": "Current Early-Withdrawal Penalty",
+      "usdcPenalty": "USDC Penalty Amount",
+      "resultingBalance": "Resulting Balance Received",
+      "slashDisclaimer": "All penalty calculations are dynamic and subject to protocol slashing rules. Once initiated, withdrawal is irreversible.",
+      "confirmWithdrawal": "Confirm bond withdrawal",
+      "withdrawalSubtitle": "You are withdrawing bond #{{id}} ({{amount}}).",
+      "withdrawnWithPenalty": "Bond withdrawn. {{penalty}} was slashed per early withdrawal policy.",
+      "withdrawnSuccess": "Bond withdrawn successfully.",
+      "lockExtended": "Lock duration extended by +{{days}} days."
+    },
     "infoBanner": "Bonds are locked for a minimum of 30 days. Early withdrawal incurs a slash penalty.",
     "connectRequired": "Connect wallet required",
     "connectRequiredDescription": "Create bond and withdraw actions require a connected Stellar wallet.",
@@ -164,8 +248,6 @@
     "createFirstBond": "Create your first bond",
     "hidePenalty": "Hide penalty",
     "showPenalty": "Show penalty",
-    "withdraw": "Withdraw",
-    "connectToWithdraw": "Connect wallet to withdraw",
     "bondAmount": "Bond amount",
     "penalty": "Penalty ({{percent}}%)",
     "youReceive": "You receive",

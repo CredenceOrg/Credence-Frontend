@@ -1,4 +1,10 @@
 import { QUIET_HOURS_TIME_PATTERN } from '../config/notifications'
+import {
+  ADDRESS_BOOK_MAX_ENTRIES,
+  coerceAddressBookEntries,
+  type AddressBookEntry,
+} from './addressBookStorage'
+import { isValidStellarAddress, sanitizeAddressInput } from './stellar'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -14,6 +20,8 @@ export interface SettingsBlob {
   quietHoursStart: string
   /** Inclusive `HH:mm` end of the quiet window. */
   quietHoursEnd: string
+  /** Optional wallet-scoped address book entries included in backup/restore. */
+  addressBook?: AddressBookEntry[]
 }
 
 const VALID_THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system']
@@ -126,6 +134,29 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
       result.quietHoursEnd = input.quietHoursEnd
     } else {
       errors.push('quietHoursEnd must match HH:mm (24-hour)')
+    }
+  }
+
+  // Address book is OPTIONAL on import so older exports keep working.
+  if (input.addressBook !== undefined) {
+    if (!Array.isArray(input.addressBook)) {
+      errors.push('addressBook must be an array')
+    } else if (input.addressBook.length > ADDRESS_BOOK_MAX_ENTRIES) {
+      errors.push(`addressBook cannot exceed ${ADDRESS_BOOK_MAX_ENTRIES} entries`)
+    } else {
+      const invalidIndex = input.addressBook.findIndex((item) => {
+        if (!item || typeof item !== 'object') return true
+        const rec = item as Record<string, unknown>
+        if (typeof rec.label !== 'string' || !rec.label.trim()) return true
+        if (typeof rec.address !== 'string') return true
+        const sanitized = sanitizeAddressInput(rec.address)
+        return !sanitized.ok || !isValidStellarAddress(sanitized.value)
+      })
+      if (invalidIndex !== -1) {
+        errors.push(`addressBook[${invalidIndex}] must have a non-empty label and valid Stellar address`)
+      } else {
+        result.addressBook = coerceAddressBookEntries(input.addressBook)
+      }
     }
   }
 

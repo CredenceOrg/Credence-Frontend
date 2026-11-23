@@ -373,3 +373,97 @@ describe('echo display respects addressDisplay setting', () => {
     )
   })
 })
+
+// --- Address book picker ---
+describe('address book picker', () => {
+  const SECOND_VALID_KEY = 'GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ'
+
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('does not render picker button when address book is empty', () => {
+    render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: /choose from address book/i })).toBeNull()
+  })
+
+  it('opens combobox picker and supports keyboard navigation and selection', async () => {
+    window.localStorage.setItem(
+      'credence:address-book:v1:public:anonymous',
+      JSON.stringify({
+        schemaVersion: 1,
+        entries: [
+          {
+            id: 'e1',
+            label: 'Alice',
+            address: VALID_KEY,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'e2',
+            label: 'Bob',
+            address: SECOND_VALID_KEY,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      })
+    )
+
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<AddressInput id="addr" value="" onChange={onChange} />)
+
+    const toggleBtn = screen.getByRole('button', { name: /choose from address book/i })
+    await user.click(toggleBtn)
+
+    const combobox = screen.getByRole('combobox', { name: /filter address book/i })
+    expect(combobox).toBeInTheDocument()
+    expect(screen.getByRole('listbox', { name: /address book entries/i })).toBeInTheDocument()
+
+    // Navigate down to second option (Bob) and press Enter
+    await user.keyboard('{ArrowDown}{Enter}')
+    expect(onChange).toHaveBeenCalledWith(SECOND_VALID_KEY)
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('filters entries and closes on Escape', async () => {
+    window.localStorage.setItem(
+      'credence:address-book:v1:public:anonymous',
+      JSON.stringify({
+        schemaVersion: 1,
+        entries: [
+          {
+            id: 'e1',
+            label: 'Treasury',
+            address: VALID_KEY,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'e2',
+            label: 'Operations',
+            address: SECOND_VALID_KEY,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      })
+    )
+
+    const user = userEvent.setup()
+    render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: /choose from address book/i }))
+    const combobox = screen.getByRole('combobox', { name: /filter address book/i })
+    await user.type(combobox, 'Treas')
+
+    const options = screen.getAllByRole('option')
+    expect(options).toHaveLength(1)
+    expect(options[0]).toHaveTextContent('Treasury')
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+})

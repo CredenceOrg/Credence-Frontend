@@ -1,3 +1,4 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import { useToast } from '../components/ToastProvider'
 import { FormField, Input } from '../components/forms'
@@ -13,16 +14,17 @@ import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
 import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
 import { updateSettings } from '../api/settings'
 import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
-import { DOM_EVENTS } from '../config/domEvents'
+import { useAddressBook } from '../hooks/useAddressBook'
+import { formatAddressForDisplay, type AddressDisplayMode } from '../lib/stellar'
 import type { AutoDismissOption } from '../context/SettingsContext'
 import './Settings.css'
 
 function computeDiff(
-  current: Omit<SettingsBlob, keyof unknown>,
+  current: SettingsBlob,
   incoming: SettingsBlob
 ): { key: string; from: string; to: string }[] {
   const diffs: { key: string; from: string; to: string }[] = []
-  const keys: (keyof SettingsBlob)[] = [
+  const keys: (keyof Omit<SettingsBlob, 'addressBook'>)[] = [
     'themeMode',
     'network',
     'addressDisplay',
@@ -35,6 +37,21 @@ function computeDiff(
   for (const key of keys) {
     if (String(current[key]) !== String(incoming[key])) {
       diffs.push({ key, from: String(current[key]), to: String(incoming[key]) })
+    }
+  }
+  if (incoming.addressBook !== undefined) {
+    const currentCount = current.addressBook?.length ?? 0
+    const incomingCount = incoming.addressBook.length
+    const currentSig = JSON.stringify(
+      (current.addressBook ?? []).map((e) => [e.label, e.address])
+    )
+    const incomingSig = JSON.stringify(incoming.addressBook.map((e) => [e.label, e.address]))
+    if (currentSig !== incomingSig) {
+      diffs.push({
+        key: 'addressBook',
+        from: `${currentCount} ${currentCount === 1 ? 'entry' : 'entries'}`,
+        to: `${incomingCount} ${incomingCount === 1 ? 'entry' : 'entries'}`,
+      })
     }
   }
   return diffs
@@ -51,6 +68,7 @@ const FIELD_LABELS: Record<string, string> = {
   quietHoursEnabled: 'Quiet hours enabled',
   quietHoursStart: 'Quiet hours start',
   quietHoursEnd: 'Quiet hours end',
+  addressBook: 'Address book',
 }
 
 const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string }[] = [
@@ -77,10 +95,79 @@ export default function Settings() {
     setToastsEnabled,
     autoDismiss,
     setAutoDismiss,
+    quietHoursEnabled,
+    setQuietHoursEnabled,
+    quietHoursStart,
+    setQuietHoursStart,
+    quietHoursEnd,
+    setQuietHoursEnd,
+    saveSettings,
   } = useSettings()
   const { addToast } = useToast()
+  const {
+    entries: addressBookEntries,
+    addEntry,
+    updateEntry,
+    removeEntry,
+    replaceEntries,
+    maxEntries,
+  } = useAddressBook()
 
   useDocumentTitle('Settings')
+
+  // Address book form state
+  const [newLabel, setNewLabel] = useState('')
+  const [newAddress, setNewAddress] = useState('')
+  const [addressBookError, setAddressBookError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editLabel, setEditLabel] = useState('')
+  const [editAddress, setEditAddress] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
+
+  const handleAddAddressBookEntry = (e: React.FormEvent) => {
+    e.preventDefault()
+    const result = addEntry(newLabel, newAddress)
+    if (!result.ok) {
+      setAddressBookError(result.error)
+      return
+    }
+    setAddressBookError(null)
+    setNewLabel('')
+    setNewAddress('')
+    addToast('success', `Saved "${result.entry.label}" to address book`)
+  }
+
+  const handleStartEdit = (id: string, label: string, address: string) => {
+    setEditingId(id)
+    setEditLabel(label)
+    setEditAddress(address)
+    setEditError(null)
+  }
+
+  const handleSaveEdit = (id: string) => {
+    const result = updateEntry(id, editLabel, editAddress)
+    if (!result.ok) {
+      setEditError(result.error)
+      return
+    }
+    setEditingId(null)
+    setEditError(null)
+    addToast('success', `Updated "${result.entry.label}"`)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setEditError(null)
+  }
+
+  const handleRemoveEntry = (id: string, label: string) => {
+    removeEntry(id)
+    if (editingId === id) {
+      setEditingId(null)
+      setEditError(null)
+    }
+    addToast('info', `Removed "${label}" from address book`)
+  }
 
   // Settings draft mirrors the persisted state at mount and is what the user
   // edits locally before pressing Save. The dirty detection below intentionally
@@ -235,8 +322,8 @@ export default function Settings() {
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault()
     }
-    window.addEventListener(DOM_EVENTS.BEFORE_UNLOAD, handler)
-    return () => window.removeEventListener(DOM_EVENTS.BEFORE_UNLOAD, handler)
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -255,9 +342,9 @@ export default function Settings() {
     }
   }, [])
 
-  const currentSettings = useMemo(() => {
+  const currentSettings = useMemo<SettingsBlob>(() => {
     return {
-      themeMode,
+      themeMode: themeMode as 'light' | 'dark' | 'system',
       network,
       addressDisplay,
       toastsEnabled,
@@ -265,6 +352,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      addressBook: addressBookEntries,
     }
   }, [
     themeMode,
@@ -275,6 +363,7 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    addressBookEntries,
   ])
 
   const handleExport = useCallback(() => {
@@ -287,6 +376,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      addressBook: addressBookEntries,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -307,6 +397,7 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    addressBookEntries,
     addToast,
   ])
 
@@ -360,6 +451,9 @@ export default function Settings() {
     setQuietHoursEnabled(importPreview.quietHoursEnabled ?? false)
     setQuietHoursStart(importPreview.quietHoursStart ?? '22:00')
     setQuietHoursEnd(importPreview.quietHoursEnd ?? '07:00')
+    if (importPreview.addressBook !== undefined) {
+      replaceEntries(importPreview.addressBook)
+    }
     saveSettings()
     addToast('success', 'Settings imported successfully')
     resetImportState()
@@ -373,6 +467,7 @@ export default function Settings() {
     setQuietHoursEnabled,
     setQuietHoursStart,
     setQuietHoursEnd,
+    replaceEntries,
     saveSettings,
     addToast,
     resetImportState,
@@ -506,6 +601,135 @@ export default function Settings() {
             <em>Short</em>.
           </p>
         </fieldset>
+      </section>
+
+      {/* ── Address Book ────────────────────────────────────────── */}
+      <section className="settings-section" aria-labelledby="address-book-heading">
+        <h2 id="address-book-heading">Address Book</h2>
+        <p className="settings-section__description">
+          Save trusted Stellar counterparties for quick selection ({addressBookEntries.length} /{' '}
+          {maxEntries}).
+        </p>
+
+        <form onSubmit={handleAddAddressBookEntry} className="settings-address-book-form" noValidate>
+          <FormField id="address-book-label" label="Label">
+            <Input
+              value={newLabel}
+              onChange={(e) => {
+                setNewLabel(e.target.value)
+                if (addressBookError) setAddressBookError(null)
+              }}
+              placeholder="e.g. Treasury, Alice"
+              maxLength={64}
+              autoComplete="off"
+            />
+          </FormField>
+
+          <FormField id="address-book-address" label="Stellar address">
+            <Input
+              value={newAddress}
+              onChange={(e) => {
+                setNewAddress(e.target.value)
+                if (addressBookError) setAddressBookError(null)
+              }}
+              placeholder="G..."
+              autoComplete="off"
+            />
+          </FormField>
+
+          {addressBookError && (
+            <div role="alert" className="settings-address-book-error">
+              {addressBookError}
+            </div>
+          )}
+
+          <button type="submit" className="settings-btn settings-btn--secondary">
+            Add address
+          </button>
+        </form>
+
+        {addressBookEntries.length === 0 ? (
+          <p className="settings-field-hint">No saved addresses yet for this wallet and network.</p>
+        ) : (
+          <ul className="settings-address-book-list" aria-label="Saved addresses">
+            {addressBookEntries.map((entry) => (
+              <li key={entry.id} className="settings-address-book-item">
+                {editingId === entry.id ? (
+                  <div className="settings-address-book-edit">
+                    <Input
+                      aria-label="Edit label"
+                      value={editLabel}
+                      onChange={(e) => {
+                        setEditLabel(e.target.value)
+                        if (editError) setEditError(null)
+                      }}
+                      maxLength={64}
+                    />
+                    <Input
+                      aria-label="Edit Stellar address"
+                      value={editAddress}
+                      onChange={(e) => {
+                        setEditAddress(e.target.value)
+                        if (editError) setEditError(null)
+                      }}
+                    />
+                    {editError && (
+                      <div role="alert" className="settings-address-book-error">
+                        {editError}
+                      </div>
+                    )}
+                    <div className="settings-address-book-item-actions">
+                      <button
+                        type="button"
+                        className="settings-btn settings-btn--primary"
+                        onClick={() => handleSaveEdit(entry.id)}
+                      >
+                        Save entry
+                      </button>
+                      <button
+                        type="button"
+                        className="settings-btn settings-btn--secondary"
+                        onClick={handleCancelEdit}
+                      >
+                        Cancel edit
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="settings-address-book-row">
+                    <div className="settings-address-book-info">
+                      <strong>{entry.label}</strong>{' '}
+                      <code>
+                        {formatAddressForDisplay(
+                          entry.address,
+                          addressDisplay as AddressDisplayMode
+                        )}
+                      </code>
+                    </div>
+                    <div className="settings-address-book-item-actions">
+                      <button
+                        type="button"
+                        className="settings-btn settings-btn--secondary"
+                        onClick={() => handleStartEdit(entry.id, entry.label, entry.address)}
+                        aria-label={`Edit ${entry.label}`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="settings-btn settings-btn--secondary"
+                        onClick={() => handleRemoveEntry(entry.id, entry.label)}
+                        aria-label={`Remove ${entry.label}`}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* ── Notifications ───────────────────────────────────────── */}
@@ -652,6 +876,16 @@ export default function Settings() {
           </div>
         )}
       </section>
+
+      <ConfirmDialog
+        open={importConfirmOpen}
+        title="Confirm settings import"
+        description={confirmDescription}
+        confirmLabel="Apply settings"
+        cancelLabel="Cancel"
+        onConfirm={handleImportConfirm}
+        onCancel={handleImportCancel}
+      />
 
       {/* ── Actions bar ─────────────────────────────────────────── */}
       <div className="settings-actions" role="group" aria-label="Save or discard settings">

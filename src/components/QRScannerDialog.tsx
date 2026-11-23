@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import jsQR from 'jsqr'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import './QRScannerDialog.css'
 
@@ -11,6 +10,23 @@ interface QRScannerDialogProps {
 
 type ScannerState = 'requesting' | 'scanning' | 'error' | 'success'
 
+type JsQrDecoder = (typeof import('jsqr'))['default']
+
+let decoderPromise: Promise<JsQrDecoder> | null = null
+
+/**
+ * Loads the jsQR decoder the first time the scanner actually runs.
+ *
+ * The dialog is the only consumer, so a static import would pull the decoder
+ * into the entry chunk and every page that never opens the scanner would pay
+ * for it. The promise is cached at module scope so reopening the dialog does
+ * not re-download the chunk.
+ */
+function loadQrDecoder(): Promise<JsQrDecoder> {
+  decoderPromise ??= import('jsqr').then((mod) => mod.default)
+  return decoderPromise
+}
+
 export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -18,6 +34,7 @@ export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDial
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const animationRef = useRef<number>(0)
+  const decoderRef = useRef<JsQrDecoder | null>(null)
 
   const [state, setState] = useState<ScannerState>('requesting')
   const [errorMessage, setErrorMessage] = useState('')
@@ -64,8 +81,11 @@ export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDial
     canvas.height = video.videoHeight
     ctx.drawImage(video, 0, 0)
 
+    const decode = decoderRef.current
+    if (!decode) return
+
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const code = jsQR(imageData.data, imageData.width, imageData.height)
+    const code = decode(imageData.data, imageData.width, imageData.height)
 
     if (code) {
       stopCamera()
@@ -84,6 +104,14 @@ export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDial
     setErrorMessage('')
 
     async function startCamera() {
+      try {
+        decoderRef.current = await loadQrDecoder()
+      } catch {
+        setErrorMessage('Could not load the QR decoder. You can paste the address manually.')
+        setState('error')
+        return
+      }
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },

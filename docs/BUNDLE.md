@@ -8,40 +8,58 @@ changes before they land.
 
 ## Current baseline
 
-Run `npm run build` and check the terminal output for exact numbers. The
-figures below are **estimated** from the `package.json` dependency tree and
-typical Vite/Rollup minification. Treat them as a rough guide — always verify
-with a real build.
+Measured on the production build with `npm run build && npm run check:bundle`.
+Sizes are gzipped with `zlib.gzipSync` over `dist/assets` (1 kB = 1024 bytes),
+which runs slightly above Vite's own gzip column.
 
-| Metric                         | Estimated (minified) | Estimated (gzipped) |
-| ------------------------------ | -------------------: | ------------------: |
-| Total bundle (all JS)          |              ~280 kB |              ~85 kB |
-| Total CSS                      |               ~18 kB |               ~5 kB |
-| Initial load (vendor + app)    |               ~55 kB |              ~18 kB |
-| Largest lazy chunk (Dashboard) |               ~40 kB |              ~12 kB |
+### Vendor chunks
 
-Vite code-splits every page via `React.lazy()` in `src/App.tsx`, so only
-the shared vendor chunk (React, React Router, i18next) is downloaded on the
-first paint. Each route adds its own chunk on navigation.
+`vite.config.ts` groups `node_modules` with
+`build.rollupOptions.output.manualChunks`, so a heavy dependency can no longer
+inflate the entry chunk without showing up in the build output:
+
+| Chunk           | Contents                                          |    Gzip | Budget |
+| --------------- | ------------------------------------------------- | ------: | -----: |
+| `vendor-react`  | react, react-dom, react-router-dom, scheduler     | 52.6 kB |  55 kB |
+| `vendor-i18n`   | i18next, react-i18next, language detector         | 19.7 kB |  22 kB |
+| `vendor-wallet` | @stellar/freighter-api                            |  3.1 kB |  12 kB |
+| `vendor-qr`     | jsqr — lazy, loaded only when the QR dialog scans |       — |  15 kB |
+| `vendor`        | every other `node_modules` package                |  1.9 kB |   8 kB |
+
+### Entry and total
+
+| Metric                     | Before splitting | After splitting | Budget |
+| -------------------------- | ---------------: | --------------: | -----: |
+| Entry chunk (`index-*.js`) |         117.8 kB |         44.4 kB |  50 kB |
+| Total JS across all chunks |         175.8 kB |        175.8 kB | 200 kB |
+
+Splitting does not remove bytes — it moves vendor code into chunks that change
+only when a dependency changes. Returning visitors keep those chunks cached
+across app deploys, while the entry (which changes on every release) stays
+small, and the browser can download the vendor groups in parallel.
+
+Vite code-splits every page via `React.lazy()` in `src/App.tsx`, so only the
+entry plus the vendor chunks are downloaded on the first paint. Each route adds
+its own chunk on navigation.
 
 ## Per-route sizes
 
 All page components are lazy-loaded. Estimated gzipped sizes per chunk:
 
-| Route            | Page component       | Est. gzip | Notes                              |
-| ---------------- | -------------------- | --------: | ---------------------------------- |
-| `/`              | `Home.tsx`           |     ~3 kB | Landing page, light                |
-| `/dashboard`     | `Dashboard.tsx`      |    ~12 kB | Heaviest — widget cache, analytics |
-| `/bond`          | `Bond.tsx`           |     ~5 kB | Bond listing                       |
-| `/bond/new`      | `CreateBondPage.tsx` |     ~8 kB | Multi-step create flow             |
-| `/bond/:id`      | `BondDetail.tsx`     |     ~7 kB | Detail view with penalty calc      |
-| `/trust`         | `TrustScore.tsx`     |     ~6 kB | Trust score display                |
-| `/trust/summary` | `TrustSummary.tsx`   |     ~5 kB | Summary view                       |
-| `/attestations`  | `Attestations.tsx`   |     ~4 kB | Attestation list                   |
-| `/transactions`  | `Transactions.tsx`   |     ~5 kB | Transaction history                |
-| `/settings`      | `Settings.tsx`       |     ~4 kB | Settings form with auto-save       |
-| `/signin`        | `SignIn.tsx`         |     ~3 kB | Sign-in page                       |
-| `*` (404)        | `NotFound.tsx`       |     ~1 kB | Minimal                            |
+| Route            | Page component       | Measured gzip | Notes                            |
+| ---------------- | -------------------- | ------------: | -------------------------------- |
+| `/`              | `Home.tsx`           |        1.0 kB | Landing page, light              |
+| `/dashboard`     | `Dashboard.tsx`      |        3.1 kB | Widget cache, analytics          |
+| `/bond`          | `Bond.tsx`           |        4.0 kB | Bond listing                     |
+| `/bond/new`      | `CreateBondPage.tsx` |        4.4 kB | Multi-step create flow           |
+| `/bond/:id`      | `BondDetail.tsx`     |        1.7 kB | Detail view with penalty calc    |
+| `/trust`         | `TrustScore.tsx`     |        3.6 kB | Trust score display              |
+| `/trust/summary` | `TrustSummary.tsx`   |        1.0 kB | Summary view                     |
+| `/attestations`  | `Attestations.tsx`   |        2.7 kB | Attestation list                 |
+| `/transactions`  | `Transactions.tsx`   |        6.1 kB | Heaviest page — table + bulk bar |
+| `/settings`      | `Settings.tsx`       |        5.1 kB | Settings form with auto-save     |
+| `/signin`        | `SignIn.tsx`         |        0.3 kB | Sign-in page                     |
+| `*` (404)        | `NotFound.tsx`       |        1.2 kB | Minimal                          |
 
 Shared layout (`Layout.tsx`) and provider wrappers ship in the initial
 chunk — they are **not** lazy-loaded and count toward the first-paint
@@ -49,7 +67,9 @@ payload.
 
 ## Top 10 heaviest dependencies
 
-Ranked by estimated gzipped size contribution to the production bundle:
+Per-package figures are approximate (a single chunk can contain several
+packages); the measured vendor chunk table above is authoritative. Ranked by
+estimated gzipped size contribution to the production bundle:
 
 | #   | Package                            | Est. gzip | Import path                        |
 | --- | ---------------------------------- | --------: | ---------------------------------- |
@@ -67,6 +87,26 @@ Ranked by estimated gzipped size contribution to the production bundle:
 `react-dom` dominates at ~40 kB gzipped, which is typical for React SPA
 bundles. The wallet SDK (`freighter-api`) is the third-heaviest single
 dependency because it bundles Stellar signing logic.
+
+## Enforced bundle budget
+
+`npm run check:bundle` runs `scripts/check-bundle-size.mjs`. It reads every
+`.js` file in `dist/assets`, gzips it with `zlib.gzipSync`, prints a table of
+chunk, size and budget, and exits non-zero if any chunk or the total exceeds
+its budget:
+
+```bash
+npm run build
+npm run check:bundle
+```
+
+Budgets live in `BUDGETS_KB` / `TOTAL_BUDGET_KB` at the top of the script and
+match the tables above. Chunk names are matched without Vite's content hash, so
+`vendor-react-a1b2c3d4.js` is checked against the `vendor-react` budget; chunks
+without a specific entry use `DEFAULT_CHUNK_BUDGET_KB`.
+
+When a budget needs to change, update the script and the tables in this file in
+the same PR and explain in the PR why the extra bytes are worth it.
 
 ## How to profile bundle sizes
 
@@ -157,12 +197,12 @@ Add to `package.json`:
    dependency (charts, QR scanning), wrap it in `React.lazy()` + `<Suspense>`
    so it is only loaded when the route that needs it is visited.
 
-5. **Check the baseline before merging.** Run `npm run build` and verify
-   the terminal output hasn't regressed more than a few kB from the
-   numbers in this document. If it has, investigate before merging.
+5. **Check the baseline before merging.** Run `npm run build && npm run check:bundle`
+   and verify it exits 0. The budget check fails on regressions that the
+   eyeball test would miss; investigate before merging instead of raising a
+   budget.
 
-## Updating this document
+## Updating this documentWhen a PR significantly changes the bundle (e.g. a new heavy dependency or
 
-When a PR significantly changes the bundle (e.g. a new heavy dependency or
 a code-splitting improvement), update the tables in this file with fresh
-numbers from `npm run build` and the visualizer output.
+numbers from `npm run build`, `npm run check:bundle` and the visualizer output.

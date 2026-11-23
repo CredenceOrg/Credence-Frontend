@@ -181,3 +181,36 @@ Calls that omit `amountFields` keep their exact previous behavior.
 
 See [docs/AMOUNT_PRECISION.md](./AMOUNT_PRECISION.md) for the full design,
 invariants, error taxonomy, compatibility, and rollback notes.
+
+## Response Shape Validation
+
+`apiFetch<T>` accepts an optional `validate?: (payload: unknown) => T` callback
+on `ApiFetchOptions<T>` so callers can validate 2xx response payloads at the
+API boundary before untrusted data reaches hooks or UI components.
+
+```typescript
+import { apiFetch } from '../api/client'
+import { validateTrustScore } from '../api/validators'
+
+const score = await apiFetch(`/trust-score/${address}`, {
+  validate: validateTrustScore,
+})
+```
+
+### Behavior & Guarantees
+
+- **Typed, retryable error:** When `validate` throws, `apiFetch` rejects with
+  `ApiResponseShapeError` (`extends ApiError`), with `status: 502`,
+  `code: 'invalid_response_shape'`, `retryable: true`, and structured `issues`
+  identifying the failing paths. Non-`ApiResponseShapeError` throws are wrapped
+  in `ApiResponseShapeError` automatically.
+- **No malformed data in UI:** `useTrustScore` (`validateTrustScore`) and
+  `useTransactions` (`validateTransactionList`) enforce the OpenAPI schemas in
+  `openapi.yaml` at the client boundary so missing fields, invalid enums, bad
+  pagination cursors, or mistyped amounts never reach components.
+- **Amount rules:** Numeric amount fields in responses (such as
+  `Transaction.amountUsdc`) are validated through `src/api/amount.ts`
+  (`tryParseAmount`), rejecting string amounts, negative values, non-finite
+  numbers, excess fractional precision, and int64 overflows.
+- **Opt-in compatibility:** Calls that omit `validate` keep their existing
+  behavior, and `validate` is never forwarded to `fetch`.

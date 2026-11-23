@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import type { TrustScore } from '../api/types'
+import { validateTrustScore } from '../api/validators'
 import { isValidStellarAddress } from '@/lib/stellar'
 import { normalizeTrustScore } from '@/lib/trustScore'
 
@@ -68,7 +69,7 @@ export function useTrustScore(address: string): UseTrustScoreResult {
     try {
       const result = await apiFetch<TrustScore>(
         `/trust-score/${encodeURIComponent(targetAddress)}`,
-        { signal: controller.signal }
+        { signal: controller.signal, validate: validateTrustScore }
       )
 
       if (!mountedRef.current || fetchId !== fetchIdRef.current) {

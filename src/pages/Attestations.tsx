@@ -34,6 +34,8 @@ export default function Attestations() {
       statusLabel: t('activityTimeline.submitted'),
       tone: 'success',
       meta: t('activityTimeline.subject', { subject: payload.subject.substring(0, 8) }),
+      ...(payload.evidenceHash ? { evidenceHash: payload.evidenceHash } : {}),
+      ...(payload.evidenceFile ? { evidenceFile: payload.evidenceFile } : {}),
     }
 
     setItems((prev) => [newItem, ...prev])

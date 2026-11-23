@@ -86,6 +86,13 @@ describe('Centralized Event Schema Registry', () => {
         subject: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
         type: ATTESTATION_EVENTS.TYPES.IDENTITY,
         evidence: 'Proof document hash',
+        evidenceHash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        evidenceFile: {
+          name: 'proof.pdf',
+          size: 1024,
+          type: 'application/pdf',
+          lastModified: 1780000000000,
+        },
       }
       const serialized = serializeEventPayload(payload)
       expect(typeof serialized).toBe('string')

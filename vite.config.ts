@@ -90,6 +90,11 @@ export default defineConfig({
         'src/hooks/useReducedMotion.ts',
         'src/lib/bondPenalty.ts',
         'src/lib/createBondFlowSteps.ts',
+        // Money-adjacent mutation and storage libraries
+        'src/lib/mutationQueue.ts',
+        'src/lib/mutationGuard.ts',
+        'src/lib/idempotentOperation.ts',
+        'src/lib/pendingTransactionsStorage.ts',
       ],
       reporter: ['text', 'lcov'],
       thresholds: {
@@ -134,6 +139,34 @@ export default defineConfig({
         'src/hooks/useReducedMotion.ts': { branches: 90 },
         'src/lib/bondPenalty.ts': { lines: 95, branches: 95, functions: 95 },
         'src/lib/createBondFlowSteps.ts': { lines: 100, branches: 100, functions: 100 },
+        // Money-adjacent mutation and storage libraries: these handle financial
+        // operations, optimistic concurrency control, idempotency, and transaction
+        // persistence. High coverage ensures correctness of balance version tracking,
+        // duplicate prevention, and storage migration paths.
+        'src/lib/mutationQueue.ts': {
+          lines: 95,
+          branches: 95,
+          functions: 95,
+          statements: 95,
+        },
+        'src/lib/mutationGuard.ts': {
+          lines: 100,
+          branches: 100,
+          functions: 100,
+          statements: 100,
+        },
+        'src/lib/idempotentOperation.ts': {
+          lines: 95,
+          branches: 95,
+          functions: 95,
+          statements: 95,
+        },
+        'src/lib/pendingTransactionsStorage.ts': {
+          lines: 90,
+          branches: 90,
+          functions: 90,
+          statements: 90,
+        },
       },
     },
   },

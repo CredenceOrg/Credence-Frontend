@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@lhci/cli": "^0.15.1",
+    "@sentry/browser": "^11.16.0",
     "@stellar/freighter-api": "^6.0.1",
     "i18next": "^23.7.0",
     "i18next-browser-languagedetector": "^7.2.0",

@@ -50,6 +50,11 @@ interface FetchedPage {
   nextCursor?: string
 }
 
+interface InFlightPage {
+  controller: AbortController
+  promise: Promise<FetchedPage | null>
+}
+
 export interface UseTransactionsResult {
   data: Transaction[]
   isLoading: boolean
@@ -421,17 +426,23 @@ export function useTransactions(): UseTransactionsResult {
     void fetchTransactions()
   }, [abortInFlightPages, fetchTransactions])
 
-  const addPending = useCallback((tx: Transaction) => {
-    if (!walletAddress) return
-    addPendingToStorage(network, walletAddress, tx)
-    setPendingData((prev) => [{ ...tx, _network: network }, ...prev])
-  }, [network, walletAddress])
+  const addPending = useCallback(
+    (tx: Transaction) => {
+      if (!walletAddress) return
+      addPendingToStorage(network, walletAddress, tx)
+      setPendingData((prev) => [{ ...tx, _network: network }, ...prev])
+    },
+    [network, walletAddress]
+  )
 
-  const removePendingByHash = useCallback((hash: string) => {
-    if (!walletAddress) return
-    removePendingFromStorage(network, walletAddress, hash)
-    setPendingData((prev) => prev.filter((tx) => tx.hash !== hash))
-  }, [network, walletAddress])
+  const removePendingByHash = useCallback(
+    (hash: string) => {
+      if (!walletAddress) return
+      removePendingFromStorage(network, walletAddress, hash)
+      setPendingData((prev) => prev.filter((tx) => tx.hash !== hash))
+    },
+    [network, walletAddress]
+  )
 
   useEffect(() => {
     mountedRef.current = true

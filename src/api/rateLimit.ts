@@ -193,6 +193,31 @@ export function readApiRateLimitOverrides(env: {
   return { maxRequests: max, windowMs: window, enabled }
 }
 
+/**
+ * Resolves a server's `Retry-After` header to milliseconds.
+ *
+ * Accepts either delta-seconds (`Retry-After: 30`) or an HTTP-date
+ * (`Retry-After: Wed, 21 Oct 2026 07:28:00 GMT`). Missing or malformed
+ * values fall back to the default window so the caller always receives a
+ * usable positive duration.
+ */
+export function retryAfterMsFromResponse(
+  response: Pick<Response, 'headers'>,
+  now: number = Date.now()
+): number {
+  const raw = response.headers.get('Retry-After')
+  if (!raw) return DEFAULT_API_RATE_LIMIT.windowMs
+
+  const seconds = Number(raw)
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.max(0, seconds * 1000)
+  }
+
+  const dateMs = Date.parse(raw)
+  if (Number.isNaN(dateMs)) return DEFAULT_API_RATE_LIMIT.windowMs
+  return Math.max(0, dateMs - now)
+}
+
 function readPositiveNumber(value: unknown): number | null {
   if (value === undefined || value === null || value === '') return null
   const parsed = Number(value)

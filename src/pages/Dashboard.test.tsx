@@ -151,6 +151,29 @@ describe('Dashboard', () => {
     expect(screen.queryByRole('heading', { name: 'Shortcuts' })).not.toBeInTheDocument()
   })
 
+  it('reorders pinned widgets with accessible controls and persists the new order', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem(ONBOARDING_COMPLETION_STORAGE_KEY, 'done')
+
+    const { container } = renderDashboard()
+
+    await user.click(screen.getByRole('button', { name: 'Pin Active Bonds' }))
+    await user.click(screen.getByRole('button', { name: 'Pin Trust Score' }))
+    await user.click(screen.getByRole('button', { name: 'Move Trust Score earlier' }))
+
+    expect(container.querySelector('.dashboard > [role="status"]')).toHaveTextContent(
+      'Trust Score moved to position 1 of 2.'
+    )
+    expect(JSON.parse(localStorage.getItem('credence:pinned_widgets')!)).toEqual([
+      'trust-score',
+      'active-bonds',
+    ])
+    expect(
+      Array.from(container.querySelectorAll('article h2')).map((heading) => heading.textContent)
+    ).toEqual(['Trust Score', 'Active Bonds', 'Recent Activity', 'Shortcuts'])
+    expect(screen.getByRole('button', { name: 'Move Trust Score earlier' })).toBeDisabled()
+  })
+
   it('exposes primary shortcut links', () => {
     renderDashboard()
 

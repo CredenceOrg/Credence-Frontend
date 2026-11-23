@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { truncateAddress } from '../lib/stellar'
+import { explorerUrl } from '../lib/explorerUrl'
 import TooltipOnOverflow from './TooltipOnOverflow'
 import './CopyableHash.css'
 
@@ -48,12 +49,7 @@ export default function CopyableHash({
   }
 
   // Build Explorer Link
-  const explorerBaseUrl = network === 'test' 
-    ? 'https://stellar.expert/explorer/testnet' 
-    : 'https://stellar.expert/explorer/public'
-  
-  const explorerPath = kind === 'address' ? `/account/${hash}` : `/tx/${hash}`
-  const explorerHref = `${explorerBaseUrl}${explorerPath}`
+  const explorerHref = explorerUrl(network, hash, kind)
 
   const handleCopy = async () => {
     setCopyError(false)

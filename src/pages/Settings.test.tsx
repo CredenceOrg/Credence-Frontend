@@ -10,6 +10,16 @@ vi.mock('../context/SettingsContext', () => ({
   useSettings: () => mockUseSettings(),
 }))
 
+const mockUseWallet = vi.fn()
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => mockUseWallet(),
+}))
+
+const mockReadPendingTransactions = vi.fn()
+vi.mock('../lib/pendingTransactionsStorage', () => ({
+  readPendingTransactions: (...args: unknown[]) => mockReadPendingTransactions(...args),
+}))
+
 vi.mock('../hooks/useDebouncedAutoSave', () => ({
   useDebouncedAutoSave: () => ({
     status: 'idle',
@@ -71,6 +81,8 @@ function settingsFixture(overrides: Partial<ReturnType<typeof mockUseSettings>> 
 
 beforeEach(() => {
   mockUseSettings.mockReturnValue(settingsFixture())
+  mockUseWallet.mockReturnValue({ address: '', isConnected: false, connected: false, network: null })
+  mockReadPendingTransactions.mockReturnValue([])
   addToastMock.mockReset()
 })
 
@@ -279,5 +291,132 @@ describe('Settings — unsaved-changes guard', () => {
 
       expect(event.preventDefault).toHaveBeenCalled()
     })
+  })
+})
+
+describe('Settings — network switch confirmation', () => {
+  const TEST_ADDRESS = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF'
+
+  const makePendingTx = (overrides: Record<string, unknown> = {}) => ({
+    id: 'tx-1',
+    type: 'deposit',
+    timestamp: new Date().toISOString(),
+    status: 'pending',
+    hash: 'abc123',
+    _network: 'public',
+    ...overrides,
+  })
+
+  it('skips ConfirmDialog and switches network immediately when no pending transactions exist', async () => {
+    mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      connected: true,
+      network: 'public',
+    })
+    mockReadPendingTransactions.mockReturnValue([])
+
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    expect(networkSelect.value).toBe('public')
+
+    await user.selectOptions(networkSelect, 'test')
+
+    expect(mockReadPendingTransactions).toHaveBeenCalledWith('public', TEST_ADDRESS)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('test')
+  })
+
+  it('skips ConfirmDialog when wallet is disconnected', async () => {
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    await user.selectOptions(networkSelect, 'test')
+
+    expect(mockReadPendingTransactions).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('test')
+  })
+
+  it('skips ConfirmDialog when stored transactions are no longer pending', async () => {
+    mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      connected: true,
+      network: 'public',
+    })
+    mockReadPendingTransactions.mockReturnValue([makePendingTx({ status: 'failed' })])
+
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    await user.selectOptions(networkSelect, 'test')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('test')
+  })
+
+  it('shows ConfirmDialog when pending transactions exist and keeps old network on Cancel', async () => {
+    mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      connected: true,
+      network: 'public',
+    })
+    mockReadPendingTransactions.mockReturnValue([makePendingTx()])
+
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    await user.selectOptions(networkSelect, 'test')
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toBeInTheDocument()
+    expect(dialog).toHaveTextContent('Switch network?')
+    expect(dialog).toHaveTextContent(/1 pending transaction/i)
+    expect(networkSelect.value).toBe('public')
+
+    const cancelButtons = screen.getAllByRole('button', { name: 'Cancel' })
+    const dialogCancel = cancelButtons.find((btn) => dialog.contains(btn))!
+    await user.click(dialogCancel)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('public')
+  })
+
+  it('applies the new network after confirming in ConfirmDialog', async () => {
+    mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      connected: true,
+      network: 'public',
+    })
+    mockReadPendingTransactions.mockReturnValue([
+      makePendingTx({ id: 'tx-1', hash: 'hash-1' }),
+      makePendingTx({ id: 'tx-2', hash: 'hash-2' }),
+    ])
+
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    await user.selectOptions(networkSelect, 'test')
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveTextContent(/2 pending transactions/i)
+
+    const confirmInput = screen.getByPlaceholderText('CONFIRM')
+    await user.type(confirmInput, 'CONFIRM')
+
+    const confirmButton = screen.getByRole('button', { name: 'Switch network' })
+    await user.click(confirmButton)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('test')
   })
 })

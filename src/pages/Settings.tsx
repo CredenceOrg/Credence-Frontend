@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettings } from '../context/SettingsContext'
+import { useWallet } from '../context/WalletContext'
 import { useToast } from '../components/ToastProvider'
 import { FormField, Input } from '../components/forms'
 import Toggle from '../components/controls/Toggle'
@@ -11,6 +12,8 @@ import { ErrorState } from '../components/states'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
 import { isQuietHoursActive, parseHHmm } from '../lib/quietHours'
+import { readPendingTransactions } from '../lib/pendingTransactionsStorage'
+import { getNetworkLabel } from '../lib/networkLabels'
 import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
 import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
 import { updateSettings } from '../api/settings'
@@ -60,6 +63,7 @@ export default function Settings() {
     saveSettings,
   } = useSettings()
   const { addToast } = useToast()
+  const { address, isConnected } = useWallet()
 
   useDocumentTitle(t('settings.title'))
 
@@ -127,6 +131,41 @@ export default function Settings() {
   const updateDraft = (key: string, value: string | boolean | number) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
+
+  const [pendingNetworkSwitch, setPendingNetworkSwitch] = useState<{
+    nextNetwork: NetworkOption
+    pendingCount: number
+  } | null>(null)
+
+  const handleNetworkChange = useCallback(
+    (nextNetwork: NetworkOption) => {
+      if (nextNetwork === draft.network) return
+
+      const pendingCount =
+        isConnected && address
+          ? readPendingTransactions(draft.network, address).filter((tx) => tx.status === 'pending')
+              .length
+          : 0
+
+      if (pendingCount > 0) {
+        setPendingNetworkSwitch({ nextNetwork, pendingCount })
+        return
+      }
+
+      setDraft((prev) => ({ ...prev, network: nextNetwork }))
+    },
+    [draft.network, isConnected, address]
+  )
+
+  const handleNetworkSwitchConfirm = useCallback(() => {
+    if (!pendingNetworkSwitch) return
+    setDraft((prev) => ({ ...prev, network: pendingNetworkSwitch.nextNetwork }))
+    setPendingNetworkSwitch(null)
+  }, [pendingNetworkSwitch])
+
+  const handleNetworkSwitchCancel = useCallback(() => {
+    setPendingNetworkSwitch(null)
+  }, [])
 
   // Validate quiet hours draft: start and end must be valid HH:mm and must
   // differ. The provider falls back to defaults for invalid values, but we
@@ -484,7 +523,7 @@ export default function Settings() {
         >
           <Select
             value={draft.network}
-            onChange={(v) => updateDraft('network', v as NetworkOption)}
+            onChange={(v) => handleNetworkChange(v as NetworkOption)}
             options={[
               { value: 'public', label: t('settings.network.public') },
               { value: 'test', label: t('settings.network.test') },
@@ -701,6 +740,30 @@ export default function Settings() {
         confirmLabel={t('settings.importDialog.confirmLabel')}
         onConfirm={handleImportConfirm}
         onCancel={handleImportCancel}
+      />
+
+      <ConfirmDialog
+        open={pendingNetworkSwitch !== null}
+        title={t('settings.networkSwitchDialog.title')}
+        subtitle={t('settings.networkSwitchDialog.subtitle')}
+        description={
+          pendingNetworkSwitch ? (
+            <p>
+              {t('settings.networkSwitchDialog.description', {
+                count: pendingNetworkSwitch.pendingCount,
+                currentNetwork: getNetworkLabel(draft.network),
+                targetNetwork: getNetworkLabel(pendingNetworkSwitch.nextNetwork),
+              })}
+            </p>
+          ) : null
+        }
+        confirmLabel={t('settings.networkSwitchDialog.confirmLabel')}
+        confirmHint={t('settings.networkSwitchDialog.confirmHint', {
+          currentNetwork: getNetworkLabel(draft.network),
+        })}
+        variant="info"
+        onConfirm={handleNetworkSwitchConfirm}
+        onCancel={handleNetworkSwitchCancel}
       />
     </div>
   )

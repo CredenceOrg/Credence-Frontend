@@ -350,7 +350,8 @@
     "peerVouch": "Peer Vouch",
     "credentialCertification": "Credential Certification",
     "submitted": "Submitted",
-    "subject": "Subject: {{subject}}"
+    "subject": "Subject: {{subject}}",
+    "currentUser": "Current User"
   },
   "badge": {
     "variants": {

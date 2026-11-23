@@ -1,4 +1,9 @@
-import { ApiRateLimiter, DEFAULT_API_RATE_LIMIT, readApiRateLimitOverrides } from './rateLimit'
+import {
+  ApiRateLimiter,
+  DEFAULT_API_RATE_LIMIT,
+  readApiRateLimitOverrides,
+  retryAfterMsFromResponse,
+} from './rateLimit'
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
 import { AmountError, parseAmount, type AmountErrorCode, type AmountRules } from './amount'
 
@@ -66,6 +71,53 @@ export class ApiRateLimitError extends ApiError {
     this.name = 'ApiRateLimitError'
     this.retryAfterMs = retryAfterMs
   }
+}
+
+/** Notification delivered when a request is throttled, locally or by the server. */
+export interface ApiRateLimitNotice {
+  /** Milliseconds the caller should wait before retrying. */
+  retryAfterMs: number
+  /** Absolute epoch-ms timestamp when the notice expires. */
+  expiresAt: number
+}
+
+export type ApiRateLimitListener = (notice: ApiRateLimitNotice) => void
+
+const rateLimitListeners = new Set<ApiRateLimitListener>()
+let activeRateLimitNotice: ApiRateLimitNotice | null = null
+
+/**
+ * Subscribes to rate-limit notifications. The listener fires whenever
+ * {@link apiFetch} is throttled, either by the client-side limiter or by a
+ * server `429` response. Returns an unsubscribe function.
+ */
+export function subscribeRateLimit(listener: ApiRateLimitListener): () => void {
+  rateLimitListeners.add(listener)
+  return () => {
+    rateLimitListeners.delete(listener)
+  }
+}
+
+/** Milliseconds remaining in the active rate-limit window (0 when none). */
+export function getRateLimitRemainingMs(now: number = Date.now()): number {
+  if (!activeRateLimitNotice) return 0
+  return Math.max(0, activeRateLimitNotice.expiresAt - now)
+}
+
+/** Clears the active rate-limit notice. Test-only. */
+export function resetRateLimitNotice(): void {
+  activeRateLimitNotice = null
+  const cleared: ApiRateLimitNotice = { retryAfterMs: 0, expiresAt: 0 }
+  for (const listener of rateLimitListeners) listener(cleared)
+}
+
+function notifyRateLimit(retryAfterMs: number): void {
+  const notice: ApiRateLimitNotice = {
+    retryAfterMs,
+    expiresAt: Date.now() + retryAfterMs,
+  }
+  activeRateLimitNotice = notice
+  for (const listener of rateLimitListeners) listener(notice)
 }
 
 export class ApiAmountError extends ApiError {
@@ -520,6 +572,7 @@ async function apiFetchWithoutReplay<T>(
   if (!ctx.skipRateLimit) {
     const decision = defaultApiRateLimiter.acquire()
     if (!decision.allowed) {
+      notifyRateLimit(decision.retryAfterMs)
       throw new ApiRateLimitError(
         decision.retryAfterMs,
         `Too many requests, retry in ${decision.retryAfterMs}ms`,
@@ -583,6 +636,11 @@ async function apiFetchWithoutReplay<T>(
       correlationId: ctx.correlationId,
       metadata: { path: ctx.path, method: ctx.method, status: response.status, message },
     })
+    if (response.status === 429) {
+      const retryAfterMs = retryAfterMsFromResponse(response)
+      notifyRateLimit(retryAfterMs)
+      throw new ApiRateLimitError(retryAfterMs, message, payload)
+    }
     throw new ApiError(response.status, message, payload, 'http_error')
   }
 

@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom'
 import { afterEach, vi } from 'vitest'
 import './i18n/config'
-import { resetApiRateLimiter } from './api/client' // not re-exported from src/api/index.ts by design — tests reach into ./client directly
+import { resetApiRateLimiter, resetRateLimitNotice } from './api/client' // not re-exported from src/api/index.ts by design — tests reach into ./client directly
 
 // Reset the process-wide apiFetch rate limiter between tests so a hot test
 // does not starve subsequent tests of capacity or carry stale bucket state
@@ -9,6 +9,7 @@ import { resetApiRateLimiter } from './api/client' // not re-exported from src/a
 // in its own worker (pool: forks) so the singleton scope is per-file only.
 afterEach(() => {
   resetApiRateLimiter()
+  resetRateLimitNotice()
 })
 
 // Guard against Node-environment test files (e.g. useLocalStorage.node.test.ts)

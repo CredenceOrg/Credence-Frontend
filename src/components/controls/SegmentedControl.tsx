@@ -54,7 +54,7 @@ export default function SegmentedControl<T extends string = string>({
           aria-checked={value === opt.value}
           disabled={disabled}
           className={`control-segmented__option${value === opt.value ? ' control-segmented__option--selected' : ''}`}
-          onClick={() => !disabled && onChange(opt.value)}
+          onClick={() => !disabled && value !== opt.value && onChange(opt.value)}
         >
           {opt.label}
         </button>

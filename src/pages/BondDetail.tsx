@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Button from '../components/Button'
 import Badge, { type BadgeVariant } from '../components/Badge'
 import Banner from '../components/Banner'
@@ -20,6 +21,7 @@ const mockBonds: MockBond[] = [
 ]
 
 export default function BondDetail() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { addToast } = useToast()
@@ -29,7 +31,7 @@ export default function BondDetail() {
   const connectTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   const bondId = Number(id)
-  useDocumentTitle(`Bond #${bondId || 'Detail'}`)
+  useDocumentTitle(t('bond.detail.title', { id: bondId || 'Detail' }))
   const connectBannerId = `bond-detail-connect-required-${bondId || 'detail'}`
 
   const initialBond = useMemo(() => {
@@ -61,12 +63,12 @@ export default function BondDetail() {
         <div className="bond-detail__not-found-card">
           <ErrorState
             type="generic"
-            title="Bond Not Found"
-            message={`The requested bond with ID #${id} does not exist or has been removed.`}
+            title={t('bond.detail.notFound')}
+            message={t('bond.detail.notFoundMessage', { id })}
           />
           <div className="bond-detail__not-found-actions">
             <Link to="/bond" className="bond-detail__back-link">
-              ← Back to Bonds
+              {t('bond.detail.backToBonds')}
             </Link>
           </div>
         </div>
@@ -76,7 +78,7 @@ export default function BondDetail() {
 
   const extendLock = (days: number) => {
     setDuration((prev) => prev + days)
-    addToast('success', `Lock duration extended by +${days} days.`)
+    addToast('success', t('bond.detail.lockExtended', { days }))
   }
 
   const handleWithdrawClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -94,10 +96,10 @@ export default function BondDetail() {
     if (breakdown.penaltyUsdc > 0) {
       addToast(
         'warning',
-        `Bond withdrawn. ${formatUsdc(breakdown.penaltyUsdc)} was slashed per early withdrawal policy.`
+        t('bond.detail.withdrawnWithPenalty', { penalty: formatUsdc(breakdown.penaltyUsdc) })
       )
     } else {
-      addToast('success', 'Bond withdrawn successfully.')
+      addToast('success', t('bond.detail.withdrawnSuccess'))
     }
     navigate('/bond')
   }
@@ -106,10 +108,10 @@ export default function BondDetail() {
     <main className="bond-detail">
       <div className="bond-detail__header">
         <Link to="/bond" className="bond-detail__back-button">
-          ← Back to Bonds
+          {t('bond.detail.backToBonds')}
         </Link>
         <div className="bond-detail__title-row">
-          <h1 className="bond-detail__title">Manage Bond #{initialBond.id}</h1>
+          <h1 className="bond-detail__title">{t('bond.detail.title', { id: initialBond.id })}</h1>
           <Badge variant={initialBond.status as BadgeVariant} />
         </div>
       </div>
@@ -118,18 +120,20 @@ export default function BondDetail() {
         <div id={connectBannerId}>
           <Banner
             severity="warn"
-            title="Connect wallet required"
-            action={{ label: 'Connect wallet', onClick: () => setConnectModalOpen(true) }}
+            title={t('bond.detail.connectRequired')}
+            action={{ label: t('common.connectWallet'), onClick: () => setConnectModalOpen(true) }}
           >
-            Withdrawal and lock extensions require a connected Stellar wallet.
+            {t('bond.detail.connectRequiredDescription')}
           </Banner>
         </div>
       )}
 
       {initialBond.status !== 'active' && breakdown.penaltyUsdc > 0 && (
-        <Banner severity="warn" title="Early Withdrawal Penalty Active">
-          This bond is currently locked. Withdrawing early will slash {breakdown.penaltyAmount} (
-          {breakdown.penaltyPercent}% penalty).
+        <Banner severity="warn" title={t('bond.detail.earlyWithdrawalWarning')}>
+          {t('bond.detail.earlyWithdrawalDescription', {
+            penaltyAmount: breakdown.penaltyAmount,
+            percent: breakdown.penaltyPercent,
+          })}
         </Banner>
       )}
 
@@ -137,34 +141,34 @@ export default function BondDetail() {
         {/* Core details card */}
         <section className="bond-detail__card" aria-labelledby="bond-info-title">
           <h2 id="bond-info-title" className="bond-detail__card-title">
-            Bond Specification
+            {t('bond.detail.specification')}
           </h2>
           <dl className="bond-detail__info-list">
             <div className="bond-detail__info-row">
-              <dt>Bonded Amount</dt>
+              <dt>{t('bond.detail.bondedAmount')}</dt>
               <dd className="bond-detail__amount">{formatUsdc(initialBond.amountUsdc)}</dd>
             </div>
             <div className="bond-detail__info-row">
-              <dt>Time Remaining</dt>
+              <dt>{t('bond.detail.timeRemaining')}</dt>
               <dd className="bond-detail__timeRemaining">{calcTimeRemaining(duration)}</dd>
             </div>
             <div className="bond-detail__info-row">
-              <dt>Lock Duration</dt>
-              <dd>{duration} Days</dd>
+              <dt>{t('bond.detail.lockDuration')}</dt>
+              <dd>{t('bond.detail.durationDays', { duration })}</dd>
             </div>
             <div className="bond-detail__info-row">
-              <dt>Lock Start Date</dt>
+              <dt>{t('bond.detail.lockStartDate')}</dt>
               <dd>{calcLockStartDate()}</dd>
             </div>
             <div className="bond-detail__info-row">
-              <dt>Estimated Unlock Date</dt>
+              <dt>{t('bond.detail.estimatedUnlockDate')}</dt>
               <dd>{unlockDate}</dd>
             </div>
           </dl>
 
           <div className="bond-detail__actions">
             <div className="bond-detail__action-section">
-              <span className="bond-detail__action-label">Extend Lock Duration</span>
+              <span className="bond-detail__action-label">{t('bond.detail.extendLockDuration')}</span>
               <div className="bond-detail__btn-group">
                 <Button
                   type="button"
@@ -172,11 +176,11 @@ export default function BondDetail() {
                   onClick={() => extendLock(30)}
                   disabled={!isConnected}
                   title={
-                    !isConnected ? 'Connect your wallet to extend the lock duration' : undefined
+                    !isConnected ? t('bond.detail.extendTooltip') : undefined
                   }
                   aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
-                  +30 Days
+                  {t('bond.detail.plus30Days')}
                 </Button>
                 <Button
                   type="button"
@@ -184,32 +188,32 @@ export default function BondDetail() {
                   onClick={() => extendLock(90)}
                   disabled={!isConnected}
                   title={
-                    !isConnected ? 'Connect your wallet to extend the lock duration' : undefined
+                    !isConnected ? t('bond.detail.extendTooltip') : undefined
                   }
                   aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
-                  +90 Days
+                  {t('bond.detail.plus90Days')}
                 </Button>
               </div>
             </div>
 
             <div className="bond-detail__action-section">
-              <span className="bond-detail__action-label">Top-Up Bond</span>
+              <span className="bond-detail__action-label">{t('bond.detail.topUpBond')}</span>
               <Button
                 type="button"
                 variant="secondary"
                 disabled={!isConnected}
                 title={
-                  !isConnected ? 'Connect your wallet to top up this bond' : undefined
+                  !isConnected ? t('bond.detail.topUpTooltip') : undefined
                 }
                 aria-describedby={!isConnected ? connectBannerId : undefined}
               >
-                Add USDC
+                {t('bond.detail.addUsdc')}
               </Button>
             </div>
 
             <div className="bond-detail__action-section bond-detail__action-section--withdraw">
-              <span className="bond-detail__action-label">Redeem or Settle</span>
+              <span className="bond-detail__action-label">{t('bond.detail.redeemOrSettle')}</span>
               <Button
                 ref={withdrawTriggerRef}
                 type="button"
@@ -217,7 +221,7 @@ export default function BondDetail() {
                 onClick={handleWithdrawClick}
                 aria-haspopup="dialog"
               >
-                {isConnected ? 'Withdraw' : 'Connect wallet to withdraw'}
+                {isConnected ? t('bond.detail.withdraw') : t('bond.detail.connectToWithdraw')}
               </Button>
             </div>
           </div>
@@ -229,26 +233,25 @@ export default function BondDetail() {
           aria-labelledby="slash-panel-title"
         >
           <h2 id="slash-panel-title" className="bond-detail__card-title">
-            Slash-Risk Panel
+            {t('bond.detail.slashRiskPanel')}
           </h2>
           <div className="bond-detail__slash-breakdown">
             <div className="bond-detail__slash-row">
-              <span>Current Early-Withdrawal Penalty</span>
+              <span>{t('bond.detail.currentPenalty')}</span>
               <span className="bond-detail__penalty-percent">{breakdown.penaltyPercent}%</span>
             </div>
             <div className="bond-detail__slash-row">
-              <span>USDC Penalty Amount</span>
+              <span>{t('bond.detail.usdcPenalty')}</span>
               <span className="bond-detail__penalty-amount">−{breakdown.penaltyAmount}</span>
             </div>
             <div className="bond-detail__divider" />
             <div className="bond-detail__slash-row bond-detail__slash-row--total">
-              <span>Resulting Balance Received</span>
+              <span>{t('bond.detail.resultingBalance')}</span>
               <span className="bond-detail__resulting">{breakdown.resultingBalance}</span>
             </div>
           </div>
           <p className="bond-detail__slash-disclaimer">
-            All penalty calculations are dynamic and subject to protocol slashing rules. Once
-            initiated, withdrawal is irreversible.
+            {t('bond.detail.slashDisclaimer')}
           </p>
         </section>
       </div>
@@ -256,8 +259,11 @@ export default function BondDetail() {
       {isWithdrawOpen && (
         <ConfirmDialog
           open
-          title="Confirm bond withdrawal"
-          subtitle={`You are withdrawing bond #${initialBond.id} (${formatUsdc(initialBond.amountUsdc)}).`}
+          title={t('bond.detail.confirmWithdrawal')}
+          subtitle={t('bond.detail.withdrawalSubtitle', {
+            id: initialBond.id,
+            amount: formatUsdc(initialBond.amountUsdc),
+          })}
           breakdown={breakdown}
           onConfirm={confirmWithdraw}
           onCancel={() => setIsWithdrawOpen(false)}

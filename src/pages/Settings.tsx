@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSettings } from '../context/SettingsContext'
 import { useToast } from '../components/ToastProvider'
 import { FormField, Input } from '../components/forms'
@@ -45,32 +46,8 @@ function computeDiff(
   return diffs
 }
 
-// Friendly labels for the diff table so users see "Quiet hours" instead of
-// "quietHoursEnabled" when reviewing an import preview.
-const FIELD_LABELS: Record<string, string> = {
-  themeMode: 'Theme mode',
-  network: 'Network',
-  addressDisplay: 'Address display',
-  toastsEnabled: 'Enable toasts',
-  autoDismiss: 'Auto-dismiss',
-  quietHoursEnabled: 'Quiet hours enabled',
-  quietHoursStart: 'Quiet hours start',
-  quietHoursEnd: 'Quiet hours end',
-}
-
-const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string }[] = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'System' },
-]
-
-const ADDRESS_OPTIONS: { value: 'full' | 'short' | 'friendly'; label: string }[] = [
-  { value: 'full', label: 'Full (G…)' },
-  { value: 'short', label: 'Short (G……)' },
-  { value: 'friendly', label: 'Friendly' },
-]
-
 export default function Settings() {
+  const { t } = useTranslation()
   const {
     themeMode,
     network,
@@ -84,7 +61,41 @@ export default function Settings() {
   } = useSettings()
   const { addToast } = useToast()
 
-  useDocumentTitle('Settings')
+  useDocumentTitle(t('settings.title'))
+
+  // Friendly labels for the diff table so users see "Quiet hours" instead of
+  // "quietHoursEnabled" when reviewing an import preview.
+  const FIELD_LABELS: Record<string, string> = useMemo(
+    () => ({
+      themeMode: t('settings.fieldLabels.themeMode'),
+      network: t('settings.fieldLabels.network'),
+      addressDisplay: t('settings.fieldLabels.addressDisplay'),
+      toastsEnabled: t('settings.fieldLabels.toastsEnabled'),
+      autoDismiss: t('settings.fieldLabels.autoDismiss'),
+      quietHoursEnabled: t('settings.fieldLabels.quietHoursEnabled'),
+      quietHoursStart: t('settings.fieldLabels.quietHoursStart'),
+      quietHoursEnd: t('settings.fieldLabels.quietHoursEnd'),
+    }),
+    [t]
+  )
+
+  const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string }[] = useMemo(
+    () => [
+      { value: 'light', label: t('settings.appearance.light') },
+      { value: 'dark', label: t('settings.appearance.dark') },
+      { value: 'system', label: t('settings.appearance.system') },
+    ],
+    [t]
+  )
+
+  const ADDRESS_OPTIONS: { value: 'full' | 'short' | 'friendly'; label: string }[] = useMemo(
+    () => [
+      { value: 'full', label: t('settings.display.full') },
+      { value: 'short', label: t('settings.display.short') },
+      { value: 'friendly', label: t('settings.display.friendly') },
+    ],
+    [t]
+  )
 
   // Single settings model: every control on this page edits `draft`. Nothing
   // reaches the context, localStorage or the server until Save (or import
@@ -122,16 +133,16 @@ export default function Settings() {
   // surface the error inline so the user can correct bad input.
   const quietHoursError = useMemo(() => {
     if (parseHHmm(draft.quietHoursStart).ok === false) {
-      return 'Start and end times must be in HH:mm format (e.g. 22:00, 07:30).'
+      return t('settings.notifications.quietHours.invalidFormat')
     }
     if (parseHHmm(draft.quietHoursEnd).ok === false) {
-      return 'Start and end times must be in HH:mm format (e.g. 22:00, 07:30).'
+      return t('settings.notifications.quietHours.invalidFormat')
     }
     if (draft.quietHoursStart === draft.quietHoursEnd) {
-      return 'Start and end times must differ.'
+      return t('settings.notifications.quietHours.invalidRange')
     }
     return undefined
-  }, [draft.quietHoursStart, draft.quietHoursEnd])
+  }, [draft.quietHoursStart, draft.quietHoursEnd, t])
 
   // Live indicator of whether the configured window would silence toasts at this
   // moment. Recomputed on every render so the user sees the impact immediately.
@@ -200,13 +211,13 @@ export default function Settings() {
 
   const autoSaveLabels = useMemo<AutoSaveIndicatorLabels>(
     () => ({
-      saving: 'Saving…',
-      saved: 'Saved',
-      savedRelative: (relative: string) => `Saved ${relative}`,
-      error: "Couldn't save. Try again.",
-      retry: 'Retry',
+      saving: t('settings.autoSave.saving'),
+      saved: t('settings.autoSave.saved'),
+      savedRelative: (relative: string) => t('settings.autoSave.savedRelative', { when: relative }),
+      error: t('settings.autoSave.error'),
+      retry: t('settings.autoSave.retry'),
     }),
-    []
+    [t]
   )
 
   const handleRetry = useCallback(() => {
@@ -220,14 +231,12 @@ export default function Settings() {
     // this snapshot, avoiding the stale-render race that previously reverted
     // the change that was just made.
     saveSettings({ ...draft })
-    addToast('success', 'Settings saved successfully')
+    addToast('success', t('settings.toasts.saved'))
   }
 
   const handleCancel = () => {
     if (isDirty) {
-      const confirmed = window.confirm(
-        'You have unsaved changes. Are you sure you want to discard them?'
-      )
+      const confirmed = window.confirm(t('settings.confirmDiscard'))
       if (!confirmed) return
     }
     setDraft({
@@ -240,7 +249,7 @@ export default function Settings() {
       quietHoursStart,
       quietHoursEnd,
     })
-    addToast('info', 'Settings reverted to last saved state')
+    addToast('info', t('settings.toasts.reverted'))
   }
 
   useEffect(() => {
@@ -310,7 +319,7 @@ export default function Settings() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    addToast('success', 'Settings exported successfully')
+    addToast('success', t('settings.toasts.exported'))
   }, [
     themeMode,
     network,
@@ -321,6 +330,7 @@ export default function Settings() {
     quietHoursStart,
     quietHoursEnd,
     addToast,
+    t,
   ])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,7 +345,7 @@ export default function Settings() {
     reader.onload = (evt) => {
       const text = evt.target?.result
       if (typeof text !== 'string') {
-        setImportError('Failed to read file')
+        setImportError(t('settings.backup.fileReadError'))
         return
       }
 
@@ -343,7 +353,7 @@ export default function Settings() {
       try {
         parsed = JSON.parse(text)
       } catch {
-        setImportError('File does not contain valid JSON')
+        setImportError(t('settings.backup.invalidJson'))
         return
       }
 
@@ -357,10 +367,10 @@ export default function Settings() {
       setImportConfirmOpen(true)
     }
     reader.onerror = () => {
-      setImportError('Failed to read file')
+      setImportError(t('settings.backup.fileReadError'))
     }
     reader.readAsText(file)
-  }, [])
+  }, [t])
 
   const handleImportConfirm = useCallback(() => {
     if (!importPreview) return
@@ -381,14 +391,14 @@ export default function Settings() {
     // context can never diverge.
     setDraft(payload)
     saveSettings(payload)
-    addToast('success', 'Settings imported successfully')
+    addToast('success', t('settings.toasts.imported'))
     resetImportState()
-  }, [importPreview, saveSettings, addToast, resetImportState])
+  }, [importPreview, saveSettings, addToast, resetImportState, t])
 
   const handleImportCancel = useCallback(() => {
     resetImportState()
-    addToast('info', 'Import cancelled')
-  }, [resetImportState, addToast])
+    addToast('info', t('settings.toasts.importCancelled'))
+  }, [resetImportState, addToast, t])
 
   const diffs = importPreview ? computeDiff(currentSettings, importPreview) : []
 
@@ -396,20 +406,20 @@ export default function Settings() {
     if (!importPreview) return null
 
     if (diffs.length === 0) {
-      return <p>Imported settings match your current settings. No changes will be made.</p>
+      return <p>{t('settings.importDialog.noChanges')}</p>
     }
 
     return (
       <div>
         <p>
-          The following settings from <strong>{importFileName || 'file'}</strong> will be applied:
+          {t('settings.importDialog.changesIntro', { file: importFileName || 'file' })}
         </p>
         <table className="settings-diff-table">
           <thead>
             <tr>
-              <th>Setting</th>
-              <th>Current</th>
-              <th>Imported</th>
+              <th>{t('settings.importDialog.setting')}</th>
+              <th>{t('settings.importDialog.current')}</th>
+              <th>{t('settings.importDialog.imported')}</th>
             </tr>
           </thead>
           <tbody>
@@ -428,16 +438,16 @@ export default function Settings() {
         </table>
       </div>
     )
-  }, [importPreview, diffs, importFileName])
+  }, [importPreview, diffs, importFileName, FIELD_LABELS, t])
 
   return (
     <div className="settings-page">
-      <h1 style={{ marginTop: 0 }}>Settings</h1>
+      <h1 style={{ marginTop: 0 }}>{t('settings.title')}</h1>
 
       {/* ── Appearance ──────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="appearance-heading">
-        <h2 id="appearance-heading">Appearance</h2>
-        <p className="settings-section__description">Controls for theme and visual preferences.</p>
+        <h2 id="appearance-heading">{t('settings.appearance.heading')}</h2>
+        <p className="settings-section__description">{t('settings.appearance.description')}</p>
 
         {/*
          * fieldset + legend groups the three radio-style theme options so that
@@ -448,38 +458,36 @@ export default function Settings() {
          * legend provides the visible/AT-readable caption.
          */}
         <fieldset className="settings-fieldset">
-          <legend className="settings-fieldset__legend">Theme mode</legend>
+          <legend className="settings-fieldset__legend">{t('settings.appearance.theme')}</legend>
           <SegmentedControl
             id="theme-mode"
-            ariaLabel="Theme mode"
+            ariaLabel={t('settings.appearance.theme')}
             value={draft.themeMode}
             onChange={(v) => updateDraft('themeMode', v)}
             options={THEME_OPTIONS}
           />
-          <p className="settings-field-hint">
-            <em>System</em> follows your OS preference automatically.
-          </p>
+          <p className="settings-field-hint">{t('settings.appearance.systemHint')}</p>
         </fieldset>
       </section>
 
       {/* ── Network ─────────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="network-heading">
-        <h2 id="network-heading">Network</h2>
+        <h2 id="network-heading">{t('settings.network.heading')}</h2>
         <p className="settings-section__description">
-          Choose the Stellar network to interact with.
+          {t('settings.network.description')}
         </p>
 
         <FormField
           id="network-select"
-          label="Stellar Network"
-          hint="Changing to Testnet uses isolated, non-real assets."
+          label={t('settings.network.stellarNetwork')}
+          hint={t('settings.network.hint')}
         >
           <Select
             value={draft.network}
             onChange={(v) => updateDraft('network', v as NetworkOption)}
             options={[
-              { value: 'public', label: 'Public (Mainnet)' },
-              { value: 'test', label: 'Test (Testnet)' },
+              { value: 'public', label: t('settings.network.public') },
+              { value: 'test', label: t('settings.network.test') },
             ]}
           />
         </FormField>
@@ -487,9 +495,9 @@ export default function Settings() {
 
       {/* ── Display ─────────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="display-heading">
-        <h2 id="display-heading">Display</h2>
+        <h2 id="display-heading">{t('settings.display.heading')}</h2>
         <p className="settings-section__description">
-          How addresses and identifiers are presented in the UI.
+          {t('settings.display.description')}
         </p>
 
         {/*
@@ -500,49 +508,46 @@ export default function Settings() {
          * expose ARIA radiogroup in browsing mode.
          */}
         <fieldset className="settings-fieldset">
-          <legend className="settings-fieldset__legend">Address format</legend>
+          <legend className="settings-fieldset__legend">{t('settings.display.addressFormat')}</legend>
           <SegmentedControl
             id="address-display"
-            ariaLabel="Address display format"
+            ariaLabel={t('settings.display.addressFormat')}
             value={draft.addressDisplay}
             onChange={(v) => updateDraft('addressDisplay', v)}
             options={ADDRESS_OPTIONS}
           />
-          <p className="settings-field-hint">
-            <em>Friendly</em> shows a registered name when available, otherwise falls back to{' '}
-            <em>Short</em>.
-          </p>
+          <p className="settings-field-hint">{t('settings.display.friendlyHint')}</p>
         </fieldset>
       </section>
 
       {/* ── Notifications ───────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="notifications-heading">
-        <h2 id="notifications-heading">Notifications</h2>
+        <h2 id="notifications-heading">{t('settings.notifications.heading')}</h2>
         <p className="settings-section__description">
-          Control toast and notification behavior.
+          {t('settings.notifications.description')}
         </p>
 
-        <FormField id="toasts-enabled" label="Enable toasts">
+        <FormField id="toasts-enabled" label={t('settings.notifications.enableToasts')}>
           <Toggle
             checked={draft.toastsEnabled}
             onChange={(v) => updateDraft('toastsEnabled', v)}
-            ariaLabel="Enable toasts"
+            ariaLabel={t('settings.notifications.enableToasts')}
           />
         </FormField>
 
         <FormField
           id="auto-dismiss"
-          label="Auto-dismiss duration"
-          hint="How long before a toast automatically closes. Danger toasts always require manual dismissal."
+          label={t('settings.notifications.autoDismissDuration')}
+          hint={t('settings.notifications.autoDismissHint')}
         >
           <Select
             value={draft.autoDismiss}
             onChange={(v) => updateDraft('autoDismiss', v as AutoDismissOption)}
             options={[
-              { value: 'off', label: 'Off (require manual dismiss)' },
-              { value: '3s', label: '3 seconds' },
-              { value: '5s', label: '5 seconds' },
-              { value: '8s', label: '8 seconds' },
+              { value: 'off', label: t('settings.notifications.off') },
+              { value: '3s', label: t('settings.notifications.3seconds') },
+              { value: '5s', label: t('settings.notifications.5seconds') },
+              { value: '8s', label: t('settings.notifications.8seconds') },
             ]}
           />
         </FormField>
@@ -551,38 +556,37 @@ export default function Settings() {
           <button
             type="button"
             className="settings-btn settings-btn--secondary"
-            onClick={() => addToast('info', 'This is a preview notification')}
-            aria-label="Show preview toast notification"
+            onClick={() => addToast('info', t('settings.toasts.preview'))}
+            aria-label={t('settings.notifications.preview')}
           >
-            Show preview
+            {t('settings.notifications.preview')}
           </button>
-          <span className="settings-field-hint">Preview respects current toast settings.</span>
+          <span className="settings-field-hint">{t('settings.notifications.previewHint')}</span>
         </div>
 
         {/* Quiet Hours sub-section */}
         <fieldset className="settings-fieldset settings-fieldset--card" aria-describedby="quiet-hours-desc">
           <legend className="settings-fieldset__legend settings-fieldset__legend--card">
-            Quiet Hours
+            {t('settings.notifications.quietHours.heading')}
           </legend>
           <p id="quiet-hours-desc" className="settings-section__description">
-            When enabled, non-critical toasts will be suppressed during the configured window.
-            Critical (danger) toasts always surface regardless.
+            {t('settings.notifications.quietHours.description')}
           </p>
 
-          <FormField id="quiet-hours-enabled" label="Enable quiet hours">
+          <FormField id="quiet-hours-enabled" label={t('settings.notifications.quietHours.enable')}>
             <Toggle
               checked={draft.quietHoursEnabled}
               onChange={(v) => updateDraft('quietHoursEnabled', v)}
-              ariaLabel="Enable quiet hours"
+              ariaLabel={t('settings.notifications.quietHours.enable')}
             />
           </FormField>
 
-          <FormField id="quiet-hours-start" label="Start time (HH:mm)" error={quietHoursError}>
+          <FormField id="quiet-hours-start" label={t('settings.notifications.quietHours.start')} error={quietHoursError}>
             <Input
               compact
               value={draft.quietHoursStart}
               onChange={(e) => updateDraft('quietHoursStart', e.target.value)}
-              placeholder="22:00"
+              placeholder={t('settings.notifications.quietHours.startPlaceholder')}
               maxLength={5}
               autoComplete="off"
             />
@@ -590,12 +594,12 @@ export default function Settings() {
 
           <FormField
             id="quiet-hours-end"
-            label="End time (HH:mm)"
+            label={t('settings.notifications.quietHours.end')}
             success={
               !quietHoursError && draft.quietHoursEnabled
                 ? quietHoursCurrentlyActive
-                  ? 'Quiet hours are currently active — non-critical toasts are suppressed.'
-                  : 'Quiet hours are not currently active.'
+                  ? t('settings.notifications.quietHours.active')
+                  : t('settings.notifications.quietHours.inactive')
                 : undefined
             }
           >
@@ -603,7 +607,7 @@ export default function Settings() {
               compact
               value={draft.quietHoursEnd}
               onChange={(e) => updateDraft('quietHoursEnd', e.target.value)}
-              placeholder="07:00"
+              placeholder={t('settings.notifications.quietHours.endPlaceholder')}
               maxLength={5}
               autoComplete="off"
               aria-invalid={quietHoursError ? 'true' : undefined}
@@ -615,9 +619,9 @@ export default function Settings() {
 
       {/* ── Backup & Restore ────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="backup-heading">
-        <h2 id="backup-heading">Backup &amp; Restore</h2>
+        <h2 id="backup-heading">{t('settings.backup.heading')}</h2>
         <p className="settings-section__description">
-          Export your settings as a JSON file, or import settings from a previous export.
+          {t('settings.backup.description')}
         </p>
 
         <div className="settings-backup-row">
@@ -625,9 +629,9 @@ export default function Settings() {
             type="button"
             className="settings-btn settings-btn--secondary"
             onClick={handleExport}
-            aria-label="Export settings to JSON file"
+            aria-label={t('settings.backup.exportAriaLabel')}
           >
-            Export settings
+            {t('settings.backup.exportSettings')}
           </button>
 
           <input
@@ -643,9 +647,9 @@ export default function Settings() {
             type="button"
             className="settings-btn settings-btn--secondary"
             onClick={() => fileInputRef.current?.click()}
-            aria-label="Import settings from JSON file"
+            aria-label={t('settings.backup.importAriaLabel')}
           >
-            Import settings
+            {t('settings.backup.importSettings')}
           </button>
         </div>
 
@@ -653,10 +657,10 @@ export default function Settings() {
           <div role="alert" className="settings-import-error">
             <ErrorState
               type="validation"
-              title="Invalid settings file"
+              title={t('settings.backup.invalidFile')}
               message={importError}
               action={{
-                label: 'Clear error',
+                label: t('settings.backup.clearError'),
                 onClick: resetImportState,
               }}
             />
@@ -665,7 +669,7 @@ export default function Settings() {
       </section>
 
       {/* ── Actions bar ─────────────────────────────────────────── */}
-      <div className="settings-actions" role="group" aria-label="Save or discard settings">
+      <div className="settings-actions" role="group" aria-label={t('settings.actions.ariaLabel')}>
         <AutoSaveIndicator
           status={autoSave.status}
           lastSavedAt={autoSave.lastSavedAt}
@@ -679,22 +683,22 @@ export default function Settings() {
           disabled={!isDirty || !!quietHoursError}
           aria-disabled={!isDirty || !!quietHoursError}
         >
-          {isDirty ? 'Save' : 'Saved'}
+          {isDirty ? t('settings.actions.save') : t('settings.actions.saved')}
         </button>
         <button
           type="button"
           className="settings-btn settings-btn--secondary"
           onClick={handleCancel}
         >
-          Cancel
+          {t('settings.actions.cancel')}
         </button>
       </div>
 
       <ConfirmDialog
         open={importConfirmOpen}
-        title="Import settings?"
+        title={t('settings.importDialog.title')}
         description={confirmDescription}
-        confirmLabel="Apply settings"
+        confirmLabel={t('settings.importDialog.confirmLabel')}
         onConfirm={handleImportConfirm}
         onCancel={handleImportCancel}
       />

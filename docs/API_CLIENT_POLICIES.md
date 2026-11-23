@@ -181,3 +181,28 @@ Calls that omit `amountFields` keep their exact previous behavior.
 
 See [docs/AMOUNT_PRECISION.md](./AMOUNT_PRECISION.md) for the full design,
 invariants, error taxonomy, compatibility, and rollback notes.
+
+## Rate-Limit Notifications
+
+`apiFetch` publishes throttling events through a process-wide subscription
+exposed by `src/api/client.ts`:
+
+```typescript
+const unsubscribe = subscribeRateLimit(({ retryAfterMs, expiresAt }) => {
+  // Show a countdown, disable retries, etc.
+})
+```
+
+A notice is published in two cases:
+
+- the client-side sliding-window limiter rejects a request
+  (`ApiRateLimitError`), or
+- the server responds with `429 Too Many Requests`. The delay is read from the
+  `Retry-After` header, which may be delta-seconds or an HTTP-date, and falls
+  back to the default limiter window when the header is missing or malformed.
+
+`getRateLimitRemainingMs()` returns the remaining window for countdown UIs and
+`resetRateLimitNotice()` clears it in tests. `RateLimitBanner`, mounted in
+`Layout`, renders a polite live region with the remaining seconds and hides
+itself when the window expires. `ErrorState` also subscribes through
+`useRateLimitRemainingMs()` and disables its retry action until the window ends.

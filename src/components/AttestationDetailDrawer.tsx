@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useId, useRef, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useScrollPreserver } from '../hooks/useScrollPreserver'
+import { formatDate, formatTime } from '../lib/format'
 import { isTxHash, toneToBadgeVariant } from './ActivityTimeline'
 import Badge from './Badge'
 import Button from './Button'
@@ -66,6 +68,7 @@ export default function AttestationDetailDrawer({
   returnFocusRef,
   labels,
 }: AttestationDetailDrawerProps) {
+  const { i18n } = useTranslation()
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -170,7 +173,8 @@ export default function AttestationDetailDrawer({
               label={labels.timestamp}
               valueNode={
                 <time className="attestationDrawer__time" dateTime={item.timestamp}>
-                  {item.timestamp}
+                  {formatDate(item.timestamp, 'medium', i18n.language)} ·{' '}
+                  {formatTime(item.timestamp, '24h', i18n.language)}
                 </time>
               }
             />

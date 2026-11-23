@@ -177,13 +177,33 @@ Run `npm run coverage` to generate a text summary and an `lcov` report.
 
 Per-file thresholds are enforced in `vite.config.ts`. The current targets are:
 
-| File                               | Lines | Branches |
-| ---------------------------------- | ----- | -------- |
-| `src/api/client.ts`                | 100%  | 100%     |
-| `src/components/AddressInput.tsx`  | 90%   | 90%      |
-| `src/components/AmountInput.tsx`   | 80%   | 80%      |
-| `src/components/ConfirmDialog.tsx` | —     | 90%      |
-| `src/hooks/useFocusTrap.ts`        | —     | 85%      |
+| File                                       | Lines | Branches | Functions | Statements |
+| ------------------------------------------ | ----- | -------- | --------- | ---------- |
+| `src/api/client.ts`                        | 100%  | 100%     | 100%      | 100%       |
+| `src/components/AddressInput.tsx`          | 90%   | 90%      | —         | —          |
+| `src/components/AmountInput.tsx`           | 100%  | 100%     | 100%      | 100%       |
+| `src/components/Badge.tsx`                 | —     | 95%      | —         | —          |
+| `src/components/BackToTop.tsx`             | 100%  | 100%     | 100%      | 100%       |
+| `src/components/controls/Select.tsx`       | 100%  | 100%     | 100%      | 100%       |
+| `src/components/controls/Toggle.tsx`       | 100%  | 100%     | 100%      | 100%       |
+| `src/hooks/useLocalStorage.ts`             | 95%   | 95%      | —         | —          |
+| `src/hooks/useReducedMotion.ts`            | —     | 90%      | —         | —          |
+| `src/lib/bondPenalty.ts`                   | 95%   | 95%      | 95%       | —          |
+| `src/lib/createBondFlowSteps.ts`           | 100%  | 100%     | 100%      | —          |
+| **Money-adjacent mutation & storage libs** |       |          |           |            |
+| `src/lib/mutationQueue.ts`                 | 95%   | 95%      | 95%       | 95%        |
+| `src/lib/mutationGuard.ts`                 | 100%  | 100%     | 100%      | 100%       |
+| `src/lib/idempotentOperation.ts`           | 95%   | 95%      | 95%       | 95%        |
+| `src/lib/pendingTransactionsStorage.ts`    | 90%   | 90%      | 90%       | 90%        |
+
+### Money-Adjacent Libraries
+
+The mutation and storage libraries (`mutationQueue`, `mutationGuard`, `idempotentOperation`, `pendingTransactionsStorage`) handle financial operations, optimistic concurrency control, idempotency, and transaction persistence. High coverage thresholds (90-100%) ensure correctness of:
+
+- **Balance version tracking** — optimistic concurrency control prevents stale balance updates
+- **Duplicate prevention** — deduplication and idempotency guards block concurrent identical mutations
+- **Input validation** — bond amounts and trust score addresses are bounded before expensive operations
+- **Storage migration paths** — versioned schemas with deterministic upgrade paths
 
 A build that misses a threshold exits with a non-zero code, which fails CI.
 

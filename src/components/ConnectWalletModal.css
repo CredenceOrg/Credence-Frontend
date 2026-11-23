@@ -48,19 +48,19 @@
 }
 
 .connect-wallet-dialog__error--stale {
-  border-color: var(--credence-color-warning-border, #f59e0b);
-  background: var(--credence-color-warning-surface, #fffbeb);
-  color: var(--credence-color-warning-text, #92400e);
+  border-color: var(--credence-color-warning-border);
+  background: var(--credence-color-warning-surface);
+  color: var(--credence-color-warning-text);
 }
 
 .connect-wallet-dialog__error--permission {
-  border-color: var(--credence-color-danger-border, #ef4444);
-  background: var(--credence-color-danger-surface, #fef2f2);
-  color: var(--credence-color-danger-text, #991b1b);
+  border-color: var(--credence-color-danger-border);
+  background: var(--credence-color-danger-surface);
+  color: var(--credence-color-danger-text);
 }
 
 .connect-wallet-dialog__error--error {
-  border-color: var(--credence-color-danger-border, #ef4444);
-  background: var(--credence-color-danger-surface, #fef2f2);
-  color: var(--credence-color-danger-text, #991b1b);
+  border-color: var(--credence-color-danger-border);
+  background: var(--credence-color-danger-surface);
+  color: var(--credence-color-danger-text);
 }

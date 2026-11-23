@@ -556,6 +556,91 @@ describe('Transactions page', () => {
     })
   })
 
+  describe('column sorting', () => {
+    function bodyCellTexts(columnIndex: number): string[] {
+      const table = screen.getByRole('table')
+      return within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[columnIndex].textContent?.trim() ?? '')
+    }
+
+    function ariaSortFor(column: string): string | null {
+      return screen
+        .getByRole('button', { name: new RegExp(`^${column}`, 'i') })
+        .closest('th')!
+        .getAttribute('aria-sort')
+    }
+
+    it('keeps the server order and aria-sort="none" by default', () => {
+      mockLoaded()
+      render(<Transactions />)
+
+      expect(bodyCellTexts(1)).toEqual(['bond_create', 'withdraw', 'attest'])
+      expect(ariaSortFor('sort by type')).toBe('none')
+      expect(ariaSortFor('sort by amount')).toBe('none')
+    })
+
+    it('cycles ascending → descending → server order on repeated header clicks', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      await user.click(screen.getByRole('button', { name: /sort by type/i }))
+      expect(bodyCellTexts(1)).toEqual(['attest', 'bond_create', 'withdraw'])
+      expect(ariaSortFor('type, sorted ascending')).toBe('ascending')
+
+      await user.click(screen.getByRole('button', { name: /type, sorted ascending/i }))
+      expect(bodyCellTexts(1)).toEqual(['withdraw', 'bond_create', 'attest'])
+      expect(ariaSortFor('type, sorted descending')).toBe('descending')
+
+      await user.click(screen.getByRole('button', { name: /type, sorted descending/i }))
+      expect(bodyCellTexts(1)).toEqual(['bond_create', 'withdraw', 'attest'])
+      expect(ariaSortFor('sort by type')).toBe('none')
+    })
+
+    it('sorts by amount and keeps rows without an amount last in both directions', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      await user.click(screen.getByRole('button', { name: /sort by amount/i }))
+      expect(bodyCellTexts(1)).toEqual(['attest', 'bond_create', 'withdraw'])
+      expect(bodyCellTexts(2)).toEqual(['250 USDC', '1,000 USDC', '—'])
+
+      await user.click(screen.getByRole('button', { name: /amount, sorted ascending/i }))
+      expect(bodyCellTexts(1)).toEqual(['bond_create', 'attest', 'withdraw'])
+      expect(bodyCellTexts(2)).toEqual(['1,000 USDC', '250 USDC', '—'])
+    })
+
+    it('sorts the loaded page by date', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      await user.click(screen.getByRole('button', { name: /sort by when/i }))
+      expect(bodyCellTexts(1)).toEqual(['bond_create', 'withdraw', 'attest'])
+      expect(ariaSortFor('when, sorted ascending')).toBe('ascending')
+
+      await user.click(screen.getByRole('button', { name: /when, sorted ascending/i }))
+      expect(bodyCellTexts(1)).toEqual(['attest', 'withdraw', 'bond_create'])
+      expect(ariaSortFor('when, sorted descending')).toBe('descending')
+    })
+
+    it('preserves the selection and bulk actions across a sort', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      await user.click(rowCheckboxFor('tx-1'))
+      await user.click(screen.getByRole('button', { name: /sort by amount/i }))
+
+      expect(rowCheckboxFor('tx-1').checked).toBe(true)
+      expect(getBulkBar().hasAttribute('hidden')).toBe(false)
+      expect(within(getBulkBar()).getByText('1 selected')).toBeInTheDocument()
+    })
+  })
+
   describe('pending row explorer links', () => {
     it('pending row recorded on testnet links to testnet explorer even when settings are on public', () => {
       const pendingTx = {

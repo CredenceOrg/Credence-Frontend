@@ -339,7 +339,10 @@
       "when": "When",
       "transaction": "Transaction",
       "viewOnExplorer": "View transaction {{hash}} on Stellar explorer",
-      "viewLink": "View ↗"
+      "viewLink": "View ↗",
+      "sortBy": "Sort by {{column}}",
+      "sortAscending": "{{column}}, sorted ascending. Activate to sort descending.",
+      "sortDescending": "{{column}}, sorted descending. Activate to clear sorting."
     },
     "status": {
       "all": "All",

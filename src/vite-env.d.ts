@@ -11,6 +11,10 @@ interface ImportMetaEnv {
   readonly VITE_API_RATE_LIMIT_WINDOW_MS: string
   readonly VITE_API_RATE_LIMIT_ENABLED: string
   readonly VITE_SETTINGS_SYNC_ENABLED: string
+  readonly VITE_BOND_CONTRACT_ID_PUBLIC?: string
+  readonly VITE_BOND_CONTRACT_ID_TEST?: string
+  readonly VITE_SOROBAN_RPC_URL_PUBLIC?: string
+  readonly VITE_SOROBAN_RPC_URL_TEST?: string
 }
 
 interface ImportMeta {

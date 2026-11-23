@@ -155,7 +155,14 @@
       "save": "Save",
       "saved": "Saved",
       "cancel": "Cancel",
-      "ariaLabel": "Save or discard settings"
+      "resetToDefaults": "Reset to defaults",
+      "ariaLabel": "Save, discard, or reset settings"
+    },
+    "resetDialog": {
+      "title": "Reset settings to defaults?",
+      "description": "This will restore theme, network, address display, notifications, and quiet hours to their default values.",
+      "confirmLabel": "Reset to defaults",
+      "confirmHint": "This will overwrite your current settings with the default values."
     },
     "importDialog": {
       "title": "Import settings?",
@@ -178,6 +185,8 @@
     "toasts": {
       "saved": "Settings saved successfully",
       "reverted": "Settings reverted to last saved state",
+      "reset": "Settings reset to defaults",
+      "resetFailed": "Failed to reset settings. Previous values were kept.",
       "exported": "Settings exported successfully",
       "imported": "Settings imported successfully",
       "importCancelled": "Import cancelled",

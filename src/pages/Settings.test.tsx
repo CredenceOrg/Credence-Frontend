@@ -7,6 +7,16 @@ import Settings from './Settings'
 // ── Mocks ───────────────────────────────────────────────────────────
 const mockUseSettings = vi.fn()
 vi.mock('../context/SettingsContext', () => ({
+  DEFAULT_SETTINGS: {
+    themeMode: 'system',
+    network: 'public',
+    addressDisplay: 'short',
+    toastsEnabled: true,
+    autoDismiss: '5s',
+    quietHoursEnabled: false,
+    quietHoursStart: '22:00',
+    quietHoursEnd: '07:00',
+  },
   useSettings: () => mockUseSettings(),
 }))
 
@@ -63,6 +73,7 @@ function settingsFixture(overrides: Partial<ReturnType<typeof mockUseSettings>> 
     setQuietHoursStart: vi.fn(),
     setQuietHoursEnd: vi.fn(),
     saveSettings: vi.fn(),
+    resetToDefaults: vi.fn(),
     cancelSettings: vi.fn(),
     hasUnsavedChanges: false,
     ...overrides,
@@ -279,5 +290,99 @@ describe('Settings — unsaved-changes guard', () => {
 
       expect(event.preventDefault).toHaveBeenCalled()
     })
+  })
+})
+
+describe('Settings — reset to defaults', () => {
+  const CUSTOM_SETTINGS = {
+    themeMode: 'dark' as const,
+    network: 'test' as const,
+    addressDisplay: 'full' as const,
+    toastsEnabled: false,
+    autoDismiss: '3s' as const,
+    quietHoursEnabled: true,
+    quietHoursStart: '23:00',
+    quietHoursEnd: '06:00',
+  }
+
+  it('opens ConfirmDialog and resets all fields on confirm', async () => {
+    const user = userEvent.setup()
+    const resetToDefaults = vi.fn()
+    setContext({ ...CUSTOM_SETTINGS, resetToDefaults })
+
+    render(<Settings />)
+
+    await user.click(screen.getByRole('button', { name: 'Reset to defaults' }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toBeInTheDocument()
+
+    const confirmInput = screen.getByPlaceholderText('CONFIRM')
+    await user.type(confirmInput, 'CONFIRM')
+
+    const confirmButtons = screen.getAllByRole('button', { name: 'Reset to defaults' })
+    const dialogConfirmButton = confirmButtons[confirmButtons.length - 1]
+    await user.click(dialogConfirmButton)
+
+    expect(resetToDefaults).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'System' })).toBeChecked()
+    expect(screen.getByLabelText('Stellar Network')).toHaveValue('public')
+    expect(screen.getByRole('radio', { name: 'Short (G……)' })).toBeChecked()
+    expect(screen.getByLabelText('Auto-dismiss duration')).toHaveValue('5s')
+    expect(screen.getByLabelText('Start time (HH:mm)')).toHaveValue('22:00')
+    expect(screen.getByLabelText('End time (HH:mm)')).toHaveValue('07:00')
+    expect(addToastMock).toHaveBeenCalledWith('success', 'Settings reset to defaults')
+  })
+
+  it('changes nothing when reset is cancelled', async () => {
+    const user = userEvent.setup()
+    const resetToDefaults = vi.fn()
+    setContext({ ...CUSTOM_SETTINGS, resetToDefaults })
+
+    render(<Settings />)
+
+    await user.click(screen.getByRole('button', { name: 'Reset to defaults' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    const cancelButtons = screen.getAllByRole('button', { name: 'Cancel' })
+    const dialogCancelButton = cancelButtons[cancelButtons.length - 1]
+    await user.click(dialogCancelButton)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(resetToDefaults).not.toHaveBeenCalled()
+    expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked()
+    expect(screen.getByLabelText('Stellar Network')).toHaveValue('test')
+    expect(screen.getByLabelText('Start time (HH:mm)')).toHaveValue('23:00')
+    expect(addToastMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps previous values and shows rollback toast when reset fails', async () => {
+    const user = userEvent.setup()
+    const resetToDefaults = vi.fn(() => {
+      throw new Error('Storage quota exceeded')
+    })
+    setContext({ ...CUSTOM_SETTINGS, resetToDefaults })
+
+    render(<Settings />)
+
+    await user.click(screen.getByRole('button', { name: 'Reset to defaults' }))
+
+    const confirmInput = screen.getByPlaceholderText('CONFIRM')
+    await user.type(confirmInput, 'CONFIRM')
+
+    const confirmButtons = screen.getAllByRole('button', { name: 'Reset to defaults' })
+    const dialogConfirmButton = confirmButtons[confirmButtons.length - 1]
+    await user.click(dialogConfirmButton)
+
+    expect(resetToDefaults).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked()
+    expect(screen.getByLabelText('Stellar Network')).toHaveValue('test')
+    expect(screen.getByLabelText('Start time (HH:mm)')).toHaveValue('23:00')
+    expect(addToastMock).toHaveBeenCalledWith(
+      'danger',
+      'Failed to reset settings. Previous values were kept.'
+    )
   })
 })

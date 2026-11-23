@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { createTypedCustomEvent, SETTINGS_EVENTS } from '../events/schema'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
+import { defaultSettings } from '../lib/settingsSchema'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -67,16 +68,20 @@ const LEGACY_THEME_KEY = 'theme'
 
 const VALID_THEMES: ThemeMode[] = ['light', 'dark', 'system']
 
-const defaultPersistedSettings: PersistedSettings = {
-  themeMode: 'system',
-  network: 'public',
-  addressDisplay: 'short',
-  toastsEnabled: true,
-  autoDismiss: '5s',
-  quietHoursEnabled: false,
+const schemaDefaults = defaultSettings()
+
+export const DEFAULT_SETTINGS: Readonly<SettingsPayload> = {
+  themeMode: schemaDefaults.themeMode,
+  network: schemaDefaults.network as NetworkOption,
+  addressDisplay: schemaDefaults.addressDisplay as AddressDisplayOption,
+  toastsEnabled: schemaDefaults.toastsEnabled,
+  autoDismiss: schemaDefaults.autoDismiss as AutoDismissOption,
+  quietHoursEnabled: schemaDefaults.quietHoursEnabled,
   quietHoursStart: QUIET_HOURS_DEFAULTS.start,
   quietHoursEnd: QUIET_HOURS_DEFAULTS.end,
 }
+
+const defaultPersistedSettings: PersistedSettings = { ...DEFAULT_SETTINGS }
 
 const defaultState: SettingsState = {
   ...defaultPersistedSettings,
@@ -284,31 +289,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }
 
   const resetToDefaults = () => {
-    const defaults = {
-      themeMode: defaultPersistedSettings.themeMode,
-      network: defaultPersistedSettings.network,
-      addressDisplay: defaultPersistedSettings.addressDisplay,
-      toastsEnabled: defaultPersistedSettings.toastsEnabled,
-      autoDismiss: defaultPersistedSettings.autoDismiss,
-      quietHoursEnabled: defaultPersistedSettings.quietHoursEnabled,
-      quietHoursStart: defaultPersistedSettings.quietHoursStart,
-      quietHoursEnd: defaultPersistedSettings.quietHoursEnd,
-    }
-
-    setThemeMode(defaults.themeMode)
-    setNetwork(defaults.network)
-    setAddressDisplay(defaults.addressDisplay)
-    setToastsEnabled(defaults.toastsEnabled)
-    setAutoDismiss(defaults.autoDismiss)
-    setQuietHoursEnabled(defaults.quietHoursEnabled)
-    setQuietHoursStart(defaults.quietHoursStart)
-    setQuietHoursEnd(defaults.quietHoursEnd)
-    setPersistedSettings(defaults)
-    setOriginalSettings(defaults)
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, defaults))
-    }
+    saveSettings({ ...DEFAULT_SETTINGS })
   }
 
   const cancelSettings = () => {

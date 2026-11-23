@@ -15,7 +15,7 @@ import type { CredenceNetwork } from './networkLabels'
 // Constants
 // ---------------------------------------------------------------------------
 
-const HORIZON_URLS: Record<CredenceNetwork, string> = {
+export const HORIZON_URLS: Record<CredenceNetwork, string> = {
   public: 'https://horizon.stellar.org',
   test: 'https://horizon-testnet.stellar.org',
 }

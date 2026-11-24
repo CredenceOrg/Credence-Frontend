@@ -79,6 +79,7 @@ export function App({ children, errorFallback, loadingFallback }: AppProps = {})
                         <Route path="bond/:id" element={<BondDetail />} />
                         <Route path="trust" element={<TrustScore />} />
                         <Route path="trust/summary" element={<TrustSummary />} />
+                        <Route path="trust/:address" element={<TrustScore />} />
                         <Route path="attestations" element={<Attestations />} />
                         <Route path="transactions" element={<Transactions />} />
                         <Route path="settings" element={<Settings />} />

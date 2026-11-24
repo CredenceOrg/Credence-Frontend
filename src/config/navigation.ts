@@ -88,6 +88,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/bond/new': 'Create bond page',
   '/trust': 'Trust Score page',
   '/trust/summary': 'Trust Score summary page',
+  '/trust/:address': 'Trust Score profile page',
   '/attestations': 'Attestations page',
   '/transactions': 'Transactions page',
   '/settings': 'Settings page',

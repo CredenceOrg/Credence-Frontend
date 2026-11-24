@@ -2,7 +2,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { SettingsProvider, useSettings, type SettingsPayload } from './SettingsContext'
+import {
+  DEFAULT_SETTINGS,
+  SettingsProvider,
+  useSettings,
+  type SettingsPayload,
+} from './SettingsContext'
 import { SETTINGS_EVENTS } from '../events/schema'
 import { updateSettings } from '../api/settings'
 import { getIdentityEpoch } from '../lib/identityEpoch'
@@ -153,6 +158,47 @@ describe('SettingsContext.saveSettings', () => {
     expect(listener).toHaveBeenCalledTimes(1)
     expect((listener.mock.calls[0][0] as CustomEvent<SettingsPayload>).detail.addressDisplay).toBe(
       'friendly'
+    )
+  })
+
+  it('resetToDefaults persists canonical defaults and broadcasts settings:updated', () => {
+    const listener = vi.fn()
+    const { result } = renderHook(() => useSettings(), { wrapper })
+
+    act(() => {
+      result.current.saveSettings({
+        themeMode: 'dark',
+        network: 'test',
+        addressDisplay: 'full',
+        toastsEnabled: false,
+        autoDismiss: '3s',
+        quietHoursEnabled: true,
+        quietHoursStart: '23:00',
+        quietHoursEnd: '06:00',
+      })
+    })
+
+    window.addEventListener(SETTINGS_EVENTS.UPDATED, listener)
+
+    act(() => {
+      result.current.resetToDefaults()
+    })
+
+    window.removeEventListener(SETTINGS_EVENTS.UPDATED, listener)
+
+    expect(readStored()).toEqual(DEFAULT_SETTINGS)
+    expect(result.current.themeMode).toBe(DEFAULT_SETTINGS.themeMode)
+    expect(result.current.network).toBe(DEFAULT_SETTINGS.network)
+    expect(result.current.addressDisplay).toBe(DEFAULT_SETTINGS.addressDisplay)
+    expect(result.current.toastsEnabled).toBe(DEFAULT_SETTINGS.toastsEnabled)
+    expect(result.current.autoDismiss).toBe(DEFAULT_SETTINGS.autoDismiss)
+    expect(result.current.quietHoursEnabled).toBe(DEFAULT_SETTINGS.quietHoursEnabled)
+    expect(result.current.quietHoursStart).toBe(DEFAULT_SETTINGS.quietHoursStart)
+    expect(result.current.quietHoursEnd).toBe(DEFAULT_SETTINGS.quietHoursEnd)
+    expect(result.current.hasUnsavedChanges).toBe(false)
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect((listener.mock.calls[0][0] as CustomEvent<SettingsPayload>).detail).toEqual(
+      DEFAULT_SETTINGS
     )
   })
 })

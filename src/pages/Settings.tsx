@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
+import { DEFAULT_SETTINGS, useSettings } from '../context/SettingsContext'
 import { useToast } from '../components/ToastProvider'
 import { FormField, Input } from '../components/forms'
 import Toggle from '../components/controls/Toggle'
@@ -111,6 +112,7 @@ export default function Settings() {
     setQuietHoursEnd,
     unlockRemindersEnabled,
     saveSettings,
+    resetToDefaults,
   } = useSettings()
   const { addToast } = useToast()
   const {
@@ -440,6 +442,8 @@ export default function Settings() {
   }, [isDirty])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const resetButtonRef = useRef<HTMLButtonElement>(null)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [importPreview, setImportPreview] = useState<SettingsBlob | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [importConfirmOpen, setImportConfirmOpen] = useState(false)
@@ -614,6 +618,24 @@ export default function Settings() {
     resetImportState()
     addToast('info', t('settings.toasts.importCancelled'))
   }, [resetImportState, addToast, t])
+
+  const handleResetConfirm = useCallback(() => {
+    const previousDraft = { ...draft }
+    try {
+      setDraft({ ...DEFAULT_SETTINGS })
+      resetToDefaults()
+      setResetConfirmOpen(false)
+      addToast('success', t('settings.toasts.reset'))
+    } catch {
+      setDraft(previousDraft)
+      setResetConfirmOpen(false)
+      addToast('danger', t('settings.toasts.resetFailed'))
+    }
+  }, [draft, resetToDefaults, addToast, t])
+
+  const handleResetCancel = useCallback(() => {
+    setResetConfirmOpen(false)
+  }, [])
 
   const diffs = importPreview ? computeDiff(currentSettings, importPreview) : []
 
@@ -1105,6 +1127,14 @@ export default function Settings() {
         >
           {t('settings.actions.cancel')}
         </button>
+        <button
+          ref={resetButtonRef}
+          type="button"
+          className="settings-btn settings-btn--secondary"
+          onClick={() => setResetConfirmOpen(true)}
+        >
+          {t('settings.actions.resetToDefaults')}
+        </button>
       </div>
 
       <ConfirmDialog
@@ -1138,6 +1168,14 @@ export default function Settings() {
         variant="info"
         onConfirm={handleNetworkSwitchConfirm}
         onCancel={handleNetworkSwitchCancel}
+        open={resetConfirmOpen}
+        title={t('settings.resetDialog.title')}
+        description={<p>{t('settings.resetDialog.description')}</p>}
+        confirmLabel={t('settings.resetDialog.confirmLabel')}
+        confirmHint={t('settings.resetDialog.confirmHint')}
+        returnFocusRef={resetButtonRef}
+        onConfirm={handleResetConfirm}
+        onCancel={handleResetCancel}
       />
     </div>
   )

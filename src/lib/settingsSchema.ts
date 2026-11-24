@@ -31,7 +31,7 @@ const VALID_NETWORKS = ['public', 'test'] as const
 const VALID_ADDRESS_DISPLAYS = ['full', 'short', 'friendly'] as const
 const VALID_AUTO_DISMISS = ['off', '3s', '5s', '8s'] as const
 
-const DEFAULT_SETTINGS: SettingsBlob = {
+export const DEFAULT_SETTINGS: Readonly<SettingsBlob> = {
   themeMode: 'system',
   network: 'public',
   addressDisplay: 'short',

@@ -9,6 +9,7 @@ import {
   getOutboxPendingCount,
   subscribeOutbox,
 } from '../lib/offlineOutbox'
+import { defaultSettings } from '../lib/settingsSchema'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -84,17 +85,21 @@ const LEGACY_THEME_KEY = 'theme'
 
 const VALID_THEMES: ThemeMode[] = ['light', 'dark', 'system']
 
-const defaultPersistedSettings: PersistedSettings = {
-  themeMode: 'system',
-  network: 'public',
-  addressDisplay: 'short',
-  toastsEnabled: true,
-  autoDismiss: '5s',
-  quietHoursEnabled: false,
+const schemaDefaults = defaultSettings()
+
+export const DEFAULT_SETTINGS: Readonly<SettingsPayload> = {
+  themeMode: schemaDefaults.themeMode,
+  network: schemaDefaults.network as NetworkOption,
+  addressDisplay: schemaDefaults.addressDisplay as AddressDisplayOption,
+  toastsEnabled: schemaDefaults.toastsEnabled,
+  autoDismiss: schemaDefaults.autoDismiss as AutoDismissOption,
+  quietHoursEnabled: schemaDefaults.quietHoursEnabled,
   quietHoursStart: QUIET_HOURS_DEFAULTS.start,
   quietHoursEnd: QUIET_HOURS_DEFAULTS.end,
   unlockRemindersEnabled: false,
 }
+
+const defaultPersistedSettings: PersistedSettings = { ...DEFAULT_SETTINGS }
 
 const defaultState: SettingsState = {
   ...defaultPersistedSettings,
@@ -387,6 +392,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, defaults))
     }
+    saveSettings({ ...DEFAULT_SETTINGS })
   }
 
   const cancelSettings = () => {

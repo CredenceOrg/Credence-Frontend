@@ -14,7 +14,7 @@ vi.mock('../data/activity', async () => {
     ACTIVITY_ITEMS: [
       {
         id: 'evt-only-success',
-        timestamp: 'Jul 21, 10:00 UTC',
+        timestamp: '2026-07-21T10:00:00.000Z',
         title: 'Identity proof confirmed',
         description: 'Quorum accepted the proof on the first round.',
         actor: 'Validator Node 12',

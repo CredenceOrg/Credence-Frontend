@@ -3,6 +3,7 @@ import {
   ApiRateLimiter,
   DEFAULT_API_RATE_LIMIT,
   readApiRateLimitOverrides,
+  retryAfterMsFromResponse,
   type ApiRateLimiterOptions,
 } from './rateLimit'
 
@@ -211,6 +212,33 @@ describe('ApiRateLimiter', () => {
       expect(() => new ApiRateLimiter({ windowMs: -1 })).toThrow(RangeError)
       expect(() => new ApiRateLimiter({ windowMs: Number.POSITIVE_INFINITY })).toThrow(RangeError)
     })
+  })
+})
+
+describe('retryAfterMsFromResponse', () => {
+  const withHeader = (value?: string) =>
+    new Response('', { headers: value === undefined ? undefined : { 'Retry-After': value } })
+
+  it('parses delta-seconds', () => {
+    expect(retryAfterMsFromResponse(withHeader('30'))).toBe(30_000)
+    expect(retryAfterMsFromResponse(withHeader('0'))).toBe(0)
+  })
+
+  it('parses an HTTP-date relative to the supplied clock', () => {
+    const now = Date.parse('2026-10-21T07:27:30Z')
+    expect(retryAfterMsFromResponse(withHeader('Wed, 21 Oct 2026 07:28:00 GMT'), now)).toBe(30_000)
+  })
+
+  it('floors a past HTTP-date at zero', () => {
+    const now = Date.parse('2026-10-21T07:29:00Z')
+    expect(retryAfterMsFromResponse(withHeader('Wed, 21 Oct 2026 07:28:00 GMT'), now)).toBe(0)
+  })
+
+  it('falls back to the default window for a missing or malformed header', () => {
+    expect(retryAfterMsFromResponse(withHeader())).toBe(DEFAULT_API_RATE_LIMIT.windowMs)
+    expect(retryAfterMsFromResponse(withHeader('not-a-date'))).toBe(
+      DEFAULT_API_RATE_LIMIT.windowMs
+    )
   })
 })
 

@@ -6,13 +6,15 @@ import {
   ApiError,
   ApiRateLimitError,
   MAX_REQUEST_BODY_BYTES,
-  API_BASE_URL,
   apiFetch,
   apiRateLimiterSnapshot,
   buildUrl,
   defaultApiRateLimiter,
+  getRateLimitRemainingMs,
   normalizeBaseUrl,
   resetApiRateLimiter,
+  resetRateLimitNotice,
+  subscribeRateLimit,
   type ApiFetchOptions,
 } from './client'
 import { resetWalletAuditTrail } from '../lib/walletAudit'
@@ -1062,6 +1064,84 @@ describe('apiFetch rate limiting (defence-in-depth)', () => {
       windowMs: TEST_WINDOW_MS,
       enabled: true,
     })
+  })
+
+  it('publishes a rate-limit notice when the local limiter blocks', async () => {
+    resetApiRateLimiter()
+    fetchMock.mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const notices: number[] = []
+    const unsubscribe = subscribeRateLimit(({ retryAfterMs }) => notices.push(retryAfterMs))
+    try {
+      for (let i = 0; i < TEST_MAX; i++) {
+        await apiFetch('/x')
+      }
+      await expect(apiFetch('/x')).rejects.toBeInstanceOf(ApiRateLimitError)
+    } finally {
+      unsubscribe()
+    }
+
+    expect(notices).toHaveLength(1)
+    expect(notices[0]).toBeGreaterThan(0)
+    expect(getRateLimitRemainingMs()).toBeGreaterThan(0)
+  })
+
+  it('publishes a notice from a server 429 Retry-After header', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: 'slow down' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '7' },
+      })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const notices: number[] = []
+    const unsubscribe = subscribeRateLimit(({ retryAfterMs }) => notices.push(retryAfterMs))
+    try {
+      await expect(apiFetch('/limited')).rejects.toMatchObject({
+        name: 'ApiRateLimitError',
+        status: 429,
+        retryAfterMs: 7000,
+      })
+    } finally {
+      unsubscribe()
+    }
+
+    expect(notices).toEqual([7000])
+    expect(getRateLimitRemainingMs()).toBeGreaterThan(0)
+  })
+
+  it('unsubscribe stops rate-limit notifications', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response('', { status: 429, headers: { 'Retry-After': '1' } })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const listener = vi.fn()
+    const unsubscribe = subscribeRateLimit(listener)
+    unsubscribe()
+
+    await expect(apiFetch('/limited')).rejects.toBeInstanceOf(ApiRateLimitError)
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('resetRateLimitNotice clears the remaining window and notifies listeners', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response('', { status: 429, headers: { 'Retry-After': '10' } })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const listener = vi.fn()
+    const unsubscribe = subscribeRateLimit(listener)
+    await expect(apiFetch('/limited')).rejects.toBeInstanceOf(ApiRateLimitError)
+    expect(getRateLimitRemainingMs()).toBeGreaterThan(0)
+
+    resetRateLimitNotice()
+
+    expect(getRateLimitRemainingMs()).toBe(0)
+    expect(listener).toHaveBeenLastCalledWith({ retryAfterMs: 0, expiresAt: 0 })
+    unsubscribe()
   })
 })
 

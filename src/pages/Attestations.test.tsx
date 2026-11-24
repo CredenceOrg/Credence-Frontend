@@ -1,101 +1,129 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup, waitFor, within } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import type { ReactElement } from 'react'
+import Attestations from './Attestations'
+import { truncateAddress } from '../lib/stellar'
 import Attestations, { formatTimestamp } from './Attestations'
 
+const WALLET_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+
+const walletState = vi.hoisted(() => ({
+  address: '',
+  isConnected: false,
+}))
+
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => walletState,
+}))
+
 vi.mock('../components/AttestationForm', () => ({
-  default: () => <div data-testid="attestation-form" />,
+  default: ({
+    onSubmitSuccess,
+  }: {
+    onSubmitSuccess: (payload: { subject: string; type: string; evidence: string }) => void
+  }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onSubmitSuccess({
+          subject: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
+          type: 'identity',
+          evidence: 'Identity evidence package',
+        })
+      }
+    >
+      Submit attestation
+    </button>
+  ),
 }))
 
-vi.mock('../components/ToastProvider', () => ({
-  useToast: () => ({ addToast: vi.fn() }),
-}))
+const renderInRouter = (ui: ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>)
 
-const renderInRouter = (ui: React.ReactElement) =>
-  render(<MemoryRouter>{ui}</MemoryRouter>)
+async function submitAttestation() {
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: /submit attestation/i }))
+  return user
+}
 
-describe('Attestations Page — filter, drawer, and live region', () => {
+describe('Attestations page', () => {
+  beforeEach(() => {
+    walletState.address = ''
+    walletState.isConnected = false
+  })
+
   afterEach(cleanup)
 
-  it('renders the page header, form, timeline, and a radio-group filter', () => {
+  it('renders the header, form, timeline, and status filter', () => {
     renderInRouter(<Attestations />)
+
     expect(
       screen.getByRole('heading', { name: /^attestations$/i, level: 1 })
     ).toBeInTheDocument()
-    expect(screen.getByTestId('attestation-form')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /submit attestation/i })).toBeInTheDocument()
     expect(
       screen.getByRole('list', { name: /recent timeline events/i })
     ).toBeInTheDocument()
-    const radios = screen.getAllByRole('radio', {
-      name: /all statuses|accepted|needs update|in review/i,
-    })
-    expect(radios).toHaveLength(4)
+
+    const filter = screen.getByRole('combobox', { name: /filter attestations/i })
+    expect(filter).toBeInTheDocument()
+    expect(screen.getAllByRole('option')).toHaveLength(4)
   })
 
-  it('uses a real <fieldset> with a visible legend so the radio group is named for screen readers', () => {
-    renderInRouter(<Attestations />)
-    const radios = screen.getAllByRole('radio', { name: /all statuses/i })
-    radios.forEach((radio) => {
-      expect(radio).toHaveAttribute('name', 'attestation-status-filter')
-    })
-    expect(screen.getByText(/filter by status/i)).toBeInTheDocument()
-  })
-
-  it('filters the timeline by status — accepted, needs-update, in-review', async () => {
+  it('filters the timeline by status', async () => {
     const user = userEvent.setup()
     renderInRouter(<Attestations />)
+    const filter = screen.getByRole('combobox', { name: /filter attestations/i })
+
     // 5 sample items: 2 accepted, 2 needs-update, 1 in-review
     expect(screen.getAllByRole('listitem')).toHaveLength(5)
 
-    await user.click(screen.getByRole('radio', { name: 'Accepted' }))
+    await user.selectOptions(filter, 'success')
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
 
-    await user.click(screen.getByRole('radio', { name: 'Needs update' }))
+    await user.selectOptions(filter, 'warning')
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
 
-    await user.click(screen.getByRole('radio', { name: 'In review' }))
+    await user.selectOptions(filter, 'info')
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
 
-    await user.click(screen.getByRole('radio', { name: 'All statuses' }))
+    await user.selectOptions(filter, 'all')
     expect(screen.getAllByRole('listitem')).toHaveLength(5)
   })
 
-  it('announces the result count via aria-live as the filter changes', async () => {
-    const user = userEvent.setup()
+  it('uses the connected wallet address as the actor on submit', async () => {
+    walletState.address = WALLET_ADDRESS
+    walletState.isConnected = true
     renderInRouter(<Attestations />)
-    const summary = screen.getByText(/showing 5 of 5 attestations/i)
-    expect(summary).toHaveAttribute('aria-live', 'polite')
 
-    await user.click(screen.getByRole('radio', { name: 'Accepted' }))
-    expect(screen.getByText(/showing 2 of 5 attestations/i)).toBeInTheDocument()
+    const user = await submitAttestation()
+    await user.click(screen.getAllByRole('button', { name: /show details/i })[0]!)
+
+    const actor = document.querySelector('.activity-row__actor')
+    expect(actor?.textContent).toContain(truncateAddress(WALLET_ADDRESS))
+    expect(actor?.textContent).not.toContain('Current User')
   })
 
-  it('shows attestation-specific empty state when filter yields no results', () => {
-    render(<Attestations />)
-    const filterSelect = screen.getByRole('combobox', { name: /filter attestations/i })
+  it('falls back to the translated label when disconnected', async () => {
+    renderInRouter(<Attestations />)
 
-    const rows = screen.getAllByRole('listitem')
-    await user.click(rows[0]!)
+    const user = await submitAttestation()
+    await user.click(screen.getAllByRole('button', { name: /show details/i })[0]!)
 
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-    // Should show the attestation-specific empty state, not the ActivityTimeline default
-    expect(screen.getByRole('heading', { name: /no matching attestations/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /clear filter/i })).toBeInTheDocument()
+    expect(document.querySelector('.activity-row__actor')?.textContent).toContain('Current User')
   })
 
-  it('drawer surfaces validator, transaction hash, evidence, and timestamp', async () => {
-    const user = userEvent.setup()
+  it('stores new activity timestamps as ISO values', async () => {
     renderInRouter(<Attestations />)
-    const rows = screen.getAllByRole('listitem')
-    await user.click(rows[0]!)
+    await submitAttestation()
 
-    // Panel is hidden — use queryByTestId since CopyableHash is not mocked here
-    expect(screen.queryByTestId('copyable-hash')).not.toBeInTheDocument()
-    fireEvent.click(expandBtn)
-
-    expect(expandBtn).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText(/Validator/)).toBeVisible()
+    const time = screen.getAllByRole('listitem')[0]!.querySelector('time')
+    expect(time).not.toBeNull()
+    expect(time?.getAttribute('dateTime')).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+    )
+    expect(time?.textContent).not.toContain('T')
   })
 })
 

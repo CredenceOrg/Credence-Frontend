@@ -3,14 +3,20 @@ import type { FC } from 'react'
 
 interface PinWidgetButtonProps {
   slug: string
+  widgetTitle: string
   isPinned: boolean
   onToggle: (slug: string) => void
 }
 
-export const PinWidgetButton: FC<PinWidgetButtonProps> = ({ slug, isPinned, onToggle }) => (
+export const PinWidgetButton: FC<PinWidgetButtonProps> = ({
+  slug,
+  widgetTitle,
+  isPinned,
+  onToggle,
+}) => (
   <button
     type="button"
-    aria-label={isPinned ? 'Unpin widget' : 'Pin widget'}
+    aria-label={`${isPinned ? 'Unpin' : 'Pin'} ${widgetTitle}`}
     aria-pressed={isPinned}
     onClick={() => onToggle(slug)}
     className="pin-widget-button"

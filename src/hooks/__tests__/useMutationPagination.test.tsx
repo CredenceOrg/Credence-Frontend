@@ -51,7 +51,7 @@ describe('useMutationPagination Hook', () => {
     correlationId: `corr-${id}`,
     version: 1,
     isRecovered: false,
-  })
+  } as unknown as MutationOperation)
 
   it('loads initial page of mutation operations correctly', async () => {
     insertOp(createMockOp('op-1', 'bond_create', 'success', '2026-08-29T12:01:00.000Z'))

@@ -284,7 +284,7 @@ function evaluateBadgeContrast(
   }
 
   const background = selectedPalette.surface.startsWith('rgba(')
-    ? compositeColor(selectedPalette.surface, themeTokens.page)
+    ? (compositeColor(selectedPalette.surface, themeTokens.page) as [number, number, number, number])
     : selectedPalette.surface
   const textRatio = getContrastRatio(selectedPalette.text, background)
   const borderRatio = getContrastRatio(selectedPalette.border, background)

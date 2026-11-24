@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import { useWallet } from '../context/WalletContext'
-import { FREIGHTER_INSTALL_URL } from '../lib/freighterClient'
+import { DEFAULT_WALLET_ADAPTER_ID, getWalletAdapters } from '../lib/wallet/registry'
 import Button from './Button'
 import './ConnectWalletModal.css'
 
@@ -57,7 +57,10 @@ export function sanitizeErrorMessage(raw: unknown): string {
  * 4. General unexpected errors become `error` with a sanitized description.
  * 5. Output message is always non-empty and sanitized against secret leakage.
  */
-export function classifyWalletError(err: unknown): ErrorClassification {
+export function classifyWalletError(
+  err: unknown,
+  walletName: string = 'Freighter'
+): ErrorClassification {
   if (!err) {
     return {
       state: 'error',
@@ -77,7 +80,7 @@ export function classifyWalletError(err: unknown): ErrorClassification {
       return {
         state: 'error',
         kind: 'not_installed',
-        message: 'Freighter is not installed. Add the Freighter extension to your browser and try again.',
+        message: `${walletName} is not installed. Add the ${walletName} extension to your browser and try again.`,
       }
     }
 
@@ -93,7 +96,7 @@ export function classifyWalletError(err: unknown): ErrorClassification {
       return {
         state: 'permission',
         kind: 'permission',
-        message: 'Connection request was declined in Freighter. Click Connect to try again.',
+        message: `Connection request was declined in ${walletName}. Click Connect to try again.`,
       }
     }
 
@@ -178,7 +181,22 @@ export default function ConnectWalletModal({
   onSuccess,
   onError,
 }: ConnectWalletModalProps) {
-  const { connect, isConnecting: walletIsConnecting, error: walletError, isConnected } = useWallet()
+  const {
+    connect,
+    isConnecting: walletIsConnecting,
+    error: walletError,
+    isConnected,
+    adapterId: contextAdapterId,
+    availableAdapters,
+    selectAdapter,
+  } = useWallet()
+
+  const adapters = availableAdapters?.length ? availableAdapters : getWalletAdapters()
+  const [selectedAdapterId, setSelectedAdapterId] = useState<string>(
+    contextAdapterId ?? adapters[0]?.id ?? DEFAULT_WALLET_ADAPTER_ID
+  )
+  const selectedAdapter =
+    adapters.find((adapter) => adapter.id === selectedAdapterId) ?? adapters[0]
 
   const [modalState, setModalState] = useState<WalletModalState>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -202,24 +220,35 @@ export default function ConnectWalletModal({
   // Fail-closed input validation: open must be strictly truthy
   const isOpen = Boolean(open)
 
+  // Keep local selection aligned with persisted context adapter when modal opens
+  useEffect(() => {
+    if (isOpen && contextAdapterId) {
+      setSelectedAdapterId(contextAdapterId)
+    }
+  }, [isOpen, contextAdapterId])
+
   // Synchronize wallet context errors when no custom request handler is provided
   useEffect(() => {
     if (walletError && !onConnectRequest && isOpen) {
-      const classification = classifyWalletError(walletError)
+      const classification = classifyWalletError(walletError, selectedAdapter?.name)
       setModalState(classification.state)
       setErrorKind(classification.kind)
       setErrorMessage(classification.message)
     }
-  }, [walletError, onConnectRequest, isOpen])
+  }, [walletError, onConnectRequest, isOpen, selectedAdapter?.name])
 
   // Synchronize wallet connecting flag
   useEffect(() => {
-    if (walletIsConnecting && !onConnectRequest && isOpen) {
-      setModalState('loading')
-      setErrorMessage(null)
-      setErrorKind(null)
+    if (!onConnectRequest && isOpen) {
+      if (walletIsConnecting) {
+        setModalState('loading')
+        setErrorMessage(null)
+        setErrorKind(null)
+      } else if (modalState === 'loading') {
+        setModalState('idle')
+      }
     }
-  }, [walletIsConnecting, onConnectRequest, isOpen])
+  }, [walletIsConnecting, onConnectRequest, isOpen, modalState])
 
   // Reset state and invalidate any in-flight requests on modal close
   useEffect(() => {
@@ -231,14 +260,14 @@ export default function ConnectWalletModal({
     }
   }, [isOpen])
 
-  // Auto-close when wallet connects successfully
+  // Auto-close when wallet connects successfully (guarded against in-flight connecting state)
   useEffect(() => {
-    if (isConnected && isOpen) {
+    if (isConnected && isOpen && !walletIsConnecting && modalState !== 'loading') {
       if (typeof onClose === 'function') {
         onClose()
       }
     }
-  }, [isConnected, isOpen, onClose])
+  }, [isConnected, isOpen, walletIsConnecting, modalState, onClose])
 
   useScrollPreserver({ isActive: isOpen })
 
@@ -280,7 +309,7 @@ export default function ConnectWalletModal({
       if (onConnectRequest) {
         await onConnectRequest()
       } else {
-        await connect()
+        await connect(selectedAdapter?.id)
       }
 
       // Concurrency check: discard result if a newer request was dispatched,
@@ -292,27 +321,51 @@ export default function ConnectWalletModal({
     } catch (err: unknown) {
       if (seq !== requestSeqRef.current || !isMountedRef.current || !isOpen) return
 
-      const classification = classifyWalletError(err)
+      const classification = classifyWalletError(err, selectedAdapter?.name)
       setModalState(classification.state)
       setErrorKind(classification.kind)
       setErrorMessage(classification.message)
 
       onError?.(err)
     }
-  }, [isConnectingOrLoading, onConnectRequest, connect, isOpen, onSuccess, onError])
+  }, [
+    isConnectingOrLoading,
+    onConnectRequest,
+    connect,
+    selectedAdapter?.id,
+    selectedAdapter?.name,
+    isOpen,
+    onSuccess,
+    onError,
+  ])
+
+  const handleSelectAdapter = useCallback(
+    (id: string) => {
+      if (isConnectingOrLoading) return
+      setSelectedAdapterId(id)
+      selectAdapter?.(id)
+      setModalState('idle')
+      setErrorMessage(null)
+      setErrorKind(null)
+    },
+    [isConnectingOrLoading, selectAdapter]
+  )
 
   if (!isOpen) return null
 
   // Determine effective display error
   let displayErrorMessage = errorMessage
   if (!displayErrorMessage && walletError && !onConnectRequest) {
-    const classification = classifyWalletError(walletError)
+    const classification = classifyWalletError(walletError, selectedAdapter?.name)
     displayErrorMessage = classification.message
   }
 
   const showErrorBox =
     Boolean(displayErrorMessage) &&
     (modalState === 'error' || modalState === 'permission' || modalState === 'stale')
+
+  const walletName = selectedAdapter?.name ?? 'Freighter'
+  const installUrl = selectedAdapter?.installUrl ?? 'https://www.freighter.app/'
 
   return createPortal(
     <div className="connect-wallet-dialog__backdrop" onClick={handleBackdropClick}>
@@ -322,19 +375,47 @@ export default function ConnectWalletModal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
+        tabIndex={-1}
         className="connect-wallet-dialog"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="connect-wallet-dialog__header">
           <h2 id={titleId} className="connect-wallet-dialog__title">
-            Connect Freighter Wallet
+            Connect {walletName} Wallet
           </h2>
         </header>
 
         <div className="connect-wallet-dialog__body">
+          {adapters.length > 1 && (
+            <div
+              role="radiogroup"
+              aria-label="Choose a Stellar wallet"
+              className="connect-wallet-dialog__providers"
+            >
+              {adapters.map((adapter) => {
+                const isSelected = adapter.id === selectedAdapter?.id
+                return (
+                  <button
+                    key={adapter.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`connect-wallet-dialog__provider-option${
+                      isSelected ? ' connect-wallet-dialog__provider-option--selected' : ''
+                    }`}
+                    onClick={() => handleSelectAdapter(adapter.id)}
+                    disabled={isConnectingOrLoading}
+                  >
+                    {adapter.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           <p id={descId} className="connect-wallet-dialog__description">
-            Freighter is a Stellar wallet browser extension. Clicking <strong>Connect</strong> will
-            open the Freighter extension and ask you to approve access for this session.
+            {walletName} is a Stellar wallet browser extension. Clicking <strong>Connect</strong>{' '}
+            will open the {walletName} extension and ask you to approve access for this session.
           </p>
 
           {showErrorBox && (
@@ -349,12 +430,12 @@ export default function ConnectWalletModal({
                 <span>{displayErrorMessage}</span>
                 {errorKind === 'not_installed' && (
                   <a
-                    href={FREIGHTER_INSTALL_URL}
+                    href={installUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="connect-wallet-dialog__install-link"
                   >
-                    Install Freighter
+                    Install {walletName}
                   </a>
                 )}
               </div>

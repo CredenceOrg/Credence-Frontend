@@ -7,6 +7,49 @@ import { CSP } from './src/config/security'
 
 const apiProxyTarget = process.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
+/**
+ * Vendor chunk groups for the production build.
+ *
+ * Splitting these packages out of the entry chunk keeps the first-paint payload
+ * smaller and makes a heavy dependency's cost visible in the build output. The
+ * order matters: the first matching group wins. Anything left in
+ * `node_modules` falls through to the catch-all `vendor` chunk.
+ *
+ * Budgets for these chunks live in `scripts/check-bundle-size.mjs` and are
+ * documented in `docs/BUNDLE.md`.
+ */
+const VENDOR_CHUNKS: ReadonlyArray<{ chunk: string; matches: (id: string) => boolean }> = [
+  {
+    chunk: 'vendor-react',
+    matches: (id) =>
+      /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(
+        id
+      ) || /[\\/]node_modules[\\/]@remix-run[\\/]/.test(id),
+  },
+  {
+    chunk: 'vendor-i18n',
+    matches: (id) =>
+      /[\\/]node_modules[\\/](i18next|i18next-browser-languagedetector|react-i18next)[\\/]/.test(
+        id
+      ),
+  },
+  {
+    chunk: 'vendor-wallet',
+    matches: (id) => /[\\/]node_modules[\\/]@stellar[\\/]/.test(id),
+  },
+  {
+    // jsQR is only reached through the dynamic import in QRScannerDialog, so it
+    // stays in its own chunk and is never part of the initial download.
+    chunk: 'vendor-qr',
+    matches: (id) => /[\\/]node_modules[\\/]jsqr[\\/]/.test(id),
+  },
+]
+
+function manualChunks(id: string): string | undefined {
+  if (!id.includes('node_modules')) return undefined
+  return VENDOR_CHUNKS.find((group) => group.matches(id))?.chunk ?? 'vendor'
+}
+
 export default defineConfig({
   plugins: [
     react(),
@@ -35,6 +78,13 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks,
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

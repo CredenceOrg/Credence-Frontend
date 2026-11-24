@@ -1,3 +1,7 @@
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { cleanup, render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import i18n from '../i18n/config'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -11,6 +15,7 @@ import ActivityTimeline, {
 const makeItem = (overrides: Partial<ActivityItem> = {}): ActivityItem => ({
   id: 'test-1',
   timestamp: '2026-06-20T10:00:00.000Z',
+  timestamp: 'Jun 20, 10:00 UTC',
   title: 'Test event',
   description: 'A test event description.',
   actor: 'Test Actor',
@@ -156,6 +161,7 @@ describe('ActivityTimeline', () => {
     it('does not show plural "events" label', () => {
       render(<ActivityTimeline items={[makeItem()]} />)
       expect(screen.queryByText(/\d+ recent events/)).toBeNull()
+      expect(screen.queryByText(/\d+ recent events/i)).toBeNull()
     })
 
     it('renders exactly one list item', () => {
@@ -181,6 +187,43 @@ describe('ActivityTimeline', () => {
     it('renders the correct number of list items', () => {
       render(<ActivityTimeline items={items} />)
       expect(screen.getAllByRole('listitem')).toHaveLength(5)
+    })
+  })
+
+  describe('localized plural counts', () => {
+    beforeEach(async () => {
+      i18n.addResourceBundle(
+        'fr',
+        'translation',
+        {
+          activityTimeline: {
+            recentEvents_one: '{{count}} événement récent',
+            recentEvents_other: '{{count}} événements récents',
+          },
+        },
+        true,
+        true
+      )
+      await i18n.changeLanguage('fr')
+    })
+
+    afterEach(async () => {
+      cleanup()
+      await i18n.changeLanguage('en')
+      i18n.removeResourceBundle('fr', 'translation')
+    })
+
+    it('uses the active locale plural rules for zero, one, and many items', () => {
+      const first = makeItem({ id: 'first' })
+      const second = makeItem({ id: 'second' })
+      const { rerender } = render(<ActivityTimeline items={[]} />)
+      expect(screen.queryByText(/événement récent/)).toBeNull()
+
+      rerender(<ActivityTimeline items={[first]} />)
+      expect(screen.getByText('1 événement récent')).toBeInTheDocument()
+
+      rerender(<ActivityTimeline items={[first, second]} />)
+      expect(screen.getByText('2 événements récents')).toBeInTheDocument()
     })
   })
 
@@ -210,6 +253,8 @@ describe('ActivityTimeline', () => {
       expect(time?.getAttribute('dateTime')).toBe('2026-06-20T10:00:00.000Z')
       expect(time?.textContent).toContain('Jun 20, 2026')
       expect(time?.textContent).toContain('10:00:00')
+      expect(container.querySelector('time')).not.toBeNull()
+      expect(container.querySelector('time')?.textContent).toBe('Jun 20, 10:00 UTC')
     })
 
     it('renders the rail as aria-hidden', () => {
@@ -632,6 +677,9 @@ describe('ActivityTimeline', () => {
       const updatedButton = screen.getByRole('button', { name: /show details/i })
       expect(updatedButton).toHaveAttribute('aria-expanded', 'false')
       expect(document.getElementById('details-item-1')).toBeNull()
+    })
+  })
+      })
     })
   })
 })

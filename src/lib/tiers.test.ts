@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { TIERS, TIER_ORDER, MAX_SCORE } from './tiers'
 import { TIER_THRESHOLDS, tierForScore } from './tier'
-import { TIER_LADDER } from '../components/TierLadder'
+import TIER_LADDER from '../components/TierLadder'
 import { pointsToNextTier } from '../components/TrustGauge'
 
 describe('TIERS', () => {
@@ -112,7 +112,7 @@ describe('boundary parity (TrustGauge and TierLadder agree)', () => {
   }
 
   it('TierLadder scoreMin/scoreMax match TIERS min/max for every tier', () => {
-    for (const tier of TIER_LADDER) {
+    for (const tier of TIER_LADDER as unknown as Array<{ id: string; scoreMin: number; scoreMax: number | null }>) {
       const canonical = TIERS[tier.id as keyof typeof TIERS]
       expect(tier.scoreMin).toBe(canonical.min)
       expect(tier.scoreMax).toBe(canonical.max)

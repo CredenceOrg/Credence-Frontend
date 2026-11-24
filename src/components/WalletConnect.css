@@ -47,8 +47,8 @@
 }
 
 .walletConnect__pill:hover {
-  background: var(--credence-color-slate-100, #f1f5f9);
-  border-color: var(--credence-color-primary-soft, #0284c7);
+  background: var(--credence-color-slate-100);
+  border-color: var(--credence-color-primary-soft);
 }
 
 .walletConnect__pill:active {
@@ -159,7 +159,7 @@
 
 .walletConnect__menuItem:hover,
 .walletConnect__menuItem:focus-visible {
-  background: var(--credence-color-slate-100, #f1f5f9);
+  background: var(--credence-color-slate-100);
 }
 
 .walletConnect__menuItem:focus-visible {
@@ -168,12 +168,12 @@
 }
 
 .walletConnect__menuItem--danger {
-  color: var(--credence-color-danger, #b91c1c);
+  color: var(--credence-color-danger-menu);
 }
 
 .walletConnect__menuItem--danger:hover,
 .walletConnect__menuItem--danger:focus-visible {
-  background: color-mix(in srgb, var(--credence-color-danger, #b91c1c) 12%, transparent);
+  background: color-mix(in srgb, var(--credence-color-danger-menu) 12%, transparent);
 }
 
 /* Mobile (375px) — collapse balance, keep 44px hit target ────────────────── */

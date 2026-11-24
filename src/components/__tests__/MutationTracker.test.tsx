@@ -11,16 +11,16 @@
  * - Integration with mutation recovery system
  */
 
-import { describe, it, expect, beforeEach, vi, Mock } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MutationTracker from '../MutationTracker'
 import type { MutationOperation } from '../../lib/mutationStorage'
 
 // Create mock functions with proper typing
-const mockGetMutationOperation = vi.fn() as Mock<[string], MutationOperation | null>
-const mockRetryMutation = vi.fn() as Mock<[string], Promise<boolean>>
-const mockCancelMutation = vi.fn() as Mock<[string], boolean>
+const mockGetMutationOperation = vi.fn<(id: string) => MutationOperation | null>()
+const mockRetryMutation = vi.fn<(id: string) => Promise<boolean>>()
+const mockCancelMutation = vi.fn<(id: string) => boolean>()
 
 const mockMutationStorage = {
   getMutationOperation: mockGetMutationOperation,
@@ -46,10 +46,10 @@ vi.mock('../../lib/log', () => ({
 }))
 
 describe('MutationTracker', () => {
-  const mockBondCreateOperation = {
+  const mockBondCreateOperation: MutationOperation = {
     operationId: 'bond-create-123',
-    type: 'bond_create',
-    status: 'pending',
+    type: 'bond_create' as const,
+    status: 'pending' as const,
     requestHash: 'hash-123',
     requestMetadata: { amountUsdc: 1000 },
     attempts: [],
@@ -59,7 +59,7 @@ describe('MutationTracker', () => {
     correlationId: 'corr-bond-create-123',
     version: 1,
     isRecovered: false,
-  }
+  } as unknown as MutationOperation
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -81,13 +81,13 @@ describe('MutationTracker', () => {
     it('displays submitting operation with progress', () => {
       const submittingOperation = {
         ...mockBondCreateOperation,
-        status: 'submitting',
+        status: 'submitting' as const,
         attempts: [
           {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'submitting',
+            status: 'submitting' as const,
           },
         ],
       }
@@ -103,7 +103,7 @@ describe('MutationTracker', () => {
     it('displays successful operation with transaction hash', () => {
       const successOperation = {
         ...mockBondCreateOperation,
-        status: 'success',
+        status: 'success' as const,
         finalTxHash: 'success-hash-456',
         completedAt: '2024-01-01T00:05:00.000Z',
         attempts: [
@@ -111,7 +111,7 @@ describe('MutationTracker', () => {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'success',
+            status: 'success' as const,
             txHash: 'success-hash-456',
           },
         ],
@@ -129,15 +129,15 @@ describe('MutationTracker', () => {
     it('displays failed operation with error and retry option', () => {
       const failedOperation = {
         ...mockBondCreateOperation,
-        status: 'error',
+        status: 'error' as const,
         attempts: [
           {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'error',
+            status: 'error' as const,
             error: {
-              type: 'network',
+              type: 'network' as const,
               message: 'Network connection failed',
               timestamp: '2024-01-01T00:01:00.000Z',
               retryable: true,
@@ -158,7 +158,7 @@ describe('MutationTracker', () => {
     it('displays cancelled operation', () => {
       const cancelledOperation = {
         ...mockBondCreateOperation,
-        status: 'cancelled',
+        status: 'cancelled' as const,
         completedAt: '2024-01-01T00:03:00.000Z',
       }
 
@@ -175,7 +175,7 @@ describe('MutationTracker', () => {
     it('displays bond withdraw operation correctly', () => {
       const withdrawOperation = {
         ...mockBondCreateOperation,
-        type: 'bond_withdraw',
+        type: 'bond_withdraw' as const,
         requestMetadata: { bondId: 123, amountUsdc: 500 },
       }
 
@@ -189,7 +189,7 @@ describe('MutationTracker', () => {
     it('displays trust score lookup operation correctly', () => {
       const trustScoreOperation = {
         ...mockBondCreateOperation,
-        type: 'trust_score_lookup',
+        type: 'trust_score_lookup' as const,
         requestMetadata: { address: 'GTEST123456789...' },
       }
 
@@ -214,15 +214,15 @@ describe('MutationTracker', () => {
 
       const failedOperation = {
         ...mockBondCreateOperation,
-        status: 'error',
+        status: 'error' as const,
         attempts: [
           {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'error',
+            status: 'error' as const,
             error: {
-              type: 'network',
+              type: 'network' as const,
               message: 'Network error',
               timestamp: '2024-01-01T00:01:00.000Z',
               retryable: true,
@@ -252,15 +252,15 @@ describe('MutationTracker', () => {
 
       const failedOperation = {
         ...mockBondCreateOperation,
-        status: 'error',
+        status: 'error' as const,
         attempts: [
           {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'error',
+            status: 'error' as const,
             error: {
-              type: 'network',
+              type: 'network' as const,
               message: 'Network error',
               timestamp: '2024-01-01T00:01:00.000Z',
               retryable: true,
@@ -271,7 +271,7 @@ describe('MutationTracker', () => {
 
       const retriedSuccessOperation = {
         ...mockBondCreateOperation,
-        status: 'success',
+        status: 'success' as const,
         finalTxHash: 'retry-tx-hash',
         completedAt: '2024-01-01T00:06:00.000Z',
         attempts: [
@@ -280,7 +280,7 @@ describe('MutationTracker', () => {
             attemptId: 'attempt-2',
             timestamp: '2024-01-01T00:05:00.000Z',
             requestHash: 'hash-123',
-            status: 'success',
+            status: 'success' as const,
             txHash: 'retry-tx-hash',
           },
         ],
@@ -314,7 +314,7 @@ describe('MutationTracker', () => {
 
       const pendingOperation = {
         ...mockBondCreateOperation,
-        status: 'pending',
+        status: 'pending' as const,
       }
 
       mockMutationStorage.getMutationOperation.mockReturnValue(pendingOperation)
@@ -335,15 +335,15 @@ describe('MutationTracker', () => {
     it('disables retry button when operation is not retryable', () => {
       const failedOperation = {
         ...mockBondCreateOperation,
-        status: 'error',
+        status: 'error' as const,
         attempts: [
           {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'error',
+            status: 'error' as const,
             error: {
-              type: 'validation',
+              type: 'validation' as const,
               message: 'Invalid amount',
               timestamp: '2024-01-01T00:01:00.000Z',
               retryable: false,
@@ -362,15 +362,15 @@ describe('MutationTracker', () => {
     it('hides controls when showControls is false', () => {
       const failedOperation = {
         ...mockBondCreateOperation,
-        status: 'error',
+        status: 'error' as const,
         attempts: [
           {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'error',
+            status: 'error' as const,
             error: {
-              type: 'network',
+              type: 'network' as const,
               message: 'Network error',
               timestamp: '2024-01-01T00:01:00.000Z',
               retryable: true,
@@ -392,18 +392,18 @@ describe('MutationTracker', () => {
     it('shows detailed operation information when showDetails is true', () => {
       const detailedOperation = {
         ...mockBondCreateOperation,
-        status: 'error',
+        status: 'error' as const,
         finalTxHash: 'tx-hash-123',
         isRecovered: true,
-        recoverySource: 'storage',
+        recoverySource: 'storage' as const,
         attempts: [
           {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'error',
+            status: 'error' as const,
             error: {
-              type: 'network',
+              type: 'network' as const,
               message: 'Connection timeout',
               timestamp: '2024-01-01T00:01:00.000Z',
               retryable: true,
@@ -435,9 +435,9 @@ describe('MutationTracker', () => {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'error',
+            status: 'error' as const,
             error: {
-              type: 'network',
+              type: 'network' as const,
               message: 'Connection timeout',
               timestamp: '2024-01-01T00:01:00.000Z',
               retryable: true,
@@ -463,12 +463,12 @@ describe('MutationTracker', () => {
         if (callCount <= 2) {
           return {
             ...mockBondCreateOperation,
-            status: 'submitting',
+            status: 'submitting' as const,
           }
         } else {
           return {
             ...mockBondCreateOperation,
-            status: 'success',
+            status: 'success' as const,
             finalTxHash: 'completed-hash',
           }
         }
@@ -493,7 +493,7 @@ describe('MutationTracker', () => {
     it('stops polling when operation completes', async () => {
       mockMutationStorage.getMutationOperation.mockReturnValue({
         ...mockBondCreateOperation,
-        status: 'success',
+        status: 'success' as const,
       })
 
       render(<MutationTracker operationId="bond-create-123" />)
@@ -515,7 +515,7 @@ describe('MutationTracker', () => {
       const onSuccess = vi.fn()
       const successOperation = {
         ...mockBondCreateOperation,
-        status: 'success',
+        status: 'success' as const,
       }
 
       // First render with pending, then update to success
@@ -541,7 +541,7 @@ describe('MutationTracker', () => {
       const onError = vi.fn()
       const errorOperation = {
         ...mockBondCreateOperation,
-        status: 'error',
+        status: 'error' as const,
       }
 
       // First render with pending, then update to error
@@ -567,7 +567,7 @@ describe('MutationTracker', () => {
       const onCancel = vi.fn()
       const cancelledOperation = {
         ...mockBondCreateOperation,
-        status: 'cancelled',
+        status: 'cancelled' as const,
       }
 
       // First render with pending, then update to cancelled
@@ -651,15 +651,15 @@ describe('MutationTracker', () => {
 
       const failedOperation = {
         ...mockBondCreateOperation,
-        status: 'error',
+        status: 'error' as const,
         attempts: [
           {
             attemptId: 'attempt-1',
             timestamp: '2024-01-01T00:01:00.000Z',
             requestHash: 'hash-123',
-            status: 'error',
+            status: 'error' as const,
             error: {
-              type: 'network',
+              type: 'network' as const,
               message: 'Network error',
               timestamp: '2024-01-01T00:01:00.000Z',
               retryable: true,

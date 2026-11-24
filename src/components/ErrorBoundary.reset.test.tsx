@@ -48,7 +48,7 @@ describe('ErrorBoundary reset functionality', () => {
     let attemptsOnKey1 = 0
     let attemptsOnKey2 = 0
 
-    function ThrowingChild({ currentKey }: { currentKey: string }) {
+    function ThrowingChild({ currentKey }: { currentKey: string }): JSX.Element {
       if (currentKey === 'key-1') {
         attemptsOnKey1++
         throw new Error(`Key 1 attempt ${attemptsOnKey1}`)

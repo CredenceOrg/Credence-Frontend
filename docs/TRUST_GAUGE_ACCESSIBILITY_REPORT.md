@@ -1,5 +1,18 @@
 # TrustGauge Accessibility & Contrast Verification Report
 
+## Trust Score History Chart Conventions
+
+The `TrustHistoryChart` follows the gauge report's semantic and contrast conventions:
+
+- The chart uses an SVG image role with a title and description.
+- Every historical point is a keyboard-focusable button with a spoken date, score,
+  and tier.
+- A toggle exposes the complete history in a semantic table.
+- Zero and one-point histories degrade to text and table alternatives.
+- Tier bands use existing `--credence-color-*-surface` and border/text tokens.
+- Animations are disabled by `useReducedMotion` and the
+  `prefers-reduced-motion: reduce` stylesheet fallback.
+
 ## Date of Review
 
 June 1, 2026

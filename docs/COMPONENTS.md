@@ -22,7 +22,7 @@ Related focused docs: [button system](./button-system.md), [notifications](./not
 | TrustGauge              | `src/components/TrustGauge.css`                                                     | Uses inline CSS custom properties for dynamic progress, marker, thumb, and legend-dot colors; keep scoped until migrated.           |
 | TierLadder              | `src/components/TierLadder.css` + `Badge.css`                                       | None.                                                                                                                               |
 | ActivityTimeline        | `src/components/ActivityTimeline.css` + EmptyState inline styles for empty fallback | Empty fallback inherits `EmptyState` inline styles; migrate with states components.                                                 |
-| WindowedList            | `src/components/WindowedList.tsx`                                                   | Lightweight helper for large lists; uses the shared threshold in `src/config/listing.ts` and preserves the existing list semantics. |
+| VirtualizedList         | `src/components/VirtualizedList.tsx`                                                | Shared helper for large lists; uses the shared threshold in `src/config/virtualizedList.ts` and preserves list semantics.             |
 | FormField               | `src/components/forms/FormField.css`                                                | None.                                                                                                                               |
 | forms/Input             | `src/components/forms/Input.css`                                                    | None.                                                                                                                               |
 | forms/Textarea          | `src/components/forms/Input.css`                                                    | Shares Input.css.                                                                                                                   |
@@ -80,24 +80,27 @@ Source: [`TrustGauge.tsx`](../src/components/TrustGauge.tsx)
 | `gold`     | 500-750  | Gold     | `--credence-color-gold-border`, `--credence-color-gold-surface`, `--credence-color-gold-text`             |
 | `platinum` | 750-1000 | Platinum | `--credence-color-platinum-border`, `--credence-color-platinum-surface`, `--credence-color-platinum-text` |
 
-## WindowedList
+## VirtualizedList
 
-Source: [`src/components/WindowedList.tsx`](../src/components/WindowedList.tsx).
+Source: [`src/components/VirtualizedList.tsx`](../src/components/VirtualizedList.tsx).
 
 | Prop              | Type                                           | Default     |
 | ----------------- | ---------------------------------------------- | ----------- |
-| `items`           | `readonly T[]`                                 | Required    |
-| `itemHeight`      | `number`                                       | Required    |
-| `overscan`        | `number`                                       | `4`         |
-| `renderItem`      | `(item: T, index: number) => ReactNode`        | Required    |
-| `className`       | `string`                                       | `undefined` |
-| `role`            | `string`                                       | `undefined` |
-| `ariaLabel`       | `string`                                       | `undefined` |
-| `emptyMessage`    | `string`                                       | `undefined` |
-| `getItemKey`      | `(item: T, index: number) => string \| number` | `undefined` |
-| `containerHeight` | `number`                                       | `320`       |
+| `items`              | `readonly T[]`                                 | Required    |
+| `itemHeight`         | `number`                                       | `64`        |
+| `overscan`           | `number`                                       | `3`         |
+| `renderItem`         | `(item: T, index: number) => ReactNode`        | Required    |
+| `className`          | `string`                                       | `undefined` |
+| `role`               | `string`                                       | `undefined` |
+| `ariaLabel`          | `string`                                       | `undefined` |
+| `emptyMessage`       | `ReactNode`                                    | `undefined` |
+| `getKey`             | `(item: T, index: number) => string \| number` | `undefined` |
+| `getItemKey`         | `(item: T, index: number) => string \| number` | `undefined` |
+| `height`             | `number`                                       | `320`       |
+| `containerHeight`    | `number`                                       | `undefined` |
+| `virtualizeThreshold`| `number`                                       | `1000`      |
 
-The component uses the shared `LONG_LIST_RENDER_THRESHOLD` from [`src/config/listing.ts`](../src/config/listing.ts) to switch into a windowed render path for large data sets. It preserves the existing DOM structure for shorter lists, uses the supplied `containerHeight` for the scroll viewport, and keeps the rendered content accessible for larger lists.
+The component uses the shared threshold from [`src/config/virtualizedList.ts`](../src/config/virtualizedList.ts) to switch into a windowed render path for large data sets. It preserves the existing DOM structure for shorter lists, supports `containerHeight` for viewport sizing, and keeps rendered content accessible for larger lists.
 
 ## Button
 

@@ -5,8 +5,10 @@ import {
   ApiBodyTooLargeError,
   ApiError,
   ApiRateLimitError,
+  ApiResponseShapeError,
   MAX_REQUEST_BODY_BYTES,
   apiFetch,
+  errorMessage,
   apiRateLimiterSnapshot,
   buildUrl,
   defaultApiRateLimiter,
@@ -1847,10 +1849,10 @@ describe('state consistency across call chain', () => {
     const methods: string[] = []
     const correlationIds: string[] = []
 
-    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
-      paths.push(url)
-      methods.push(init.method || '')
-      const headers = init.headers as Headers
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      paths.push(String(input))
+      methods.push(init?.method || '')
+      const headers = init?.headers as Headers
       correlationIds.push(headers.get('X-Correlation-ID') || 'missing')
       return jsonResponse({ ok: true })
     })
@@ -1871,8 +1873,8 @@ describe('state consistency across call chain', () => {
   it('distinct calls use distinct correlationIds even with idempotency caching', async () => {
     const correlationIds: string[] = []
 
-    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
-      const headers = init.headers as Headers
+    fetchMock.mockImplementation(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const headers = init?.headers as Headers
       correlationIds.push(headers.get('X-Correlation-ID') || 'missing')
       return jsonResponse({ ok: true })
     })
@@ -1901,8 +1903,8 @@ describe('state consistency across call chain', () => {
   it('correlationId is set before rate limiting decision', async () => {
     let capturedCorrelationId: string | null = null
 
-    fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
-      const headers = init.headers as Headers
+    fetchMock.mockImplementation(async (_url: URL | RequestInfo, init?: RequestInit) => {
+      const headers = init?.headers as Headers
       capturedCorrelationId = headers.get('X-Correlation-ID')
       return jsonResponse({ ok: true })
     })
@@ -1935,5 +1937,86 @@ describe('state consistency across call chain', () => {
     expect(bodies[0]).toContain('"amount":"100.50"')
     expect(bodies[1]).toContain('"amount":"200.25"')
     expect(bodies[2]).toBeUndefined()
+  })
+})
+
+describe('apiFetch response shape validation', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    resetApiRateLimiter()
+  })
+
+  it('returns the validated payload when validate succeeds and does not forward validate to fetch', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true, count: 3 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await apiFetch<{ ok: boolean; count: number }>('/validated', {
+      validate: (payload) => payload as { ok: boolean; count: number },
+    })
+
+    expect(result).toEqual({ ok: true, count: 3 })
+    const initArg = fetchMock.mock.calls[0]?.[1] as Record<string, unknown>
+    expect('validate' in initArg).toBe(false)
+  })
+
+  it('rethrows ApiResponseShapeError thrown by validate', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ broken: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const shapeErr = new ApiResponseShapeError('Missing tier', [
+      { path: 'tier', message: 'required' },
+    ])
+
+    await expect(
+      apiFetch('/trust-score/GABC', {
+        validate: () => {
+          throw shapeErr
+        },
+      })
+    ).rejects.toBe(shapeErr)
+
+    expect(shapeErr).toBeInstanceOf(ApiError)
+    expect(shapeErr.status).toBe(502)
+    expect(shapeErr.code).toBe('invalid_response_shape')
+    expect(shapeErr.retryable).toBe(true)
+    expect(shapeErr.issues).toEqual([{ path: 'tier', message: 'required' }])
+  })
+
+  it('wraps generic Error and non-Error throws from validate in ApiResponseShapeError', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ a: 1 }))
+    fetchMock.mockResolvedValueOnce(jsonResponse({ a: 2 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      apiFetch('/shape-error-instance', {
+        validate: () => {
+          throw new Error('bad field')
+        },
+      })
+    ).rejects.toMatchObject({
+      name: 'ApiResponseShapeError',
+      status: 502,
+      code: 'invalid_response_shape',
+      retryable: true,
+      message: 'bad field',
+    })
+
+    await expect(
+      apiFetch('/shape-non-error', {
+        validate: () => {
+          throw 'raw failure'
+        },
+      })
+    ).rejects.toMatchObject({
+      name: 'ApiResponseShapeError',
+      status: 502,
+      code: 'invalid_response_shape',
+      retryable: true,
+      message: 'Invalid API response shape',
+    })
+
+    const defaultErr = new ApiResponseShapeError('Default args')
+    expect(defaultErr.issues).toEqual([])
+    expect(defaultErr.payload).toEqual({ issues: [] })
   })
 })

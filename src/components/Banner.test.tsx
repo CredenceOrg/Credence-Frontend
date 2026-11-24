@@ -646,6 +646,7 @@ describe('Banner', () => {
     it('action and dismiss button coexist without conflict', () => {
       const onDismiss = vi.fn()
       const onAction = vi.fn()
+    void onAction
       render(
         <Banner
           severity="warn"
@@ -701,7 +702,6 @@ describe('Banner', () => {
   describe('full prop combination smoke tests', () => {
     it('renders a fully-loaded incident banner without errors', () => {
       const onDismiss = vi.fn()
-      const onAction = vi.fn()
       const ref = React.createRef<HTMLButtonElement>()
 
       expect(() =>

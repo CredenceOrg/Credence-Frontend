@@ -1,24 +1,65 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Button from '../components/Button'
 import Badge, { type BadgeVariant } from '../components/Badge'
 import Banner from '../components/Banner'
-import ErrorState from '../components/states/ErrorState'
+import { ErrorState, LoadingSkeleton } from '../components/states'
 import { useToast } from '../components/ToastProvider'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useBond } from '../hooks/useBond'
 import { formatUsdc } from '../lib/format'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ConnectWalletDialog from '../components/ConnectWalletDialog'
-import { computeWithdrawBreakdown, calcUnlockDate, calcTimeRemaining, calcLockStartDate, type MockBond } from '../lib/bondPenalty'
+import { computeWithdrawBreakdown, calcUnlockDate, calcTimeRemaining, calcLockStartDate, type Bond } from '../lib/bondPenalty'
 import './BondDetail.css'
 
-const mockBonds: MockBond[] = [
+const mockBonds: Bond[] = [
   { id: 1, amountUsdc: 1000, status: 'locked', durationDays: 30 },
   { id: 2, amountUsdc: 500, status: 'grace-period', durationDays: 90 },
   { id: 3, amountUsdc: 750, status: 'active', durationDays: 180 },
 ]
+import {
+  computeWithdrawBreakdown,
+  calcUnlockDate,
+  calcTimeRemaining,
+  calcLockStartDate,
+  type BondStatus as PenaltyBondStatus,
+} from '../lib/bondPenalty'
+import type { Bond } from '../api/types'
+import './BondDetail.css'
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function getBadgeVariant(status: Bond['status']): BadgeVariant {
+  switch (status) {
+    case 'active':
+      return 'active'
+    case 'pending':
+      return 'locked'
+    case 'slashed':
+      return 'slashed'
+    default:
+      return 'unknown'
+  }
+}
+
+function getStatusLabel(status: Bond['status']): string {
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function getPenaltyStatus(bond: Bond, unlockMs: number | null): PenaltyBondStatus {
+  const canBeLocked = bond.status === 'active' || bond.status === 'pending'
+  if (canBeLocked && unlockMs !== null && unlockMs > Date.now()) {
+    return 'locked'
+  }
+  return 'active'
+}
 
 export default function BondDetail() {
   const { t } = useTranslation()
@@ -30,34 +71,91 @@ export default function BondDetail() {
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const connectTriggerRef = useRef<HTMLButtonElement | null>(null)
 
-  const bondId = Number(id)
-  useDocumentTitle(t('bond.detail.title', { id: bondId || 'Detail' }))
-  const connectBannerId = `bond-detail-connect-required-${bondId || 'detail'}`
+  const { data: bond, isLoading, error, refetch } = useBond(id)
 
-  const initialBond = useMemo(() => {
-    return mockBonds.find((b) => b.id === bondId)
-  }, [bondId])
+  useDocumentTitle(
+    bond ? t('bond.detail.title', { id: bond.id }) : t('bond.detail.title', { id: 'Detail' })
+  )
 
-  const [duration, setDuration] = useState<number>(() => {
-    return initialBond?.durationDays ?? 30
-  })
+  const [extendedDays, setExtendedDays] = useState(0)
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
 
-  // Recalculate estimated unlock date
-  const unlockDate = useMemo(() => {
-    return calcUnlockDate(duration)
-  }, [duration])
+  useEffect(() => {
+    setExtendedDays(0)
+    setIsWithdrawOpen(false)
+  }, [id])
 
-  // Recalculate withdrawal penalty breakdown using the shared penalty library
-  const breakdown = useMemo(() => {
-    if (!initialBond) return null
-    return computeWithdrawBreakdown({
-      ...initialBond,
-      durationDays: duration,
+  const bondMetrics = useMemo(() => {
+    if (!bond) return null
+
+    const parsedAmount = Number(bond.amount)
+    const amountUsdc = Number.isFinite(parsedAmount) && parsedAmount >= 0 ? parsedAmount : 0
+
+    const createdAtMs = Date.parse(bond.createdAt)
+    const hasValidCreatedAt = Number.isFinite(createdAtMs)
+    const lockStartDate = hasValidCreatedAt ? formatDate(new Date(createdAtMs)) : calcLockStartDate()
+
+    const maturesAtMs = bond.maturesAt ? Date.parse(bond.maturesAt) : NaN
+    const hasValidMaturesAt = Number.isFinite(maturesAtMs)
+
+    const effectiveUnlockMs = hasValidMaturesAt
+      ? maturesAtMs + extendedDays * MS_PER_DAY
+      : extendedDays > 0
+        ? Date.now() + extendedDays * MS_PER_DAY
+        : null
+
+    const baseDurationDays =
+      hasValidMaturesAt && hasValidCreatedAt
+        ? Math.max(0, Math.round((maturesAtMs - createdAtMs) / MS_PER_DAY))
+        : 0
+    const totalDurationDays = baseDurationDays + extendedDays
+
+    const remainingDays =
+      effectiveUnlockMs !== null
+        ? Math.max(0, Math.ceil((effectiveUnlockMs - Date.now()) / MS_PER_DAY))
+        : 0
+
+    const unlockDate =
+      effectiveUnlockMs !== null
+        ? formatDate(new Date(effectiveUnlockMs))
+        : extendedDays > 0
+          ? calcUnlockDate(extendedDays)
+          : lockStartDate
+
+    const penaltyStatus = getPenaltyStatus(bond, effectiveUnlockMs)
+    const breakdown = computeWithdrawBreakdown({
+      id: bond.id,
+      amountUsdc,
+      status: penaltyStatus,
+      durationDays: totalDurationDays,
     })
-  }, [initialBond, duration])
 
-  if (!initialBond || !breakdown) {
+    return {
+      amountUsdc,
+      lockStartDate,
+      unlockDate,
+      totalDurationDays,
+      remainingDays,
+      penaltyStatus,
+      breakdown,
+    }
+  }, [bond, extendedDays])
+
+  if (isLoading && !bond) {
+    return (
+      <main className="bond-detail" aria-busy="true">
+        <div className="bond-detail__header">
+          <Link to="/bond" className="bond-detail__back-button">
+            {t('bond.detail.backToBonds')}
+          </Link>
+        </div>
+        <LoadingSkeleton variant="card" />
+        <LoadingSkeleton variant="card" />
+      </main>
+    )
+  }
+
+  if (error?.status === 404 || (!isLoading && !error && !bond)) {
     return (
       <main className="bond-detail__not-found">
         <div className="bond-detail__not-found-card">
@@ -76,8 +174,42 @@ export default function BondDetail() {
     )
   }
 
+  if (error || !bond || !bondMetrics) {
+    const errorKind = error?.status === 0 ? 'network' : 'backend'
+    return (
+      <main className="bond-detail__not-found">
+        <div className="bond-detail__not-found-card">
+          <ErrorState
+            type={errorKind}
+            message={error?.message || undefined}
+            action={{
+              label: t('common.retry', { defaultValue: 'Retry' }),
+              onClick: refetch,
+              isLoading,
+            }}
+          />
+          <div className="bond-detail__not-found-actions">
+            <Link to="/bond" className="bond-detail__back-link">
+              {t('bond.detail.backToBonds')}
+            </Link>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  const {
+    amountUsdc,
+    lockStartDate,
+    unlockDate,
+    totalDurationDays,
+    remainingDays,
+    breakdown,
+  } = bondMetrics
+  const connectBannerId = `bond-detail-connect-required-${bond.id}`
+
   const extendLock = (days: number) => {
-    setDuration((prev) => prev + days)
+    setExtendedDays((prev) => prev + days)
     addToast('success', t('bond.detail.lockExtended', { days }))
   }
 
@@ -111,8 +243,8 @@ export default function BondDetail() {
           {t('bond.detail.backToBonds')}
         </Link>
         <div className="bond-detail__title-row">
-          <h1 className="bond-detail__title">{t('bond.detail.title', { id: initialBond.id })}</h1>
-          <Badge variant={initialBond.status as BadgeVariant} />
+          <h1 className="bond-detail__title">{t('bond.detail.title', { id: bond.id })}</h1>
+          <Badge variant={getBadgeVariant(bond.status)} label={getStatusLabel(bond.status)} />
         </div>
       </div>
 
@@ -128,7 +260,7 @@ export default function BondDetail() {
         </div>
       )}
 
-      {initialBond.status !== 'active' && breakdown.penaltyUsdc > 0 && (
+      {breakdown.penaltyUsdc > 0 && (
         <Banner severity="warn" title={t('bond.detail.earlyWithdrawalWarning')}>
           {t('bond.detail.earlyWithdrawalDescription', {
             penaltyAmount: breakdown.penaltyAmount,
@@ -146,19 +278,19 @@ export default function BondDetail() {
           <dl className="bond-detail__info-list">
             <div className="bond-detail__info-row">
               <dt>{t('bond.detail.bondedAmount')}</dt>
-              <dd className="bond-detail__amount">{formatUsdc(initialBond.amountUsdc)}</dd>
+              <dd className="bond-detail__amount">{formatUsdc(amountUsdc)}</dd>
             </div>
             <div className="bond-detail__info-row">
               <dt>{t('bond.detail.timeRemaining')}</dt>
-              <dd className="bond-detail__timeRemaining">{calcTimeRemaining(duration)}</dd>
+              <dd className="bond-detail__timeRemaining">{calcTimeRemaining(remainingDays)}</dd>
             </div>
             <div className="bond-detail__info-row">
               <dt>{t('bond.detail.lockDuration')}</dt>
-              <dd>{t('bond.detail.durationDays', { duration })}</dd>
+              <dd>{t('bond.detail.durationDays', { duration: totalDurationDays })}</dd>
             </div>
             <div className="bond-detail__info-row">
               <dt>{t('bond.detail.lockStartDate')}</dt>
-              <dd>{calcLockStartDate()}</dd>
+              <dd>{lockStartDate}</dd>
             </div>
             <div className="bond-detail__info-row">
               <dt>{t('bond.detail.estimatedUnlockDate')}</dt>
@@ -175,9 +307,7 @@ export default function BondDetail() {
                   variant="secondary"
                   onClick={() => extendLock(30)}
                   disabled={!isConnected}
-                  title={
-                    !isConnected ? t('bond.detail.extendTooltip') : undefined
-                  }
+                  title={!isConnected ? t('bond.detail.extendTooltip') : undefined}
                   aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   {t('bond.detail.plus30Days')}
@@ -187,9 +317,7 @@ export default function BondDetail() {
                   variant="secondary"
                   onClick={() => extendLock(90)}
                   disabled={!isConnected}
-                  title={
-                    !isConnected ? t('bond.detail.extendTooltip') : undefined
-                  }
+                  title={!isConnected ? t('bond.detail.extendTooltip') : undefined}
                   aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   {t('bond.detail.plus90Days')}
@@ -203,9 +331,7 @@ export default function BondDetail() {
                 type="button"
                 variant="secondary"
                 disabled={!isConnected}
-                title={
-                  !isConnected ? t('bond.detail.topUpTooltip') : undefined
-                }
+                title={!isConnected ? t('bond.detail.topUpTooltip') : undefined}
                 aria-describedby={!isConnected ? connectBannerId : undefined}
               >
                 {t('bond.detail.addUsdc')}
@@ -250,9 +376,7 @@ export default function BondDetail() {
               <span className="bond-detail__resulting">{breakdown.resultingBalance}</span>
             </div>
           </div>
-          <p className="bond-detail__slash-disclaimer">
-            {t('bond.detail.slashDisclaimer')}
-          </p>
+          <p className="bond-detail__slash-disclaimer">{t('bond.detail.slashDisclaimer')}</p>
         </section>
       </div>
 
@@ -261,8 +385,8 @@ export default function BondDetail() {
           open
           title={t('bond.detail.confirmWithdrawal')}
           subtitle={t('bond.detail.withdrawalSubtitle', {
-            id: initialBond.id,
-            amount: formatUsdc(initialBond.amountUsdc),
+            id: bond.id,
+            amount: formatUsdc(amountUsdc),
           })}
           breakdown={breakdown}
           onConfirm={confirmWithdraw}

@@ -19,6 +19,7 @@ export interface FilePickerProps {
   title?: string
   dropHint?: string
   ariaLabel?: string
+  onValidationError?: (message: string) => void
 }
 
 function formatFileSize(bytes: number): string {
@@ -264,6 +265,7 @@ export default function FilePicker({
   title,
   dropHint,
   ariaLabel,
+  onValidationError,
 }: FilePickerProps) {
   const autoId = useId()
   const inputId = externalId ? `${externalId}-input` : `file-picker-${autoId}-input`
@@ -318,6 +320,20 @@ export default function FilePicker({
     [accept, maxSizeBytes]
   )
 
+  const describeRejection = useCallback(
+    (fileList: FileList | File[]): string => {
+      const filesArray = Array.from(fileList)
+      if (maxSizeBytes && filesArray.some((file) => file.size > maxSizeBytes)) {
+        return `File exceeds the maximum size of ${formatFileSize(maxSizeBytes)}.`
+      }
+      if (accept) {
+        return `File type not accepted. Choose a supported type: ${accept}.`
+      }
+      return 'File could not be added.'
+    },
+    [accept, maxSizeBytes]
+  )
+
   const handleFiles = useCallback(
     (fileList: FileList | File[]) => {
       const validFiles = validateAndFilterFiles(fileList)
@@ -325,12 +341,13 @@ export default function FilePicker({
       const rejectedCount = totalCount - validFiles.length
       if (validFiles.length === 0) {
         if (rejectedCount > 0) {
-          setAnnouncement(
-            `${rejectedCount} file${rejectedCount !== 1 ? 's' : ''} rejected. Check file type${rejectedCount !== 1 ? 's' : ''} and size.`
-          )
+          const message = describeRejection(fileList)
+          setAnnouncement(message)
+          onValidationError?.(message)
         }
         return
       }
+      if (rejectedCount > 0) onValidationError?.(describeRejection(fileList))
 
       let nextFiles: File[]
       if (multiple) {
@@ -350,7 +367,7 @@ export default function FilePicker({
         )
       }
     },
-    [files, multiple, onChange, validateAndFilterFiles]
+    [describeRejection, files, multiple, onChange, onValidationError, validateAndFilterFiles]
   )
 
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {

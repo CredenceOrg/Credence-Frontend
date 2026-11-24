@@ -27,7 +27,7 @@ function FeedHarness({ fetchPage }: { fetchPage: (cursor: string | null) => Prom
 describe('useInfiniteQuery', () => {
   it('loads_first_page_and_appends_next_page_using_next_cursor', async () => {
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       .mockResolvedValueOnce({ items: [{ id: 'a' }, { id: 'b' }], nextCursor: 'cursor-1' })
       .mockResolvedValueOnce({ items: [{ id: 'c' }], nextCursor: null })
 
@@ -58,7 +58,7 @@ describe('useInfiniteQuery', () => {
     })
 
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       // Initial page load.
       .mockResolvedValueOnce({ items: [{ id: 'a' }], nextCursor: 'c1' })
       // Second page — kept pending so we can verify the duplicate is dropped.
@@ -93,7 +93,7 @@ describe('useInfiniteQuery', () => {
 
   it('sets_hasNextPage_to_false_and_prevents_further_fetches_when_last_page_loaded', async () => {
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       .mockResolvedValueOnce({ items: [{ id: 'a' }], nextCursor: null })
 
     render(<FeedHarness fetchPage={fetchPage} />)
@@ -113,7 +113,7 @@ describe('useInfiniteQuery', () => {
     // After a fetch error the cursor key must be evicted from requestedCursorsRef
     // so a subsequent manual retry can issue a new request.
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       .mockRejectedValueOnce(new Error('network failure'))
       .mockResolvedValueOnce({ items: [{ id: 'a' }], nextCursor: null })
 
@@ -145,7 +145,7 @@ describe('useInfiniteQuery', () => {
 
   it('handles_empty_first_page_with_no_items_and_sets_status_to_success', async () => {
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       .mockResolvedValueOnce({ items: [], nextCursor: null })
 
     render(<FeedHarness fetchPage={fetchPage} />)
@@ -159,7 +159,7 @@ describe('useInfiniteQuery', () => {
   it('handles_empty_first_page_with_nextCursor_and_allows_fetching_next_page', async () => {
     // The first page returns no items but indicates more data is available.
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       .mockResolvedValueOnce({ items: [], nextCursor: 'cursor-1' })
       .mockResolvedValueOnce({ items: [{ id: 'a' }], nextCursor: null })
 
@@ -180,7 +180,7 @@ describe('useInfiniteQuery', () => {
 
   it('handles_empty_subsequent_page_and_appends_nothing', async () => {
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       .mockResolvedValueOnce({ items: [{ id: 'a' }, { id: 'b' }], nextCursor: 'cursor-1' })
       .mockResolvedValueOnce({ items: [], nextCursor: null })
 
@@ -205,7 +205,7 @@ describe('useInfiniteQuery', () => {
 
   it('preserves_existing_data_when_subsequent_page_errors', async () => {
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       .mockResolvedValueOnce({ items: [{ id: 'a' }, { id: 'b' }], nextCursor: 'cursor-1' })
       .mockRejectedValueOnce(new Error('network failure'))
 
@@ -249,7 +249,7 @@ describe('useInfiniteQuery', () => {
 
   it('constructs_a_generic_error_message_when_fetch_rejects_with_a_non_Error_value', async () => {
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       .mockRejectedValueOnce('string rejection')
 
     function ErrorHarness() {
@@ -279,7 +279,7 @@ describe('useInfiniteQuery', () => {
     })
 
     const fetchPage = vi
-      .fn<[cursor: string | null], Promise<FeedPage>>()
+      .fn<(cursor: string | null) => Promise<FeedPage>>()
       .mockResolvedValueOnce({ items: [{ id: 'a' }], nextCursor: 'c1' })
       .mockReturnValueOnce(nextPagePromise)
 

@@ -23,6 +23,7 @@ export interface ActionCardProps {
    * Clicking it copies this URL to the clipboard and shows a toast.
    */
   shareableLink?: string
+  onCopyError?: (error: unknown) => void
   /**
    * Indicates if this is an early-access feature. Will display a beta ribbon if true.
    */

@@ -183,26 +183,26 @@
 
 [data-theme='dark'] .tier-ladder__step--bronze {
   --tier-surface: rgba(180, 83, 9, 0.12);
-  --tier-border: #d97706;
-  --tier-text: #fcd34d;
+  --tier-border: var(--credence-color-bronze-border);
+  --tier-text: var(--credence-color-bronze-text);
 }
 
 [data-theme='dark'] .tier-ladder__step--silver {
   --tier-surface: rgba(100, 116, 139, 0.12);
-  --tier-border: #94a3b8;
-  --tier-text: #cbd5e1;
+  --tier-border: var(--credence-color-silver-border);
+  --tier-text: var(--credence-color-silver-text);
 }
 
 [data-theme='dark'] .tier-ladder__step--gold {
   --tier-surface: rgba(161, 98, 7, 0.12);
-  --tier-border: #ca8a04;
-  --tier-text: #fde68a;
+  --tier-border: var(--credence-color-gold-border);
+  --tier-text: var(--credence-color-gold-text);
 }
 
 [data-theme='dark'] .tier-ladder__step--platinum {
   --tier-surface: rgba(37, 99, 235, 0.12);
-  --tier-border: #3b82f6;
-  --tier-text: #93c5fd;
+  --tier-border: var(--credence-color-platinum-border);
+  --tier-text: var(--credence-color-platinum-text);
 }
 
 .tier-ladder__card {
@@ -296,13 +296,13 @@
 
 .tier-ladder__status--error {
   background: var(--credence-color-danger-subtle, rgba(239, 68, 68, 0.1));
-  color: var(--credence-color-danger, #ef4444);
+  color: var(--credence-color-danger-text);
   border: 1px solid var(--credence-color-danger-border, rgba(239, 68, 68, 0.3));
 }
 
 .tier-ladder__status--stale {
   background: var(--credence-color-warning-subtle, rgba(245, 158, 11, 0.1));
-  color: var(--credence-color-warning, #d97706);
+  color: var(--credence-color-warning-text);
   border: 1px solid var(--credence-color-warning-border, rgba(245, 158, 11, 0.3));
 }
 
@@ -355,4 +355,3 @@
     transform: rotate(360deg);
   }
 }
-

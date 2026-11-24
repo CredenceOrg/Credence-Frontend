@@ -99,3 +99,39 @@ Before approving, reviewers should confirm:
 - Keyboard and screen reader notes cover the changed user path.
 - Any skipped manual check has a clear reason.
 - Follow-up accessibility work is filed as a separate issue instead of being hidden in the PR discussion.
+
+## Whole-route axe audit (Playwright)
+
+`tests/a11y-routes.spec.ts` scans the **entire rendered page** in headless Chromium
+with `@axe-core/playwright`. It covers the ten paths exported from
+`src/config/routes.ts` (including `/bond/new`, `/signin`, and the wildcard 404)
+at **desktop 1440 × 900** and **mobile 390 × 844**, in both **light** and
+**dark** themes: 40 independent checks. A failing route/viewport/theme combination
+identifies its serious or critical axe rules and affected selectors.
+
+```bash
+npm ci
+npx playwright install --with-deps chromium
+npx playwright test tests/a11y-routes.spec.ts
+npm run lint
+```
+
+Playwright starts Vite through the existing `playwright.config.ts`. No running
+backend, installed Freighter browser extension, or real wallet secrets are
+needed: the configured `E2E_MOCK_WALLET` substitutes a connectable wallet.
+The spec explicitly connects through the real in-app wallet dialog on pages
+where wallet state gates content. It saves `credence:settings.themeMode`
+**before navigation**, so `index.html` applies the chosen theme before paint.
+Test profiles use isolated browser storage.
+
+**Allowlist policy:** The default serious/critical allowlist is empty.
+Do not disable entire axe rules or exclude broad page regions. An exception is
+allowed only for a confirmed false positive, matching the precise route, axe
+rule ID, and CSS selector, with a justification comment in the spec. Review
+each exception when the underlying component changes.
+
+The automated scan catches many semantic and contrast defects but does **not**
+replace the keyboard, manual screen-reader, and visual checks above. Add new
+public routes to `A11Y_AUDIT_PATHS`; for parameterized routes create a
+representative seeded fixture. If an axe report is real, fix the underlying
+component rather than adding a blanket suppression.

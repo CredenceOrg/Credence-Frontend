@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import type { ApiResponse, operations, Transaction } from '../api/types'
+import { validateTransactionList } from '../api/validators'
 import { getTransaction } from '../lib/horizon'
 import { useWallet } from '../context/WalletContext'
 import { useSettings } from '../context/SettingsContext'
@@ -49,6 +50,11 @@ type TransactionsResponse = ApiResponse<operations['listTransactions']>
 interface FetchedPage {
   items: Transaction[]
   nextCursor?: string
+}
+
+interface InFlightPage {
+  controller: AbortController
+  promise: Promise<FetchedPage | null>
 }
 
 export interface UseTransactionsResult {
@@ -160,6 +166,7 @@ export function useTransactions(): UseTransactionsResult {
       const result = await apiFetch<TransactionsResponse>(`/transactions?${params.toString()}`, {
         signal,
         identityEpoch: epoch,
+        validate: validateTransactionList,
       })
 
       // A response that lands after abort (refetch / unmount / superseded
@@ -513,17 +520,23 @@ export function useTransactions(): UseTransactionsResult {
     void fetchTransactions()
   }, [abortInFlightPages, fetchTransactions])
 
-  const addPending = useCallback((tx: Transaction) => {
-    if (!walletAddress) return
-    addPendingToStorage(network, walletAddress, tx)
-    setPendingData((prev) => [{ ...tx, _network: network }, ...prev])
-  }, [network, walletAddress])
+  const addPending = useCallback(
+    (tx: Transaction) => {
+      if (!walletAddress) return
+      addPendingToStorage(network, walletAddress, tx)
+      setPendingData((prev) => [{ ...tx, _network: network }, ...prev])
+    },
+    [network, walletAddress]
+  )
 
-  const removePendingByHash = useCallback((hash: string) => {
-    if (!walletAddress) return
-    removePendingFromStorage(network, walletAddress, hash)
-    setPendingData((prev) => prev.filter((tx) => tx.hash !== hash))
-  }, [network, walletAddress])
+  const removePendingByHash = useCallback(
+    (hash: string) => {
+      if (!walletAddress) return
+      removePendingFromStorage(network, walletAddress, hash)
+      setPendingData((prev) => prev.filter((tx) => tx.hash !== hash))
+    },
+    [network, walletAddress]
+  )
 
   useEffect(() => {
     mountedRef.current = true

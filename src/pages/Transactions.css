@@ -47,6 +47,43 @@
   white-space: nowrap;
 }
 
+/* Sortable header: a plain-looking button that inherits the th typography so
+   the header row keeps its visual rhythm while becoming keyboard-operable. */
+.transactions__sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: var(--credence-font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.transactions__sortButton:hover {
+  color: var(--credence-text-primary);
+}
+
+.transactions__sortButton:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--credence-radius-sm);
+}
+
+/* The idle ⇅ is subdued so only an active direction reads as state. */
+.transactions__sortIcon {
+  font-size: 0.75em;
+  color: var(--credence-text-secondary);
+}
+
+[aria-sort='ascending'] .transactions__sortIcon,
+[aria-sort='descending'] .transactions__sortIcon {
+  color: var(--credence-color-primary);
+}
+
 .transactions__table td {
   padding: var(--credence-space-3) var(--credence-space-4);
   border-bottom: 1px solid var(--credence-border-default);

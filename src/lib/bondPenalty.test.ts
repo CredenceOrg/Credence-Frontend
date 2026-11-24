@@ -5,8 +5,11 @@ import {
   getPenaltyRate,
   computeWithdrawBreakdown,
   calcUnlockDate,
-  type MockBond,
+  type Bond,
 } from './bondPenalty'
+
+/** Test-only alias; production code uses `Bond`. */
+type MockBond = Bond
 
 // ---------------------------------------------------------------------------
 // getPenaltyRateForDuration

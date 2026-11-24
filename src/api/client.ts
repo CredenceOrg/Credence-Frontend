@@ -7,7 +7,9 @@ import {
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
 import { AmountError, parseAmount, type AmountErrorCode, type AmountRules } from './amount'
 
-export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
+export type ApiResponseValidator<T> = (payload: unknown) => T
+
+export interface ApiFetchOptions<T = unknown> extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | unknown[] | null
   /** Stable key for retrying one state-changing operation safely. */
   idempotencyKey?: string
@@ -30,9 +32,19 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
    * reconnect, expiry).
    */
   identityEpoch?: number
+  /**
+   * Optional runtime validator for the parsed 2xx response payload.
+   * When provided, `apiFetch` runs it before resolving; any validation failure
+   * rejects with {@link ApiResponseShapeError}.
+   */
+  validate?: ApiResponseValidator<T>
 }
 
-export type ApiErrorCode = 'invalid_request_url' | 'network_error' | 'http_error'
+export type ApiErrorCode =
+  | 'invalid_request_url'
+  | 'network_error'
+  | 'http_error'
+  | 'invalid_response_shape'
 
 /**
  * Declaration of decimal amount fields for a request body.
@@ -177,6 +189,34 @@ export class ApiBodyTooLargeError extends ApiError {
     this.name = 'ApiBodyTooLargeError'
     this.limitBytes = limitBytes
     this.bodySizeBytes = payload?.bodySize ?? 0
+  }
+}
+
+export interface ApiResponseShapeIssue {
+  path: string
+  message: string
+}
+
+/**
+ * Thrown by `apiFetch` when a 2xx server response fails runtime schema
+ * validation supplied via `ApiFetchOptions.validate`.
+ *
+ * Uses HTTP 502 (Bad Gateway) semantics and sets `retryable = true` so callers
+ * can surface a retryable error state without letting malformed payloads reach
+ * UI components.
+ */
+export class ApiResponseShapeError extends ApiError {
+  readonly issues: readonly ApiResponseShapeIssue[]
+  readonly retryable = true
+
+  constructor(
+    message: string,
+    issues: readonly ApiResponseShapeIssue[] = [],
+    payload?: unknown
+  ) {
+    super(502, message, payload ?? { issues }, 'invalid_response_shape')
+    this.name = 'ApiResponseShapeError'
+    this.issues = issues
   }
 }
 
@@ -554,12 +594,13 @@ function replayConflict(key: string): ApiError {
   })
 }
 
-interface ApiFetchContext {
+interface ApiFetchContext<T> {
   correlationId: string
   path: string
   method: string
   skipRateLimit?: boolean
   identityEpoch?: number
+  validate?: ApiResponseValidator<T>
 }
 
 async function apiFetchWithoutReplay<T>(
@@ -567,7 +608,7 @@ async function apiFetchWithoutReplay<T>(
   init: RequestInit,
   headers: Headers,
   serializedBody: BodyInit | undefined,
-  ctx: ApiFetchContext
+  ctx: ApiFetchContext<T>
 ): Promise<T> {
   if (!ctx.skipRateLimit) {
     const decision = defaultApiRateLimiter.acquire()
@@ -644,6 +685,35 @@ async function apiFetchWithoutReplay<T>(
     throw new ApiError(response.status, message, payload, 'http_error')
   }
 
+  let validatedPayload = payload as T
+  if (ctx.validate) {
+    try {
+      validatedPayload = ctx.validate(payload)
+    } catch (error) {
+      const shapeError =
+        error instanceof ApiResponseShapeError
+          ? error
+          : new ApiResponseShapeError(
+              error instanceof Error ? error.message : 'Invalid API response shape',
+              [],
+              payload
+            )
+      emitWalletSessionEvent('action_failed', {
+        address: null,
+        network: null,
+        correlationId: ctx.correlationId,
+        metadata: {
+          path: ctx.path,
+          method: ctx.method,
+          status: shapeError.status,
+          code: shapeError.code,
+          message: shapeError.message,
+        },
+      })
+      throw shapeError
+    }
+  }
+
   emitWalletSessionEvent('action_succeeded', {
     address: null,
     network: null,
@@ -651,11 +721,11 @@ async function apiFetchWithoutReplay<T>(
     metadata: { path: ctx.path, method: ctx.method, status: response.status },
   })
 
-  return payload as T
+  return validatedPayload
 }
 
-export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, amountFields, headers, ...init } = options
+export async function apiFetch<T>(path: string, options: ApiFetchOptions<T> = {}): Promise<T> {
+  const { body, amountFields, headers, validate, ...init } = options
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
   const serializedBody: BodyInit | undefined = hasJsonBody ? JSON.stringify(wireBody) : (wireBody as BodyInit | undefined)
@@ -700,6 +770,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
         method,
         skipRateLimit: options.skipRateLimit,
         identityEpoch: options.identityEpoch,
+        validate,
       }
     )
 
@@ -722,6 +793,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       method,
       skipRateLimit: options.skipRateLimit,
       identityEpoch: options.identityEpoch,
+      validate,
     }
   )
 }

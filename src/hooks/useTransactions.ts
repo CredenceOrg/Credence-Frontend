@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch, ApiError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import type { ApiResponse, operations, Transaction } from '../api/types'
 import { validateTransactionList } from '../api/validators'
@@ -109,7 +109,8 @@ export function useTransactions(): UseTransactionsResult {
   // Use wallet network if available, otherwise fall back to settings network
   const network = (walletNetwork || settingsNetwork) as 'public' | 'test'
 
-  const data = [...pendingData, ...serverData]
+  // Filter URL changes must not look like a new dataset and reset bulk selection.
+  const data = useMemo(() => [...pendingData, ...serverData], [pendingData, serverData])
 
   // Navigation-only abort controller / fetch id. Prefetches deliberately do
   // not touch these: they are background work and must never invalidate a

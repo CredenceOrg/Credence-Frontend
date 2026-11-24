@@ -21,7 +21,8 @@
 
 .transactions__filterRow {
   display: flex;
-  align-items: center;
+  align-items: end;
+  flex-wrap: wrap;
   gap: var(--credence-space-3);
   margin-bottom: var(--credence-space-4);
 }
@@ -300,4 +301,31 @@
   font-size: var(--credence-font-size-sm);
   color: var(--credence-text-secondary);
   white-space: nowrap;
+}
+
+.transactions__filterField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-2);
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.transactions__filterField--search {
+  flex-grow: 2;
+}
+
+.transactions__filterSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--credence-space-3);
+  margin-bottom: var(--credence-space-4);
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-sm);
+}
+
+.transactions__filterSummary p {
+  margin: 0;
 }

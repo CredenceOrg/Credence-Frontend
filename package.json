@@ -10,6 +10,7 @@
     "dev": "vite",
     "dev:reset": "node scripts/dev-reset.mjs",
     "build": "tsc -b && vite build",
+    "typecheck:tests": "tsc -p tsconfig.test.json --noEmit",
     "preview": "vite preview",
     "generate:api": "openapi-typescript openapi.yaml -o src/api/generated.ts",
     "test": "vitest run",

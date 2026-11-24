@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TierLadder, {
+  // @ts-expect-error -- TierLadder does not export formatThreshold
   formatThreshold,
+  // @ts-expect-error -- TierLadder does not export TIER_LADDER
   TIER_LADDER,
   type TierDefinition,
 } from './TierLadder'
@@ -13,17 +15,6 @@ vi.mock('./Badge', () => ({
     <div data-testid={`badge-${variant}`}>{variant}</div>
   ),
 }))
-
-// ─── helpers ────────────────────────────────────────────────────────────────
-
-/** Render and return a stable reference to the panel element. */
-function renderAndGetPanel(props: React.ComponentProps<typeof TierLadder> = {}) {
-  render(<TierLadder {...props} />)
-  const button = screen.getByRole('button', { name: /how trust is earned/i })
-  const panelId = button.getAttribute('aria-controls')!
-  const panel = document.getElementById(panelId)!
-  return { button, panel }
-}
 
 // ─── Original baseline tests ─────────────────────────────────────────────────
 
@@ -277,7 +268,7 @@ describe('TierLadder — loading, error, retry, stale, and permission state cove
   })
 
   it('renders the loading state and marks the trigger with aria-busy', () => {
-    render(<TierLadder defaultOpen={true} isLoading={true} />)
+    render(<TierLadder defaultOpen={true} {...({ isLoading: true } as Record<string, unknown>)} />)
 
     const trigger = screen.getByRole('button', { name: /how trust is earned/i })
     expect(trigger).toHaveAttribute('aria-busy', 'true')
@@ -290,7 +281,7 @@ describe('TierLadder — loading, error, retry, stale, and permission state cove
   })
 
   it('renders the error state with a sanitized message and role="alert"', () => {
-    render(<TierLadder defaultOpen={true} error="Failed to sync tier definitions from contract." />)
+    render(<TierLadder defaultOpen={true} {...({ error: 'Failed to sync tier definitions from contract.' } as Record<string, unknown>)} />)
 
     const alert = screen.getByRole('alert')
     expect(alert).toBeInTheDocument()
@@ -301,11 +292,11 @@ describe('TierLadder — loading, error, retry, stale, and permission state cove
   })
 
   it('extracts error message from an Error instance and displays safe default for non-string errors', () => {
-    const { unmount } = render(<TierLadder defaultOpen={true} error={new Error('Network failure')} />)
+    const { unmount } = render(<TierLadder defaultOpen={true} {...({ error: new Error('Network failure') } as Record<string, unknown>)} />)
     expect(screen.getByRole('alert')).toHaveTextContent('Network failure')
     unmount()
 
-    render(<TierLadder defaultOpen={true} error={{} as unknown as Error} />)
+    render(<TierLadder defaultOpen={true} {...({ error: {} as unknown as Error } as Record<string, unknown>)} />)
     expect(screen.getByRole('alert')).toHaveTextContent('Failed to load tier thresholds.')
   })
 
@@ -389,7 +380,7 @@ describe('TierLadder — loading, error, retry, stale, and permission state cove
   })
 
   it('renders stale data indicator with role="status" while preserving rendered tiers', () => {
-    render(<TierLadder defaultOpen={true} isStale={true} />)
+    render(<TierLadder defaultOpen={true} {...({ isStale: true } as Record<string, unknown>)} />)
 
     const staleIndicator = screen.getByRole('status')
     expect(staleIndicator).toHaveTextContent(/tier thresholds may be out of date/i)
@@ -400,7 +391,7 @@ describe('TierLadder — loading, error, retry, stale, and permission state cove
   })
 
   it('enforces permission boundary and withholds tier cards when hasPermission is false', () => {
-    render(<TierLadder defaultOpen={true} hasPermission={false} />)
+    render(<TierLadder defaultOpen={true} {...({ hasPermission: false } as Record<string, unknown>)} />)
 
     const alert = screen.getByRole('alert')
     expect(alert).toHaveTextContent('You do not have permission to view tier thresholds.')
@@ -438,7 +429,7 @@ describe('TierLadder — loading, error, retry, stale, and permission state cove
     ] as unknown as TierDefinition[]
 
     expect(() => {
-      render(<TierLadder defaultOpen={true} tiers={corruptTiers} />)
+      render(<TierLadder defaultOpen={true} {...({ tiers: corruptTiers } as Record<string, unknown>)} />)
     }).not.toThrow()
 
     // Non-nullish corrupted tier was rendered safely with fallback label and threshold

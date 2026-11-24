@@ -13,9 +13,14 @@ type ToggleStory = { args?: Record<string, unknown>; render?: (args: never, ctx:
  * `onChange` is defaulted because the meta supplies it via `argTypes` actions,
  * not via `args` — without it a story would render with a missing handler.
  */
+const { PendingWriteHarness, RetryAfterErrorHarness } = ToggleStories as unknown as {
+  PendingWriteHarness: React.ComponentType<Record<string, unknown>>
+  RetryAfterErrorHarness: React.ComponentType<Record<string, unknown>>
+}
+
 function storyArgs(story: ToggleStory): ToggleProps {
   const metaArgs = (ToggleStories.default?.args ?? {}) as Record<string, unknown>
-  return { onChange: vi.fn(), ...metaArgs, ...(story.args ?? {}) } as ToggleProps
+  return { onChange: vi.fn(), ...metaArgs, ...(story.args ?? {}) } as unknown as ToggleProps
 }
 
 /** Renders a story the way Storybook would, honouring a custom `render`. */
@@ -74,6 +79,8 @@ describe('Toggle stories catalog', () => {
         'Disabled',
         'DisabledWhileOn',
         'Loading',
+        
+
         'LoadingWhileOn',
         'LoadingWhileDisabled',
         'Required',
@@ -316,9 +323,11 @@ describe('Toggle stories — state transitions', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('managed by your organization')
   })
 
+  
+
+
   it('LoadingWhileOn reports the committed value, never the optimistic one', () => {
-    // Invariant 5: during a pending write aria-checked must still be truthful.
-    renderStory(ToggleStories.LoadingWhileOn as ToggleStory)
+    // Invariant 5: during a pending write aria-checked must still be truthful.    renderStory((ToggleStories as unknown as { LoadingWhileOn: typeof ToggleStories.Loading }).LoadingWhileOn as ToggleStory)
 
     expect(switchEl()).toHaveAttribute('aria-checked', 'true')
     expect(switchEl()).toHaveAttribute('aria-busy', 'true')
@@ -417,8 +426,7 @@ describe('Toggle stories — diagnosability', () => {
 describe('PendingWrite harness — in-flight write and commit', () => {
   it('stages the change, blocks further clicks, then commits exactly once', async () => {
     const user = userEvent.setup()
-    const onCommit = vi.fn()
-    render(<ToggleStories.PendingWriteHarness latencyMs={60} onCommit={onCommit} />)
+    const onCommit = vi.fn()    render(<PendingWriteHarness latencyMs={60} onCommit={onCommit} />)
 
     const toggle = screen.getByRole('switch')
     expect(toggle).toHaveAttribute('aria-checked', 'false')
@@ -446,8 +454,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
     // Concurrency: the control goes inert on the first click, so a fast double
     // click cannot dispatch two saves and race their responses.
     const user = userEvent.setup()
-    const onCommit = vi.fn()
-    render(<ToggleStories.PendingWriteHarness latencyMs={60} onCommit={onCommit} />)
+    const onCommit = vi.fn()    render(<PendingWriteHarness latencyMs={60} onCommit={onCommit} />)
 
     const toggle = screen.getByRole('switch')
     await user.dblClick(toggle)
@@ -463,8 +470,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
     // logs a React state-update warning and can clobber the next mount.
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const user = userEvent.setup()
-    const { unmount } = render(
-      <ToggleStories.PendingWriteHarness latencyMs={0} onCommit={vi.fn()} />
+    const { unmount } = render(      <PendingWriteHarness latencyMs={0} onCommit={vi.fn()} />
     )
 
     await user.click(screen.getByRole('switch'))
@@ -476,8 +482,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
 
   it('is operable again after recovery and commits the next value', async () => {
     const user = userEvent.setup()
-    const onCommit = vi.fn()
-    render(<ToggleStories.PendingWriteHarness latencyMs={0} onCommit={onCommit} />)
+    const onCommit = vi.fn()    render(<PendingWriteHarness latencyMs={0} onCommit={onCommit} />)
 
     const toggle = screen.getByRole('switch')
     await user.click(toggle)
@@ -496,8 +501,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
 
 describe('RetryAfterError harness — failure and recovery', () => {
   it('fails without losing the committed value, then recovers on retry', async () => {
-    const user = userEvent.setup()
-    render(<ToggleStories.RetryAfterErrorHarness latencyMs={60} failTimes={1} />)
+    const user = userEvent.setup()    render(<RetryAfterErrorHarness latencyMs={60} failTimes={1} />)
 
     const toggle = screen.getByRole('switch')
     const retry = screen.getByRole('button', { name: 'Retry save' })
@@ -530,8 +534,7 @@ describe('RetryAfterError harness — failure and recovery', () => {
 
   it('recovers an "off" write the same way as an "on" write', async () => {
     // Regression: the failure path must not be hard-coded to one direction.
-    const user = userEvent.setup()
-    render(<ToggleStories.RetryAfterErrorHarness latencyMs={0} failTimes={1} initialChecked />)
+    const user = userEvent.setup()    render(<RetryAfterErrorHarness latencyMs={0} failTimes={1} initialChecked />)
 
     const toggle = screen.getByRole('switch')
     await user.click(toggle)
@@ -544,8 +547,7 @@ describe('RetryAfterError harness — failure and recovery', () => {
   })
 
   it('commits on the first attempt when failTimes is 0', async () => {
-    const user = userEvent.setup()
-    render(<ToggleStories.RetryAfterErrorHarness latencyMs={0} failTimes={0} />)
+    const user = userEvent.setup()    render(<RetryAfterErrorHarness latencyMs={0} failTimes={0} />)
 
     await user.click(screen.getByRole('switch'))
     await waitFor(() => expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true'))
@@ -554,8 +556,7 @@ describe('RetryAfterError harness — failure and recovery', () => {
 
   it('keeps failing and staying consistent when the server never recovers', async () => {
     // Repeated failure must stay diagnosable and must never drift the value.
-    const user = userEvent.setup()
-    render(<ToggleStories.RetryAfterErrorHarness latencyMs={0} failTimes={3} initialChecked />)
+    const user = userEvent.setup()    render(<RetryAfterErrorHarness latencyMs={0} failTimes={3} initialChecked />)
 
     const toggle = screen.getByRole('switch')
     const retry = screen.getByRole('button', { name: 'Retry save' })
@@ -576,8 +577,7 @@ describe('RetryAfterError harness — failure and recovery', () => {
 
   it('does not update state after unmounting mid-save', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const user = userEvent.setup()
-    const { unmount } = render(<ToggleStories.RetryAfterErrorHarness latencyMs={0} failTimes={1} />)
+    const user = userEvent.setup()    const { unmount } = render(<RetryAfterErrorHarness latencyMs={0} failTimes={1} />)
 
     await user.click(screen.getByRole('switch'))
     unmount()

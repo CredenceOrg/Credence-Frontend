@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
@@ -232,6 +234,10 @@ describe('Attestations page', () => {
   it('falls back to the translated label when disconnected', async () => {
     renderInRouter(<Attestations />)
     await screen.findByRole('list', { name: /recent timeline events/i })
+  it('shows attestation-specific empty state when filter yields no results', async () => {
+    const user = userEvent.setup()
+    render(<Attestations />)
+    screen.getByRole('combobox', { name: /filter attestations/i })
 
     const user = await submitAttestation()
     await waitFor(() => {
@@ -317,6 +323,10 @@ describe('formatTimestamp', () => {
     const localeSpy = vi.spyOn(Date.prototype, 'toLocaleDateString')
 
     const result = formatTimestamp()
+    // Panel is hidden — use queryByTestId since CopyableHash is not mocked here
+    expect(screen.queryByTestId('copyable-hash')).not.toBeInTheDocument()
+    const expandBtn = screen.getAllByRole('button', { expanded: false })[0]!
+    fireEvent.click(expandBtn)
 
     expect(localeSpy).toHaveBeenCalledWith(
       undefined,

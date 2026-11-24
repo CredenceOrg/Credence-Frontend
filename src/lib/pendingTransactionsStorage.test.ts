@@ -10,7 +10,6 @@ import {
   removePendingTransaction,
   migrateToV2,
   scopedKey,
-  type TransactionWithNetwork,
 } from './pendingTransactionsStorage'
 
 function tx(overrides: Partial<Transaction> = {}): Transaction {

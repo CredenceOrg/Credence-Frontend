@@ -196,6 +196,9 @@ export function useApiQuery<T>(
       const currentKey = cacheKeyRef.current
 
       // Serve from cache unless bypassed
+      const currentKey = cacheKeyRef.current
+
+      // Serve from cache unless bypassed
       if (!bypassCache && isCacheFresh(currentKey, staleTimeMs)) {
         const cached = getCacheEntry<T>(currentKey)
         if (cached) {

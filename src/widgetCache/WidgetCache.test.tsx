@@ -334,7 +334,7 @@ describe('useWidgetCache', () => {
     // The recorded sequence must include all four states in order.
     expect(capturedStatuses).toContain('idle')
     expect(capturedStatuses).toContain('loading')
-    expect(capturedStatuses.at(-1)).toBe('success')
+    expect(capturedStatuses[capturedStatuses.length - 1]).toBe('success')
     expect(fetcher).toHaveBeenCalledTimes(2)
   })
 

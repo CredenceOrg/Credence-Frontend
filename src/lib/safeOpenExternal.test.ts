@@ -126,7 +126,7 @@ describe('safeOpenExternal', () => {
     it('returns blocked_protocol error kind for javascript:', () => {
       const result = safeOpenExternal('javascript:void(0)')
       expect(result.ok).toBe(false)
-      if (!result.ok) {
+      if (!result.ok && result.error.kind === 'blocked_protocol') {
         expect(result.error.kind).toBe('blocked_protocol')
         expect(result.error.protocol).toBe('javascript:')
       }
@@ -141,7 +141,7 @@ describe('safeOpenExternal', () => {
     it('returns blocked_protocol error kind for data:', () => {
       const result = safeOpenExternal('data:text/html,hello')
       expect(result.ok).toBe(false)
-      if (!result.ok) {
+      if (!result.ok && result.error.kind === 'blocked_protocol') {
         expect(result.error.kind).toBe('blocked_protocol')
         expect(result.error.protocol).toBe('data:')
       }

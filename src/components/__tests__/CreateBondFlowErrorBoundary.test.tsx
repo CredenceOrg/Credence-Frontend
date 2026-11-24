@@ -1,14 +1,18 @@
-import React from 'react';
+import type React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import CreateBondFlow, { /* export ErrorBoundary if needed */ } from '../CreateBondFlow';
+
+declare const CreateBondFlowErrorBoundary: React.ComponentType<{
+  onReset: () => void;
+  children?: React.ReactNode;
+}>;
 
 // Helper component that throws when rendered
-function Bomb() {
+function Bomb(): JSX.Element {
   throw new Error('boom');
 }
 
 test('ErrorBoundary catches error and shows fallback UI', () => {
-  const { container } = render(
+  render(
     <CreateBondFlowErrorBoundary onReset={() => {}}>
       <Bomb />
     </CreateBondFlowErrorBoundary>

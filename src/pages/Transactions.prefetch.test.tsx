@@ -86,6 +86,7 @@ describe('Transactions pagination prefetch', () => {
       nextCursor: 'c1',
     }
     const pageTwo: Page = { items: [makeTx('p2-0', 'withdraw')] }
+    const pageTwo: Page = { items: [makeTx('p2-0', 'page_two_marker' as Transaction['type'])] }
     const deferredPageTwo = deferred<Page>()
 
     apiFetchMock.mockImplementation((path: string) => {

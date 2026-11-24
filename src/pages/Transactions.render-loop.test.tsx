@@ -48,6 +48,7 @@ const TX_BASE = {
   amountUsdc: 1000,
   status: 'confirmed',
   timestamp: '2026-01-15T12:00:00Z',
+  hash: 'hash-1',
 } as const
 
 const TX1: Transaction = { id: 'tx-1', hash: 'hash-tx-1', ...TX_BASE }
@@ -58,6 +59,7 @@ const TX2: Transaction = {
   amountUsdc: undefined,
   status: 'failed',
   timestamp: '2026-01-16T08:30:00Z',
+  hash: 'hash-2',
 }
 const TX3: Transaction = {
   id: 'tx-3',
@@ -66,6 +68,7 @@ const TX3: Transaction = {
   amountUsdc: 250,
   status: 'pending',
   timestamp: '2026-01-17T09:45:00Z',
+  hash: 'hash-3',
 }
 
 describe('Transactions render loop regression (issue #1377)', () => {

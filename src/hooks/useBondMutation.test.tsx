@@ -107,6 +107,9 @@ describe('useBondMutation', () => {
         expect(createResult.data.amountUsdc).toBe(1000)
         expect(createResult.data.durationDays).toBe(90)
         expect(createResult.data.transactionHash).toBe('REAL_TRANSACTION_HASH')
+        expect(createResult!.data.amountUsdc).toBe(1000)
+        expect(createResult!.data.durationDays).toBe(90)
+        expect(createResult!.data.transactionHash).toMatch(/^SIMULATED_TX_HASH_/)
       }
 
       expect(stellar.buildCreateBondTransactionXdr).toHaveBeenCalledWith(
@@ -146,9 +149,9 @@ describe('useBondMutation', () => {
 
       expect(createResult!.ok).toBe(false)
       if (!createResult!.ok) {
-        expect(createResult.code).toBe('validation')
-        expect(createResult.message).toContain('Wallet not connected')
-        expect(createResult.retryable).toBe(false)
+        expect(createResult!.code).toBe('validation')
+        expect(createResult!.message).toContain('Wallet not connected')
+        expect(createResult!.retryable).toBe(false)
       }
     })
 
@@ -165,8 +168,8 @@ describe('useBondMutation', () => {
 
       expect(createResult!.ok).toBe(false)
       if (!createResult!.ok) {
-        expect(createResult.code).toBe('validation')
-        expect(createResult.message).toContain('greater than zero')
+        expect(createResult!.code).toBe('validation')
+        expect(createResult!.message).toContain('greater than zero')
       }
     })
 
@@ -183,8 +186,8 @@ describe('useBondMutation', () => {
 
       expect(createResult!.ok).toBe(false)
       if (!createResult!.ok) {
-        expect(createResult.code).toBe('validation')
-        expect(createResult.message).toContain('Invalid lock duration')
+        expect(createResult!.code).toBe('validation')
+        expect(createResult!.message).toContain('Invalid lock duration')
       }
     })
 
@@ -209,8 +212,8 @@ describe('useBondMutation', () => {
 
       expect(createResult!.ok).toBe(false)
       if (!createResult!.ok) {
-        expect(createResult.code).toBe('validation')
-        expect(createResult.message).toContain('Insufficient balance')
+        expect(createResult!.code).toBe('validation')
+        expect(createResult!.message).toContain('Insufficient balance')
       }
     })
 
@@ -303,6 +306,8 @@ describe('useBondMutation', () => {
       if (!createResult!.ok) {
         expect(createResult.code).toBe('cancelled')
         expect(createResult.retryable).toBe(false)
+        expect(createResult!.code).toBe('rejected')
+        expect(createResult!.retryable).toBe(false)
       }
       expect(result.current.createError).toBeNull()
     })
@@ -395,9 +400,9 @@ describe('useBondMutation', () => {
 
       expect(secondResult!.ok).toBe(false)
       if (!secondResult!.ok) {
-        expect(secondResult.code).toBe('conflict')
-        expect(secondResult.message).toContain('stale')
-        expect(secondResult.retryable).toBe(true)
+        expect(secondResult!.code).toBe('conflict')
+        expect(secondResult!.message).toContain('stale')
+        expect(secondResult!.retryable).toBe(true)
       }
     })
 
@@ -444,6 +449,8 @@ describe('useBondMutation', () => {
       if (withdrawResult!.ok) {
         expect(withdrawResult.data.bondId).toBe('bond-123')
         expect(withdrawResult.data.transactionHash).toBe('REAL_TRANSACTION_HASH')
+        expect(withdrawResult!.data.bondId).toBe('bond-123')
+        expect(withdrawResult!.data.transactionHash).toMatch(/^SIMULATED_TX_HASH_/)
       }
 
       expect(stellar.buildWithdrawBondTransactionXdr).toHaveBeenCalledWith(
@@ -469,8 +476,8 @@ describe('useBondMutation', () => {
 
       expect(withdrawResult!.ok).toBe(false)
       if (!withdrawResult!.ok) {
-        expect(withdrawResult.code).toBe('validation')
-        expect(withdrawResult.message).toContain('Wallet not connected')
+        expect(withdrawResult!.code).toBe('validation')
+        expect(withdrawResult!.message).toContain('Wallet not connected')
       }
     })
 
@@ -508,6 +515,8 @@ describe('useBondMutation', () => {
       if (!withdrawResult!.ok) {
         expect(withdrawResult.code).toBe('cancelled')
         expect(withdrawResult.retryable).toBe(false)
+        expect(withdrawResult!.code).toBe('rejected')
+        expect(withdrawResult!.retryable).toBe(false)
       }
       expect(result.current.withdrawError).toBeNull()
     })
@@ -660,7 +669,7 @@ describe('useBondMutation', () => {
 
       expect(createResult!.ok).toBe(false)
       if (!createResult!.ok) {
-        expect(createResult.message).toContain('cancelled')
+        expect(createResult!.message).toContain('cancelled')
       }
     })
 
@@ -683,7 +692,7 @@ describe('useBondMutation', () => {
 
       expect(withdrawResult!.ok).toBe(false)
       if (!withdrawResult!.ok) {
-        expect(withdrawResult.message).toContain('cancelled')
+        expect(withdrawResult!.message).toContain('cancelled')
       }
     })
   })

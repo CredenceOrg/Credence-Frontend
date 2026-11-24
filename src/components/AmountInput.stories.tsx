@@ -145,6 +145,10 @@ function MaxFailureHarness({
       }
       if (outcome === 'stale') {
         throw Object.assign(new Error('balance snapshot expired'), { name: 'StaleDataError' })
+        throw Object.assign(new globalThis.Error('wallet scope revoked'), { name: 'PermissionError' });
+      }
+      if (outcome === 'stale') {
+        throw Object.assign(new globalThis.Error('balance snapshot expired'), { name: 'StaleDataError' });
       }
       throw new TypeError('Failed to fetch')
     }
@@ -269,7 +273,7 @@ export const RetryAfterFailure: Story = {
     const onMaxRequest = React.useCallback(async () => {
       attempts.current += 1
       await new Promise((resolve) => window.setTimeout(resolve, 350))
-      if (attempts.current === 1) throw new Error('Temporary balance service failure')
+      if (attempts.current === 1) throw new globalThis.Error('Temporary balance service failure')
       return 750
     }, [])
 
@@ -286,7 +290,7 @@ export const PermissionDenied: Story = {
   args: {
     value: '250.00',
     onMaxRequest: async () => {
-      const error = new Error('Wallet permission denied')
+      const error = new globalThis.Error('Wallet permission denied')
       error.name = 'PermissionError'
       throw error
     },
@@ -298,7 +302,7 @@ export const StaleBalance: Story = {
   args: {
     value: '250.00',
     onMaxRequest: async () => {
-      const error = new Error('Balance data is stale')
+      const error = new globalThis.Error('Balance data is stale')
       error.name = 'StaleDataError'
       throw error
     },

@@ -513,11 +513,11 @@ describe('useTransactions pending transactions and boundaries', () => {
 
   it('aborts the in-flight request when the hook unmounts', async () => {
     let capturedSignal: AbortSignal | undefined
-    apiFetchMock.mockImplementation((_path: string, options?: { signal?: AbortSignal }) => {
+    apiFetchMock.mockImplementation(((_path: string, options?: { signal?: AbortSignal }) => {
       capturedSignal = options?.signal
       // Never resolves — the hook must abort it on unmount.
       return new Promise(() => {})
-    })
+    }) as unknown as typeof apiFetch)
 
     const { unmount } = renderHook(() => useTransactions())
     expect(capturedSignal).toBeDefined()

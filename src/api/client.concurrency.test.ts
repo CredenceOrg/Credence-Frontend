@@ -189,7 +189,7 @@ describe('apiFetch pre-flight epoch check', () => {
   })
 
   it('does not throw when the epoch matches', async () => {
-    fetchMock.mockResolvedOnce(jsonResponse({ ok: true }))
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
     vi.stubGlobal('fetch', fetchMock)
 
     const epoch = getIdentityEpoch() // 0
@@ -199,7 +199,7 @@ describe('apiFetch pre-flight epoch check', () => {
 
   it('does not throw when identityEpoch is omitted (backward compatibility)', async () => {
     advanceIdentityEpoch() // epoch is 1, but we pass nothing
-    fetchMock.mockResolvedOnce(jsonResponse({ ok: true }))
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(apiFetch('/bonds')).resolves.toEqual({ ok: true })
@@ -210,7 +210,7 @@ describe('apiFetch pre-flight epoch check', () => {
     const capturedEpoch = getIdentityEpoch() // 0
     advanceIdentityEpoch() // 1
 
-    fetchMock.mockResolved(jsonResponse({ secret: 'data' }))
+    fetchMock.mockResolvedValue(jsonResponse({ secret: 'data' }))
     vi.stubGlobal('fetch', fetchMock)
 
     // The request should not go through regardless of the server response
@@ -235,7 +235,7 @@ describe('apiFetch post-flight epoch check', () => {
     const hangingFetch = new Promise<Response>((resolve) => {
       resolveResponse = resolve
     })
-    fetchMock.mockReturnOnce(hangingFetch)
+    fetchMock.mockReturnValueOnce(hangingFetch)
     vi.stubGlobal('fetch', fetchMock)
 
     // Start the request (does not await yet)
@@ -266,7 +266,7 @@ describe('apiFetch post-flight epoch check', () => {
     const capturedEpoch = getIdentityEpoch()
 
     let resolveResponse!: (r: Response) => void
-    fetchMock.mockReturnOnce(
+    fetchMock.mockReturnValueOnce(
       new Promise<Response>((resolve) => {
         resolveResponse = resolve
       })
@@ -303,8 +303,8 @@ describe('concurrent requests with the same epoch (no conflict)', () => {
 
     // Two independent responses
     fetchMock
-      .mockResolvedOnce(jsonResponse({ data: 'first' }))
-      .mockResolvedOnce(jsonResponse({ data: 'second' }))
+      .mockResolvedValueOnce(jsonResponse({ data: 'first' }))
+      .mockResolvedValueOnce(jsonResponse({ data: 'second' }))
     vi.stubGlobal('fetch', fetchMock)
 
     const [r1, r2] = await Promise.all([
@@ -322,7 +322,7 @@ describe('concurrent requests with the same epoch (no conflict)', () => {
     const COUNT = 10
 
     for (let i = 0; i < COUNT; i++) {
-      fetchMock.mockResolvedOnce(jsonResponse({ i }))
+      fetchMock.mockResolvedValueOnce(jsonResponse({ i }))
     }
     vi.stubGlobal('fetch', fetchMock)
 
@@ -350,12 +350,12 @@ describe('epoch mismatch mid-flight for one of two concurrent requests', () => {
     let resolveSecond!: (r: Response) => void
 
     fetchMock
-      .mockReturnOnce(
+      .mockReturnValueOnce(
         new Promise<Response>((resolve) => {
           resolveFirst = resolve
         })
       )
-      .mockReturnOnce(
+      .mockReturnValueOnce(
         new Promise<Response>((resolve) => {
           resolveSecond = resolve
         })
@@ -405,7 +405,7 @@ describe('retry after conflict', () => {
 
     // Re-acquire fresh epoch and retry
     const freshEpoch = getIdentityEpoch()
-    fetchMock.mockResolvedOnce(jsonResponse({ success: true }))
+    fetchMock.mockResolvedValueOnce(jsonResponse({ success: true }))
 
     await expect(apiFetch('/bonds', { identityEpoch: freshEpoch })).resolves.toEqual({
       success: true,
@@ -423,7 +423,7 @@ describe('disconnect / reconnect cycle', () => {
     const epoch = getIdentityEpoch()
 
     let resolveResponse!: (r: Response) => void
-    fetchMock.mockReturnOnce(
+    fetchMock.mockReturnValueOnce(
       new Promise<Response>((resolve) => {
         resolveResponse = resolve
       })
@@ -466,7 +466,7 @@ describe('no epoch option — backward compatibility', () => {
     advanceIdentityEpoch()
     advanceIdentityEpoch()
 
-    fetchMock.mockResolvedOnce(jsonResponse({ data: 'ok' }))
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: 'ok' }))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(apiFetch('/legacy')).resolves.toEqual({ data: 'ok' })

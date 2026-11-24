@@ -159,13 +159,17 @@ export default function TrustScore() {
       return
     }
 
-    if (!isAddressValid || isLoading) {
+    if (!isAddressValid) {
+      return
+    }
+
+    const trimmed = address.trim()
+    if (isLoading && trimmed === lookupAddress) {
       return
     }
 
     setHasAttemptedLookup(true)
     pendingLookupRef.current = true
-    const trimmed = address.trim()
     setLookupAddress(trimmed)
     commitAddressParam(trimmed)
   }
@@ -413,6 +417,18 @@ export default function TrustScore() {
               {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
             </Button>
           </div>
+            type="button"
+            onClick={handleLookup}
+            variant="primary"
+            fullWidth
+            disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
+            isLoading={isConnected && isLoading && address.trim() === lookupAddress}
+            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+            className="trustScore__buttonRow"
+          >
+            {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
+          </Button>
+        </div>
         </ConnectGate>
 
         <div className="trustScore__card">

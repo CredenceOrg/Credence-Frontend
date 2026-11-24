@@ -75,7 +75,7 @@ export function useTrustScore(address: string): UseTrustScoreResult {
         { signal: controller.signal, validate: validateTrustScore }
       )
 
-      if (!mountedRef.current || fetchId !== fetchIdRef.current) {
+      if (!mountedRef.current || fetchId !== fetchIdRef.current || controller.signal.aborted) {
         return
       }
 
@@ -88,7 +88,12 @@ export function useTrustScore(address: string): UseTrustScoreResult {
 
       setData(normalized)
     } catch (err) {
-      if (!mountedRef.current || fetchId !== fetchIdRef.current || isAbortError(err)) {
+      if (
+        !mountedRef.current ||
+        fetchId !== fetchIdRef.current ||
+        controller.signal.aborted ||
+        isAbortError(err)
+      ) {
         return
       }
 

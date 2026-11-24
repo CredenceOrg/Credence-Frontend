@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { SettingsProvider } from '../context/SettingsContext'
@@ -22,12 +22,30 @@ vi.mock('../hooks/useTrustHistory', () => ({
 }))
 
 const ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
+const SECOND_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
 const score = {
   address: ADDRESS,
   score: 85,
   tier: 'gold',
   attestations: 1,
   updatedAt: '2026-06-29T10:00:00Z',
+}
+const secondScore = {
+  address: SECOND_ADDRESS,
+  score: 940,
+  tier: 'platinum',
+  attestations: 6,
+  updatedAt: '2026-06-30T10:00:00Z',
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
 }
 
 function renderPage() {
@@ -109,5 +127,90 @@ describe('TrustScore recent lookup regressions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /look up address/i }))
     await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(2))
+  })
+
+  it('ignores late stale response when user rapidly submits address A then address B', async () => {
+    const requestA = deferred<typeof score>()
+    const requestB = deferred<typeof secondScore>()
+    mocks.apiFetch
+      .mockReset()
+      .mockReturnValueOnce(requestA.promise)
+      .mockReturnValueOnce(requestB.promise)
+
+    renderPage()
+
+    // Submit address A
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: ADDRESS } })
+    await waitFor(() => expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled())
+    fireEvent.click(screen.getByRole('button', { name: /look up score/i }))
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(1))
+
+    const signalA = mocks.apiFetch.mock.calls[0]?.[1]?.signal as AbortSignal
+    expect(signalA.aborted).toBe(false)
+
+    // Immediately enter address B and submit while A is still in flight
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: SECOND_ADDRESS } })
+    await waitFor(() => expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled())
+    fireEvent.click(screen.getByRole('button', { name: /look up score/i }))
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(2))
+
+    expect(signalA.aborted).toBe(true)
+
+    // Request B resolves first
+    await act(async () => {
+      requestB.resolve(secondScore)
+      await requestB.promise
+    })
+
+    const region = await screen.findByRole('region', { name: /^trust score result$/i })
+    expect(region).toHaveTextContent('940')
+
+    // Stale Request A resolves later — must not overwrite B or show an error
+    await act(async () => {
+      requestA.resolve(score)
+      await requestA.promise
+    })
+
+    expect(screen.getByRole('region', { name: /^trust score result$/i })).toHaveTextContent('940')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('does not show an error when an aborted earlier request rejects with AbortError', async () => {
+    const requestA = deferred<typeof score>()
+    const requestB = deferred<typeof secondScore>()
+    mocks.apiFetch
+      .mockReset()
+      .mockReturnValueOnce(requestA.promise)
+      .mockReturnValueOnce(requestB.promise)
+
+    renderPage()
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: ADDRESS } })
+    await waitFor(() => expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled())
+    fireEvent.click(screen.getByRole('button', { name: /look up score/i }))
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(1))
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: SECOND_ADDRESS } })
+    await waitFor(() => expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled())
+    fireEvent.click(screen.getByRole('button', { name: /look up score/i }))
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(2))
+
+    // Aborted Request A rejects with AbortError while B is still loading
+    await act(async () => {
+      requestA.reject(new DOMException('The user aborted a request.', 'AbortError'))
+      await requestA.promise.catch(() => undefined)
+    })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: /loading trust score/i })).toBeInTheDocument()
+
+    // Request B resolves
+    await act(async () => {
+      requestB.resolve(secondScore)
+      await requestB.promise
+    })
+
+    expect(await screen.findByRole('region', { name: /^trust score result$/i })).toHaveTextContent('940')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

@@ -590,6 +590,58 @@ describe('useTrustScore', () => {
       expect(result.current.data?.score).toBe(920)
       expect(result.current.error).toBeNull()
     })
+
+    it('keeps latest address result when address A resolves after address B', async () => {
+      const requestA = deferred<TrustScore>()
+      const requestB = deferred<TrustScore>()
+
+      apiFetchMock.mockReturnValueOnce(requestA.promise).mockReturnValueOnce(requestB.promise)
+
+      const { result, rerender } = renderHook(
+        ({ address }: { address: string }) => useTrustScore(address),
+        { initialProps: { address: VALID_ADDRESS } }
+      )
+
+      // Submit address A
+      act(() => {
+        result.current.refetch()
+      })
+
+      const signalA = apiFetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+      expect(signalA.aborted).toBe(false)
+      expect(result.current.isLoading).toBe(true)
+
+      // Quickly switch to address B and submit while A is still in flight
+      rerender({ address: SECOND_VALID_ADDRESS })
+      act(() => {
+        result.current.refetch()
+      })
+
+      expect(signalA.aborted).toBe(true)
+      expect(result.current.isLoading).toBe(true)
+
+      // Request B resolves first
+      await act(async () => {
+        requestB.resolve(secondMockTrustScore)
+        await requestB.promise
+      })
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+      expect(result.current.data).toEqual(secondMockTrustScore)
+      expect(result.current.error).toBeNull()
+
+      // Stale Request A resolves later — must not overwrite B
+      await act(async () => {
+        requestA.resolve(mockTrustScore)
+        await requestA.promise
+      })
+
+      expect(result.current.data).toEqual(secondMockTrustScore)
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.error).toBeNull()
+    })
   })
 
   describe('unmount cleanup and recovery', () => {

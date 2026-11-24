@@ -2,6 +2,9 @@
 
 Credence Frontend uses [Vitest](https://vitest.dev/) with [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) and [jsdom](https://github.com/jsdom/jsdom) to unit-test components and hooks.
 
+Playwright browser tests cover key end-to-end flows and run against the Vite dev
+server with a mocked Freighter wallet.
+
 ---
 
 ## Running Tests
@@ -10,7 +13,24 @@ Credence Frontend uses [Vitest](https://vitest.dev/) with [React Testing Library
 npm run test          # single run (CI)
 npm run test:watch    # watch mode (development)
 npm run coverage      # single run with coverage report
+npm run test:e2e      # Playwright browser tests
 ```
+
+### Playwright end-to-end tests
+
+The Playwright configuration starts the app with `E2E_MOCK_WALLET=true`. E2E
+specs connect through the mock Freighter API, and intercept Stellar Horizon and
+application API requests with `page.route`, so they do not require a real wallet
+extension or a backend service.
+
+```bash
+npx playwright install chromium   # one-time browser setup
+npx playwright test tests/create-bond.spec.ts tests/withdraw-bond.spec.ts
+```
+
+`tests/create-bond.spec.ts` covers amount validation, the four-step bond wizard,
+and back navigation with amount preservation. `tests/withdraw-bond.spec.ts`
+covers early-withdrawal penalty details, confirmation, and cancellation.
 
 ---
 

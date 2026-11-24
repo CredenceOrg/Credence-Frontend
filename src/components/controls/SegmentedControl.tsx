@@ -143,7 +143,7 @@ export default function SegmentedControl<T extends string = string>({
           tabIndex={index === tabStopIndex ? 0 : -1}
           disabled={disabled}
           className={`control-segmented__option${value === opt.value ? ' control-segmented__option--selected' : ''}`}
-          onClick={() => !disabled && onChange(opt.value)}
+          onClick={() => !disabled && value !== opt.value && onChange(opt.value)}
         >
           {opt.label}
         </button>

@@ -139,6 +139,19 @@
         "invalidFormat": "Start and end times must be in HH:mm format (e.g. 22:00, 07:30)."
       }
     },
+    "addressBook": {
+      "heading": "Address Book",
+      "description": "Save trusted Stellar counterparties for quick selection.",
+      "label": "Label",
+      "address": "Stellar address",
+      "add": "Add address",
+      "edit": "Edit",
+      "remove": "Remove",
+      "empty": "No saved addresses yet for this wallet and network.",
+      "chooseFromAddressBook": "Choose from address book",
+      "filterPlaceholder": "Filter saved addresses...",
+      "noMatches": "No matching addresses"
+    },
     "backup": {
       "heading": "Backup & Restore",
       "description": "Export your settings as a JSON file, or import settings from a previous export.",

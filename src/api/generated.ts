@@ -26,6 +26,13 @@ export interface paths {
      */
     get: operations["listBonds"];
   };
+  "/bonds/{id}": {
+    /**
+     * Retrieve a single bond by ID
+     * @description Returns the full bond record for the given bond identifier.
+     */
+    get: operations["getBond"];
+  };
   "/settings": {
     /** Update authenticated wallet settings */
     patch: operations["updateSettings"];
@@ -272,6 +279,28 @@ export interface operations {
         };
       };
       400: components["responses"]["BadRequest"];
+    };
+  };
+  /**
+   * Retrieve a single bond by ID
+   * @description Returns the full bond record for the given bond identifier.
+   */
+  getBond: {
+    parameters: {
+      path: {
+        /** @description Stable unique identifier for the bond record. */
+        id: string;
+      };
+    };
+    responses: {
+      /** @description Bond returned successfully. */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Bond"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      404: components["responses"]["NotFound"];
     };
   };
   /** Update authenticated wallet settings */

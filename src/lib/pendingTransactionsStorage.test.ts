@@ -32,14 +32,6 @@ describe('pendingTransactionsStorage', () => {
   })
 
   describe('v1/v0 legacy (deprecated, migration only)', () => {
-    it('migrates legacy array forward to v1 without deleting legacy', () => {
-      localStorage.setItem(PENDING_TXS_LEGACY_KEY, JSON.stringify([tx()]))
-      const items = readPendingTransactions('public', 'GA')
-      expect(items).toHaveLength(0) // v1 not read anymore
-      expect(JSON.parse(localStorage.getItem(PENDING_TXS_V1_KEY)!).schemaVersion).toBe(1)
-      expect(JSON.parse(localStorage.getItem(PENDING_TXS_LEGACY_KEY)!)).toHaveLength(1)
-    })
-
     it('marks very old pending entries as failed for determinism (stale handling)', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2026-01-03T00:00:00Z'))

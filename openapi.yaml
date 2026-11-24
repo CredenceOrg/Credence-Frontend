@@ -148,6 +148,22 @@ components:
             in the next request to retrieve the following page. Absent when
             there are no more results.
 
+    BondList:
+      type: object
+      description: Cursor-paginated list of bonds for the authenticated wallet.
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bond"
+        nextCursor:
+          type: string
+          description: >
+            Opaque pagination cursor. Include as the `cursor` query parameter
+            in the next request to retrieve the following page. Absent when
+            there are no more results.
+
     Settings:
       type: object
       description: Complete persisted settings for the authenticated wallet.
@@ -294,6 +310,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TransactionList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /bonds:
+    get:
+      operationId: listBonds
+      summary: List bonds for the authenticated wallet
+      description: >
+        Returns a cursor-paginated list of bonds visible to the authenticated
+        wallet. Results are ordered newest-first.
+      tags: [Bonds]
+      parameters:
+        - $ref: "#/components/parameters/CursorParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Paginated bond list returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BondList"
         "400":
           $ref: "#/components/responses/BadRequest"
 

@@ -78,8 +78,8 @@
   transition:
     opacity 0.15s ease,
     background 0.15s ease;
-  background: var(--credence-color-primary-soft);
-  color: var(--credence-color-white);
+  background: var(--credence-color-primary);
+  color: var(--credence-color-on-primary);
 }
 
 .empty-state__action--secondary {

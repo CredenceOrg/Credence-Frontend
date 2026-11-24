@@ -20,6 +20,7 @@ type TransactionType = components['schemas']['TransactionType']
 type TransactionStatus = components['schemas']['TransactionStatus']
 type TrustScore = components['schemas']['TrustScore']
 type Bond = components['schemas']['Bond']
+type BondList = components['schemas']['BondList']
 type Transaction = components['schemas']['Transaction']
 type TransactionList = components['schemas']['TransactionList']
 type Settings = components['schemas']['Settings']
@@ -257,13 +258,21 @@ function _assertPathsTrustScore(): paths['/trust-score/{address}']['get'] {
 function _assertListTxOp(): operations['listTransactions'] {
   return undefined as unknown as operations['listTransactions']
 }
+function _assertListBondsOp(): operations['listBonds'] {
+  return undefined as unknown as operations['listBonds']
+}
 function _assertUpdateSettingsOp(): operations['updateSettings'] {
   return undefined as unknown as operations['updateSettings']
 }
 
 void _assertPathsTrustScore
 void _assertListTxOp
+void _assertListBondsOp
 void _assertUpdateSettingsOp
+const _bondListPath: paths['/bonds']['get'] = undefined as unknown as operations['listBonds']
+const _bondListType: BondList = { items: [] }
+void _bondListPath
+void _bondListType
 
 // ── Success paths ───────────────────────────────────────────────────────────
 

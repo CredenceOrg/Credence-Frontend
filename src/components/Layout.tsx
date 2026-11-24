@@ -14,6 +14,7 @@ import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import Banner from './Banner'
+import RateLimitBanner from './RateLimitBanner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
@@ -162,6 +163,7 @@ export default function Layout() {
       )}
 
       <main id="main-content" className="appMain">
+        <RateLimitBanner />
         <ErrorBoundary
           resetKey={location.pathname}
           fallback={(error, reset) => {

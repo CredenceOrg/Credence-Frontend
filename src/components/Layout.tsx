@@ -25,6 +25,7 @@ import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/ins
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
 import { useSettings } from '../context/SettingsContext'
 import { THEME_CHANNEL_EVENT, getCurrentTheme, getNextTheme } from '../lib/themeCycle'
+import { usePwaUpdate } from '../hooks/usePwaUpdate'
 import { useRouteFocus } from '../hooks/useRouteFocus'
 import { useUnlockReminders } from '../hooks/useUnlockReminders'
 import { DOM_EVENTS } from '../events'
@@ -33,6 +34,7 @@ import './Layout.css'
 export default function Layout() {
   const { t } = useTranslation()
   const location = useLocation()
+  const { needRefresh, isUpdateDeferred, updateError, applyUpdate } = usePwaUpdate()
 
   useRouteFocus()
 
@@ -182,6 +184,23 @@ export default function Layout() {
           >
             <p className="appInstallPrompt-copy">
               Install this app for a faster, more reliable experience on your device.
+            </p>
+          </Banner>
+        </div>
+      )}
+
+      {needRefresh && (
+        <div className="appInstallPrompt">
+          <Banner
+            severity="info"
+            title="Update available"
+            action={{ label: 'Reload', onClick: () => void applyUpdate() }}
+          >
+            <p>
+              {updateError ??
+                (isUpdateDeferred
+                  ? 'The update will reload when your current operation finishes.'
+                  : 'A new version is ready. Reload to use the latest version.')}
             </p>
           </Banner>
         </div>

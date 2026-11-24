@@ -54,7 +54,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
+      injectRegister: false,
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
@@ -116,6 +117,10 @@ export default defineConfig({
     pool: 'forks',
     setupFiles: ['./src/test-setup.ts'],
     alias: {
+      'virtual:pwa-register': path.resolve(
+        __dirname,
+        './src/test/__mocks__/pwa-register.stub.ts'
+      ),
       '@stellar/freighter-api': path.resolve(
         __dirname,
         './src/test/__mocks__/freighter-api.stub.ts'

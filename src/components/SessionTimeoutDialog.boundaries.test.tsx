@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SessionTimeoutDialog, { type SessionTimeoutDialogProps } from './SessionTimeoutDialog'
 
@@ -220,5 +220,110 @@ describe('SessionTimeoutDialog — boundary & recovery (#1153)', () => {
 
     expect(onLogout).toHaveBeenCalledTimes(1)
     expect(onStayLoggedIn).not.toHaveBeenCalled()
+  })
+
+  it('surfaces a safe alert on extension failure without unhandled rejections and allows retry or logout', async () => {
+    const unhandledRejections: unknown[] = []
+    const onUnhandledRejection = (reason: unknown) => {
+      unhandledRejections.push(reason)
+    }
+    process.on('unhandledRejection', onUnhandledRejection)
+
+    try {
+      const onStayLoggedIn = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('internal_token=leak'))
+        .mockResolvedValueOnce(undefined)
+      const { onLogout } = renderDialog({ onStayLoggedIn })
+
+      fireEvent.change(screen.getByRole('textbox', { name: /type.*stay/i }), {
+        target: { value: 'STAY' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Stay logged in' }))
+
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('Unable to extend your session. Please retry or sign out.')
+      expect(alert).not.toHaveTextContent('internal_token=leak')
+      expect(unhandledRejections).toEqual([])
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Stay logged in' })).toBeEnabled()
+
+      // Retry succeeds and clears the alert
+      fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+      await waitFor(() => expect(onStayLoggedIn).toHaveBeenCalledTimes(2))
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+      // Sign-out remains functional
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(onLogout).toHaveBeenCalledTimes(1)
+    } finally {
+      process.off('unhandledRejection', onUnhandledRejection)
+    }
+  })
+
+  it('clears the extension error alert when closed and reopened', async () => {
+    const onStayLoggedIn = vi.fn().mockRejectedValueOnce(new Error('network error'))
+    const { rerender, onLogout } = renderDialog({ onStayLoggedIn })
+
+    fireEvent.change(screen.getByRole('textbox', { name: /type.*stay/i }), {
+      target: { value: 'STAY' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Stay logged in' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+    rerender(
+      <SessionTimeoutDialog
+        open={false}
+        timeLeftSeconds={60}
+        onStayLoggedIn={onStayLoggedIn}
+        onLogout={onLogout}
+      />
+    )
+    rerender(
+      <SessionTimeoutDialog
+        open
+        timeLeftSeconds={60}
+        onStayLoggedIn={onStayLoggedIn}
+        onLogout={onLogout}
+      />
+    )
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('enforces the submissionInFlight lock when retrying after a failure', async () => {
+    let resolveRetry!: () => void
+    const onStayLoggedIn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('first failure'))
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveRetry = resolve
+          })
+      )
+    renderDialog({ onStayLoggedIn })
+
+    fireEvent.change(screen.getByRole('textbox', { name: /type.*stay/i }), {
+      target: { value: 'STAY' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Stay logged in' }))
+
+    const retryButton = await screen.findByRole('button', { name: /retry/i })
+    const stayButton = screen.getByRole('button', { name: 'Stay logged in' })
+
+    act(() => {
+      fireEvent.click(retryButton)
+      fireEvent.click(stayButton)
+    })
+
+    expect(onStayLoggedIn).toHaveBeenCalledTimes(2)
+    expect(stayButton).toBeDisabled()
+
+    await act(async () => {
+      resolveRetry()
+    })
+    expect(stayButton).toBeEnabled()
   })
 })

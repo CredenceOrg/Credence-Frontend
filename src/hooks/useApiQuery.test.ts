@@ -4,6 +4,16 @@ import { ApiError } from '../api/client'
 import { useApiQuery, invalidateApiQuery, clearApiQueryCache } from './useApiQuery'
 
 const apiFetchMock = vi.fn<typeof import('../api/client').apiFetch>()
+let mockNetwork: 'public' | 'test' = 'public'
+let mockAddress = ''
+
+vi.mock('../context/SettingsContext', () => ({
+  useSettings: () => ({ network: mockNetwork }),
+}))
+
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({ address: mockAddress }),
+}))
 
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>()
@@ -33,6 +43,8 @@ function deferred<T>() {
 beforeEach(() => {
   apiFetchMock.mockReset()
   clearApiQueryCache()
+  mockNetwork = 'public'
+  mockAddress = ''
   vi.unstubAllGlobals()
 })
 
@@ -338,5 +350,65 @@ describe('useApiQuery', () => {
       '/trust-score/GABC',
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     )
+  })
+
+  it('isolates cache and aborts in-flight requests on network switch', async () => {
+    const publicDeferred = deferred<MockData>()
+    const testData: MockData = { score: 410, tier: 'bronze' }
+    let capturedSignal: AbortSignal | undefined
+
+    apiFetchMock.mockImplementationOnce((_path, init) => {
+      capturedSignal = init?.signal
+      return publicDeferred.promise
+    })
+
+    const { result, rerender } = renderHook(() => useApiQuery<MockData>('/trust-score/GABC'))
+    expect(result.current.isLoading).toBe(true)
+    expect(capturedSignal?.aborted).toBe(false)
+
+    // Switch network while public request is still in-flight
+    mockNetwork = 'test'
+    apiFetchMock.mockResolvedValueOnce(testData)
+    rerender()
+
+    expect(capturedSignal?.aborted).toBe(true)
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.data).toEqual(testData)
+
+    // Resolving the aborted public request must not overwrite test data
+    await act(async () => {
+      publicDeferred.resolve({ score: 999, tier: 'platinum' })
+      await Promise.resolve()
+    })
+    expect(result.current.data).toEqual(testData)
+  })
+
+  it('isolates cache and aborts in-flight requests on wallet address switch', async () => {
+    mockAddress = 'GADDR1'
+    const addr1Data: MockData = { score: 800, tier: 'gold' }
+    const addr2Data: MockData = { score: 500, tier: 'silver' }
+
+    apiFetchMock.mockResolvedValueOnce(addr1Data)
+
+    const { result, rerender } = renderHook(() => useApiQuery<MockData>('/trust-score/me'))
+    await waitFor(() => {
+      expect(result.current.data).toEqual(addr1Data)
+    })
+
+    // Switch wallet address
+    mockAddress = 'GADDR2'
+    apiFetchMock.mockResolvedValueOnce(addr2Data)
+    rerender()
+
+    // Should not show addr1Data while loading addr2Data
+    expect(result.current.data).toBeUndefined()
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(addr2Data)
+    })
   })
 })

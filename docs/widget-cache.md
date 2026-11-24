@@ -33,7 +33,9 @@ fresh.
 - **One store, many keys** — `src/widgetCache/WidgetCache.tsx` exposes a
   module-level `WidgetCacheStore`. Keys are arbitrary strings — we use a
   colon-namespaced convention (`bond:active-bonds`, `trust:recent-activity`)
-  to avoid collisions across pages.
+  to avoid collisions across pages. `useWidgetCache` automatically scopes keys
+  by the active `network` (`SettingsContext`) and wallet `address`
+  (`WalletContext`), and aborts in-flight requests when either changes.
 - **Per-key isolation** — `useWidgetCache.refresh('a')` only invalidates
   widget `'a'`. Widget `'b'` keeps its data, spinner state, and `lastUpdated`
   timestamp untouched.

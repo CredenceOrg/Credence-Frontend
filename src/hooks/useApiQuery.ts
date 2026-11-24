@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import { WIDGET_CACHE_DEFAULTS } from '../config/widgetCache'
+import { useSettings } from '../context/SettingsContext'
+import { useWallet } from '../context/WalletContext'
 import { scrubPII } from '../lib/piiScrub'
 
 // ── Cache ───────────────────────────────────────────────────────────────────
@@ -11,6 +13,10 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<unknown>>()
+
+function buildCacheKey(path: string, network: string, address: string): string {
+  return `${network}:${address || 'anon'}:${path}`
+}
 
 function getCacheEntry<T>(key: string): CacheEntry<T> | undefined {
   return cache.get(key) as CacheEntry<T> | undefined
@@ -85,6 +91,20 @@ export function useApiQuery<T>(
   const [staleState, setStaleState] = useState(() => {
     const cached = getCacheEntry<T>(queryKey)
     return { key: queryKey, value: cached !== undefined && !isCacheFresh(queryKey, staleTimeMs) }
+  const { enabled = true, staleTimeMs = WIDGET_CACHE_DEFAULTS.STALE_TIME_MS } = options
+  const { network } = useSettings()
+  const { address } = useWallet()
+  const cacheKey = buildCacheKey(path, network, address)
+
+  const [data, setData] = useState<T | undefined>(() => {
+    const cached = getCacheEntry<T>(cacheKey)
+    return cached?.data
+  })
+  const [error, setError] = useState<ApiError | null>(null)
+  const [isLoading, setIsLoading] = useState<boolean>(enabled)
+  const [isStale, setIsStale] = useState<boolean>(() => {
+    const cached = getCacheEntry<T>(cacheKey)
+    return cached !== undefined && !isCacheFresh(cacheKey, staleTimeMs)
   })
 
   const mountedRef = useRef(true)
@@ -94,6 +114,9 @@ export function useApiQuery<T>(
   pathRef.current = path
   const identityKeyRef = useRef(identityKey)
   identityKeyRef.current = identityKey
+  const cacheKeyRef = useRef(cacheKey)
+  const prevCacheKeyRef = useRef(cacheKey)
+  cacheKeyRef.current = cacheKey
 
   // Cleanup: mark unmounted, abort any in-flight request
   useEffect(() => {
@@ -105,6 +128,21 @@ export function useApiQuery<T>(
     }
   }, [])
 
+  // Abort in-flight requests and reset state when network, address, or path changes
+  useEffect(() => {
+    if (prevCacheKeyRef.current === cacheKey) return
+    prevCacheKeyRef.current = cacheKey
+
+    abortRef.current?.abort('context-changed')
+    abortRef.current = null
+    runIdRef.current += 1
+
+    const cached = getCacheEntry<T>(cacheKey)
+    setData(cached?.data)
+    setIsStale(cached !== undefined && !isCacheFresh(cacheKey, staleTimeMs))
+    setError(null)
+  }, [cacheKey, staleTimeMs])
+
   const fetch = useCallback(
     async (bypassCache = false): Promise<void> => {
       const currentPath = pathRef.current
@@ -113,6 +151,11 @@ export function useApiQuery<T>(
       // Serve from cache unless bypassed
       if (!bypassCache && isCacheFresh(currentQueryKey, staleTimeMs)) {
         const cached = getCacheEntry<T>(currentQueryKey)
+      const currentKey = cacheKeyRef.current
+
+      // Serve from cache unless bypassed
+      if (!bypassCache && isCacheFresh(currentKey, staleTimeMs)) {
+        const cached = getCacheEntry<T>(currentKey)
         if (cached) {
           setDataState({ key: currentQueryKey, value: cached.data })
           setStaleState({ key: currentQueryKey, value: false })
@@ -154,6 +197,10 @@ export function useApiQuery<T>(
           setCacheEntry(currentQueryKey, sanitized)
           setStaleState({ key: currentQueryKey, value: false })
           setErrorState(undefined)
+          setData(sanitized)
+          setCacheEntry(currentKey, sanitized)
+          setIsStale(false)
+          setError(null)
         }
       } catch (err) {
         if (controller.signal.aborted) return
@@ -171,7 +218,7 @@ export function useApiQuery<T>(
         }
       }
     },
-    [staleTimeMs]
+    [staleTimeMs, cacheKey]
   )
 
   // Initial fetch
@@ -210,6 +257,13 @@ function makeCacheKey(path: string, identityKey?: string): string {
  */
 export function invalidateApiQuery(path: string, identityKey?: string): void {
   cache.delete(makeCacheKey(path, identityKey))
+export function invalidateApiQuery(path: string): void {
+  const suffix = `:${path}`
+  for (const key of cache.keys()) {
+    if (key === path || key.endsWith(suffix)) {
+      cache.delete(key)
+    }
+  }
 }
 
 /**

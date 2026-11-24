@@ -100,7 +100,7 @@ describe('normalizeUSDC', () => {
 
 // Export for manual testing in browser console
 if (typeof window !== 'undefined') {
-  (window as Window & { testAmountInput?: unknown }).testAmountInput = {
+  ;(window as Window & { testAmountInput?: unknown }).testAmountInput = {
     sanitizeUSDCInput,
     formatUSDC,
     normalizeUSDC,

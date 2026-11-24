@@ -33,7 +33,8 @@
   width: var(--progress-fill, 0%);
   background-color: var(--credence-color-primary, #3b82d4);
   border-radius: var(--credence-radius-full, 9999px);
-  transition: width var(--credence-motion-duration-base, 200ms) var(--credence-motion-easing-standard, ease);
+  transition: width var(--credence-motion-duration-base, 200ms)
+    var(--credence-motion-easing-standard, ease);
 }
 
 /* Indeterminate fill — sliding animation */
@@ -52,6 +53,23 @@
   100% {
     transform: translateX(300%);
   }
+}
+
+/* Colour variants — fill colour (kept after determinate/indeterminate so it isn't overridden by the default primary background-color set above; equal-specificity selectors resolve by source order) */
+.progress--color-primary .progress__fill {
+  background-color: var(--credence-color-primary, #3b82d4);
+}
+
+.progress--color-success .progress__fill {
+  background-color: var(--credence-color-success-border, #15803d);
+}
+
+.progress--color-warning .progress__fill {
+  background-color: var(--credence-color-warning-border, #f59e0b);
+}
+
+.progress--color-danger .progress__fill {
+  background-color: var(--credence-color-danger-action, #dc2626);
 }
 
 /* Striped variant — diagonal stripe pattern on the fill */

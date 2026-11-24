@@ -131,8 +131,7 @@ export const ErrorWithoutRetry: Story = {
   parameters: {
     docs: {
       description: {
-        story:
-          'When `onRetry` is omitted, only the error message is shown — no Retry button.',
+        story: 'When `onRetry` is omitted, only the error message is shown — no Retry button.',
       },
     },
   },
@@ -145,12 +144,7 @@ export const AllStates: Story = {
       <AutoSaveIndicator status="pending" lastSavedAt={null} labels={labels} />
       <AutoSaveIndicator status="saving" lastSavedAt={null} labels={labels} />
       <AutoSaveIndicator status="saved" lastSavedAt={Date.now() - 1000} labels={labels} />
-      <AutoSaveIndicator
-        status="error"
-        lastSavedAt={null}
-        labels={labels}
-        onRetry={() => {}}
-      />
+      <AutoSaveIndicator status="error" lastSavedAt={null} labels={labels} onRetry={() => {}} />
     </div>
   ),
 }

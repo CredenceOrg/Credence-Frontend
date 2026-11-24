@@ -42,9 +42,7 @@ export default function SmartBackButton({
     }
   }
 
-  const combinedClassName = ['credence-smart-back-button', className]
-    .filter(Boolean)
-    .join(' ')
+  const combinedClassName = ['credence-smart-back-button', className].filter(Boolean).join(' ')
 
   return (
     <Button

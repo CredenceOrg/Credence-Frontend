@@ -18,7 +18,8 @@ const mocks = vi.hoisted(() => {
 
   return {
     MockHorizonError,
-    mockFetchUsdcBalance: vi.fn<(address: string, network: string, signal?: AbortSignal) => Promise<number>>(),
+    mockFetchUsdcBalance:
+      vi.fn<(address: string, network: string, signal?: AbortSignal) => Promise<number>>(),
     mockUseWallet: vi.fn(),
     mockUseSettings: vi.fn(),
   }
@@ -159,7 +160,9 @@ describe('useUsdcBalance', () => {
   })
 
   it('returns error status on Horizon failure', async () => {
-    mocks.mockFetchUsdcBalance.mockRejectedValueOnce(new mocks.MockHorizonError(500, 'Server error'))
+    mocks.mockFetchUsdcBalance.mockRejectedValueOnce(
+      new mocks.MockHorizonError(500, 'Server error')
+    )
 
     const { result } = renderHook(() => useUsdcBalance())
 
@@ -169,6 +172,35 @@ describe('useUsdcBalance', () => {
 
     expect(result.current.balance).toBe(0)
     expect(result.current.error).toBeInstanceOf(mocks.MockHorizonError)
+  })
+
+  it('re-fetches automatically when the re-auth timestamp changes', async () => {
+    mocks.mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      lastReauthTime: 1,
+      isReauthRequired: vi.fn(() => true),
+    })
+    const { result, rerender } = renderHook(() => useUsdcBalance())
+
+    expect(result.current.isReauthRequired).toBe(true)
+    expect(result.current.status).toBe('error')
+    expect(mocks.mockFetchUsdcBalance).not.toHaveBeenCalled()
+
+    mocks.mockFetchUsdcBalance.mockResolvedValueOnce(850)
+    mocks.mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      lastReauthTime: 2,
+      isReauthRequired: vi.fn(() => false),
+    })
+    rerender()
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('ready')
+    })
+    expect(result.current.balance).toBe(850)
+    expect(mocks.mockFetchUsdcBalance).toHaveBeenCalledOnce()
   })
 
   it('returns balance 0 when account has no USDC trustline', async () => {

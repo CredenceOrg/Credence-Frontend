@@ -9,10 +9,10 @@ This runbook covers the lifecycle, rotation procedure, and blast-radius analysis
 
 ## Secrets Covered
 
-| Secret env var | Purpose | Set by |
-|---|---|---|
-| `SESSION_SECRET` | Signs the session cookie (`credence.sid`). Used by `express-session`. | Platform secret store (e.g. Doppler, AWS Secrets Manager) |
-| `COOKIE_SECRET` | Signs general-purpose signed cookies (`credence.*`). Used by `cookie-parser`. | Platform secret store |
+| Secret env var   | Purpose                                                                       | Set by                                                    |
+| ---------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `SESSION_SECRET` | Signs the session cookie (`credence.sid`). Used by `express-session`.         | Platform secret store (e.g. Doppler, AWS Secrets Manager) |
+| `COOKIE_SECRET`  | Signs general-purpose signed cookies (`credence.*`). Used by `cookie-parser`. | Platform secret store                                     |
 
 Both values are **opaque hex strings** (64 bytes / 128 hex chars). They are read once at process start and cached for the lifetime of the server.
 
@@ -20,12 +20,12 @@ Both values are **opaque hex strings** (64 bytes / 128 hex chars). They are read
 
 ## Rotation Cadence
 
-| Trigger | Frequency | Rationale |
-|---|---|---|
-| **Scheduled rotation** | Every 90 days | Limits the window of exposure if a secret is silently compromised. Aligns with quarterly release cycle. |
-| **Incident-driven rotation** | Immediately on suspicion of compromise | A leaked secret enables full session forgery (see [Blast Radius](#blast-radius)). Rotate without waiting for the scheduled window. |
-| **Personnel offboarding** | Within 24 hours of access revocation | Any engineer who had production access could have retrieved the secret from the store or server env. |
-| **Deploy of secret-store migration** | Immediately after migration | If the secrets move to a new store, old secrets may persist in unintended locations. |
+| Trigger                              | Frequency                              | Rationale                                                                                                                          |
+| ------------------------------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Scheduled rotation**               | Every 90 days                          | Limits the window of exposure if a secret is silently compromised. Aligns with quarterly release cycle.                            |
+| **Incident-driven rotation**         | Immediately on suspicion of compromise | A leaked secret enables full session forgery (see [Blast Radius](#blast-radius)). Rotate without waiting for the scheduled window. |
+| **Personnel offboarding**            | Within 24 hours of access revocation   | Any engineer who had production access could have retrieved the secret from the store or server env.                               |
+| **Deploy of secret-store migration** | Immediately after migration            | If the secrets move to a new store, old secrets may persist in unintended locations.                                               |
 
 ---
 
@@ -40,6 +40,7 @@ An attacker who possesses the current `SESSION_SECRET` can:
 3. **Persist access after password/address change.** The forged cookie remains valid until the secret is rotated and existing sessions are invalidated.
 
 The attacker **cannot**:
+
 - Read the session store directly (that requires database credentials).
 - Decrypt the session payload (express-session uses server-side storage; the cookie only carries the session ID).
 
@@ -126,11 +127,11 @@ curl -s --cookie "credence.sid=$OLD_SESSION_COOKIE" \
 
 ## Monitoring & Alerting
 
-| Alert | Condition | Action |
-|---|---|---|
-| `SessionAuthFailureRate > 5%` | Sudden spike in invalid session errors over 5 minutes | Could indicate a compromised secret being used to forge sessions that the server now rejects. Investigate and consider incident-driven rotation. |
-| `SecretAccessAnomaly` | Unexpected read of `SESSION_SECRET` / `COOKIE_SECRET` from the secret store | Audit the access. Rotate secrets if the access was unauthorised. |
-| `DeployWithoutSecretRotation` | Production deploy more than 95 days since last scheduled rotation | Block the deploy until a rotation is performed. |
+| Alert                         | Condition                                                                   | Action                                                                                                                                           |
+| ----------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SessionAuthFailureRate > 5%` | Sudden spike in invalid session errors over 5 minutes                       | Could indicate a compromised secret being used to forge sessions that the server now rejects. Investigate and consider incident-driven rotation. |
+| `SecretAccessAnomaly`         | Unexpected read of `SESSION_SECRET` / `COOKIE_SECRET` from the secret store | Audit the access. Rotate secrets if the access was unauthorised.                                                                                 |
+| `DeployWithoutSecretRotation` | Production deploy more than 95 days since last scheduled rotation           | Block the deploy until a rotation is performed.                                                                                                  |
 
 ---
 

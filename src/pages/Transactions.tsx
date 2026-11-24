@@ -12,18 +12,15 @@ import { useSettings } from '../context/SettingsContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useTransactions } from '../hooks/useTransactions'
 import { useToast } from '../components/ToastProvider'
-import {
-  buildExportFilename,
-  downloadCsv,
-  transactionsToCsv,
-} from '../lib/transactionsExport'
+import { buildExportFilename, downloadCsv, transactionsToCsv } from '../lib/transactionsExport'
 import { explorerUrl } from '../lib/explorerUrl'
+
 import { truncateAddress } from '../lib/stellar'
 import { formatUsdc } from '../lib/format'
 import type { Transaction } from '../api/types'
+import type { TransactionWithNetwork } from '../lib/pendingTransactionsStorage'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
-
 
 const STATUS_BADGE_MAP: Record<Transaction['status'], string> = {
   pending: 'locked',
@@ -53,10 +50,22 @@ export default function Transactions() {
     return t('transactions.relativeTime.daysAgo', { count: days })
   }
 
-  const { network } = useSettings()
-  const { data, isLoading, error, refetch } = useTransactions()
+  const { network: settingsNetwork } = useSettings()
+  const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage } =
+    useTransactions()
   const { addToast } = useToast()
   const [filter, setFilter] = useState<StatusFilter>('all')
+
+  // Helper to get the network for a transaction (use stored network for pending, settings for server)
+  const getTxNetwork = useCallback(
+    (tx: Transaction): 'public' | 'test' => {
+      if ('_network' in tx) {
+        return (tx as TransactionWithNetwork)._network
+      }
+      return settingsNetwork
+    },
+    [settingsNetwork]
+  )
 
   // Local "deleted" overlay: we cannot mutate the API-fetched list, so we
   // keep track of removed IDs here. Bulk Delete writes here and clears the
@@ -70,7 +79,7 @@ export default function Transactions() {
 
   const visibleTransactions = useMemo(
     () => data.filter((tx) => !deletedIds.has(tx.id)),
-    [data, deletedIds],
+    [data, deletedIds]
   )
 
   const filtered = useMemo(
@@ -78,24 +87,24 @@ export default function Transactions() {
       filter === 'all'
         ? visibleTransactions
         : visibleTransactions.filter((tx) => tx.status === filter),
-    [visibleTransactions, filter],
+    [visibleTransactions, filter]
   )
 
   // Reset transient overlays when the underlying dataset changes (refetch
   // or unmount between fetches). Stale IDs would otherwise leak selection
   // into the new list.
   useEffect(() => {
-    setDeletedIds(new Set())
-    setSelectedIds(new Set())
+    setDeletedIds((prev) => (prev.size === 0 ? prev : new Set()))
+    setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()))
   }, [data])
 
-  const hasData = !isLoading && !error && visibleTransactions.length >= 0
+  // A 404 from the list endpoint means there is no history to show (e.g. no
+  // API deployed for this environment) — render the empty state, not an error.
+  const isMissingHistory = error?.status === 404
+  const hasData = !isLoading && (!error || isMissingHistory) && visibleTransactions.length >= 0
 
   // ── Selection helpers ───────────────────────────────────────────────
-  const isRowSelected = useCallback(
-    (id: string) => selectedIds.has(id),
-    [selectedIds],
-  )
+  const isRowSelected = useCallback((id: string) => selectedIds.has(id), [selectedIds])
 
   // Clamp selection to whatever is currently visible. Filter changes can
   // otherwise leave "ghost" selections counted in the bulk-actions bar
@@ -167,7 +176,7 @@ export default function Transactions() {
 
   const orderedSelected = useMemo(
     () => filtered.filter((tx) => selectedIds.has(tx.id)),
-    [filtered, selectedIds],
+    [filtered, selectedIds]
   )
 
   // ── Bulk action handlers ────────────────────────────────────────────
@@ -180,7 +189,7 @@ export default function Transactions() {
       'success',
       count === 1
         ? t('transactions.bulk.exportToast.successOne')
-        : t('transactions.bulk.exportToast.successOther', { count }),
+        : t('transactions.bulk.exportToast.successOther', { count })
     )
   }, [orderedSelected, addToast, t])
 
@@ -217,7 +226,7 @@ export default function Transactions() {
       'success',
       count === 1
         ? t('transactions.bulk.deleteConfirm.successOne')
-        : t('transactions.bulk.deleteConfirm.successOther', { count }),
+        : t('transactions.bulk.deleteConfirm.successOther', { count })
     )
     setIsDeleting(false)
     setDeleteDialogOpen(false)
@@ -228,9 +237,7 @@ export default function Transactions() {
       <div className="transactions__header">
         <h1 className="transactions__title">{t('transactions.title')}</h1>
       </div>
-      <p className="transactions__description">
-        {t('transactions.description')}
-      </p>
+      <p className="transactions__description">{t('transactions.description')}</p>
 
       {isLoading && (
         <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading transactions">
@@ -239,15 +246,14 @@ export default function Transactions() {
         </div>
       )}
 
-      {!isLoading && error && (
-        <div role="alert">
-          <ErrorState
-            type={error.status === 0 ? 'network' : error.status >= 500 ? 'backend' : 'generic'}
-            title={t('transactions.unableToLoad')}
-            message={error.message}
-            action={{ label: t('common.tryAgain'), onClick: refetch }}
-          />
-        </div>
+      {!isLoading && error && !isMissingHistory && (
+        <ErrorState
+          type={error.status === 0 ? 'network' : error.status >= 500 ? 'backend' : 'generic'}
+          title={t('transactions.unableToLoad')}
+          message={error.message}
+          action={{ label: t('common.tryAgain'), onClick: refetch }}
+          ariaLabel={t('transactions.unableToLoad')}
+        />
       )}
 
       {hasData && visibleTransactions.length === 0 && (
@@ -316,9 +322,7 @@ export default function Transactions() {
           </div>
 
           {filtered.length === 0 ? (
-            <p className="transactions__noResults">
-              {t('transactions.noResults', { filter })}
-            </p>
+            <p className="transactions__noResults">{t('transactions.noResults', { filter })}</p>
           ) : (
             <table className="transactions__table" aria-label="Transaction history">
               <thead>
@@ -372,11 +376,13 @@ export default function Transactions() {
                       <td data-label="Transaction">
                         <AddressDisplay address={tx.hash} className="transactions__hash" />{' '}
                         <a
-                          href={explorerUrl(network, tx.hash)}
+                          href={explorerUrl(getTxNetwork(tx), tx.hash)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="transactions__explorerLink"
-                          aria-label={t('transactions.table.viewOnExplorer', { hash: truncateAddress(tx.hash) })}
+                          aria-label={t('transactions.table.viewOnExplorer', {
+                            hash: truncateAddress(tx.hash),
+                          })}
                         >
                           {t('transactions.table.viewLink')}
                         </a>
@@ -386,6 +392,45 @@ export default function Transactions() {
                 })}
               </tbody>
             </table>
+          )}
+
+          {hasData && visibleTransactions.length > 0 && totalPages > 1 && (
+            <nav
+              className="transactions__pagination"
+              aria-label={t('transactions.pagination.label')}
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={page <= 1}
+                onClick={() => goToPage(page - 1)}
+                aria-label={t('transactions.pagination.previous')}
+              >
+                {t('transactions.pagination.previous')}
+              </Button>
+              <span className="transactions__pagination-info">
+                {t('transactions.pagination.page', { page, total: totalPages })}
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!hasNextPage}
+                onClick={() => goToPage(page + 1)}
+                onMouseEnter={() => {
+                  if (hasNextPage) {
+                    void prefetchPage(page + 1)
+                  }
+                }}
+                onFocus={() => {
+                  if (hasNextPage) {
+                    void prefetchPage(page + 1)
+                  }
+                }}
+                aria-label={t('transactions.pagination.next')}
+              >
+                {t('transactions.pagination.next')}
+              </Button>
+            </nav>
           )}
         </>
       )}

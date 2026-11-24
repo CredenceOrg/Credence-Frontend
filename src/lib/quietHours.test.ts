@@ -143,9 +143,7 @@ describe('isWithinQuietHours', () => {
 describe('isQuietHoursActive', () => {
   it('is false when disabled regardless of time', () => {
     const noon = new Date(2024, 0, 1, 12, 0)
-    expect(
-      isQuietHoursActive({ enabled: false, start: '00:00', end: '23:59' }, noon),
-    ).toBe(false)
+    expect(isQuietHoursActive({ enabled: false, start: '00:00', end: '23:59' }, noon)).toBe(false)
   })
 
   it('is true at the exact start of an enabled window', () => {
@@ -165,9 +163,7 @@ describe('isQuietHoursActive', () => {
 
   it('respects a custom window', () => {
     const at1330 = new Date(2024, 0, 1, 13, 30)
-    expect(
-      isQuietHoursActive({ enabled: true, start: '13:00', end: '14:00' }, at1330),
-    ).toBe(true)
+    expect(isQuietHoursActive({ enabled: true, start: '13:00', end: '14:00' }, at1330)).toBe(true)
   })
 
   it('defaults to new Date() when no reference is supplied', () => {

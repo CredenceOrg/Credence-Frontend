@@ -6,9 +6,7 @@ import WidgetRefreshButton from './WidgetRefreshButton'
 describe('WidgetRefreshButton', () => {
   it('renders with an accessible name that includes the widget label', () => {
     render(<WidgetRefreshButton onRefresh={() => {}} label="recent activity" />)
-    expect(
-      screen.getByRole('button', { name: /Refresh recent activity/i })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Refresh recent activity/i })).toBeInTheDocument()
   })
 
   it('shows aria-busy and is disabled while loading', () => {
@@ -40,11 +38,7 @@ describe('WidgetRefreshButton', () => {
   it('surfaces a "Last updated" cue when lastUpdated is provided', () => {
     const lastUpdated = Date.now() - 30_000 // 30s ago
     render(
-      <WidgetRefreshButton
-        onRefresh={() => {}}
-        label="recent activity"
-        lastUpdated={lastUpdated}
-      />
+      <WidgetRefreshButton onRefresh={() => {}} label="recent activity" lastUpdated={lastUpdated} />
     )
     const button = screen.getByRole('button', { name: /Last updated/i })
     expect(button).toHaveAccessibleName(/Refresh recent activity\. Last updated 30s ago/i)

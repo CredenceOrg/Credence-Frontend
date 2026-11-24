@@ -44,11 +44,7 @@ export default function LoadingSpinner({
 
   return (
     <span
-      className={[
-        'credence-loading-spinner',
-        `credence-loading-spinner--${size}`,
-        className,
-      ]
+      className={['credence-loading-spinner', `credence-loading-spinner--${size}`, className]
         .filter(Boolean)
         .join(' ')}
       aria-hidden="true"

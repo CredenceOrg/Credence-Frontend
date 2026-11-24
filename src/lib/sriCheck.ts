@@ -120,18 +120,12 @@ export function checkSri(htmlSource: string, ownOrigin = ''): SriResult {
     const attrs = match[2] ?? ''
 
     // Determine the resource URL
-    let url: string | null = null
-    if (tag === 'script') {
-      url = extractAttr(attrs, 'src')
-    } else {
-      url = extractAttr(attrs, 'href')
-    }
+    const url = tag === 'script' ? extractAttr(attrs, 'src') : extractAttr(attrs, 'href')
 
     if (!url) continue // inline script or link without href — skip
 
     // Same-origin check
-    const isExternal =
-      isCrossOrigin(url) && (ownOrigin === '' || !url.startsWith(ownOrigin))
+    const isExternal = isCrossOrigin(url) && (ownOrigin === '' || !url.startsWith(ownOrigin))
 
     if (!isExternal) continue // relative / same-origin — SRI not required
 

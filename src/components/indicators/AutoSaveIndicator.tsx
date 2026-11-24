@@ -93,11 +93,7 @@ export default function AutoSaveIndicator({
 
   if (!isVisible) return null
 
-  const rootClass = [
-    'auto-save-indicator',
-    `auto-save-indicator--${status}`,
-    className ?? '',
-  ]
+  const rootClass = ['auto-save-indicator', `auto-save-indicator--${status}`, className ?? '']
     .filter(Boolean)
     .join(' ')
 
@@ -111,9 +107,7 @@ export default function AutoSaveIndicator({
     )
   } else if (status === 'saved') {
     const relative = formatRelative(lastSavedAt as number, now)
-    body = (
-      <span className="auto-save-indicator__text">{labels.savedRelative(relative)}</span>
-    )
+    body = <span className="auto-save-indicator__text">{labels.savedRelative(relative)}</span>
   } else if (status === 'error') {
     body = (
       <>

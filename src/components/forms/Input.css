@@ -1,0 +1,103 @@
+/**
+ * Shared text input primitive. Pair with FormField for labels, hints,
+ * errors (role=alert), and success (role=status). FormField data-state
+ * overrides border color for error/success.
+ */
+
+.form-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--credence-space-3) var(--credence-space-4);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-base);
+  line-height: var(--credence-line-height-base);
+  transition:
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.form-input::placeholder {
+  color: var(--credence-text-secondary);
+}
+
+.form-input:hover:not(:disabled):not([aria-invalid='true']) {
+  border-color: var(--credence-color-primary);
+}
+
+.form-input:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--credence-color-slate-50);
+}
+
+[data-theme='dark'] .form-input:disabled {
+  background: var(--credence-color-slate-800);
+}
+
+.form-input[aria-invalid='true'] {
+  border-color: var(--credence-color-danger-border);
+  background: var(--credence-color-danger-surface);
+}
+
+.form-input--compact {
+  width: auto;
+  min-width: 6rem;
+  max-width: 8rem;
+}
+
+.form-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 6.25rem;
+  padding: var(--credence-space-3) var(--credence-space-4);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-base);
+  line-height: var(--credence-line-height-base);
+  resize: vertical;
+  transition:
+    border-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.form-textarea::placeholder {
+  color: var(--credence-text-secondary);
+}
+
+.form-textarea:hover:not(:disabled):not([aria-invalid='true']) {
+  border-color: var(--credence-color-primary);
+}
+
+.form-textarea:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.form-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--credence-color-slate-50);
+}
+
+[data-theme='dark'] .form-textarea:disabled {
+  background: var(--credence-color-slate-800);
+}
+
+.form-textarea[aria-invalid='true'] {
+  border-color: var(--credence-color-danger-border);
+  background: var(--credence-color-danger-surface);
+}

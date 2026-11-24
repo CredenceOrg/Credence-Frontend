@@ -1,65 +1,127 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import type { ReactElement } from 'react'
 import Attestations from './Attestations'
+import { truncateAddress } from '../lib/stellar'
 
-vi.mock('../data/activity', () => ({
-  ACTIVITY_ITEMS: [
-    {
-      id: 'evt-test-1',
-      timestamp: 'Test UTC',
-      title: 'Attestation submitted',
-      description: 'Identity evidence.',
-      actor: 'Validator',
-      statusLabel: 'Accepted',
-      tone: 'success',
-      meta: 'Tx 0x123',
-    }
-  ]
+const WALLET_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+
+const walletState = vi.hoisted(() => ({
+  address: '',
+  isConnected: false,
 }))
 
-vi.mock('../components/ToastProvider', () => ({
-  useToast: () => ({ addToast: vi.fn() }),
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => walletState,
 }))
 
-describe('Attestations Page', () => {
-  afterEach(() => {
-    cleanup()
+vi.mock('../components/AttestationForm', () => ({
+  default: ({
+    onSubmitSuccess,
+  }: {
+    onSubmitSuccess: (payload: { subject: string; type: string; evidence: string }) => void
+  }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onSubmitSuccess({
+          subject: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
+          type: 'identity',
+          evidence: 'Identity evidence package',
+        })
+      }
+    >
+      Submit attestation
+    </button>
+  ),
+}))
+
+const renderInRouter = (ui: ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>)
+
+async function submitAttestation() {
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: /submit attestation/i }))
+  return user
+}
+
+describe('Attestations page', () => {
+  beforeEach(() => {
+    walletState.address = ''
+    walletState.isConnected = false
   })
 
-  it('renders timeline items and filter', () => {
-    render(<Attestations />)
-    expect(screen.getByRole('heading', { name: /attestations/i, level: 1 })).toBeInTheDocument()
+  afterEach(cleanup)
+
+  it('renders the header, form, timeline, and status filter', () => {
+    renderInRouter(<Attestations />)
+
+    expect(
+      screen.getByRole('heading', { name: /^attestations$/i, level: 1 })
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /submit attestation/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('list', { name: /recent timeline events/i })
+    ).toBeInTheDocument()
+
+    const filter = screen.getByRole('combobox', { name: /filter attestations/i })
+    expect(filter).toBeInTheDocument()
+    expect(screen.getAllByRole('option')).toHaveLength(4)
+  })
+
+  it('filters the timeline by status', async () => {
+    const user = userEvent.setup()
+    renderInRouter(<Attestations />)
+    const filter = screen.getByRole('combobox', { name: /filter attestations/i })
+
+    // 5 sample items: 2 accepted, 2 needs-update, 1 in-review
+    expect(screen.getAllByRole('listitem')).toHaveLength(5)
+
+    await user.selectOptions(filter, 'success')
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+
+    await user.selectOptions(filter, 'warning')
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+
+    await user.selectOptions(filter, 'info')
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
+
+    await user.selectOptions(filter, 'all')
+    expect(screen.getAllByRole('listitem')).toHaveLength(5)
   })
 
-  it('filters rows when a tone is selected', () => {
-    render(<Attestations />)
-    const filterSelect = screen.getByRole('combobox', { name: /filter attestations/i })
-    
-    fireEvent.change(filterSelect, { target: { value: 'success' } })
-    expect(screen.getAllByRole('listitem')).toHaveLength(1)
-    expect(screen.getByText('Attestation submitted')).toBeInTheDocument()
+  it('uses the connected wallet address as the actor on submit', async () => {
+    walletState.address = WALLET_ADDRESS
+    walletState.isConnected = true
+    renderInRouter(<Attestations />)
+
+    const user = await submitAttestation()
+    await user.click(screen.getAllByRole('button', { name: /show details/i })[0]!)
+
+    const actor = document.querySelector('.activity-row__actor')
+    expect(actor?.textContent).toContain(truncateAddress(WALLET_ADDRESS))
+    expect(actor?.textContent).not.toContain('Current User')
   })
 
-  it('shows empty state when filter yields no results', () => {
-    render(<Attestations />)
-    const filterSelect = screen.getByRole('combobox', { name: /filter attestations/i })
-    
-    fireEvent.change(filterSelect, { target: { value: 'warning' } })
-    
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-    expect(screen.getByText('No activity yet')).toBeInTheDocument()
+  it('falls back to the translated label when disconnected', async () => {
+    renderInRouter(<Attestations />)
+
+    const user = await submitAttestation()
+    await user.click(screen.getAllByRole('button', { name: /show details/i })[0]!)
+
+    expect(document.querySelector('.activity-row__actor')?.textContent).toContain('Current User')
   })
 
-  it('expands row details on click', () => {
-    render(<Attestations />)
-    const expandBtn = screen.getByRole('button', { name: /show details/i })
-    
-    expect(screen.getByText(/Tx 0x123/)).not.toBeVisible()
-    fireEvent.click(expandBtn)
-    
-    expect(expandBtn).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText(/Tx 0x123/)).toBeVisible()
-    expect(screen.getByText(/Validator/)).toBeVisible()
+  it('stores new activity timestamps as ISO values', async () => {
+    renderInRouter(<Attestations />)
+    await submitAttestation()
+
+    const time = screen.getAllByRole('listitem')[0]!.querySelector('time')
+    expect(time).not.toBeNull()
+    expect(time?.getAttribute('dateTime')).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+    )
+    expect(time?.textContent).not.toContain('T')
   })
 })

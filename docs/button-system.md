@@ -181,6 +181,22 @@ On mobile (< 768px):
 - [ ] Responsive styles work on mobile
 - [ ] Full-width prop works correctly
 
+## Home page CTA link-buttons
+
+The landing page (`src/pages/Home.tsx`) uses React Router `<Link role="button">` elements for client-side navigation. Styles live in `src/pages/Home.css` (`.home__cta`, `.home__cta--primary`, `.home__cta--secondary`) and mirror the interactive states defined in `Button.css`:
+
+| State | Primary | Secondary |
+| --- | --- | --- |
+| **Default** | `--credence-color-primary` fill, white text | Card surface, default border |
+| **Hover** | `--credence-color-primary-strong` fill | `--credence-color-slate-100` fill |
+| **Active** | Strong fill + 1px `translateY` press | Slate-200 fill + press |
+| **Focus-visible** | 3px focus ring + page-colour halo | Same |
+| **Disabled** | Slate-400 fill, 50% opacity, `not-allowed` | Slate muted palette, 50% opacity |
+
+Apply `aria-disabled="true"` on a `<Link>` when a CTA must appear inactive (e.g. feature flag). Disabled links should also omit or neutralise `to` navigation in the component layer.
+
+**Recommendation:** Keep `<Link>` CTAs on Home for routing semantics. A future `Button` `as="link"` prop could compose these same CSS classes rather than duplicating rules in `Button.css`.
+
 ## Future Enhancements
 
 - Icon support (leading/trailing icons)

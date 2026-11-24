@@ -1,4 +1,5 @@
 import { RefObject, useEffect, useRef } from 'react'
+import { DOM_EVENTS } from '../events'
 
 /**
  * CSS selector matching the elements that are eligible to receive keyboard focus
@@ -28,9 +29,7 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
   ) {
     return elements
   }
-  return elements.filter(
-    (el) => el.offsetParent !== null || el.getClientRects().length > 0
-  )
+  return elements.filter((el) => el.offsetParent !== null || el.getClientRects().length > 0)
 }
 
 /**
@@ -149,6 +148,21 @@ export function useFocusTrap({
 }: UseFocusTrapOptions): void {
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
 
+  /**
+   * Defers `cb` to the next animation frame when one is available, falling
+   * back to synchronous invocation in environments where
+   * `requestAnimationFrame` is missing (hardened embeds, test harnesses). This
+   * is the failure boundary for the timing primitive: a missing rAF degrades
+   * focus timing but must never crash the dialog that owns the trap.
+   */
+  const deferToNextFrame = (cb: FrameRequestCallback): void => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(cb)
+      return
+    }
+    cb(0)
+  }
+
   useEffect(() => {
     if (!isActive) return
 
@@ -166,7 +180,7 @@ export function useFocusTrap({
       focusables[0]?.focus()
     }
 
-    requestAnimationFrame(focusInitial)
+    deferToNextFrame(focusInitial)
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -198,16 +212,16 @@ export function useFocusTrap({
       }
     }
 
-    container.addEventListener('keydown', handleKeyDown)
+    container.addEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
 
     return () => {
-      container.removeEventListener('keydown', handleKeyDown)
+      container.removeEventListener(DOM_EVENTS.KEY_DOWN, handleKeyDown)
 
       if (!returnFocusOnDeactivate) return
 
       const returnTarget = returnFocusRef?.current ?? previouslyFocusedRef.current
       if (returnTarget && typeof returnTarget.focus === 'function') {
-        requestAnimationFrame(() => returnTarget.focus())
+        deferToNextFrame(() => returnTarget.focus())
       }
     }
   }, [containerRef, isActive, initialFocusRef, returnFocusRef, onEscape, returnFocusOnDeactivate])

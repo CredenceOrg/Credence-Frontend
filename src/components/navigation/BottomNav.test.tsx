@@ -47,13 +47,7 @@ describe('BottomNav', () => {
   it('each tab links to the correct href', () => {
     renderBottomNav('/dashboard')
     const hrefs = screen.getAllByRole('link').map((l) => l.getAttribute('href'))
-    expect(hrefs).toEqual([
-      '/dashboard',
-      '/bond',
-      '/trust',
-      '/attestations',
-      '/transactions',
-    ])
+    expect(hrefs).toEqual(['/dashboard', '/bond', '/trust', '/attestations', '/transactions'])
   })
 
   // --- active state ---
@@ -79,7 +73,9 @@ describe('BottomNav', () => {
 
   it('inactive tabs do not have the bottomNav-tab--active CSS class', () => {
     renderBottomNav('/trust')
-    expect(screen.getByRole('link', { name: /dashboard/i })).not.toHaveClass('bottomNav-tab--active')
+    expect(screen.getByRole('link', { name: /dashboard/i })).not.toHaveClass(
+      'bottomNav-tab--active'
+    )
     expect(screen.getByRole('link', { name: /bond/i })).not.toHaveClass('bottomNav-tab--active')
   })
 
@@ -119,11 +115,17 @@ describe('BottomNav', () => {
 
   it('marks /attestations tab active when on /attestations', () => {
     renderBottomNav('/attestations')
-    expect(screen.getByRole('link', { name: /attestations/i })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: /attestations/i })).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
   })
 
   it('marks /transactions tab active when on /transactions', () => {
     renderBottomNav('/transactions')
-    expect(screen.getByRole('link', { name: /transactions/i })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: /transactions/i })).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
   })
 })

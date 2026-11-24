@@ -133,10 +133,7 @@ export default function AnalyticsWidget({
   const toggleId = 'analytics-widget-compare-toggle'
 
   return (
-    <section
-      className={`analytics-widget ${className}`.trim()}
-      aria-label={title}
-    >
+    <section className={`analytics-widget ${className}`.trim()} aria-label={title}>
       <header className="analytics-widget__header">
         <h2 className="analytics-widget__title">{title}</h2>
 

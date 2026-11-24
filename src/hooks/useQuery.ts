@@ -19,7 +19,7 @@ export interface UseQueryResult<T> {
  */
 export function useQuery<T>(
   queryFn: () => Promise<T>,
-  options: UseQueryOptions = {},
+  options: UseQueryOptions = {}
 ): UseQueryResult<T> {
   const { enabled = true } = options
 

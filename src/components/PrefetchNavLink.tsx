@@ -7,7 +7,11 @@ interface PrefetchNavLinkProps extends NavLinkProps {
 
 export function PrefetchNavLink({ preload, ...props }: PrefetchNavLinkProps) {
   const handlers = useRoutePrefetch(preload)
-  const { onMouseEnter: originalMouseEnter, onFocus: originalFocus, onTouchStart: originalTouchStart } = props
+  const {
+    onMouseEnter: originalMouseEnter,
+    onFocus: originalFocus,
+    onTouchStart: originalTouchStart,
+  } = props
 
   return (
     <NavLink

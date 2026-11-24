@@ -9,4 +9,8 @@ export const TEST_IDS = {
   TX_BULK_DELETE_BUTTON: 'transactions-bulk-delete-button',
   TX_BULK_EXPORT_BUTTON: 'transactions-bulk-export-button',
   TX_BULK_CLEAR_BUTTON: 'transactions-bulk-clear-button',
+  FILE_PICKER_DROPZONE: 'file-picker-dropzone',
+  FILE_PICKER_INPUT: 'file-picker-input',
+  FILE_PICKER_FILE_LIST: 'file-picker-file-list',
+  FILE_PICKER_REMOVE_BUTTON: 'file-picker-remove-button',
 } as const

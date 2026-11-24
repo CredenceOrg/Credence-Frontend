@@ -42,7 +42,7 @@ export default function CreateBondPage() {
         >
           ← Back to Bond
         </Button>
-        <h1 style={{ color: 'var(--text-primary)', margin: 0 }}>Create Bond</h1>
+        <h1>Create Bond</h1>
       </div>
 
       <CreateBondFlow onComplete={goToBond} onCancel={goToBond} />

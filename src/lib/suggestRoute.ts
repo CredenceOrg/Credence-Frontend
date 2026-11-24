@@ -45,7 +45,10 @@ function levenshtein(a: string, b: string): number {
  * @param routes Array of canonical routes (including leading slash).
  * @returns An object containing an optional `suggestion` and a confidence score.
  */
-export function suggestRoute(attemptedPath: string, routes: string[]): {
+export function suggestRoute(
+  attemptedPath: string,
+  routes: string[]
+): {
   suggestion?: string
   confidence: number
 } {

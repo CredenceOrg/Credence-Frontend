@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { WIDGET_CACHE_DEFAULTS } from '../config/widgetCache'
+import { scrubPII, PIIScrubError } from '../lib/piiScrub'
 
 /**
  * Per-widget cache state machine.
@@ -47,10 +48,7 @@ class WidgetCacheStore {
   private abortControllers = new Map<string, AbortController>()
 
   get<T>(key: string): WidgetEntry<T> {
-    return (
-      (this.entries.get(key) as WidgetEntry<T> | undefined) ??
-      (EMPTY_ENTRY as WidgetEntry<T>)
-    )
+    return (this.entries.get(key) as WidgetEntry<T> | undefined) ?? (EMPTY_ENTRY as WidgetEntry<T>)
   }
 
   subscribe(key: string, listener: () => void): () => void {
@@ -105,14 +103,37 @@ class WidgetCacheStore {
     return fetcher().then(
       (data) => {
         if (controller.signal.aborted) return data
+
+        // Scrub PII before the payload ever reaches `setEntry` — this is the
+        // only path into the cache, so every widget gets this protection
+        // without each fetcher having to sanitize its own response. See
+        // `src/lib/piiScrub.ts` for the threat model.
+        let sanitized: T
+        try {
+          sanitized = scrubPII(data)
+        } catch (err) {
+          const scrubError =
+            err instanceof PIIScrubError
+              ? err
+              : new PIIScrubError('Failed to scrub PII before caching widget data', err)
+          this.setEntry<T>(key, {
+            status: 'error',
+            data: prev.data,
+            error: scrubError,
+            lastUpdated: prev.lastUpdated,
+          })
+          this.abortControllers.delete(key)
+          throw scrubError
+        }
+
         this.setEntry<T>(key, {
           status: 'success',
-          data,
+          data: sanitized,
           error: undefined,
           lastUpdated: Date.now(),
         })
         this.abortControllers.delete(key)
-        return data
+        return sanitized
       },
       (err: unknown) => {
         if (controller.signal.aborted) throw err
@@ -235,21 +256,16 @@ export function useWidgetCache<T>(
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
 
-  const subscribe = useCallback(
-    (listener: () => void) => store.subscribe(key, listener),
-    [key]
-  )
+  const subscribe = useCallback((listener: () => void) => store.subscribe(key, listener), [key])
   const getSnapshot = useCallback(() => store.get<T>(key), [key])
   const entry = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   const refresh = useCallback(() => {
     const fn = fetcherRef.current
-    store
-      .refresh(key, fn)
-      .catch(() => {
-        // Errors are surfaced via `entry.error`; swallow here so a
-        // misbehaving fetcher doesn't become an uncaught promise rejection.
-      })
+    store.refresh(key, fn).catch(() => {
+      // Errors are surfaced via `entry.error`; swallow here so a
+      // misbehaving fetcher doesn't become an uncaught promise rejection.
+    })
   }, [key, ctx])
 
   useEffect(() => {

@@ -19,6 +19,17 @@ export interface paths {
      */
     get: operations["listTransactions"];
   };
+  "/bonds": {
+    /**
+     * List bonds for the authenticated wallet
+     * @description Returns a cursor-paginated list of bonds visible to the authenticated wallet. Results are ordered newest-first.
+     */
+    get: operations["listBonds"];
+  };
+  "/settings": {
+    /** Update authenticated wallet settings */
+    patch: operations["updateSettings"];
+  };
 }
 
 export type webhooks = Record<string, never>;
@@ -129,6 +140,24 @@ export interface components {
       /** @description Opaque pagination cursor. Include as the `cursor` query parameter in the next request to retrieve the following page. Absent when there are no more results. */
       nextCursor?: string;
     };
+    /** @description Cursor-paginated list of bonds for the authenticated wallet. */
+    BondList: {
+      items: components["schemas"]["Bond"][];
+      /** @description Opaque pagination cursor. Include as the `cursor` query parameter in the next request to retrieve the following page. Absent when there are no more results. */
+      nextCursor?: string;
+    };
+    /** @description Complete persisted settings for the authenticated wallet. */
+    Settings: {
+      /** @enum {string} */
+      themeMode: "light" | "dark" | "system";
+      network: string;
+      addressDisplay: string;
+      toastsEnabled: boolean;
+      autoDismiss: string;
+      quietHoursEnabled: boolean;
+      quietHoursStart: string;
+      quietHoursEnd: string;
+    };
     /** @description Simple message envelope returned for errors and confirmations. */
     ApiMessageResponse: {
       /**
@@ -136,6 +165,14 @@ export interface components {
        * @example Address not found.
        */
       message: string;
+    };
+    /** @description The authenticated tenant context. */
+    Tenant: {
+      /**
+       * @description Stable public identifier for the active tenant (Stellar public key).
+       * @example GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+       */
+      tenantId: string;
     };
   };
   responses: {
@@ -212,6 +249,42 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["TransactionList"];
         };
+      };
+      400: components["responses"]["BadRequest"];
+    };
+  };
+  /**
+   * List bonds for the authenticated wallet
+   * @description Returns a cursor-paginated list of bonds visible to the authenticated wallet. Results are ordered newest-first.
+   */
+  listBonds: {
+    parameters: {
+      query?: {
+        cursor?: components["parameters"]["CursorParam"];
+        limit?: components["parameters"]["LimitParam"];
+      };
+    };
+    responses: {
+      /** @description Paginated bond list returned successfully. */
+      200: {
+        content: {
+          "application/json": components["schemas"]["BondList"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+    };
+  };
+  /** Update authenticated wallet settings */
+  updateSettings: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Settings"];
+      };
+    };
+    responses: {
+      /** @description Settings updated successfully. */
+      204: {
+        content: never;
       };
       400: components["responses"]["BadRequest"];
     };

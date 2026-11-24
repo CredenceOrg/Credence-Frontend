@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { createTypedCustomEvent, SETTINGS_EVENTS } from '../events/schema'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -44,6 +46,7 @@ export interface SettingsState {
    * persist the current context state.
    */
   saveSettings: (next?: SettingsPayload) => void
+  resetToDefaults: () => void
   cancelSettings: () => void
   hasUnsavedChanges: boolean
 }
@@ -82,7 +85,11 @@ const defaultState: SettingsState = {
   setAddressDisplay: () => {},
   setToastsEnabled: () => {},
   setAutoDismiss: () => {},
+  setQuietHoursEnabled: () => {},
+  setQuietHoursStart: () => {},
+  setQuietHoursEnd: () => {},
   saveSettings: (_payload?: SettingsPayload) => {},
+  resetToDefaults: () => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
 }
@@ -119,7 +126,7 @@ function useMigrateLegacyTheme(): void {
     // Bootstrap credence:settings so useLocalStorage reads the migrated theme.
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ ...defaultPersistedSettings, themeMode: legacyTheme as ThemeMode }),
+      JSON.stringify({ ...defaultPersistedSettings, themeMode: legacyTheme as ThemeMode })
     )
 
     return null
@@ -137,7 +144,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   // Single localStorage read — replaces five individual JSON.parse calls on every mount.
   const [persistedSettingsRaw, setPersistedSettings] = useLocalStorage<PersistedSettings>(
     STORAGE_KEY,
-    defaultPersistedSettings,
+    defaultPersistedSettings
   )
 
   // Validation helpers for persisted values
@@ -145,12 +152,20 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const VALID_ADDRESS_DISPLAYS: AddressDisplayOption[] = ['full', 'short', 'friendly']
   const VALID_AUTO_DISMISSES: AutoDismissOption[] = ['off', '3s', '5s', '8s']
 
+  const coerceThemeMode = (v: string): ThemeMode =>
+    (VALID_THEMES.includes(v as ThemeMode) ? v : defaultPersistedSettings.themeMode) as ThemeMode
   const coerceNetwork = (v: string): NetworkOption =>
-    (VALID_NETWORKS.includes(v as NetworkOption) ? v : defaultPersistedSettings.network) as NetworkOption
+    (VALID_NETWORKS.includes(v as NetworkOption)
+      ? v
+      : defaultPersistedSettings.network) as NetworkOption
   const coerceAddressDisplay = (v: string): AddressDisplayOption =>
-    (VALID_ADDRESS_DISPLAYS.includes(v as AddressDisplayOption) ? v : defaultPersistedSettings.addressDisplay) as AddressDisplayOption
+    (VALID_ADDRESS_DISPLAYS.includes(v as AddressDisplayOption)
+      ? v
+      : defaultPersistedSettings.addressDisplay) as AddressDisplayOption
   const coerceAutoDismiss = (v: string): AutoDismissOption =>
-    (VALID_AUTO_DISMISSES.includes(v as AutoDismissOption) ? v : defaultPersistedSettings.autoDismiss) as AutoDismissOption
+    (VALID_AUTO_DISMISSES.includes(v as AutoDismissOption)
+      ? v
+      : defaultPersistedSettings.autoDismiss) as AutoDismissOption
   /**
    * Coerce an `HH:mm` value from storage back to a canonical string. Falls back
    * to the configured default when the persisted value is missing, malformed, or
@@ -162,28 +177,65 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return parsed.ok ? `${pad2(parsed.hours)}:${pad2(parsed.minutes)}` : fallback
   }
 
+  const hasPersistedSettings = (
+    value: Partial<PersistedSettings> | undefined
+  ): value is Partial<PersistedSettings> => {
+    if (!value || typeof value !== 'object') return false
+
+    const entries = Object.entries(value) as Array<[keyof PersistedSettings, unknown]>
+    for (const [key, entryValue] of entries) {
+      if (key === 'themeMode' && typeof entryValue === 'string') {
+        if (!VALID_THEMES.includes(entryValue as ThemeMode)) return false
+      }
+      if (key === 'network' && typeof entryValue === 'string') {
+        if (!VALID_NETWORKS.includes(entryValue as NetworkOption)) return false
+      }
+      if (key === 'addressDisplay' && typeof entryValue === 'string') {
+        if (!VALID_ADDRESS_DISPLAYS.includes(entryValue as AddressDisplayOption)) return false
+      }
+      if (key === 'autoDismiss' && typeof entryValue === 'string') {
+        if (!VALID_AUTO_DISMISSES.includes(entryValue as AutoDismissOption)) return false
+      }
+      if (key === 'toastsEnabled' && typeof entryValue !== 'boolean') return false
+      if (key === 'quietHoursEnabled' && typeof entryValue !== 'boolean') return false
+      if (key === 'quietHoursStart' && typeof entryValue !== 'string') return false
+      if (key === 'quietHoursEnd' && typeof entryValue !== 'string') return false
+    }
+
+    return true
+  }
+
+  const safePersistedSettingsRaw = hasPersistedSettings(persistedSettingsRaw)
+    ? persistedSettingsRaw
+    : defaultPersistedSettings
+
   const persistedSettings: PersistedSettings = {
-    ...persistedSettingsRaw,
-    network: coerceNetwork(persistedSettingsRaw.network as unknown as string),
-    addressDisplay: coerceAddressDisplay(persistedSettingsRaw.addressDisplay as unknown as string),
-    autoDismiss: coerceAutoDismiss(persistedSettingsRaw.autoDismiss as unknown as string),
+    ...safePersistedSettingsRaw,
+    themeMode: coerceThemeMode(safePersistedSettingsRaw.themeMode as unknown as string),
+    network: coerceNetwork(safePersistedSettingsRaw.network as unknown as string),
+    addressDisplay: coerceAddressDisplay(
+      safePersistedSettingsRaw.addressDisplay as unknown as string
+    ),
+    autoDismiss: coerceAutoDismiss(safePersistedSettingsRaw.autoDismiss as unknown as string),
     quietHoursStart: coerceHHmm(
-      persistedSettingsRaw.quietHoursStart,
-      defaultPersistedSettings.quietHoursStart,
+      safePersistedSettingsRaw.quietHoursStart,
+      defaultPersistedSettings.quietHoursStart
     ),
     quietHoursEnd: coerceHHmm(
-      persistedSettingsRaw.quietHoursEnd,
-      defaultPersistedSettings.quietHoursEnd,
+      safePersistedSettingsRaw.quietHoursEnd,
+      defaultPersistedSettings.quietHoursEnd
     ),
   }
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
   const [network, setNetwork] = useState<NetworkOption>(persistedSettings.network)
-  const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(persistedSettings.addressDisplay)
+  const [addressDisplay, setAddressDisplay] = useState<AddressDisplayOption>(
+    persistedSettings.addressDisplay
+  )
   const [toastsEnabled, setToastsEnabled] = useState<boolean>(persistedSettings.toastsEnabled)
   const [autoDismiss, setAutoDismiss] = useState<AutoDismissOption>(persistedSettings.autoDismiss)
   const [quietHoursEnabled, setQuietHoursEnabled] = useState<boolean>(
-    persistedSettings.quietHoursEnabled,
+    persistedSettings.quietHoursEnabled
   )
   const [quietHoursStart, setQuietHoursStart] = useState<string>(persistedSettings.quietHoursStart)
   const [quietHoursEnd, setQuietHoursEnd] = useState<string>(persistedSettings.quietHoursEnd)
@@ -201,9 +253,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     quietHoursStart !== originalSettings.quietHoursStart ||
     quietHoursEnd !== originalSettings.quietHoursEnd
 
-  // Auto-persist any draft change immediately so values survive a page reload.
-  useEffect(() => {
-    setPersistedSettings({
+  const saveSettings = (next?: SettingsPayload) => {
+    // A caller that just changed state in the same event handler cannot rely on
+    // the render closure (React batches updates), so prefer the explicit payload
+    // when one is supplied. Omitting it commits the current context state.
+    const payload: SettingsPayload = next ?? {
       themeMode,
       network,
       addressDisplay,
@@ -212,23 +266,49 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
-    })
-  }, [
-    themeMode,
-    network,
-    addressDisplay,
-    toastsEnabled,
-    autoDismiss,
-    quietHoursEnabled,
-    quietHoursStart,
-    quietHoursEnd,
-    setPersistedSettings,
-  ])
+    }
 
-  const saveSettings = () => {
-    const payload = { themeMode, network, addressDisplay, toastsEnabled, autoDismiss }
+    setThemeMode(payload.themeMode)
+    setNetwork(payload.network)
+    setAddressDisplay(payload.addressDisplay)
+    setToastsEnabled(payload.toastsEnabled)
+    setAutoDismiss(payload.autoDismiss)
+    setQuietHoursEnabled(payload.quietHoursEnabled)
+    setQuietHoursStart(payload.quietHoursStart)
+    setQuietHoursEnd(payload.quietHoursEnd)
     setPersistedSettings(payload)
     setOriginalSettings(payload)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, payload))
+    }
+  }
+
+  const resetToDefaults = () => {
+    const defaults = {
+      themeMode: defaultPersistedSettings.themeMode,
+      network: defaultPersistedSettings.network,
+      addressDisplay: defaultPersistedSettings.addressDisplay,
+      toastsEnabled: defaultPersistedSettings.toastsEnabled,
+      autoDismiss: defaultPersistedSettings.autoDismiss,
+      quietHoursEnabled: defaultPersistedSettings.quietHoursEnabled,
+      quietHoursStart: defaultPersistedSettings.quietHoursStart,
+      quietHoursEnd: defaultPersistedSettings.quietHoursEnd,
+    }
+
+    setThemeMode(defaults.themeMode)
+    setNetwork(defaults.network)
+    setAddressDisplay(defaults.addressDisplay)
+    setToastsEnabled(defaults.toastsEnabled)
+    setAutoDismiss(defaults.autoDismiss)
+    setQuietHoursEnabled(defaults.quietHoursEnabled)
+    setQuietHoursStart(defaults.quietHoursStart)
+    setQuietHoursEnd(defaults.quietHoursEnd)
+    setPersistedSettings(defaults)
+    setOriginalSettings(defaults)
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, defaults))
+    }
   }
 
   const cancelSettings = () => {
@@ -280,7 +360,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setAddressDisplay,
     setToastsEnabled,
     setAutoDismiss,
+    setQuietHoursEnabled,
+    setQuietHoursStart,
+    setQuietHoursEnd,
     saveSettings,
+    resetToDefaults,
     cancelSettings,
     hasUnsavedChanges,
   }

@@ -28,10 +28,7 @@ export interface UseProductUpdatesResult {
  * count equals the index of the last-seen entry (or full list length for new visitors).
  */
 export function useProductUpdates(): UseProductUpdatesResult {
-  const [lastSeenId, setLastSeenId] = useLocalStorage<string | null>(
-    CHANGELOG_STORAGE_KEY,
-    null
-  )
+  const [lastSeenId, setLastSeenId] = useLocalStorage<string | null>(CHANGELOG_STORAGE_KEY, null)
   const [updates, setUpdates] = useState<readonly ProductUpdate[]>(PRODUCT_UPDATES)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +42,7 @@ export function useProductUpdates(): UseProductUpdatesResult {
         throw new Error(`HTTP error ${response.status}: ${response.statusText}`)
       }
       const data = await response.json()
-      const list: ProductUpdate[] = Array.isArray(data) ? data : data.updates ?? []
+      const list: ProductUpdate[] = Array.isArray(data) ? data : (data.updates ?? [])
       if (Array.isArray(list) && list.length > 0) {
         setUpdates(list)
       } else {
@@ -64,8 +61,7 @@ export function useProductUpdates(): UseProductUpdatesResult {
     fetchUpdates()
   }, [fetchUpdates])
 
-  const lastSeenIndex =
-    lastSeenId !== null ? updates.findIndex((u) => u.id === lastSeenId) : -1
+  const lastSeenIndex = lastSeenId !== null ? updates.findIndex((u) => u.id === lastSeenId) : -1
 
   const unreadCount = lastSeenIndex === -1 ? updates.length : lastSeenIndex
 

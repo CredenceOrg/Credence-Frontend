@@ -5,6 +5,7 @@ import { useProductUpdates } from '../hooks/useProductUpdates'
 import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import type { ProductUpdate } from '../data/productUpdates'
 import Button from './Button'
+import WindowedList from './WindowedList'
 import './WhatsNewDialog.css'
 
 export interface WhatsNewDialogProps {
@@ -23,8 +24,22 @@ const TAG_LABELS: Record<ProductUpdate['tag'], string> = {
   fix: 'Fixed',
 }
 
-function formatDate(isoDate: string): string {
+export function formatDate(isoDate: string): string {
   const date = new Date(`${isoDate}T00:00:00Z`)
+  // A malformed feed entry must not crash the drawer (or surface the literal
+  // "Invalid Date"): fall back to the raw value so the failure is diagnosable.
+  if (Number.isNaN(date.getTime())) return isoDate
+  // `new Date('2023-02-29T00:00:00Z')` silently rolls over to March 1. Compare
+  // the calendar parts so an out-of-range date is surfaced verbatim instead of
+  // being silently re-dated.
+  const [year, month, day] = isoDate.slice(0, 10).split('-')
+  if (
+    date.getUTCFullYear() !== Number(year) ||
+    date.getUTCMonth() + 1 !== Number(month) ||
+    date.getUTCDate() !== Number(day)
+  ) {
+    return isoDate
+  }
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -42,11 +57,7 @@ function formatDate(isoDate: string): string {
  * - Escape and backdrop click close the drawer.
  * - Marks all updates as read on open, clearing the notification badge and persisting state.
  */
-export default function WhatsNewDialog({
-  open,
-  onClose,
-  returnFocusRef,
-}: WhatsNewDialogProps) {
+export default function WhatsNewDialog({ open, onClose, returnFocusRef }: WhatsNewDialogProps) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -69,8 +80,21 @@ export default function WhatsNewDialog({
     markAllRead()
   }, [open, markAllRead])
 
+  // Tracks whether the current interaction began on the backdrop itself. A
+  // click event's target is the nearest common ancestor of where the press and
+  // release happened, so without this a press that starts inside the dialog and
+  // ends on the backdrop is reported as a backdrop click and closes the drawer
+  // mid-interaction (e.g. while selecting text or dragging the scrollbar).
+  const backdropPressRef = useRef(false)
+
+  const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    backdropPressRef.current = event.target === event.currentTarget
+  }
+
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) handleClose()
+    const pressedOnBackdrop = backdropPressRef.current
+    backdropPressRef.current = false
+    if (pressedOnBackdrop && event.target === event.currentTarget) handleClose()
   }
 
   if (!open) return null
@@ -78,6 +102,7 @@ export default function WhatsNewDialog({
   return createPortal(
     <div
       className="whats-new-dialog__backdrop"
+      onMouseDown={handleBackdropMouseDown}
       onClick={handleBackdropClick}
       aria-hidden={false}
     >
@@ -95,9 +120,7 @@ export default function WhatsNewDialog({
               What&rsquo;s New
             </h2>
             {unreadCount > 0 && (
-              <span className="whats-new-dialog__unread-badge">
-                {unreadCount} unread
-              </span>
+              <span className="whats-new-dialog__unread-badge">{unreadCount} unread</span>
             )}
           </div>
           <Button
@@ -125,13 +148,16 @@ export default function WhatsNewDialog({
             </Button>
           </div>
         ) : (
-          <ul
+          <WindowedList
             className="whats-new-dialog__list"
             role="list"
-            aria-label="Recent product updates"
-          >
-            {updates.map((update) => (
-              <li key={update.id} className="whats-new-dialog__item">
+            ariaLabel="Recent product updates"
+            items={updates}
+            itemHeight={118}
+            containerHeight={420}
+            getItemKey={(update, index) => `${update.id}-${index}`}
+            renderItem={(update) => (
+              <li className="whats-new-dialog__item">
                 <div className="whats-new-dialog__item-meta">
                   <span
                     className={`whats-new-dialog__tag whats-new-dialog__tag--${update.tag}`}
@@ -146,8 +172,8 @@ export default function WhatsNewDialog({
                 <p className="whats-new-dialog__item-title">{update.title}</p>
                 <p className="whats-new-dialog__item-description">{update.description}</p>
               </li>
-            ))}
-          </ul>
+            )}
+          />
         )}
 
         <footer className="whats-new-dialog__footer">

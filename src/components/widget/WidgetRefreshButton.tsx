@@ -1,8 +1,10 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import './WidgetRefreshButton.css'
 
-export interface WidgetRefreshButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'aria-busy'> {
+export interface WidgetRefreshButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'onClick' | 'aria-busy'
+> {
   /** Click handler — typically `() => widgetCache.refresh()`. */
   onRefresh: () => void
   /** Loading state — disables the button and shows a spinner. */
@@ -60,14 +62,9 @@ const WidgetRefreshButton = forwardRef<HTMLButtonElement, WidgetRefreshButtonPro
     const isDisabled = disabled || isLoading
     const ariaLabel = isLoading
       ? `Refreshing ${label}`
-      : `Refresh ${label}` +
-        (lastUpdated ? `. Last updated ${formatRelative(lastUpdated)}` : '')
+      : `Refresh ${label}` + (lastUpdated ? `. Last updated ${formatRelative(lastUpdated)}` : '')
 
-    const classes = [
-      'widget-refresh',
-      isLoading ? 'widget-refresh--loading' : '',
-      className ?? '',
-    ]
+    const classes = ['widget-refresh', isLoading ? 'widget-refresh--loading' : '', className ?? '']
       .filter(Boolean)
       .join(' ')
 

@@ -52,8 +52,49 @@
   align-items: start;
 }
 
-.dashboard__grid--activity {
-  grid-template-columns: minmax(0, 1.4fr) minmax(min(100%, 18rem), 0.6fr);
+.dashboard__widget {
+  min-width: 0;
+}
+
+.dashboard__widgetControls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--credence-space-2);
+  min-height: 2rem;
+  margin-bottom: var(--credence-space-2);
+}
+
+.dashboard__widgetOrderButton {
+  padding: var(--credence-space-1) var(--credence-space-2);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-sm);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--credence-font-size-sm);
+  transition:
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.dashboard__widgetOrderButton:hover:not(:disabled) {
+  background: var(--credence-surface-page);
+}
+
+.dashboard__widgetOrderButton:focus-visible {
+  outline: 2px solid var(--credence-color-primary);
+  outline-offset: 2px;
+}
+
+.dashboard__widgetOrderButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.dashboard--reduced-motion .dashboard__widgetOrderButton {
+  transition: none;
 }
 
 .dashboard__cardHeader {
@@ -182,10 +223,6 @@
     display: grid;
   }
 
-  .dashboard__grid--activity {
-    grid-template-columns: 1fr;
-  }
-
   .dashboard__wallet {
     width: 100%;
   }
@@ -226,7 +263,7 @@
 }
 
 .dashboard__pullArrow {
-  transition: transform 0.15s ease-out;
+  transition: transform var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
 }
 
 .dashboard__pullSpinner {
@@ -241,5 +278,11 @@
 @keyframes dashboard-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard__pullSpinner {
+    animation: none !important;
   }
 }

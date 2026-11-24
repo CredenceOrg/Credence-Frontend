@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import type { TrustScore } from '../api/types'
 import { isValidStellarAddress } from '@/lib/stellar'
+import { normalizeTrustScore } from '@/lib/trustScore'
 
 export interface UseTrustScoreResult {
   /** Trust score payload from `GET /trust-score/:address`, or null before/after a failed fetch. */
@@ -27,7 +28,7 @@ function isAbortError(error: unknown): boolean {
  * Expects {@link TrustScore} from `src/api/types.ts`:
  * `{ address, score, tier, attestations, updatedAt }`.
  *
- * Does not fetch automatically — call {@link UseTrustScoreResult.refetch} after the
+ * Does not fetch automatically â€” call {@link UseTrustScoreResult.refetch} after the
  * user submits a lookup. Invalid or empty addresses are ignored.
  *
  * In-flight requests are cancelled when `refetch` is called again or the hook unmounts.
@@ -59,7 +60,10 @@ export function useTrustScore(address: string): UseTrustScoreResult {
 
     setIsLoading(true)
     setError(null)
-    setData(null)
+    
+    // Clear data only if we are fetching a new address. 
+    // This prevents flickering on refetch for the same address.
+    setData((currentData) => currentData?.address !== targetAddress ? null : currentData)
 
     try {
       const result = await apiFetch<TrustScore>(
@@ -71,7 +75,14 @@ export function useTrustScore(address: string): UseTrustScoreResult {
         return
       }
 
-      setData(result)
+      const normalized = normalizeTrustScore(result)
+      if (!normalized) {
+        setData(null)
+        setError(new ApiError(0, 'Malformed trust score response'))
+        return
+      }
+
+      setData(normalized)
     } catch (err) {
       if (!mountedRef.current || fetchId !== fetchIdRef.current || isAbortError(err)) {
         return

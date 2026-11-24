@@ -56,7 +56,12 @@ function isAbortError(error: unknown): boolean {
  * SSR-safe: no DOM access during render; Horizon calls are guarded by browser checks.
  */
 export function useUsdcBalance(): UseUsdcBalanceResult {
-  const { address, isConnected, isReauthRequired: checkIsReauthRequired } = useWallet()
+  const {
+    address,
+    isConnected,
+    lastReauthTime,
+    isReauthRequired: checkIsReauthRequired,
+  } = useWallet()
   const { network } = useSettings()
 
   const [balance, setBalance] = useState(0)
@@ -66,8 +71,10 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
   const abortRef = useRef<AbortController | null>(null)
   const fetchIdRef = useRef(0)
   const mountedRef = useRef(true)
+  const inflightRef = useRef(false)
 
-  const isReauthRequired = isConnected && checkIsReauthRequired()
+  const isReauthRequired =
+    isConnected && typeof checkIsReauthRequired === 'function' && checkIsReauthRequired()
 
   const fetchBalance = useCallback(async () => {
     if (!isConnected || !address || !network) {
@@ -77,12 +84,17 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
       return
     }
 
-    if (checkIsReauthRequired()) {
+    if (typeof checkIsReauthRequired === 'function' && checkIsReauthRequired()) {
       setBalance(0)
       setStatus('error')
       setError(new SessionReauthRequiredError())
       return
     }
+
+    // Prevent concurrent Horizon fetches — a second request while the first
+    // is still in-flight is redundant and wastes browser/network resources.
+    if (inflightRef.current) return
+    inflightRef.current = true
 
     abortRef.current?.abort()
 
@@ -94,11 +106,7 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
     setError(null)
 
     try {
-      const result = await fetchUsdcBalance(
-        address,
-        network as CredenceNetwork,
-        controller.signal
-      )
+      const result = await fetchUsdcBalance(address, network as CredenceNetwork, controller.signal)
 
       if (!mountedRef.current || fetchId !== fetchIdRef.current) return
 
@@ -115,11 +123,12 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
           : new Error('Unexpected error while fetching USDC balance')
       )
     } finally {
+      inflightRef.current = false
       if (mountedRef.current && fetchId === fetchIdRef.current) {
         setStatus((prev) => (prev === 'loading' ? 'error' : prev))
       }
     }
-  }, [address, isConnected, network, checkIsReauthRequired])
+  }, [address, isConnected, lastReauthTime, network, checkIsReauthRequired])
 
   const refetch = useCallback(() => {
     void fetchBalance()

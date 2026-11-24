@@ -26,7 +26,7 @@ export function setRef<T>(ref: NestedRef<T>, value: T | null): void {
     }
   } else if (typeof ref === 'object' && 'current' in ref) {
     try {
-      (ref as MutableRefObject<T | null>).current = value
+      ;(ref as MutableRefObject<T | null>).current = value
     } catch {
       // Safe fallback for read-only or frozen ref objects
     }

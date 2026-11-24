@@ -19,10 +19,9 @@ describe('useForwardRef', () => {
     const objectRef = createRef<HTMLDivElement>()
     const element = document.createElement('div')
 
-    const { result, rerender } = renderHook(
-      ({ ref }) => useForwardRef<HTMLDivElement>(ref),
-      { initialProps: { ref: objectRef } }
-    )
+    const { result, rerender } = renderHook(({ ref }) => useForwardRef<HTMLDivElement>(ref), {
+      initialProps: { ref: objectRef },
+    })
 
     result.current.current = element
     rerender({ ref: objectRef })

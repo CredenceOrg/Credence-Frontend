@@ -7,7 +7,7 @@
   gap: var(--credence-space-2);
   padding: var(--credence-space-3) var(--credence-space-4);
   background: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  color: var(--credence-color-on-primary);
   border: none;
   border-radius: var(--credence-radius-full);
   font-family: var(--credence-font-family-base);

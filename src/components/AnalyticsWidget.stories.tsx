@@ -189,8 +189,7 @@ export const NoPreviousPeriod: Story = {
   parameters: {
     docs: {
       description: {
-        story:
-          'When `previousPeriod` is not supplied, the compare toggle is not rendered.',
+        story: 'When `previousPeriod` is not supplied, the compare toggle is not rendered.',
       },
     },
   },

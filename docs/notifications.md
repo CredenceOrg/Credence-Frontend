@@ -106,14 +106,14 @@ const triggerRef = useRef<HTMLButtonElement>(null)
 
 ## Severity Levels (Toast)
 
-| Severity  | Auto-dismiss | Quieted by Quiet hours? | Rationale                                              |
-| --------- | ------------ | ------------------------ | ------------------------------------------------------ |
-| `info`    | 5 seconds*   | Yes                      | Low urgency, informational                             |
-| `success` | 5 seconds*   | Yes                      | Confirmation — user can move on                        |
-| `warning` | 8 seconds*   | Yes                      | Needs attention but not blocking                       |
-| `danger`  | Manual only  | **No**                   | Must be acknowledged explicitly — never silenced       |
+| Severity  | Auto-dismiss | Quieted by Quiet hours? | Rationale                                        |
+| --------- | ------------ | ----------------------- | ------------------------------------------------ |
+| `info`    | 5 seconds\*  | Yes                     | Low urgency, informational                       |
+| `success` | 5 seconds\*  | Yes                     | Confirmation — user can move on                  |
+| `warning` | 8 seconds\*  | Yes                     | Needs attention but not blocking                 |
+| `danger`  | Manual only  | **No**                  | Must be acknowledged explicitly — never silenced |
 
-*\* Timers pause while the pointer is hovering over the toast or while keyboard focus is inside it.*
+_\* Timers pause while the pointer is hovering over the toast or while keyboard focus is inside it._
 
 ## Quiet Hours
 
@@ -122,7 +122,7 @@ Users can opt into a configurable window during which non-critical toasts (`info
 ### Default behaviour
 
 - **Disabled by default.** Users have to opt in.
-- **Severity filter.** Only `info`, `success`, and `warning` toasts are silenced. `danger` always surfaces visually *and* via the visually-hidden assertive `aria-live` region — see [Accessibility](#accessibility).
+- **Severity filter.** Only `info`, `success`, and `warning` toasts are silenced. `danger` always surfaces visually _and_ via the visually-hidden assertive `aria-live` region — see [Accessibility](#accessibility).
 - **Screen reader silence.** When a toast is suppressed, its `announce()` call is also skipped so the polite `aria-live` region stays quiet during the user's selected window.
 - **Local time.** The current minute is computed from `new Date().getHours() * 60 + new Date().getMinutes()` so the window follows the user's clock.
 - **Inclusive endpoints.** Both `start` and `end` are inclusive; a 22:00–07:00 window silences the minute starting at 22:00 and the minute ending at 07:00.
@@ -131,11 +131,11 @@ Users can opt into a configurable window during which non-critical toasts (`info
 
 The window is interpreted on the user's local clock:
 
-| Configuration            | Interpretation                                             |
-| ------------------------ | ---------------------------------------------------------- |
-| `start < end`            | Active for the same-day window, e.g. `13:00–15:00`          |
-| `start > end`            | Cross-midnight window, e.g. `22:00–07:00` covers both halves |
-| `start === end`          | Degenerate; treat as disabled (silences nothing)            |
+| Configuration   | Interpretation                                               |
+| --------------- | ------------------------------------------------------------ |
+| `start < end`   | Active for the same-day window, e.g. `13:00–15:00`           |
+| `start > end`   | Cross-midnight window, e.g. `22:00–07:00` covers both halves |
+| `start === end` | Degenerate; treat as disabled (silences nothing)             |
 
 ### Settings payload
 

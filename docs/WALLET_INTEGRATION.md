@@ -47,7 +47,7 @@ The wallet connection follows a strict state transition flow to ensure consisten
 
 ### 1. Connection Gating
 
-Action surfaces (e.g., "Create Bond", "Attest") MUST check `isConnected`. If `false`, the UI must surface the `ConnectWalletModal`.
+Action surfaces (e.g., "Create Bond", "Attest") MUST check `isConnected`. If `false`, the UI must surface the `ConnectWalletDialog`.
 
 ### 2. Not Installed
 
@@ -92,3 +92,26 @@ function ActionButton() {
 
 Do not submit bond or trust-score actions against a network mismatch. This is treated as a
 blocking UI state until the app and wallet agree.
+
+## Bond transaction flow
+
+Bond creation and withdrawal build Soroban contract invocations, simulate them
+against the selected network's RPC endpoint, and assemble unsigned transaction
+XDR before opening Freighter. Freighter signs using the matching Stellar network
+passphrase; the signed envelope is submitted once through that network's Horizon
+endpoint. Creation includes the USDC allowance and bond call atomically, with a
+short-lived allowance. Horizon's returned transaction hash is the only success
+result.
+
+Configure these Vite environment variables for each deployed environment:
+
+- `VITE_BOND_CONTRACT_ID_PUBLIC` and `VITE_BOND_CONTRACT_ID_TEST`
+- `VITE_SOROBAN_RPC_URL_PUBLIC` and `VITE_SOROBAN_RPC_URL_TEST`
+
+The bond contract address must be the deployed Credence bond contract for that
+network. Do not use a test contract ID on mainnet. Transactions are never
+automatically retried. A cancelled Freighter prompt is reported as a cancelled
+mutation; Horizon result codes are returned as typed failures. A withdrawal
+uses the contract's current available balance and validates `expectedAmount`
+when supplied; the API bond ID is used for client-side mutation deduplication
+and is not a Soroban contract argument.

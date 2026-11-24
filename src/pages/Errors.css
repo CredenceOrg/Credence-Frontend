@@ -1,0 +1,9 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   RouteErrorPage styles — reuses the shared error-fallback-container
+   but extends it with the full-viewport modifier so the error stays
+   centred regardless of where the router renders the error element.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.error-fallback-container--route {
+  min-height: 100vh;
+}

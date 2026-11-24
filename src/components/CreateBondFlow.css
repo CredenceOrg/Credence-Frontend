@@ -1,11 +1,11 @@
+:root {
+  /* no-op: tokens come from src/index.css */
+}
+
 .createBondFlow {
   display: grid;
   gap: var(--credence-space-6);
 }
-
-/* ─────────────────────────────────────────────────────────────
-   Step Indicator
-   ───────────────────────────────────────────────────────────── */
 
 .createBondFlow__stepIndicator {
   display: flex;
@@ -18,16 +18,12 @@
   height: 4px;
   border-radius: var(--credence-radius-full);
   background: var(--credence-border-default);
-  transition: background var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  transition: background 0.2s ease;
 }
 
 .createBondFlow__stepBar--active {
   background: var(--credence-color-primary);
 }
-
-/* ─────────────────────────────────────────────────────────────
-   Step Container and Heading
-   ───────────────────────────────────────────────────────────── */
 
 .createBondFlow__step {
   display: grid;
@@ -37,15 +33,11 @@
 .createBondFlow__heading {
   outline: none;
   color: var(--credence-text-primary);
-  margin: 0;
-  font-size: var(--credence-font-size-xl);
-  font-weight: var(--credence-font-weight-semibold);
 }
 
 .createBondFlow__durationRow {
   display: flex;
   gap: var(--credence-space-3);
-  flex-wrap: wrap;
 }
 
 @media (max-width: 480px) {
@@ -54,158 +46,60 @@
   }
 }
 
-/* Very small screens (360px): ensure flow content fits without overflow */
-@media (max-width: 360px) {
-  .createBondFlow__durationButton {
-    padding: var(--credence-space-3);
-    font-size: var(--credence-font-size-sm);
-  }
-
-  .createBondFlow__reviewCard {
-    padding: var(--credence-space-3);
-  }
-
-  .createBondFlow__nav {
-    gap: var(--credence-space-2);
-  }
-}
-
-/* Duration button: defaults to secondary/unselected state */
 .createBondFlow__durationButton {
   flex: 1;
-  min-width: 0;
   padding: var(--credence-space-4);
-  background: var(--credence-surface-page);
+  background: var(--credence-bg-surface-page, var(--bg-page));
   color: var(--credence-text-primary);
   border: 1px solid var(--credence-border-default);
   border-radius: var(--credence-radius-lg);
   font-weight: var(--credence-font-weight-semibold);
-  font-size: var(--credence-font-size-base);
   cursor: pointer;
-  transition: all var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  transition: all 0.2s ease;
 }
 
-.createBondFlow__durationButton:hover:not(:disabled) {
-  border-color: var(--credence-color-primary);
-}
-
-.createBondFlow__durationButton:focus-visible {
-  outline: var(--credence-focus-ring);
-  outline-offset: 2px;
-}
-
-/* Duration button: selected state */
 .createBondFlow__durationButton--active {
   background: var(--credence-color-primary);
-  color: var(--credence-surface-page);
-  border-color: var(--credence-color-primary);
+  color: var(--bg-page);
 }
 
-/* Error alert text */
 .createBondFlow__error {
-  color: var(--credence-color-danger-text);
+  color: var(--color-danger);
   font-weight: var(--credence-font-weight-semibold);
 }
-
-/* ─────────────────────────────────────────────────────────────
-   Review Card and Content
-   ───────────────────────────────────────────────────────────── */
 
 .createBondFlow__reviewCard {
   padding: var(--credence-space-4);
   border: 1px solid var(--credence-border-default);
   border-radius: var(--credence-radius-lg);
-  background: var(--credence-surface-page);
+  background: var(--bg-page);
   display: grid;
   gap: var(--credence-space-3);
 }
 
-/* Label row: field name + value */
-.createBondFlow__reviewRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--credence-space-2);
-}
-
-.createBondFlow__reviewLabel {
-  color: var(--credence-text-secondary);
-  font-size: var(--credence-font-size-base);
-}
-
-.createBondFlow__reviewValue {
-  color: var(--credence-text-primary);
-  font-weight: var(--credence-font-weight-semibold);
-}
-
 .createBondFlow__reviewDivider {
   height: 1px;
-  background: var(--credence-border-default);
-  margin: var(--credence-space-2) calc(-1 * var(--credence-space-4));
+  background: var(--border-default);
+  margin: 0 calc(-1 * var(--credence-space-1));
 }
 
-/* Section label: "If you withdraw early" */
 .createBondFlow__reviewBadgeLabel {
   font-size: var(--credence-font-size-sm);
   font-weight: var(--credence-font-weight-semibold);
-  color: var(--credence-text-secondary);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: var(--credence-space-1);
 }
 
-/* Penalty breakdown section */
-.createBondFlow__penaltyRow {
+.createBondFlow__reviewResult {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--credence-space-2);
-}
-
-.createBondFlow__penaltyLabel {
-  color: var(--credence-text-secondary);
-  font-size: var(--credence-font-size-base);
-}
-
-.createBondFlow__penaltyAmount {
-  color: var(--credence-color-danger-action);
-  font-weight: var(--credence-font-weight-semibold);
-}
-
-/* Result display panel */
-.createBondFlow__resultPanel {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--credence-space-3);
   padding: var(--credence-space-2) var(--credence-space-3);
   border-radius: var(--credence-radius-md);
-  background: var(--credence-surface-page);
+  background: var(--bg-surface, var(--bg-page));
   border: 1px solid var(--credence-border-default);
 }
-
-.createBondFlow__resultLabel {
-  color: var(--credence-text-secondary);
-  font-weight: var(--credence-font-weight-semibold);
-  font-size: var(--credence-font-size-base);
-}
-
-.createBondFlow__resultValue {
-  font-weight: var(--credence-font-weight-bold);
-  font-size: var(--credence-font-size-lg);
-}
-
-.createBondFlow__resultValue--danger {
-  color: var(--credence-color-danger-text);
-}
-
-.createBondFlow__resultValue--normal {
-  color: var(--credence-text-primary);
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Acknowledgment & Disclaimer
-   ───────────────────────────────────────────────────────────── */
 
 .createBondFlow__ackLabel {
   display: flex;
@@ -214,104 +108,54 @@
   cursor: pointer;
   color: var(--credence-text-primary);
   margin-top: var(--credence-space-2);
-  user-select: none;
 }
-
-.createBondFlow__ackLabel input[type='checkbox'] {
-  cursor: pointer;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Navigation Buttons
-   ───────────────────────────────────────────────────────────── */
 
 .createBondFlow__nav {
   display: flex;
   gap: var(--credence-space-3);
   margin-top: var(--credence-space-4);
-  flex-wrap: wrap;
-}
-
-@media (max-width: 480px) {
-  .createBondFlow__nav {
-    flex-direction: column;
-  }
 }
 
 .createBondFlow__navButton {
   flex: 1;
-  min-width: 0;
-  padding: var(--credence-space-3) var(--credence-space-4);
+  padding: var(--credence-space-3);
   border-radius: var(--credence-radius-lg);
   cursor: pointer;
-  font-weight: var(--credence-font-weight-semibold);
-  font-size: var(--credence-font-size-base);
-  transition: all var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
-  border: none;
 }
 
-.createBondFlow__navButton:focus-visible {
-  outline: var(--credence-focus-ring);
-  outline-offset: 2px;
-}
-
-/* Back button: secondary style */
 .createBondFlow__backButton {
   background: transparent;
   color: var(--credence-text-primary);
   border: 1px solid var(--credence-border-default);
 }
 
-.createBondFlow__backButton:hover {
-  background: var(--credence-surface-page);
-}
-
-/* Next button: primary style */
 .createBondFlow__nextButton {
   background: var(--credence-color-primary);
-  color: var(--credence-surface-page);
+  color: var(--bg-page);
   border: none;
   font-weight: var(--credence-font-weight-semibold);
 }
 
-.createBondFlow__nextButton:hover {
-  background: var(--credence-color-primary-strong);
-}
-
-/* Confirm button: conditional enabled/disabled */
 .createBondFlow__confirmButton {
   background: var(--credence-border-default);
   color: var(--credence-text-secondary);
   border: none;
   font-weight: var(--credence-font-weight-semibold);
-  cursor: not-allowed;
 }
 
 .createBondFlow__confirmButton:disabled {
+  cursor: not-allowed;
   opacity: 1;
 }
 
-/* Confirm button: enabled state */
 .createBondFlow__confirmButton:not(:disabled) {
   background: var(--credence-color-primary);
-  color: var(--credence-surface-page);
-  cursor: pointer;
+  color: var(--bg-page);
 }
 
-.createBondFlow__confirmButton:not(:disabled):hover {
-  background: var(--credence-color-primary-strong);
-}
-
-/* Cancel button: danger/secondary style */
 .createBondFlow__cancelButton {
   padding: var(--credence-space-3) var(--credence-space-4);
-  background: var(--credence-surface-page);
-  color: var(--credence-color-danger-action);
+  background: var(--bg-page);
+  color: var(--credence-color-danger);
   border: 1px solid var(--credence-border-default);
-  border-radius: var(--credence-radius-lg);
-  cursor: pointer;
-}
-
-.createBondFlow__cancelButton:hover {
-  background: var(--credence-color-danger-surface);
 }

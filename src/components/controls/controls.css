@@ -48,6 +48,15 @@
   border-color: var(--credence-color-danger-border) !important;
 }
 
+/* Error text renders below the control. The wrapper is an inline-block, so the
+   message needs its own line rather than sitting beside the select. */
+.control-select__error {
+  display: block;
+  margin-top: var(--credence-space-1);
+  font-size: 0.875rem;
+  color: var(--credence-color-danger-text);
+}
+
 .control-select-spinner {
   position: absolute;
   right: var(--credence-space-8);
@@ -63,7 +72,16 @@
 }
 
 @keyframes control-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control-select-spinner,
+  .control-toggle-spinner {
+    animation: none !important;
+  }
 }
 
 /* ── Toggle ──────────────────────────────────────────── */
@@ -93,7 +111,7 @@
 .control-toggle[aria-checked='true'] {
   background: var(--credence-color-primary);
   border-color: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  color: var(--credence-color-on-primary);
 }
 
 .control-toggle:focus-visible {
@@ -119,6 +137,35 @@
   border-color: var(--credence-color-danger-border) !important;
 }
 
+.control-toggle[aria-busy='true'] {
+  cursor: progress;
+}
+
+.control-toggle[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.control-toggle[data-stale='true'] {
+  border-color: var(--credence-color-warning-border, var(--credence-color-danger-border));
+}
+
+.control-toggle[data-permission-denied='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.control-toggle__error {
+  display: block;
+  margin-top: var(--credence-space-1);
+  color: var(--credence-color-danger-text, var(--credence-color-danger-border));
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-xs, var(--credence-font-size-sm));
+  line-height: var(--credence-line-height-tight);
+}
+
 .control-toggle-spinner {
   display: inline-block;
   width: 12px;
@@ -127,4 +174,129 @@
   border-top-color: transparent;
   border-radius: 50%;
   animation: control-spin 1s linear infinite;
+}
+
+/* Messages a Toggle renders for itself when it owns the description: a stale
+   value, the reason a disabled control is inert, and a save error. They sit
+   under the switch so the control's position never shifts when text appears. */
+
+.control-toggle__note,
+.control-toggle__error {
+  display: block;
+  margin-top: var(--credence-space-1);
+  font-size: var(--credence-font-size-sm);
+  line-height: var(--credence-line-height-tight);
+}
+
+.control-toggle__note {
+  color: var(--credence-text-secondary);
+}
+
+.control-toggle__error {
+  color: var(--credence-color-danger-text);
+}
+
+.control-toggle__retry {
+  display: inline-block;
+  margin-top: var(--credence-space-1);
+  padding: var(--credence-space-1) var(--credence-space-2);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-sm);
+  background: var(--credence-surface-card);
+  color: var(--credence-text-primary);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-semibold);
+  cursor: pointer;
+}
+
+.control-toggle__retry:hover:not(:disabled) {
+  border-color: var(--credence-color-primary);
+}
+
+.control-toggle__retry:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.control-toggle__retry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── SegmentedControl ──────────────────────────────────── */
+
+.control-segmented {
+  display: inline-flex;
+  border-radius: var(--credence-radius-lg);
+  border: 1px solid var(--credence-border-default);
+  background: var(--credence-surface-card);
+  padding: var(--credence-space-1);
+  gap: var(--credence-space-1);
+  flex-wrap: wrap;
+}
+
+.control-segmented[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control-segmented__option {
+  padding: var(--credence-space-1) var(--credence-space-3);
+  border-radius: var(--credence-radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--credence-text-secondary);
+  font-family: var(--credence-font-family-base);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-medium);
+  line-height: var(--credence-line-height-tight);
+  cursor: pointer;
+  transition:
+    background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard),
+    box-shadow var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  white-space: nowrap;
+}
+
+.control-segmented__option--selected {
+  background: var(--credence-color-primary);
+  border-color: var(--credence-color-primary);
+  color: var(--credence-color-on-primary);
+}
+
+.control-segmented__option:hover:not(:disabled):not(.control-segmented__option--selected) {
+  background: var(--credence-color-slate-100);
+  color: var(--credence-text-primary);
+}
+
+[data-theme='dark']
+  .control-segmented__option:hover:not(:disabled):not(.control-segmented__option--selected) {
+  background: var(--credence-color-slate-700);
+}
+
+.control-segmented__option--selected:hover:not(:disabled) {
+  background: var(--credence-color-primary-strong);
+  border-color: var(--credence-color-primary-strong);
+}
+
+.control-segmented__option:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.control-segmented__option:disabled {
+  cursor: not-allowed;
+}
+
+/* On narrow mobile, let the strip wrap rather than overflow */
+@media (max-width: 374px) {
+  .control-segmented {
+    width: 100%;
+  }
+
+  .control-segmented__option {
+    flex: 1;
+    text-align: center;
+  }
 }

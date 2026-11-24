@@ -96,7 +96,7 @@ export default function ActionCard({
   }, [shareableLink, copy, addToast, t])
 
   return (
-    <article 
+    <article
       className={classes.join(' ')}
       style={style}
       onTouchStart={handleTouchStart}
@@ -109,9 +109,7 @@ export default function ActionCard({
         </div>
       )}
       <div className="actionCard__header">
-        <h2 className="actionCard__title">
-          {title}
-        </h2>
+        <h2 className="actionCard__title">{title}</h2>
         {shareableLink && (
           <button
             type="button"
@@ -143,7 +141,17 @@ export default function ActionCard({
             onClick={onDismiss}
             aria-label={t('dashboard.closeCard', { defaultValue: 'Close card' })}
           >
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              aria-hidden="true"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>

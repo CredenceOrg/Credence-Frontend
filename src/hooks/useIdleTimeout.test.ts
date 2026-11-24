@@ -17,7 +17,9 @@ describe('useIdleTimeout', () => {
 
     expect(onIdle).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
 
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
@@ -26,15 +28,21 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     window.dispatchEvent(new Event('mousemove'))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
@@ -43,15 +51,21 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     window.dispatchEvent(new Event('keydown'))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
@@ -60,7 +74,9 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     Object.defineProperty(document, 'visibilityState', {
       value: 'visible',
@@ -68,11 +84,15 @@ describe('useIdleTimeout', () => {
     })
     document.dispatchEvent(new Event('visibilitychange'))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
@@ -81,7 +101,9 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 0, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(10000) })
+    act(() => {
+      vi.advanceTimersByTime(10000)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
   })
@@ -90,7 +112,9 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: -1, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(10000) })
+    act(() => {
+      vi.advanceTimersByTime(10000)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
   })
@@ -101,7 +125,9 @@ describe('useIdleTimeout', () => {
 
     unmount()
 
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
   })
@@ -110,13 +136,17 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     const { unmount } = renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     unmount()
 
     window.dispatchEvent(new Event('mousemove'))
 
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
   })
@@ -126,12 +156,14 @@ describe('useIdleTimeout', () => {
     const mockSetTimeout = vi.fn().mockReturnValue(123)
     const mockClearTimeout = vi.fn()
 
-    renderHook(() => useIdleTimeout({
-      timeoutMs: 1000,
-      onIdle,
-      setTimeoutImpl: mockSetTimeout as unknown as typeof setTimeout,
-      clearTimeoutImpl: mockClearTimeout as unknown as typeof clearTimeout,
-    }))
+    renderHook(() =>
+      useIdleTimeout({
+        timeoutMs: 1000,
+        onIdle,
+        setTimeoutImpl: mockSetTimeout as unknown as typeof setTimeout,
+        clearTimeoutImpl: mockClearTimeout as unknown as typeof clearTimeout,
+      })
+    )
 
     expect(mockSetTimeout).toHaveBeenCalledTimes(1)
     expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 1000)
@@ -142,14 +174,15 @@ describe('useIdleTimeout', () => {
     const onIdle2 = vi.fn()
 
     const { rerender } = renderHook(
-      ({ onIdle }: { onIdle: () => void }) =>
-        useIdleTimeout({ timeoutMs: 1000, onIdle }),
-      { initialProps: { onIdle: onIdle1 } },
+      ({ onIdle }: { onIdle: () => void }) => useIdleTimeout({ timeoutMs: 1000, onIdle }),
+      { initialProps: { onIdle: onIdle1 } }
     )
 
     rerender({ onIdle: onIdle2 })
 
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
 
     expect(onIdle1).not.toHaveBeenCalled()
     expect(onIdle2).toHaveBeenCalledTimes(1)
@@ -160,13 +193,17 @@ describe('useIdleTimeout', () => {
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
     for (let i = 0; i < 5; i++) {
-      act(() => { vi.advanceTimersByTime(500) })
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
       window.dispatchEvent(new Event('mousemove'))
     }
 
     expect(onIdle).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
 
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
@@ -185,14 +222,18 @@ describe('useIdleTimeout', () => {
     // Rapid burst of activity — resets the ceiling each time
     for (let i = 0; i < 10; i++) {
       window.dispatchEvent(new Event('mousemove'))
-      act(() => { vi.advanceTimersByTime(100) })
+      act(() => {
+        vi.advanceTimersByTime(100)
+      })
     }
 
     // Not yet idle — last event was less than 500ms ago
     expect(onIdle).not.toHaveBeenCalled()
 
     // Cross the ceiling with no further activity
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
@@ -203,14 +244,18 @@ describe('useIdleTimeout', () => {
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
     // First idle window
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
     expect(onIdle).toHaveBeenCalledTimes(1)
 
     // Activity restarts the timer
     window.dispatchEvent(new Event('keydown'))
 
     // Second idle window
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
     expect(onIdle).toHaveBeenCalledTimes(2)
   })
 
@@ -222,13 +267,19 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
     window.dispatchEvent(new Event('mousedown'))
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
 
@@ -236,13 +287,19 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
     window.dispatchEvent(new Event('touchstart'))
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
 
@@ -250,13 +307,19 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
     window.dispatchEvent(new Event('scroll'))
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
 
@@ -264,13 +327,19 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
     window.dispatchEvent(new Event('wheel'))
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
     expect(onIdle).toHaveBeenCalledTimes(1)
   })
 
@@ -279,7 +348,9 @@ describe('useIdleTimeout', () => {
     const onIdle = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle }))
 
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     Object.defineProperty(document, 'visibilityState', {
       value: 'hidden',
@@ -288,7 +359,9 @@ describe('useIdleTimeout', () => {
     document.dispatchEvent(new Event('visibilitychange'))
 
     // The remaining 500ms should still expire the original timer
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).toHaveBeenCalledTimes(1)
 
@@ -320,7 +393,9 @@ describe('useIdleTimeout', () => {
     const onActivity = vi.fn()
     renderHook(() => useIdleTimeout({ timeoutMs: 1000, onIdle, onActivity }))
 
-    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
 
     expect(onIdle).toHaveBeenCalledTimes(1)
     expect(onActivity).not.toHaveBeenCalled()
@@ -332,7 +407,9 @@ describe('useIdleTimeout', () => {
     const { unmount } = renderHook(() => useIdleTimeout({ timeoutMs: 500, onIdle }))
 
     window.dispatchEvent(new Event('mousemove'))
-    act(() => { vi.advanceTimersByTime(500) })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
 
     expect(onIdle).toHaveBeenCalledTimes(1)
     unmount()
@@ -346,7 +423,7 @@ describe('useIdleTimeout', () => {
     const { rerender } = renderHook(
       ({ onActivity }: { onActivity: () => void }) =>
         useIdleTimeout({ timeoutMs: 1000, onIdle, onActivity }),
-      { initialProps: { onActivity: onActivity1 } },
+      { initialProps: { onActivity: onActivity1 } }
     )
 
     rerender({ onActivity: onActivity2 })

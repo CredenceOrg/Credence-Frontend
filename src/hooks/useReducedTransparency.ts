@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DOM_EVENTS } from '../events'
 
 /**
  * Hook to query and subscribe to the user's OS-level transparency preference.
@@ -17,7 +18,7 @@ export function useReducedTransparency(): boolean {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return false
     }
-    return window.matchMedia('(prefers-reduced-transparency: reduce)').matches
+    return Boolean(window.matchMedia('(prefers-reduced-transparency: reduce)')?.matches)
   })
 
   useEffect(() => {
@@ -26,12 +27,13 @@ export function useReducedTransparency(): boolean {
     }
 
     const mql = window.matchMedia('(prefers-reduced-transparency: reduce)')
+    if (!mql) return
 
     // Re-sync on mount in case the preference changed before subscribing.
-    setReducedTransparency(mql.matches)
+    setReducedTransparency(Boolean(mql.matches))
 
     const handler = (event: MediaQueryListEvent) => {
-      setReducedTransparency(event.matches)
+      setReducedTransparency(Boolean(event?.matches))
     }
 
     // Modern browsers support addEventListener, but provide a fallback for legacy environments.
@@ -41,11 +43,11 @@ export function useReducedTransparency(): boolean {
     }
 
     if (typeof mql.addEventListener === 'function') {
-      mql.addEventListener('change', handler)
+      mql.addEventListener(DOM_EVENTS.CHANGE, handler)
       return () => {
-        mql.removeEventListener('change', handler)
+        mql.removeEventListener(DOM_EVENTS.CHANGE, handler)
       }
-    } else if (typeof legacyMql.addListener === 'function') {
+    } else if (typeof legacyMql?.addListener === 'function') {
       // Fallback for older browsers / legacy environments
       legacyMql.addListener(handler)
       return () => {

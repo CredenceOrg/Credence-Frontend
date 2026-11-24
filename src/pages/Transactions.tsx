@@ -14,6 +14,13 @@ import { useTransactions } from '../hooks/useTransactions'
 import { useToast } from '../components/ToastProvider'
 import { buildExportFilename, downloadCsv, transactionsToCsv } from '../lib/transactionsExport'
 import { explorerUrl } from '../lib/explorerUrl'
+import {
+  ariaSortFor,
+  nextTransactionSort,
+  sortTransactions,
+  type TransactionSortKey,
+  type TransactionSortState,
+} from '../lib/transactionSort'
 
 import { truncateAddress } from '../lib/stellar'
 import { formatUsdc } from '../lib/format'
@@ -55,6 +62,9 @@ export default function Transactions() {
     useTransactions()
   const { addToast } = useToast()
   const [filter, setFilter] = useState<StatusFilter>('all')
+  // Column sort is client-side and applies to the loaded page only. `null`
+  // keeps the API's newest-first order, which is the table default.
+  const [sort, setSort] = useState<TransactionSortState>(null)
 
   // Helper to get the network for a transaction (use stored network for pending, settings for server)
   const getTxNetwork = useCallback(
@@ -89,6 +99,10 @@ export default function Transactions() {
         : visibleTransactions.filter((tx) => tx.status === filter),
     [visibleTransactions, filter]
   )
+
+  // Sorting is applied after filtering so the two controls compose, and the
+  // sorter is stable: equal keys keep the server's newest-first order.
+  const rows = useMemo(() => sortTransactions(filtered, sort), [filtered, sort])
 
   // Reset transient overlays when the underlying dataset changes (refetch
   // or unmount between fetches). Stale IDs would otherwise leak selection
@@ -175,8 +189,8 @@ export default function Transactions() {
   const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
 
   const orderedSelected = useMemo(
-    () => filtered.filter((tx) => selectedIds.has(tx.id)),
-    [filtered, selectedIds]
+    () => rows.filter((tx) => selectedIds.has(tx.id)),
+    [rows, selectedIds]
   )
 
   // ── Bulk action handlers ────────────────────────────────────────────
@@ -185,12 +199,7 @@ export default function Transactions() {
     if (count === 0) return
     const csv = transactionsToCsv(orderedSelected)
     downloadCsv(csv, buildExportFilename())
-    addToast(
-      'success',
-      count === 1
-        ? t('transactions.bulk.exportToast.successOne')
-        : t('transactions.bulk.exportToast.successOther', { count })
-    )
+    addToast('success', t('transactions.bulk.exportToast.success', { count }))
   }, [orderedSelected, addToast, t])
 
   // ── Delete confirmation flow ───────────────────────────────────────
@@ -222,15 +231,40 @@ export default function Transactions() {
       return next
     })
     setSelectedIds(new Set())
-    addToast(
-      'success',
-      count === 1
-        ? t('transactions.bulk.deleteConfirm.successOne')
-        : t('transactions.bulk.deleteConfirm.successOther', { count })
-    )
+    addToast('success', t('transactions.bulk.deleteConfirm.success', { count }))
     setIsDeleting(false)
     setDeleteDialogOpen(false)
   }, [orderedSelected, addToast, t])
+
+  // ── Sortable column headers ─────────────────────────────────────────
+  // The button lives inside the `<th>` so the column keeps its `aria-sort`
+  // state while the button carries the action-oriented accessible name.
+  // Clicking cycles ascending → descending → server order (no sort).
+  const renderSortHeader = (key: TransactionSortKey, label: string) => {
+    const direction = sort?.key === key ? sort.direction : null
+    const buttonLabel =
+      direction === 'asc'
+        ? t('transactions.table.sortAscending', { column: label })
+        : direction === 'desc'
+          ? t('transactions.table.sortDescending', { column: label })
+          : t('transactions.table.sortBy', { column: label })
+
+    return (
+      <th key={key} scope="col" aria-sort={ariaSortFor(sort, key)}>
+        <button
+          type="button"
+          className="transactions__sortButton"
+          onClick={() => setSort((current) => nextTransactionSort(current, key))}
+          aria-label={buttonLabel}
+        >
+          {label}
+          <span className="transactions__sortIcon" aria-hidden="true">
+            {direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : '⇅'}
+          </span>
+        </button>
+      </th>
+    )
+  }
 
   return (
     <div>
@@ -274,9 +308,7 @@ export default function Transactions() {
             data-testid={TEST_IDS.TX_BULK_ACTIONS_BAR}
           >
             <p className="transactions__bulkActions-count" aria-live="polite">
-              {selectedIds.size === 1
-                ? t('transactions.bulk.selectedOne', { count: 1 })
-                : t('transactions.bulk.selectedOther', { count: selectedIds.size })}
+              {t('transactions.bulk.selected', { count: selectedIds.size })}
             </p>
             <div className="transactions__bulkActions-buttons">
               <Button
@@ -337,15 +369,15 @@ export default function Transactions() {
                       aria-label={t('transactions.bulk.selectAll')}
                     />
                   </th>
-                  <th scope="col">{t('transactions.table.type')}</th>
-                  <th scope="col">{t('transactions.table.amount')}</th>
-                  <th scope="col">{t('transactions.table.status')}</th>
-                  <th scope="col">{t('transactions.table.when')}</th>
+                  {renderSortHeader('type', t('transactions.table.type'))}
+                  {renderSortHeader('amount', t('transactions.table.amount'))}
+                  {renderSortHeader('status', t('transactions.table.status'))}
+                  {renderSortHeader('date', t('transactions.table.when'))}
                   <th scope="col">{t('transactions.table.transaction')}</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((tx) => {
+                {rows.map((tx) => {
                   const selected = isRowSelected(tx.id)
                   return (
                     <tr
@@ -438,11 +470,9 @@ export default function Transactions() {
       <ConfirmDialog
         open={isDeleteDialogOpen}
         title={t('transactions.bulk.deleteConfirm.title')}
-        subtitle={
-          orderedSelected.length === 1
-            ? t('transactions.bulk.deleteConfirm.subtitle', { count: 1 })
-            : t('transactions.bulk.deleteConfirm.subtitle_other', { count: orderedSelected.length })
-        }
+        subtitle={t('transactions.bulk.deleteConfirm.subtitle', {
+          count: orderedSelected.length,
+        })}
         confirmPhrase={t('transactions.bulk.deleteConfirm.phrase')}
         confirmHint={t('transactions.bulk.deleteConfirm.hint')}
         confirmLabel={t('transactions.bulk.deleteConfirm.confirm')}

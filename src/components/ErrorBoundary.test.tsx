@@ -4,6 +4,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import ErrorBoundary from './ErrorBoundary'
 
+const captureExceptionMock = vi.hoisted(() => vi.fn())
+vi.mock('../lib/errorReporting', () => ({
+  captureException: captureExceptionMock,
+  initErrorReporting: vi.fn(),
+}))
+
 describe('ErrorBoundary', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -252,5 +258,62 @@ describe('ErrorBoundary', () => {
     expect(messageEl.textContent).not.toContain(hexAddr)
     expect(messageEl.textContent).not.toContain(email)
     expect(document.body.textContent).not.toContain('SensitiveInternalFn')
+  })
+})
+
+describe('ErrorBoundary error reporting', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    captureExceptionMock.mockClear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('reports caught render errors through captureException', async () => {
+    const FailChild = () => {
+      throw new Error('render exploded')
+    }
+
+    render(
+      <ErrorBoundary>
+        <FailChild />
+      </ErrorBoundary>
+    )
+
+    await waitFor(() => {
+      expect(captureExceptionMock).toHaveBeenCalledTimes(1)
+    })
+
+    const [error, context] = captureExceptionMock.mock.calls[0] as [Error, Record<string, unknown>]
+    expect(error.message).toBe('render exploded')
+    expect(context).toMatchObject({
+      source: 'ErrorBoundary',
+      kind: 'generic',
+      severity: 'danger',
+      retryCount: 0,
+      exhausted: false,
+    })
+  })
+
+  it('still renders the fallback when reporting throws', async () => {
+    captureExceptionMock.mockImplementationOnce(() => {
+      throw new Error('reporter unavailable')
+    })
+
+    const FailChild = () => {
+      throw new Error('render exploded')
+    }
+
+    render(
+      <ErrorBoundary>
+        <FailChild />
+      </ErrorBoundary>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveAttribute('data-error-kind', 'generic')
+    })
   })
 })

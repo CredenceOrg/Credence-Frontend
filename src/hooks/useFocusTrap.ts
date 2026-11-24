@@ -172,12 +172,17 @@ export function useFocusTrap({
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null
 
     const focusInitial = () => {
-      if (initialFocusRef?.current) {
-        initialFocusRef.current.focus()
+      const initialTarget = initialFocusRef?.current
+      if (initialTarget && !initialTarget.hasAttribute('disabled')) {
+        initialTarget.focus()
         return
       }
       const focusables = getFocusableElements(container)
-      focusables[0]?.focus()
+      if (focusables[0]) {
+        focusables[0].focus()
+      } else if (container.hasAttribute('tabindex')) {
+        container.focus()
+      }
     }
 
     deferToNextFrame(focusInitial)
@@ -206,7 +211,7 @@ export function useFocusTrap({
           event.preventDefault()
           last.focus()
         }
-      } else if (active === last) {
+      } else if (active === last || !container.contains(active)) {
         event.preventDefault()
         first.focus()
       }

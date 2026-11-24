@@ -1,8 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTransactions } from './useTransactions'
-import { apiFetch, ApiError } from '../api/client'
+import { apiFetch, ApiError, ApiResponseShapeError } from '../api/client'
 import type { Transaction } from '../api/types'
+import { validateTransactionList } from '../api/validators'
 
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>()
@@ -537,5 +538,35 @@ describe('useTransactions pending transactions and boundaries', () => {
     const secondData = result.current.data
 
     expect(secondData).toBe(firstData)
+  })
+
+  it('passes validateTransactionList to apiFetch and surfaces retryable ApiResponseShapeError', async () => {
+    const shapeError = new ApiResponseShapeError(
+      'Invalid TransactionList response: nextCursor: expected a non-empty string when present',
+      [{ path: 'nextCursor', message: 'expected a non-empty string when present' }]
+    )
+    const tx = makeTx()
+    apiFetchMock
+      .mockRejectedValueOnce(shapeError)
+      .mockResolvedValueOnce({ items: [tx], nextCursor: undefined })
+
+    const { result } = renderHook(() => useTransactions())
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/transactions?limit=20',
+      expect.objectContaining({ validate: validateTransactionList })
+    )
+    expect(result.current.error).toBe(shapeError)
+    expect((result.current.error as ApiResponseShapeError).retryable).toBe(true)
+    expect(result.current.data).toEqual([])
+
+    await act(async () => {
+      result.current.refetch()
+    })
+
+    await waitFor(() => expect(result.current.data).toEqual([tx]))
+    expect(result.current.error).toBeNull()
   })
 })

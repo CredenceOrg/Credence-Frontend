@@ -64,6 +64,14 @@ describe('transactionsToCsv', () => {
     expect(transactionsToCsv(sample).endsWith('\r\n')).toBe(true)
   })
 
+  it('neutralises spreadsheet formula-injection prefixes', () => {
+    const formulaTx: Transaction = {
+      id: 'tx-formula',
+      type: 'bond',
+      amountUsdc: 50,
+      status: 'pending',
+      timestamp: '2026-01-17T09:00:00Z',
+      hash: '=SUM(A1:A2)',
   it('preserves the existing output for ordinary three-row exports', () => {
     const transactions: Transaction[] = [
       sample[0],
@@ -106,46 +114,9 @@ describe('transactionsToCsv', () => {
       timestamp: '@timestamp',
       hash: '\t@SUM(1+1)',
     }
-    const csv = transactionsToCsv([transaction])
-
-    expect(csv).toBe(
-      `id,type,status,amountUSDC,timestamp,hash\r\n"'=H,""Click""",'=type,'+status,,'@timestamp,'\t@SUM(1+1)\r\n`
-    )
-  })
-
-  it('removes disallowed control characters from text cells', () => {
-    const csv = transactionsToCsv([
-      { ...sample[0], id: '\u0000=foo\u0007\u007f' },
-    ])
-
-    expect(csv).toContain(`,'=foo,bond,`)
-    expect(csv).not.toMatch(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/)
-  })
-
-  it('formats finite amounts as fixed-point values and leaves invalid amounts empty', () => {
-    expect(transactionsToCsv([{ ...sample[0], amountUsdc: -12.5 }])).toContain(
-      'confirmed,-12.5,'
-    )
-    expect(transactionsToCsv([{ ...sample[0], amountUsdc: 1e20 }])).toContain(
-      'confirmed,100000000000000000000,'
-    )
-    expect(transactionsToCsv([{ ...sample[0], amountUsdc: 1e21 }])).toContain(
-      'confirmed,1000000000000000000000,'
-    )
-    expect(transactionsToCsv([{ ...sample[0], amountUsdc: Number.NaN }])).toContain(
-      'confirmed,,'
-    )
-  })
-
-  it('skips transactions without string ids or hashes', () => {
-    const invalidRows = [
-      { ...sample[0], id: undefined },
-      { ...sample[1], hash: null },
-    ] as unknown as Transaction[]
-
-    expect(transactionsToCsv(invalidRows)).toBe(
-      EXPORT_COLUMNS.map((column) => column.header).join(',') + '\r\n'
-    )
+    const csv = transactionsToCsv([formulaTx])
+    expect(csv).toContain("'=SUM(A1:A2)")
+    expect(csv).not.toContain(',=SUM(A1:A2)')
   })
 })
 

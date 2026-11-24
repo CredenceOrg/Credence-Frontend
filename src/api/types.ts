@@ -27,18 +27,26 @@ export type { components, operations, paths } from './generated'
 export type BondStatus = components['schemas']['BondStatus']
 export type TrustTier = components['schemas']['TrustTier']
 export type TrustScore = components['schemas']['TrustScore']
+export type TrustScoreHistory = components['schemas']['TrustScoreHistory']
+export type TrustScoreHistoryPoint = components['schemas']['TrustScoreHistoryPoint']
 export type Bond = components['schemas']['Bond']
+export type BondList = components['schemas']['BondList']
 export type Transaction = components['schemas']['Transaction']
+export type TransactionList = components['schemas']['TransactionList']
+export type AttestationType = components['schemas']['AttestationType']
+export type AttestationStatus = components['schemas']['AttestationStatus']
+export type Attestation = components['schemas']['Attestation']
+export type AttestationList = components['schemas']['AttestationList']
+export type SubmitAttestationRequest = components['schemas']['SubmitAttestationRequest']
 export type ApiMessageResponse = components['schemas']['ApiMessageResponse']
 export type Tenant = components['schemas']['Tenant']
 
 /**
  * Cursor-paginated list envelope.
  *
- * OpenAPI does not support generics, so the spec defines a concrete
- * `TransactionList` schema. This generic alias lets the rest of the codebase
- * work with any item type while remaining structurally identical to the
- * generated schema.
+ * OpenAPI does not support generics, so the spec defines concrete paginated
+ * list schemas. This generic alias lets the rest of the codebase work with
+ * any item type while remaining structurally identical to those schemas.
  */
 export type ApiListResponse<T> = { items: T[]; nextCursor?: string }
 

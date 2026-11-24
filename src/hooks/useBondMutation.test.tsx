@@ -20,14 +20,46 @@ import { useWallet } from '../context/WalletContext'
 import { useUsdcBalance } from './useUsdcBalance'
 import { clearVersionRegistry, clearInflightMutations } from '../lib/mutationQueue'
 import * as freighterClient from '../lib/freighterClient'
+import * as horizon from '../lib/horizon'
+import * as stellar from '../lib/stellar'
 
 // Mock dependencies
 vi.mock('../context/WalletContext')
 vi.mock('./useUsdcBalance')
 vi.mock('../lib/freighterClient')
+vi.mock('../lib/horizon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/horizon')>()
+  return {
+    ...actual,
+    loadAccount: vi.fn(),
+    submitTransaction: vi.fn(),
+  }
+})
+vi.mock('../lib/stellar', () => ({
+  buildCreateBondTransactionXdr: vi.fn(),
+  buildWithdrawBondTransactionXdr: vi.fn(),
+}))
 
 describe('useBondMutation', () => {
   const mockAddress = 'GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+
+  const createMockWalletState = (
+    overrides: Partial<ReturnType<typeof useWallet>> = {}
+  ): ReturnType<typeof useWallet> => ({
+    address: mockAddress,
+    isConnected: true,
+    connected: true,
+    isConnecting: false,
+    error: null,
+    connect: vi.fn(async () => undefined),
+    disconnect: vi.fn(),
+    network: 'public',
+    lastReauthTime: null,
+    reauth: vi.fn(async () => false),
+    requestReauth: vi.fn(async () => false),
+    isReauthRequired: vi.fn(() => false),
+    ...overrides,
+  })
 
   beforeEach(() => {
     clearVersionRegistry()
@@ -36,14 +68,7 @@ describe('useBondMutation', () => {
     vi.useRealTimers()
 
     // Default mocks
-    vi.mocked(useWallet).mockReturnValue({
-      address: mockAddress,
-      isConnected: true,
-      connect: vi.fn(),
-      disconnect: vi.fn(),
-      isConnecting: false,
-      network: 'public',
-    } as any)
+    vi.mocked(useWallet).mockReturnValue(createMockWalletState())
 
     vi.mocked(useUsdcBalance).mockReturnValue({
       balance: 5000,
@@ -55,8 +80,13 @@ describe('useBondMutation', () => {
 
     vi.mocked(freighterClient.signFreighterTransaction).mockResolvedValue({
       ok: true,
-      signedTxXdr: 'SIGNED_XDR_MOCK',
+      signedTxXdr: 'SIGNED_ENVELOPE_MOCK',
     })
+    vi.mocked(stellar.buildCreateBondTransactionXdr).mockResolvedValue('UNSIGNED_CREATE_ENVELOPE')
+    vi.mocked(stellar.buildWithdrawBondTransactionXdr).mockResolvedValue(
+      'UNSIGNED_WITHDRAW_ENVELOPE'
+    )
+    vi.mocked(horizon.submitTransaction).mockResolvedValue('REAL_TRANSACTION_HASH')
   })
 
   describe('createBond', () => {
@@ -74,21 +104,38 @@ describe('useBondMutation', () => {
 
       expect(createResult!.ok).toBe(true)
       if (createResult!.ok) {
+        expect(createResult.data.amountUsdc).toBe(1000)
+        expect(createResult.data.durationDays).toBe(90)
+        expect(createResult.data.transactionHash).toBe('REAL_TRANSACTION_HASH')
         expect(createResult!.data.amountUsdc).toBe(1000)
         expect(createResult!.data.durationDays).toBe(90)
         expect(createResult!.data.transactionHash).toMatch(/^SIMULATED_TX_HASH_/)
       }
+
+      expect(stellar.buildCreateBondTransactionXdr).toHaveBeenCalledWith(
+        1000,
+        90,
+        mockAddress,
+        'public'
+      )
+      expect(freighterClient.signFreighterTransaction).toHaveBeenCalledWith(
+        'UNSIGNED_CREATE_ENVELOPE',
+        {
+          networkPassphrase: 'Public Global Stellar Network ; September 2015',
+          address: mockAddress,
+        }
+      )
+      expect(horizon.submitTransaction).toHaveBeenCalledWith(
+        'SIGNED_ENVELOPE_MOCK',
+        'public',
+        undefined
+      )
     })
 
     it('rejects when wallet is not connected', async () => {
-      vi.mocked(useWallet).mockReturnValue({
-        address: null,
-        isConnected: false,
-        connect: vi.fn(),
-        disconnect: vi.fn(),
-        isConnecting: false,
-        network: null,
-      } as any)
+      vi.mocked(useWallet).mockReturnValue(
+        createMockWalletState({ address: '', isConnected: false, connected: false, network: null })
+      )
 
       const { result } = renderHook(() => useBondMutation())
 
@@ -170,16 +217,15 @@ describe('useBondMutation', () => {
       }
     })
 
-    it('handles wallet rejection gracefully', async () => {
-      vi.mocked(freighterClient.signFreighterTransaction).mockResolvedValue({
-        ok: false,
-        code: 'rejected',
-        message: 'User rejected the transaction',
-      })
+    it('maps tx_bad_seq to a retryable conflict', async () => {
+      vi.mocked(horizon.submitTransaction).mockRejectedValueOnce(
+        new horizon.HorizonError(400, 'Bad sequence', {
+          transaction: 'tx_bad_seq',
+        })
+      )
 
       const { result } = renderHook(() => useBondMutation())
-
-      let createResult
+      let createResult: Awaited<ReturnType<typeof result.current.createBond>> | undefined
       await act(async () => {
         createResult = await result.current.createBond({
           amountUsdc: 1000,
@@ -189,9 +235,81 @@ describe('useBondMutation', () => {
 
       expect(createResult!.ok).toBe(false)
       if (!createResult!.ok) {
+        expect(createResult.code).toBe('conflict')
+        expect(createResult.retryable).toBe(true)
+      }
+    })
+
+    it('maps insufficient Horizon balance to a non-retryable rejection', async () => {
+      vi.mocked(horizon.submitTransaction).mockRejectedValueOnce(
+        new horizon.HorizonError(400, 'Insufficient balance', {
+          transaction: 'tx_insufficient_balance',
+        })
+      )
+
+      const { result } = renderHook(() => useBondMutation())
+      let createResult: Awaited<ReturnType<typeof result.current.createBond>> | undefined
+      await act(async () => {
+        createResult = await result.current.createBond({
+          amountUsdc: 1000,
+          durationDays: 90,
+        })
+      })
+
+      expect(createResult!.ok).toBe(false)
+      if (!createResult!.ok) {
+        expect(createResult.code).toBe('rejected')
+        expect(createResult.retryable).toBe(false)
+      }
+    })
+
+    it('maps tx_failed to a non-retryable network failure', async () => {
+      vi.mocked(horizon.submitTransaction).mockRejectedValueOnce(
+        new horizon.HorizonError(400, 'Transaction failed', {
+          transaction: 'tx_failed',
+        })
+      )
+
+      const { result } = renderHook(() => useBondMutation())
+      let createResult: Awaited<ReturnType<typeof result.current.createBond>> | undefined
+      await act(async () => {
+        createResult = await result.current.createBond({
+          amountUsdc: 1000,
+          durationDays: 90,
+        })
+      })
+
+      expect(createResult!.ok).toBe(false)
+      if (!createResult!.ok) {
+        expect(createResult.code).toBe('network')
+        expect(createResult.retryable).toBe(false)
+      }
+    })
+
+    it('handles wallet rejection gracefully', async () => {
+      vi.mocked(freighterClient.signFreighterTransaction).mockResolvedValue({
+        ok: false,
+        code: 'rejected',
+        message: 'User rejected the transaction',
+      })
+
+      const { result } = renderHook(() => useBondMutation())
+      let createResult: Awaited<ReturnType<typeof result.current.createBond>> | undefined
+      await act(async () => {
+        createResult = await result.current.createBond({
+          amountUsdc: 1000,
+          durationDays: 90,
+        })
+      })
+
+      expect(createResult!.ok).toBe(false)
+      if (!createResult!.ok) {
+        expect(createResult.code).toBe('cancelled')
+        expect(createResult.retryable).toBe(false)
         expect(createResult!.code).toBe('rejected')
         expect(createResult!.retryable).toBe(false)
       }
+      expect(result.current.createError).toBeNull()
     })
 
     it('sets isCreating state during operation', async () => {
@@ -224,7 +342,7 @@ describe('useBondMutation', () => {
 
       vi.mocked(freighterClient.signFreighterTransaction).mockImplementationOnce(async () => {
         await firstPromise
-        return { ok: true, signedTxXdr: 'XDR_1' }
+        return { ok: true, signedTxXdr: 'ENVELOPE_1' }
       })
 
       const { result } = renderHook(() => useBondMutation())
@@ -329,20 +447,23 @@ describe('useBondMutation', () => {
 
       expect(withdrawResult!.ok).toBe(true)
       if (withdrawResult!.ok) {
+        expect(withdrawResult.data.bondId).toBe('bond-123')
+        expect(withdrawResult.data.transactionHash).toBe('REAL_TRANSACTION_HASH')
         expect(withdrawResult!.data.bondId).toBe('bond-123')
         expect(withdrawResult!.data.transactionHash).toMatch(/^SIMULATED_TX_HASH_/)
       }
+
+      expect(stellar.buildWithdrawBondTransactionXdr).toHaveBeenCalledWith(
+        mockAddress,
+        'public',
+        1000
+      )
     })
 
     it('rejects withdrawal when wallet is not connected', async () => {
-      vi.mocked(useWallet).mockReturnValue({
-        address: null,
-        isConnected: false,
-        connect: vi.fn(),
-        disconnect: vi.fn(),
-        isConnecting: false,
-        network: null,
-      } as any)
+      vi.mocked(useWallet).mockReturnValue(
+        createMockWalletState({ address: '', isConnected: false, connected: false, network: null })
+      )
 
       const { result } = renderHook(() => useBondMutation())
 
@@ -392,9 +513,12 @@ describe('useBondMutation', () => {
 
       expect(withdrawResult!.ok).toBe(false)
       if (!withdrawResult!.ok) {
+        expect(withdrawResult.code).toBe('cancelled')
+        expect(withdrawResult.retryable).toBe(false)
         expect(withdrawResult!.code).toBe('rejected')
         expect(withdrawResult!.retryable).toBe(false)
       }
+      expect(result.current.withdrawError).toBeNull()
     })
 
     it('prevents concurrent withdrawals of the same bond', async () => {
@@ -405,7 +529,7 @@ describe('useBondMutation', () => {
 
       vi.mocked(freighterClient.signFreighterTransaction).mockImplementationOnce(async () => {
         await firstPromise
-        return { ok: true, signedTxXdr: 'XDR_1' }
+        return { ok: true, signedTxXdr: 'ENVELOPE_1' }
       })
 
       const { result } = renderHook(() => useBondMutation())
@@ -453,11 +577,9 @@ describe('useBondMutation', () => {
 
   describe('error recovery', () => {
     it('stores and exposes create errors', async () => {
-      vi.mocked(freighterClient.signFreighterTransaction).mockResolvedValue({
-        ok: false,
-        code: 'rejected',
-        message: 'Transaction rejected',
-      })
+      vi.mocked(horizon.submitTransaction).mockRejectedValueOnce(
+        new horizon.HorizonError(503, 'Horizon unavailable')
+      )
 
       const { result } = renderHook(() => useBondMutation())
 
@@ -476,11 +598,9 @@ describe('useBondMutation', () => {
 
     it('clears create error on successful retry', async () => {
       // First call fails
-      vi.mocked(freighterClient.signFreighterTransaction).mockResolvedValueOnce({
-        ok: false,
-        code: 'rejected',
-        message: 'Transaction rejected',
-      })
+      vi.mocked(horizon.submitTransaction).mockRejectedValueOnce(
+        new horizon.HorizonError(503, 'Horizon unavailable')
+      )
 
       const { result } = renderHook(() => useBondMutation())
 
@@ -495,11 +615,6 @@ describe('useBondMutation', () => {
       expect(result.current.createError).not.toBeNull()
 
       // Second attempt succeeds
-      vi.mocked(freighterClient.signFreighterTransaction).mockResolvedValueOnce({
-        ok: true,
-        signedTxXdr: 'SUCCESS_XDR',
-      })
-
       await act(async () => {
         await result.current.createBond({
           amountUsdc: 1000,
@@ -513,11 +628,9 @@ describe('useBondMutation', () => {
     })
 
     it('stores and exposes withdraw errors', async () => {
-      vi.mocked(freighterClient.signFreighterTransaction).mockResolvedValue({
-        ok: false,
-        code: 'rejected',
-        message: 'Withdrawal rejected',
-      })
+      vi.mocked(horizon.submitTransaction).mockRejectedValueOnce(
+        new horizon.HorizonError(503, 'Horizon unavailable')
+      )
 
       const { result } = renderHook(() => useBondMutation())
 

@@ -157,7 +157,10 @@ function clearLegacy(): void {
  * Read pending transactions for a specific (network, address) pair.
  * Returns an empty array if disconnected (address is empty).
  */
-export function readPendingTransactions(network: CredenceNetwork, address: string): TransactionWithNetwork[] {
+export function readPendingTransactions(
+  network: CredenceNetwork,
+  address: string
+): TransactionWithNetwork[] {
   const key = scopedKey(network, address)
   if (!key) return []
 
@@ -227,10 +230,18 @@ export function addPendingTransaction(
   writePendingTransactions(network, address, [txWithNetwork, ...pending])
 }
 
-export function removePendingTransaction(network: CredenceNetwork, address: string, hash: string): void {
+export function removePendingTransaction(
+  network: CredenceNetwork,
+  address: string,
+  hash: string
+): void {
   const key = scopedKey(network, address)
   if (!key) return
 
   const pending = readPendingTransactions(network, address)
-  writePendingTransactions(network, address, pending.filter((tx) => tx.hash !== hash))
+  writePendingTransactions(
+    network,
+    address,
+    pending.filter((tx) => tx.hash !== hash)
+  )
 }

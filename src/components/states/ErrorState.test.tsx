@@ -1,8 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { act, render, screen, fireEvent } from '@testing-library/react'
 import ErrorState from './ErrorState'
+import { apiFetch } from '../../api/client'
 
 describe('ErrorState', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('renders the default title and message for type="generic"', () => {
     render(<ErrorState />)
     expect(screen.getByRole('heading', { name: /something didn\u2019t load/i })).toBeInTheDocument()
@@ -62,6 +67,24 @@ describe('ErrorState', () => {
     const btn = screen.getByRole('button', { name: /retrying/i })
     expect(btn).toBeDisabled()
     expect(btn).toHaveAttribute('aria-busy', 'true')
+  })
+
+  it('disables the retry action while a rate-limit window is active', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(
+        new Response('', { status: 429, headers: { 'Retry-After': '5' } })
+      )
+    )
+    render(<ErrorState action={{ label: 'Try again', onClick: vi.fn() }} />)
+
+    await act(async () => {
+      await apiFetch('/limited').catch(() => undefined)
+    })
+
+    const btn = screen.getByRole('button', { name: /try again/i })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('omits the action button when no action is provided', () => {

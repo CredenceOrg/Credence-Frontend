@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, beforeAll, afterEach, vi } from 'vite
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import Layout from './Layout'
+import ErrorBoundary from './ErrorBoundary'
+import { INSTALL_PROMPT_SESSION_KEY } from '../config/installPrompt'
+import { SettingsProvider } from '../context/SettingsContext'
+import { KEYBOARD_SHORTCUTS } from '../data/keyboardShortcuts'
 
 // Mock matchMedia for JSDOM
 beforeAll(() => {
@@ -283,5 +287,160 @@ describe('Layout boundary and recovery conditions', () => {
 
     expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: /bottom navigation/i })).toBeInTheDocument()
+  })
+})
+
+describe('Layout theme shortcut (T)', () => {
+  function renderWithSettings() {
+    return render(
+      <SettingsProvider>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route
+                index
+                element={
+                  <div>
+                    <input aria-label="Search field" />
+                    <textarea aria-label="Notes field" />
+                    <div contentEditable suppressContentEditableWarning aria-label="Editable">
+                      edit me
+                    </div>
+                    <select aria-label="Pick one">
+                      <option>a</option>
+                    </select>
+                  </div>
+                }
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </SettingsProvider>
+    )
+  }
+
+  const theme = () => document.documentElement.dataset.theme
+  const announcer = () => screen.getByTestId('theme-announcer')
+
+  beforeEach(() => {
+    localStorage.clear()
+    document.documentElement.removeAttribute('data-theme')
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('toggles light to dark and back when T is pressed outside inputs', () => {
+    renderWithSettings()
+    expect(theme()).toBe('light')
+
+    fireEvent.keyDown(document.body, { key: 't', code: 'KeyT' })
+    expect(theme()).toBe('dark')
+
+    fireEvent.keyDown(document.body, { key: 't', code: 'KeyT' })
+    expect(theme()).toBe('light')
+  })
+
+  it('also responds to an uppercase T (Caps Lock)', () => {
+    renderWithSettings()
+    fireEvent.keyDown(document.body, { key: 'T', code: 'KeyT' })
+    expect(theme()).toBe('dark')
+  })
+
+  it('announces the change politely', () => {
+    renderWithSettings()
+    expect(announcer()).toHaveAttribute('aria-live', 'polite')
+    expect(announcer()).toBeEmptyDOMElement()
+
+    fireEvent.keyDown(document.body, { key: 't' })
+    expect(announcer()).toHaveTextContent('Switched to dark mode')
+
+    fireEvent.keyDown(document.body, { key: 't' })
+    expect(announcer()).toHaveTextContent('Switched to light mode')
+  })
+
+  it('keeps the header theme toggle in sync with the shortcut', () => {
+    renderWithSettings()
+    expect(screen.getByRole('button', { name: 'Switch to dark mode' })).toBeInTheDocument()
+
+    fireEvent.keyDown(document.body, { key: 't' })
+
+    expect(screen.getByRole('button', { name: 'Switch to light mode' })).toBeInTheDocument()
+  })
+
+  it('persists the chosen theme through the settings store', () => {
+    renderWithSettings()
+    fireEvent.keyDown(document.body, { key: 't' })
+
+    const saved = JSON.parse(localStorage.getItem('credence:settings') ?? '{}')
+    expect(saved.themeMode).toBe('dark')
+  })
+
+  it.each([
+    ['input', 'Search field'],
+    ['textarea', 'Notes field'],
+    ['select', 'Pick one'],
+  ])('ignores T typed inside a %s', (_label, name) => {
+    renderWithSettings()
+    const field = screen.getByLabelText(name)
+    field.focus()
+
+    fireEvent.keyDown(field, { key: 't', code: 'KeyT' })
+
+    expect(theme()).toBe('light')
+    expect(announcer()).toBeEmptyDOMElement()
+  })
+
+  it('ignores T typed inside a contenteditable region', () => {
+    renderWithSettings()
+    const editable = screen.getByLabelText('Editable')
+
+    fireEvent.keyDown(editable, { key: 't', code: 'KeyT' })
+
+    expect(theme()).toBe('light')
+  })
+
+  it('lets T type normally in an input (default is not prevented)', () => {
+    renderWithSettings()
+    const input = screen.getByLabelText('Search field')
+
+    const notPrevented = fireEvent.keyDown(input, { key: 't', code: 'KeyT' })
+
+    expect(notPrevented).toBe(true)
+  })
+
+  it.each([
+    ['Ctrl', { ctrlKey: true }],
+    ['Meta', { metaKey: true }],
+    ['Alt', { altKey: true }],
+    ['Shift', { shiftKey: true }],
+  ])('ignores %s+T modifier combos', (_label, modifiers) => {
+    renderWithSettings()
+
+    fireEvent.keyDown(document.body, { key: 't', code: 'KeyT', ...modifiers })
+
+    expect(theme()).toBe('light')
+    expect(announcer()).toBeEmptyDOMElement()
+  })
+
+  it('ignores auto-repeat keydown events so holding T does not flicker', () => {
+    renderWithSettings()
+
+    fireEvent.keyDown(document.body, { key: 't', repeat: true })
+
+    expect(theme()).toBe('light')
+  })
+
+  it('ignores other keys', () => {
+    renderWithSettings()
+    fireEvent.keyDown(document.body, { key: 'y', code: 'KeyY' })
+    expect(theme()).toBe('light')
+  })
+
+  it('keeps the shortcuts help dialog entry accurate', () => {
+    const entry = KEYBOARD_SHORTCUTS.find((s) => s.label === 'Toggle light / dark theme')
+    expect(entry).toBeDefined()
+    expect(entry?.keys).toEqual(['T'])
   })
 })

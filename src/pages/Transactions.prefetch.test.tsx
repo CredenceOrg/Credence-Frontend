@@ -1,5 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { useRef } from 'react'
+import { MemoryRouter } from 'react-router-dom'
+import type { ReactElement } from 'react'
+import { act, fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Transactions from './Transactions'
 import ToastProvider from '../components/ToastProvider'
@@ -15,35 +16,9 @@ vi.mock('../api/client', async (importOriginal) => {
   }
 })
 
-/**
- * `useTransactions` currently returns a fresh array on every render, which
- * makes `Transactions`' data-reset effect re-fire forever while the component
- * is mounted. That render-loop is a separate, out-of-scope issue; this wrapper
- * keeps the array identity stable when its contents are unchanged so the
- * component test can exercise the real hook without hanging.
- */
-vi.mock('../hooks/useTransactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../hooks/useTransactions')>()
-
-  function useStableData(items: Transaction[]): Transaction[] {
-    const ref = useRef(items)
-    const unchanged =
-      ref.current.length === items.length &&
-      ref.current.every((item, index) => item === items[index])
-    if (!unchanged) {
-      ref.current = items
-    }
-    return ref.current
-  }
-
-  return {
-    ...actual,
-    useTransactions: () => {
-      const result = actual.useTransactions()
-      return { ...result, data: useStableData(result.data) }
-    },
-  }
-})
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({ address: 'GTESTWALLET', network: 'public' }),
+}))
 
 const apiFetchMock = vi.mocked(apiFetch)
 
@@ -81,7 +56,8 @@ function pageParams(path: string): URLSearchParams {
 }
 
 function callsForCursor(cursor: string): number {
-  return apiFetchMock.mock.calls.filter(([path]) => pageParams(path).get('cursor') === cursor).length
+  return apiFetchMock.mock.calls.filter(([path]) => pageParams(path).get('cursor') === cursor)
+    .length
 }
 
 function renderPage() {
@@ -109,6 +85,7 @@ describe('Transactions pagination prefetch', () => {
       items: Array.from({ length: 20 }, (_, index) => makeTx(`p1-${index}`)),
       nextCursor: 'c1',
     }
+    const pageTwo: Page = { items: [makeTx('p2-0', 'withdraw')] }
     const pageTwo: Page = { items: [makeTx('p2-0', 'page_two_marker' as Transaction['type'])] }
     const deferredPageTwo = deferred<Page>()
 
@@ -135,8 +112,12 @@ describe('Transactions pagination prefetch', () => {
       deferredPageTwo.resolve(pageTwo)
     })
 
-    expect(await screen.findByText('page_two_marker')).toBeInTheDocument()
+    expect(await screen.findByText('withdraw')).toBeInTheDocument()
     expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
     expect(callsForCursor('c1')).toBe(1)
   })
 })
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: MemoryRouter })
+}

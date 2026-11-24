@@ -21,6 +21,7 @@ Run these commands locally before pushing. They are identical to what the CI wor
 npm run format:check   # Prettier — confirms all files match the enforced style
 npm run lint           # ESLint — no errors allowed
 npm run build          # tsc -b + Vite production bundle — must exit 0
+npm run lint:console   # Console.log check — scans production bundle for accidental console.log calls
 npm run test           # Vitest — all tests must pass
 ```
 
@@ -29,6 +30,7 @@ npm run test           # Vitest — all tests must pass
 | Format             | `npm run format:check` | No diff reported; all files match Prettier output                |
 | Lint               | `npm run lint`         | Zero ESLint errors (warnings are allowed but should be reviewed) |
 | Type-check + Build | `npm run build`        | TypeScript exits 0; `dist/` is produced with no errors           |
+| Console check      | `npm run lint:console` | Zero console.log calls in production bundle                      |
 | Unit tests         | `npm run test`         | All Vitest suites green; no test exits with a non-zero code      |
 
 If any gate fails, fix it before requesting review. See [TESTING.md](./TESTING.md) for how to write and run tests, and [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) for a condensed operator view.
@@ -266,7 +268,7 @@ Paste this block into your PR description and fill in each line. Write "n/a — 
 
 ```text
 QA checklist:
-- Automated gates (format / lint / build / test):
+- Automated gates (format / lint / build / lint:console / test):
 - Functionality smoke test (flows touched):
 - Accessibility — axe scan:
 - Accessibility — keyboard nav:

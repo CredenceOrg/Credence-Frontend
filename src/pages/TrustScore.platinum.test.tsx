@@ -18,6 +18,10 @@ vi.mock('../api/client', async (importOriginal) => {
   }
 })
 
+vi.mock('../hooks/useTrustHistory', () => ({
+  useTrustHistory: () => ({ data: [], isLoading: false, error: null }),
+}))
+
 vi.mock('../context/WalletContext', () => ({
   useWallet: () => ({
     address: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',

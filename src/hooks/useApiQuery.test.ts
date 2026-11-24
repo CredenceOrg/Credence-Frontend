@@ -175,6 +175,77 @@ describe('useApiQuery', () => {
     expect(apiFetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('uses per-query ttl and gcTimeMs overrides', async () => {
+    vi.useFakeTimers()
+    apiFetchMock.mockResolvedValue(mockData)
+
+    const { result, unmount } = renderHook(() =>
+      useApiQuery<MockData>('/trust-score/TTL', {
+        staleTimeMs: 10,
+        ttlMs: 20,
+        gcTimeMs: 100,
+      })
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(result.current.data).toEqual(mockData)
+    unmount()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15)
+    })
+
+    const stale = renderHook(() =>
+      useApiQuery<MockData>('/trust-score/TTL', {
+        staleTimeMs: 10,
+        ttlMs: 20,
+        gcTimeMs: 100,
+      })
+    )
+    expect(stale.result.current.data).toEqual(mockData)
+    expect(stale.result.current.isStale).toBe(true)
+    expect(apiFetchMock).toHaveBeenCalledTimes(2)
+    stale.unmount()
+
+    vi.useRealTimers()
+  })
+
+  it('does not serve stale data after ttl expires', async () => {
+    vi.useFakeTimers()
+    apiFetchMock.mockResolvedValue(mockData)
+
+    const first = renderHook(() =>
+      useApiQuery<MockData>('/trust-score/EXPIRED', {
+        staleTimeMs: 5,
+        ttlMs: 20,
+        gcTimeMs: 100,
+      })
+    )
+    await act(async () => {
+      await Promise.resolve()
+    })
+    first.unmount()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20)
+    })
+
+    const expired = renderHook(() =>
+      useApiQuery<MockData>('/trust-score/EXPIRED', {
+        staleTimeMs: 5,
+        ttlMs: 20,
+        gcTimeMs: 100,
+      })
+    )
+    expect(expired.result.current.data).toBeUndefined()
+    expect(apiFetchMock).toHaveBeenCalledTimes(2)
+    expired.unmount()
+
+    vi.useRealTimers()
+  })
+
   it('refetch() always bypasses cache', async () => {
     const freshData = { score: 900, tier: 'platinum' }
     apiFetchMock.mockResolvedValueOnce(mockData).mockResolvedValueOnce(freshData)
@@ -355,6 +426,7 @@ describe('useApiQuery', () => {
   it('isolates cache and aborts in-flight requests on network switch', async () => {
     const publicDeferred = deferred<MockData>()
     const testData: MockData = { score: 410, tier: 'bronze' }
+    let capturedSignal: AbortSignal | undefined
     let capturedSignal: AbortSignal | null | undefined
 
     apiFetchMock.mockImplementationOnce((_path, init) => {

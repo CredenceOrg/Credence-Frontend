@@ -48,19 +48,46 @@
 }
 
 .connect-wallet-dialog__error--stale {
-  border-color: var(--credence-color-warning-border, #f59e0b);
-  background: var(--credence-color-warning-surface, #fffbeb);
-  color: var(--credence-color-warning-text, #92400e);
+  border-color: var(--credence-color-warning-border);
+  background: var(--credence-color-warning-surface);
+  color: var(--credence-color-warning-text);
 }
 
 .connect-wallet-dialog__error--permission {
-  border-color: var(--credence-color-danger-border, #ef4444);
-  background: var(--credence-color-danger-surface, #fef2f2);
-  color: var(--credence-color-danger-text, #991b1b);
+  border-color: var(--credence-color-danger-border);
+  background: var(--credence-color-danger-surface);
+  color: var(--credence-color-danger-text);
 }
 
 .connect-wallet-dialog__error--error {
-  border-color: var(--credence-color-danger-border, #ef4444);
-  background: var(--credence-color-danger-surface, #fef2f2);
-  color: var(--credence-color-danger-text, #991b1b);
+  border-color: var(--credence-color-danger-border);
+  background: var(--credence-color-danger-surface);
+  color: var(--credence-color-danger-text);
+}
+
+.connect-wallet-dialog__providers {
+  display: flex;
+  gap: var(--credence-space-2, 0.5rem);
+  margin-bottom: var(--credence-space-3, 0.75rem);
+}
+
+.connect-wallet-dialog__provider-option {
+  flex: 1;
+  padding: var(--credence-space-2, 0.5rem) var(--credence-space-3, 0.75rem);
+  border: 1px solid var(--credence-color-border, #d1d5db);
+  border-radius: var(--credence-radius-md, 0.375rem);
+  background: transparent;
+  color: inherit;
+  font-weight: var(--credence-font-weight-medium, 500);
+  cursor: pointer;
+}
+
+.connect-wallet-dialog__provider-option--selected {
+  border-color: var(--credence-color-primary, #2563eb);
+  background: var(--credence-color-primary-surface, rgba(37, 99, 235, 0.08));
+}
+
+.connect-wallet-dialog__provider-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -86,7 +86,7 @@
 
 .home__cta--primary {
   background: var(--credence-color-primary);
-  color: var(--credence-color-white);
+  color: var(--credence-color-on-primary);
   border-color: var(--credence-color-primary);
 }
 

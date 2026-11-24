@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import type { ApiResponse, operations, Transaction } from '../api/types'
+import { validateTransactionList } from '../api/validators'
 import { useWallet } from '../context/WalletContext'
 import { useSettings } from '../context/SettingsContext'
 import {
@@ -162,6 +163,7 @@ export function useTransactions(): UseTransactionsResult {
       const result = await apiFetch<TransactionsResponse>(`/transactions?${params.toString()}`, {
         signal,
         identityEpoch: epoch,
+        validate: validateTransactionList,
       })
 
       // A response that lands after abort (refetch / unmount / superseded

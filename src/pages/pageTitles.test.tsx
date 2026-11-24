@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Home from './Home'
+import NotFound from './NotFound'
 import Attestations from './Attestations'
 import SignIn from './SignIn'
 import Settings from './Settings'
@@ -113,5 +114,14 @@ describe('Page document.title accessibility (WCAG 2.4.2 Page Titled)', () => {
     // As a set, all four must be unique
     const uniqueTitles = new Set([homeTitle, attestationsTitle, signInTitle, settingsTitle])
     expect(uniqueTitles.size).toBe(4)
+  })
+  it('keeps the not-found title when suggesting a canonical destination', () => {
+    render(
+      <MemoryRouter initialEntries={['/dashbord']}>
+        <NotFound />
+      </MemoryRouter>
+    )
+    expect(document.title).toContain('Page Not Found')
+    expect(document.title).not.toContain('Dashboard')
   })
 })

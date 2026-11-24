@@ -725,3 +725,17 @@ describe('useDebouncedValue — boundary & recovery', () => {
     expect(result.current).toBe('b')
   })
 })
+
+it('calls the timer without binding a React ref as its receiver', () => {
+  const schedule = function (this: unknown, callback: () => void, delay: number) {
+    expect(this).toBeUndefined()
+    return setTimeout(callback, delay)
+  }
+  const { result, rerender } = renderHook(
+    ({ value }) => useDebouncedValue(value, 200, timerOptions(schedule, clearTimeout)),
+    { initialProps: { value: 'initial' } }
+  )
+  rerender({ value: 'updated' })
+  act(() => vi.advanceTimersByTime(200))
+  expect(result.current).toBe('updated')
+})

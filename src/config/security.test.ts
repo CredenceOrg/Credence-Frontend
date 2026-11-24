@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { CSP, CSP_DIRECTIVES } from './security'
+import { buildCsp, CSP, CSP_DIRECTIVES } from './security'
 
 describe('CSP string', () => {
   it("contains script-src 'self'", () => {
@@ -70,5 +72,22 @@ describe('CSP_DIRECTIVES object', () => {
 
   it('styleSrc allows unsafe-inline (required for Vite CSS modules)', () => {
     expect(CSP_DIRECTIVES.styleSrc).toContain("'unsafe-inline'")
+  })
+})
+
+describe('production headers', () => {
+  it('keeps the Vercel CSP synchronized with the production policy', () => {
+    const vercelConfig = JSON.parse(
+      readFileSync(resolve(process.cwd(), 'vercel.json'), 'utf8')
+    ) as {
+      headers: Array<{
+        headers: Array<{ key: string; value: string }>
+      }>
+    }
+    const cspHeader = vercelConfig.headers
+      .flatMap((entry) => entry.headers)
+      .find((header) => header.key.toLowerCase() === 'content-security-policy')
+
+    expect(cspHeader?.value).toBe(buildCsp({ isDev: false }))
   })
 })

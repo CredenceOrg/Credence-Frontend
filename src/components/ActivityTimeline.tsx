@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import { useTranslation } from 'react-i18next'
 import './ActivityTimeline.css'
 import { ActivityItem, ActivityTone, SAMPLE_ACTIVITY, ACTIVITY_ITEMS } from '../data/activity'
 import { AttestationStatus, toneToStatus } from '../events'
-import { formatAmount } from '../lib/format'
+import { formatAmount, formatDate, formatTime } from '../lib/format'
 import EmptyState from './states/EmptyState'
 import CopyableHash from './CopyableHash'
 import Badge from './Badge'
@@ -79,11 +80,12 @@ export default function ActivityTimeline({
   onSelect,
   nonce,
 }: ActivityTimelineProps): ReactElement {
+  const { t, i18n } = useTranslation()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
   const count = items.length
-  const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
+  const summary = t('activityTimeline.recentEvents', { count })
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
@@ -182,7 +184,10 @@ export default function ActivityTimeline({
                   <span className="activity-row__line" />
                 </div>
 
-                <time className="activity-row__time">{item.timestamp}</time>
+                <time className="activity-row__time" dateTime={item.timestamp}>
+                  {formatDate(item.timestamp, 'medium', i18n.language)} ·{' '}
+                  {formatTime(item.timestamp, '24h', i18n.language)}
+                </time>
 
                 <div className="activity-row__content">
                   <div className="activity-row__title-wrap">

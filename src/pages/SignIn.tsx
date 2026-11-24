@@ -1,18 +1,29 @@
+import { Navigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import EmptyState from '../components/states/EmptyState'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { safeNext } from '../lib/safeNext'
 
 export default function SignIn() {
-  useDocumentTitle('Sign In')
-  const { connect, isConnecting } = useWallet()
+  const { t } = useTranslation()
+  useDocumentTitle(t('signIn.title'))
+  const { connect, isConnecting, isConnected } = useWallet()
+  const [searchParams] = useSearchParams()
+
+  const redirectTarget = safeNext(searchParams.get('next'))
+
+  if (isConnected) {
+    return <Navigate to={redirectTarget} replace />
+  }
 
   return (
     <EmptyState
       illustration="trust"
-      title="Sign in to continue"
-      description="Connect your Freighter wallet to access your dashboard, bonds, and trust score."
+      title={t('signIn.heading')}
+      description={t('signIn.description')}
       action={{
-        label: 'Connect wallet',
+        label: t('signIn.connectWallet'),
         onClick: connect,
         isLoading: isConnecting,
       }}

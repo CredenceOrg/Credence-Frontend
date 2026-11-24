@@ -2,6 +2,13 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Bond from './Bond'
+import { useBonds } from '../hooks/useBonds'
+import type { Bond as ApiBond } from '../api/types'
+import { ApiError } from '../api/client'
+
+vi.mock('../hooks/useBonds', () => ({
+  useBonds: vi.fn(),
+}))
 
 const mockAddToast = vi.fn()
 const mockConnect = vi.fn()
@@ -16,6 +23,34 @@ let mockNetworkMismatch = {
   expected: 'Public (Mainnet)',
   actual: '',
 }
+
+const mockBonds: ApiBond[] = [
+  {
+    id: '1',
+    borrower: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    amount: '1000.00',
+    asset: 'USDC',
+    status: 'pending',
+    createdAt: '2026-01-01T00:00:00Z',
+    maturesAt: '2099-01-01T00:00:00Z',
+  },
+  {
+    id: '2',
+    borrower: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    amount: '500.00',
+    asset: 'USDC',
+    status: 'active',
+    createdAt: '2026-01-02T00:00:00Z',
+  },
+  {
+    id: '3',
+    borrower: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    amount: '750.00',
+    asset: 'USDC',
+    status: 'slashed',
+    createdAt: '2026-01-03T00:00:00Z',
+  },
+]
 
 vi.mock('../components/ToastProvider', () => ({
   useToast: () => ({
@@ -69,6 +104,12 @@ vi.mock('../components/ConfirmDialog', () => ({
 
 describe('Bond Page', () => {
   beforeEach(() => {
+    vi.mocked(useBonds).mockReturnValue({
+      data: mockBonds,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    })
     mockAddToast.mockClear()
     mockConnect.mockClear()
     mockNavigate.mockClear()
@@ -89,22 +130,23 @@ describe('Bond Page', () => {
     expect(screen.getByText(/Lock USDC into the Credence contract/i)).toBeInTheDocument()
   })
 
-  it('renders seeded bond rows (locked, grace-period, active)', () => {
+  it('renders bonds returned by the API', () => {
     render(<Bond />)
     expect(screen.getAllByText('1,000 USDC').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('500 USDC').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('750 USDC').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Pending')).toBeInTheDocument()
   })
 
-  it('shows Show penalty buttons for locked and grace-period bonds only', () => {
+  it('shows a penalty button for bonds that have not matured', () => {
     render(<Bond />)
     const penaltyBtns = screen.getAllByRole('button', { name: /show penalty/i })
-    expect(penaltyBtns).toHaveLength(2)
+    expect(penaltyBtns).toHaveLength(1)
   })
 
   it('shows No early-withdrawal penalty for the active bond', () => {
     render(<Bond />)
-    expect(screen.getByText(/No early-withdrawal penalty/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/No early-withdrawal penalty/i).length).toBeGreaterThanOrEqual(1)
   })
 
   it('disclosure starts collapsed (aria-expanded=false)', () => {
@@ -144,17 +186,42 @@ describe('Bond Page', () => {
     expect(screen.getAllByText('800 USDC').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('grace-period bond breakdown shows 10% penalty and correct values', async () => {
-    const user = userEvent.setup()
+  it('renders the loading state while bonds are being fetched', () => {
+    vi.mocked(useBonds).mockReturnValue({
+      data: [],
+      isLoading: true,
+      error: null,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    })
+
     render(<Bond />)
-    // bond #2 is grace-period: 500 USDC, 10% penalty → 50 USDC penalty, 450 USDC received
-    const penaltyBtns = screen.getAllByRole('button', { name: /show penalty/i })
-    await user.click(penaltyBtns[1])
-    expect(screen.getByText('Penalty (10%)')).toBeInTheDocument()
-    const penaltyAmount = screen.getByText('−50 USDC')
-    expect(penaltyAmount).toBeInTheDocument()
-    expect(penaltyAmount).toHaveClass('bond__penaltyAmount')
-    expect(screen.getAllByText('450 USDC').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
+  })
+
+  it('renders an error state with a retry action when loading bonds fails', () => {
+    const refetch = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(useBonds).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: new ApiError(503, 'Service unavailable'),
+      refetch,
+    })
+
+    render(<Bond />)
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }))
+    expect(refetch).toHaveBeenCalledOnce()
+  })
+
+  it('renders the empty state when the API returns no bonds', () => {
+    vi.mocked(useBonds).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    })
+
+    render(<Bond />)
+    expect(screen.getByText('No active bonds')).toBeInTheDocument()
   })
 
   it('shows the Create New Bond card with a create bond button when connected', () => {

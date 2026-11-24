@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useWallet } from '../context/WalletContext'
 import { useUsdcBalance } from '../hooks/useUsdcBalance'
 import { useTrustScore } from '../hooks/useTrustScore'
@@ -13,20 +14,20 @@ import './Home.css'
 // ─── Hero (disconnected / connecting) ───────────────────────────────────────
 
 function HomeHero() {
+  const { t } = useTranslation()
+  
   return (
     <div className="home">
       <div>
-        <h1 className="home__title">Credence — Economic Trust</h1>
-        <p className="home__description">
-          On-chain economic identity on Stellar. Stake USDC as a programmable reputation bond.
-        </p>
+        <h1 className="home__title">{t('home.title')}</h1>
+        <p className="home__description">{t('home.description')}</p>
       </div>
       <div className="home__ctaRow">
         <Link to="/bond" className="home__cta home__cta--primary">
-          Create bond
+          {t('home.createBond')}
         </Link>
         <Link to="/trust" className="home__cta home__cta--secondary">
-          View trust score
+          {t('home.viewTrustScore')}
         </Link>
       </div>
     </div>
@@ -40,6 +41,7 @@ interface HomeDashboardPreviewProps {
 }
 
 function HomeDashboardPreview({ address }: HomeDashboardPreviewProps) {
+  const { t } = useTranslation()
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
   const { data: trustData, isLoading: trustLoading, error: trustError, refetch: refetchTrust } = useTrustScore(address)
 
@@ -57,27 +59,27 @@ function HomeDashboardPreview({ address }: HomeDashboardPreviewProps) {
       {/* Header */}
       <div className="home__dashHeader">
         <div>
-          <h1 className="home__title">Credence — Economic Trust</h1>
+          <h1 className="home__title">{t('home.title')}</h1>
         </div>
         <div className="home__walletChip">
-          <span className="home__walletChipLabel">Connected wallet</span>
+          <span className="home__walletChipLabel">{t('home.connectedWallet')}</span>
           <span className="home__walletChipAddress">{friendlyAddress}</span>
         </div>
       </div>
 
       {/* Stat grid */}
-      <section aria-label="Account overview">
-        <p className="home__sectionTitle">Your account</p>
+      <section aria-label={t('home.yourAccount')}>
+        <p className="home__sectionTitle">{t('home.yourAccount')}</p>
         <div className="home__statGrid">
           {/* Trust score card */}
           <div className="home__statCard">
-            <span className="home__statLabel">Trust score</span>
+            <span className="home__statLabel">{t('home.trustScore')}</span>
             {trustLoading && <LoadingSkeleton variant="stat-widget" />}
             {!trustLoading && trustError && (
               <ErrorState
                 type="network"
-                message="Couldn't load your trust score."
-                action={{ label: 'Try again', onClick: refetchTrust }}
+                message={t('home.errorLoadTrustScore')}
+                action={{ label: t('home.retry'), onClick: refetchTrust }}
                 hideHeading
               />
             )}
@@ -90,25 +92,25 @@ function HomeDashboardPreview({ address }: HomeDashboardPreviewProps) {
                     to={`/trust?address=${encodeURIComponent(address)}`}
                     className="home__activityLink"
                   >
-                    View details
+                    {t('home.viewDetails')}
                   </Link>
                 </div>
               </>
             )}
             {!trustLoading && !trustError && !trustData && (
-              <span className="home__statLabel">No trust score yet.</span>
+              <span className="home__statLabel">{t('home.noTrustScoreYet')}</span>
             )}
           </div>
 
           {/* USDC balance card */}
           <div className="home__statCard">
-            <span className="home__statLabel">USDC balance</span>
+            <span className="home__statLabel">{t('home.usdcBalance')}</span>
             {balanceStatus === 'loading' && <LoadingSkeleton variant="stat-widget" />}
             {balanceStatus === 'error' && (
               <ErrorState
                 type="network"
-                message="Couldn't load your balance."
-                action={{ label: 'Retry', onClick: refetchBalance }}
+                message={t('home.errorLoadBalance')}
+                action={{ label: t('home.retry'), onClick: refetchBalance }}
                 hideHeading
               />
             )}
@@ -119,13 +121,13 @@ function HomeDashboardPreview({ address }: HomeDashboardPreviewProps) {
 
           {/* Next steps card */}
           <div className="home__statCard">
-            <span className="home__statLabel">Next steps</span>
+            <span className="home__statLabel">{t('home.nextSteps')}</span>
             <div className="home__ctaRow">
               <Link to="/bond" className="home__cta home__cta--primary">
-                Create bond
+                {t('home.createBond')}
               </Link>
               <Link to="/dashboard" className="home__cta home__cta--secondary">
-                Open dashboard
+                {t('home.openDashboard')}
               </Link>
             </div>
           </div>
@@ -135,7 +137,7 @@ function HomeDashboardPreview({ address }: HomeDashboardPreviewProps) {
       {/* Footer */}
       <div className="home__activityFooter">
         <Link to="/transactions" className="home__activityLink">
-          View transaction history
+          {t('home.viewTransactionHistory')}
         </Link>
       </div>
     </div>

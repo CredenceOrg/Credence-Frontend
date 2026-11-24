@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import type { TrustScore } from '../api/types'
+import { validateTrustScore } from '../api/validators'
 import { useSettings } from '../context/SettingsContext'
 import { isValidStellarAddress } from '@/lib/stellar'
 import { normalizeTrustScore } from '@/lib/trustScore'
@@ -71,10 +72,10 @@ export function useTrustScore(address: string): UseTrustScoreResult {
     try {
       const result = await apiFetch<TrustScore>(
         `/trust-score/${encodeURIComponent(targetAddress)}`,
-        { signal: controller.signal }
+        { signal: controller.signal, validate: validateTrustScore }
       )
 
-      if (!mountedRef.current || fetchId !== fetchIdRef.current) {
+      if (!mountedRef.current || fetchId !== fetchIdRef.current || controller.signal.aborted) {
         return
       }
 
@@ -87,7 +88,12 @@ export function useTrustScore(address: string): UseTrustScoreResult {
 
       setData(normalized)
     } catch (err) {
-      if (!mountedRef.current || fetchId !== fetchIdRef.current || isAbortError(err)) {
+      if (
+        !mountedRef.current ||
+        fetchId !== fetchIdRef.current ||
+        controller.signal.aborted ||
+        isAbortError(err)
+      ) {
         return
       }
 

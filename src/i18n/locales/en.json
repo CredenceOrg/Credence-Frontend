@@ -450,5 +450,17 @@
     "backend": "Backend error",
     "validation": "Validation error",
     "generic": "An error occurred"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "openButton": "Notifications",
+    "openButtonUnread": "Notifications ({{count}} unread)",
+    "close": "Close notifications",
+    "markAllRead": "Mark all read",
+    "markRead": "Mark as read",
+    "clear": "Clear",
+    "empty": "No notifications yet.",
+    "suppressedQuietHours": "Quiet hours",
+    "unread": "Unread"
   }
 }

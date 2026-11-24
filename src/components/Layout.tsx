@@ -8,6 +8,7 @@ import ErrorState from './states/ErrorState'
 import { reloadPageGuarded, hasAttemptedChunkReload } from '../lib/lazyWithRetry'
 import { useTranslation } from 'react-i18next'
 import ThemeToggle from './ThemeToggle'
+import NotificationCenter from './NotificationCenter'
 import NetworkIndicator from './NetworkIndicator'
 import HeaderWallet from './HeaderWallet'
 import MobileNav from './navigation/MobileNav'
@@ -130,6 +131,7 @@ export default function Layout() {
           </nav>
 
           <HeaderWallet />
+          <NotificationCenter />
           <ThemeToggle />
           <NetworkIndicator />
 

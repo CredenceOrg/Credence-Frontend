@@ -26,6 +26,9 @@ const PII_KEY_PATTERN =
   /^(e[-_]?mail|phone([-_]?number)?|mobile|ssn|social[-_]?security(?:[-_]?number)?|passport(?:[-_]?number)?|national[-_]?id|date[-_]?of[-_]?birth|dob|full[-_]?name|first[-_]?name|last[-_]?name|home[-_]?address|mailing[-_]?address|street[-_]?address|postal[-_]?code|zip[-_]?code)$/i
 
 const EMAIL_VALUE_PATTERN = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i
+const EMAIL_SUBSTRING_PATTERN = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi
+const STELLAR_ADDRESS_PATTERN = /\b[GSCM][A-Z2-7]{55,68}\b/g
+const HEX_ADDRESS_PATTERN = /\b0x[a-fA-F0-9]{40,}\b/g
 
 /**
  * Global twin of {@link EMAIL_VALUE_PATTERN} used when rewriting free-form
@@ -183,4 +186,14 @@ function scrubTelemetryValue(
  */
 export function scrubTelemetryPII<T>(value: T): T {
   return scrubTelemetryValue(value, undefined, new WeakSet<object>()) as T
+/**
+ * Scrub PII and address-like substrings (emails, Stellar StrKey addresses/keys,
+ * and 0x-prefixed hex addresses) from a free-text diagnostic string while
+ * preserving the surrounding message text.
+ */
+export function scrubDiagnosticText(text: string): string {
+  return text
+    .replace(EMAIL_SUBSTRING_PATTERN, REDACTED)
+    .replace(STELLAR_ADDRESS_PATTERN, REDACTED)
+    .replace(HEX_ADDRESS_PATTERN, REDACTED)
 }

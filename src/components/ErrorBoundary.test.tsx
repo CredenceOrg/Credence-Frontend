@@ -163,6 +163,102 @@ describe('ErrorBoundary', () => {
     expect(screen.getByText('Unaffected sibling')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /go to home page/i })).toHaveAttribute('href', '/')
   })
+
+  it('displays a copyable correlation error id with feedback', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+
+    const FailChild = () => {
+      throw new Error('Unexpected render crash')
+    }
+
+    render(
+      <ErrorBoundary>
+        <FailChild />
+      </ErrorBoundary>
+    )
+
+    const idEl = await screen.findByTestId('error-boundary-id')
+    const errorId = idEl.textContent ?? ''
+    expect(errorId).toMatch(/^err-[a-z0-9]+-[a-z0-9]+$/i)
+
+    const copyBtn = screen.getByRole('button', { name: /copy error id/i })
+    fireEvent.click(copyBtn)
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(errorId)
+      expect(copyBtn).toHaveTextContent(/copied/i)
+    })
+  })
+
+  it('keeps the error id stable across parent re-renders and clears it on reset', async () => {
+    let shouldThrow = true
+    const FlakyChild = ({ tick }: { tick: number }) => {
+      if (shouldThrow) {
+        throw new Error(`Crash on tick ${tick}`)
+      }
+      return <div>Healthy tick {tick}</div>
+    }
+
+    const { rerender } = render(
+      <ErrorBoundary>
+        <FlakyChild tick={1} />
+      </ErrorBoundary>
+    )
+
+    const initialId = (await screen.findByTestId('error-boundary-id')).textContent
+    expect(initialId).toMatch(/^err-/)
+
+    // Re-render parent while boundary is in error state — id must remain identical
+    rerender(
+      <ErrorBoundary>
+        <FlakyChild tick={2} />
+      </ErrorBoundary>
+    )
+    expect(screen.getByTestId('error-boundary-id').textContent).toBe(initialId)
+
+    // Reset clears the error state and id
+    shouldThrow = false
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Healthy tick 2')).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('error-boundary-id')).not.toBeInTheDocument()
+  })
+
+  it('renders collapsed technical details with PII and address-like substrings scrubbed and no stack trace', async () => {
+    const stellarAddr = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+    const hexAddr = '0x1234567890abcdef1234567890abcdef12345678'
+    const email = 'alice@example.com'
+
+    const FailChild = () => {
+      const err = new Error(`Failed for ${stellarAddr}, ${hexAddr}, and ${email}`)
+      err.stack = 'Error: secret stack\n    at SensitiveInternalFn (secret.ts:42:1)'
+      throw err
+    }
+
+    render(
+      <ErrorBoundary>
+        <FailChild />
+      </ErrorBoundary>
+    )
+
+    const summary = await screen.findByText(/technical details/i)
+    const details = summary.closest('details')
+    expect(details).not.toBeNull()
+    expect(details).not.toHaveAttribute('open')
+
+    const messageEl = screen.getByTestId('error-boundary-message')
+    expect(messageEl.textContent).toContain('[REDACTED]')
+    expect(messageEl.textContent).not.toContain(stellarAddr)
+    expect(messageEl.textContent).not.toContain(hexAddr)
+    expect(messageEl.textContent).not.toContain(email)
+    expect(document.body.textContent).not.toContain('SensitiveInternalFn')
+  })
 })
 
 describe('ErrorBoundary error reporting', () => {

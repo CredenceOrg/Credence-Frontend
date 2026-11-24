@@ -1,5 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
+import type { WalletAdapter } from '../lib/wallet/adapter'
+import { registerWalletAdapter, resetWalletAdapters } from '../lib/wallet/registry'
 import { useWallet } from './useWallet'
 
 const mocks = vi.hoisted(() => ({
@@ -113,7 +116,7 @@ describe('useWallet', () => {
     expect(result.current.isConnected).toBe(false)
   })
 
-  it('does not block connection on network mismatch and reports actual network', async () => {
+  it('blocks connection on network mismatch — mainnet settings with testnet wallet', async () => {
     mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
     mocks.mockFetchFreighterNetwork.mockResolvedValue('test')
 
@@ -123,10 +126,28 @@ describe('useWallet', () => {
       await result.current.connect()
     })
 
-    expect(result.current.error).toBeNull()
-    expect(result.current.isConnected).toBe(true)
-    expect(result.current.address).toBe(TEST_ADDRESS)
-    expect(result.current.network).toBe('test')
+    expect(result.current.error).toMatchObject({ code: 'network_mismatch' })
+    expect(result.current.isConnected).toBe(false)
+    // Atomic rollback: network is rolled back to null on mismatch.
+    expect(result.current.address).toBe('')
+    expect(result.current.network).toBeNull()
+  })
+
+  it('blocks connection on network mismatch — testnet settings with mainnet wallet', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockFetchFreighterNetwork.mockResolvedValue('public')
+
+    const { result } = renderHook(() => useWallet('test'))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(result.current.error).toMatchObject({ code: 'network_mismatch' })
+    expect(result.current.isConnected).toBe(false)
+    // Atomic rollback: network is rolled back to null on mismatch.
+    expect(result.current.address).toBe('')
+    expect(result.current.network).toBeNull()
   })
 
   it('surfaces unknown error when client throws', async () => {
@@ -230,5 +251,234 @@ describe('useWallet', () => {
 
     expect(result.current.address).toBe(TEST_ADDRESS)
     expect(result.current.error).toBeNull()
+  })
+
+  it('persists a valid session and restores the same wallet after reload', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockFetchFreighterAddress.mockResolvedValue(TEST_ADDRESS)
+    mocks.mockFetchFreighterNetwork.mockResolvedValue('public')
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    const persisted = JSON.parse(window.localStorage.getItem('credence:wallet-session') ?? 'null')
+    expect(persisted).toMatchObject({ address: TEST_ADDRESS, network: 'public' })
+
+    window.localStorage.clear()
+    vi.clearAllMocks()
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockFetchFreighterAddress.mockResolvedValue(TEST_ADDRESS)
+    mocks.mockFetchFreighterNetwork.mockResolvedValue('public')
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    const restored = renderHook(() => useWallet('public'))
+    await waitFor(() => {
+      expect(restored.result.current.isConnected).toBe(true)
+    })
+    expect(restored.result.current.address).toBe(TEST_ADDRESS)
+  })
+
+  it('updates stale persisted wallet data to the currently allowed account', async () => {
+    window.localStorage.setItem(
+      'credence:wallet-session',
+      JSON.stringify({ version: 1, address: 'GSTALE', network: 'public', updatedAt: Date.now() })
+    )
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockFetchFreighterAddress.mockResolvedValue(TEST_ADDRESS)
+    mocks.mockFetchFreighterNetwork.mockResolvedValue('public')
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await waitFor(() => {
+      expect(result.current.address).toBe(TEST_ADDRESS)
+    })
+    expect(JSON.parse(window.localStorage.getItem('credence:wallet-session') ?? 'null')).toMatchObject({
+      address: TEST_ADDRESS,
+      network: 'public',
+    })
+  })
+
+  it('removes invalid persisted wallet data during recovery', async () => {
+    window.localStorage.setItem('credence:wallet-session', '{ invalid json')
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(false)
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await waitFor(() => {
+      expect(result.current.isConnected).toBe(false)
+    })
+    expect(window.localStorage.getItem('credence:wallet-session')).toBeNull()
+  })
+
+  it('guards against concurrent connect calls — second call is a no-op while first is in-flight', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    let resolveAccess!: (value: { ok: true; address: string }) => void
+    mocks.mockRequestFreighterAccess.mockImplementation(
+      () => new Promise((resolve) => { resolveAccess = resolve })
+    )
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    // Fire first connect — it will block on requestFreighterAccess.
+    void result.current.connect()
+
+    await waitFor(() => {
+      expect(result.current.isConnecting).toBe(true)
+    })
+
+    // Fire second connect while first is still in-flight.
+    await act(async () => {
+      await result.current.connect()
+    })
+
+    expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveAccess({ ok: true, address: TEST_ADDRESS })
+    })
+
+    expect(result.current.isConnected).toBe(true)
+    expect(result.current.address).toBe(TEST_ADDRESS)
+    expect(result.current.isConnecting).toBe(false)
+  })
+
+  it('allows a second connect after the first completes', async () => {
+    mocks.mockCheckFreighterInstalled.mockResolvedValue(true)
+    mocks.mockCreateWalletWatcher.mockResolvedValue({ stop: vi.fn() })
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect()
+    })
+    expect(result.current.isConnected).toBe(true)
+    expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await result.current.connect()
+    })
+    expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('useWallet — multi-adapter support', () => {
+  const FAKE_ADDRESS = 'GBFAKEWALLETADDRESSFORADAPTERTESTING1234567890ABCDEFGH'
+  const FAKE_SIGNED_XDR = 'AAAAAgAAAQAB...fake-signed'
+
+  function createFakeAdapter(overrides: Partial<WalletAdapter> = {}): WalletAdapter {
+    let connectedAddress: string | null = null
+    return {
+      id: 'fake-wallet',
+      name: 'FakeWallet',
+      installUrl: 'https://fakewallet.example/',
+      isInstalled: vi.fn(async () => true),
+      connect: vi.fn(async () => {
+        connectedAddress = FAKE_ADDRESS
+        return { ok: true as const, address: FAKE_ADDRESS }
+      }),
+      getAddress: vi.fn(async () => connectedAddress),
+      getNetwork: vi.fn(async () => 'public' as const),
+      signTransaction: vi.fn(async () => ({
+        ok: true as const,
+        signedTxXdr: FAKE_SIGNED_XDR,
+      })),
+      disconnect: vi.fn(() => {
+        connectedAddress = null
+      }),
+      ...overrides,
+    }
+  }
+
+  beforeEach(() => {
+    window.localStorage.clear()
+    resetWalletAuditTrail()
+    resetWalletAdapters()
+  })
+
+  afterEach(() => {
+    window.localStorage.clear()
+    resetWalletAuditTrail()
+    resetWalletAdapters()
+    vi.clearAllMocks()
+  })
+
+  it('connects and signs transactions through a second (fake) adapter', async () => {
+    const fakeAdapter = createFakeAdapter()
+    registerWalletAdapter(fakeAdapter)
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect('fake-wallet')
+    })
+
+    expect(result.current.isConnected).toBe(true)
+    expect(result.current.address).toBe(FAKE_ADDRESS)
+    expect(result.current.adapterId).toBe('fake-wallet')
+
+    const signResult = await result.current.signTransaction!('AAAAAgAAAQAB...')
+    expect(signResult).toEqual({ ok: true, signedTxXdr: FAKE_SIGNED_XDR })
+    expect(fakeAdapter.signTransaction).toHaveBeenCalledWith('AAAAAgAAAQAB...', undefined)
+  })
+
+  it('persists the chosen adapter across reload and restores with it', async () => {
+    const fakeAdapter = createFakeAdapter()
+    registerWalletAdapter(fakeAdapter)
+
+    const { result, unmount } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect('fake-wallet')
+    })
+
+    expect(window.localStorage.getItem('credence:wallet-adapter')).toBe('fake-wallet')
+    const persisted = JSON.parse(window.localStorage.getItem('credence:wallet-session') ?? 'null')
+    expect(persisted).toMatchObject({
+      address: FAKE_ADDRESS,
+      network: 'public',
+      adapterId: 'fake-wallet',
+    })
+
+    unmount()
+
+    // Simulate reload: mount a fresh hook with the same persisted localStorage.
+    const reloaded = renderHook(() => useWallet('public'))
+    await waitFor(() => {
+      expect(reloaded.result.current.isConnected).toBe(true)
+    })
+
+    expect(reloaded.result.current.adapterId).toBe('fake-wallet')
+    expect(reloaded.result.current.address).toBe(FAKE_ADDRESS)
+  })
+
+  it('includes adapterId in wallet audit events', async () => {
+    const fakeAdapter = createFakeAdapter()
+    registerWalletAdapter(fakeAdapter)
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect('fake-wallet')
+    })
+
+    act(() => {
+      result.current.disconnect()
+    })
+
+    const trail = getWalletAuditTrail()
+    const connectingEvent = trail.find((e) => e.type === 'session_connecting')
+    const connectedEvent = trail.find((e) => e.type === 'session_connected')
+    const disconnectedEvent = trail.find((e) => e.type === 'session_disconnected')
+
+    expect(connectingEvent?.adapterId).toBe('fake-wallet')
+    expect(connectedEvent?.adapterId).toBe('fake-wallet')
+    expect(disconnectedEvent?.adapterId).toBe('fake-wallet')
   })
 })

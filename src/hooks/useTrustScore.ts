@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError } from '../api/client'
 import type { TrustScore } from '../api/types'
+import { validateTrustScore } from '../api/validators'
+import { useSettings } from '../context/SettingsContext'
 import { isValidStellarAddress } from '@/lib/stellar'
+import { normalizeTrustScore } from '@/lib/trustScore'
 
 export interface UseTrustScoreResult {
   /** Trust score payload from `GET /trust-score/:address`, or null before/after a failed fetch. */
@@ -27,12 +30,13 @@ function isAbortError(error: unknown): boolean {
  * Expects {@link TrustScore} from `src/api/types.ts`:
  * `{ address, score, tier, attestations, updatedAt }`.
  *
- * Does not fetch automatically — call {@link UseTrustScoreResult.refetch} after the
+ * Does not fetch automatically â€” call {@link UseTrustScoreResult.refetch} after the
  * user submits a lookup. Invalid or empty addresses are ignored.
  *
  * In-flight requests are cancelled when `refetch` is called again or the hook unmounts.
  */
 export function useTrustScore(address: string): UseTrustScoreResult {
+  const { network } = useSettings()
   const [data, setData] = useState<TrustScore | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
@@ -41,6 +45,7 @@ export function useTrustScore(address: string): UseTrustScoreResult {
   const fetchIdRef = useRef(0)
   const mountedRef = useRef(true)
   const addressRef = useRef(address)
+  const prevNetworkRef = useRef(network)
 
   addressRef.current = address
 
@@ -59,21 +64,36 @@ export function useTrustScore(address: string): UseTrustScoreResult {
 
     setIsLoading(true)
     setError(null)
-    setData(null)
+    
+    // Clear data only if we are fetching a new address. 
+    // This prevents flickering on refetch for the same address.
+    setData((currentData) => currentData?.address !== targetAddress ? null : currentData)
 
     try {
       const result = await apiFetch<TrustScore>(
         `/trust-score/${encodeURIComponent(targetAddress)}`,
-        { signal: controller.signal }
+        { signal: controller.signal, validate: validateTrustScore }
       )
 
-      if (!mountedRef.current || fetchId !== fetchIdRef.current) {
+      if (!mountedRef.current || fetchId !== fetchIdRef.current || controller.signal.aborted) {
         return
       }
 
-      setData(result)
+      const normalized = normalizeTrustScore(result)
+      if (!normalized) {
+        setData(null)
+        setError(new ApiError(0, 'Malformed trust score response'))
+        return
+      }
+
+      setData(normalized)
     } catch (err) {
-      if (!mountedRef.current || fetchId !== fetchIdRef.current || isAbortError(err)) {
+      if (
+        !mountedRef.current ||
+        fetchId !== fetchIdRef.current ||
+        controller.signal.aborted ||
+        isAbortError(err)
+      ) {
         return
       }
 
@@ -93,6 +113,17 @@ export function useTrustScore(address: string): UseTrustScoreResult {
   const refetch = useCallback(() => {
     void fetchScore()
   }, [fetchScore])
+
+  useEffect(() => {
+    if (prevNetworkRef.current === network) return
+    prevNetworkRef.current = network
+    abortRef.current?.abort()
+    abortRef.current = null
+    fetchIdRef.current += 1
+    setData(null)
+    setError(null)
+    setIsLoading(false)
+  }, [network])
 
   useEffect(() => {
     mountedRef.current = true

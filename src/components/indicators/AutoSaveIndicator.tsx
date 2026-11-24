@@ -17,6 +17,12 @@ export interface AutoSaveIndicatorLabels {
   error: string
   /** Label of the inline retry button (only rendered if `onRetry` is set). */
   retry: string
+  /**
+   * Shown when the save could not reach the server but was persisted to the
+   * offline outbox (e.g. `Saved offline, will sync`). Optional so existing
+   * callers keep compiling; falls back to a sensible default.
+   */
+  queued?: string
 }
 
 export interface AutoSaveIndicatorProps {
@@ -53,6 +59,7 @@ function formatRelative(lastSavedAt: number, now: number): string {
  *  - `saved`              → checks via `lastSavedAt` against `ttlMs`,
  *                           shows `Saved just now` / `Saved 5s ago` etc.
  *  - `error`              → error-toned pill + optional retry button
+ *  - `queued`             → info-toned pill, `Saved offline, will sync`
  *  - `idle`               → renders nothing
  *
  * Accessibility:
@@ -84,7 +91,8 @@ export default function AutoSaveIndicator({
   }, [status, lastSavedAt])
 
   const isVisible = (() => {
-    if (status === 'error' || status === 'saving' || status === 'pending') return true
+    if (status === 'error' || status === 'saving' || status === 'pending' || status === 'queued')
+      return true
     if (status === 'saved' && lastSavedAt !== null) {
       return now - lastSavedAt <= ttlMs
     }
@@ -93,11 +101,7 @@ export default function AutoSaveIndicator({
 
   if (!isVisible) return null
 
-  const rootClass = [
-    'auto-save-indicator',
-    `auto-save-indicator--${status}`,
-    className ?? '',
-  ]
+  const rootClass = ['auto-save-indicator', `auto-save-indicator--${status}`, className ?? '']
     .filter(Boolean)
     .join(' ')
 
@@ -111,8 +115,12 @@ export default function AutoSaveIndicator({
     )
   } else if (status === 'saved') {
     const relative = formatRelative(lastSavedAt as number, now)
+    body = <span className="auto-save-indicator__text">{labels.savedRelative(relative)}</span>
+  } else if (status === 'queued') {
     body = (
-      <span className="auto-save-indicator__text">{labels.savedRelative(relative)}</span>
+      <span className="auto-save-indicator__text">
+        {labels.queued ?? 'Saved offline, will sync'}
+      </span>
     )
   } else if (status === 'error') {
     body = (

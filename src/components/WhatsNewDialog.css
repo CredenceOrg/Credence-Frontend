@@ -69,8 +69,8 @@
   justify-content: center;
   padding: var(--credence-space-1) var(--credence-space-2);
   border-radius: var(--credence-radius-full);
-  background: var(--credence-color-info-surface, #e0f2fe);
-  color: var(--credence-color-info-text, #0369a1);
+  background: var(--credence-color-info-surface);
+  color: var(--credence-color-info-text);
   font-size: var(--credence-font-size-xs);
   font-weight: var(--credence-font-weight-semibold);
 }
@@ -104,7 +104,7 @@
   width: 2rem;
   height: 2rem;
   border: 3px solid var(--credence-border-default);
-  border-top-color: var(--credence-color-primary, #0284c7);
+  border-top-color: var(--credence-color-primary);
   border-radius: 50%;
   animation: whats-new-dialog-spin 0.8s linear infinite;
 }
@@ -119,6 +119,7 @@
   padding: var(--credence-space-4) var(--credence-space-5);
   display: grid;
   gap: var(--credence-space-5);
+  min-height: 0;
 }
 
 .whats-new-dialog__item {
@@ -219,6 +220,16 @@
 @keyframes whats-new-dialog-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .whats-new-dialog__backdrop,
+  .whats-new-dialog,
+  .whats-new-dialog__spinner {
+    animation: none !important;
   }
 }
 

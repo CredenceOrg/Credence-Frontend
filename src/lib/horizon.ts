@@ -2,9 +2,9 @@
  * @file horizon.ts
  * @description Lightweight, SSR-safe wrapper around the Stellar Horizon REST API.
  *
- * Provides only the subset of Horizon we need — account balance lookups — without
- * pulling in the full `@stellar/stellar-sdk`. Every export guards against a
- * non-browser environment so importing this module is safe in SSR/test contexts.
+ * Provides the subset of Horizon we need without pulling in the full
+ * `@stellar/stellar-sdk`. Every export guards against a non-browser environment
+ * so importing this module is safe in SSR/test contexts.
  *
  * @see {@link https://developers.stellar.org/docs/horizon-api/reference/accounts-single}
  */
@@ -15,7 +15,7 @@ import type { CredenceNetwork } from './networkLabels'
 // Constants
 // ---------------------------------------------------------------------------
 
-const HORIZON_URLS: Record<CredenceNetwork, string> = {
+export const HORIZON_URLS: Record<CredenceNetwork, string> = {
   public: 'https://horizon.stellar.org',
   test: 'https://horizon-testnet.stellar.org',
 }
@@ -27,6 +27,53 @@ const USDC_ISSUERS: Record<CredenceNetwork, string> = {
 }
 
 const USDC_ASSET_CODE = 'USDC'
+
+export function getUsdcIssuer(network: CredenceNetwork): string {
+  return USDC_ISSUERS[network]
+}
+
+// ---------------------------------------------------------------------------
+// Transaction reconciliation (issue #1440)
+// ---------------------------------------------------------------------------
+
+/** Outcome of a pending-transaction lookup against Horizon. */
+export type HorizonTransactionLookup =
+  | { status: 'found'; successful: boolean }
+  | { status: 'notFound' }
+  | { status: 'failed' }
+
+/**
+ * Looks up a single transaction by hash on the given Horizon network.
+ *
+ * - `found` — the transaction has been included in a ledger; `successful`
+ *   reports whether the envelope's result code was 0 (tx succeeded).
+ * - `notFound` — Horizon returned 404 (still pending or unknown hash).
+ * - `failed` — transport / HTTP failure; callers should retry with backoff.
+ */
+export async function getTransaction(
+  hash: string,
+  network: CredenceNetwork,
+  signal?: AbortSignal
+): Promise<HorizonTransactionLookup> {
+  if (typeof window === 'undefined') return { status: 'notFound' }
+
+  const url = `${HORIZON_URLS[network]}/transactions/${encodeURIComponent(hash)}`
+
+  let response: Response
+  try {
+    response = await fetch(url, { signal })
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') throw err
+    return { status: 'failed' }
+  }
+
+  if (response.status === 404) return { status: 'notFound' }
+
+  if (!response.ok) return { status: 'failed' }
+
+  const tx = (await response.json()) as { successful?: boolean }
+  return { status: 'found', successful: tx.successful === true }
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,17 +92,52 @@ interface HorizonAccount {
   balances: HorizonBalance[]
 }
 
+export interface HorizonAccountSequence {
+  sequence: string
+}
+
+export interface HorizonResultCodes {
+  transaction?: string
+  operations?: string[]
+}
+
+interface HorizonTransactionResponse {
+  hash?: string
+  detail?: string
+  extras?: {
+    result_codes?: HorizonResultCodes
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 
 export class HorizonError extends Error {
   readonly status: number
+  readonly resultCodes?: HorizonResultCodes
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, resultCodes?: HorizonResultCodes) {
     super(message)
     this.name = 'HorizonError'
     this.status = status
+    this.resultCodes = resultCodes
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
+async function fetchHorizon(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init)
+  } catch (error) {
+    if (isAbortError(error)) throw error
+    throw new HorizonError(
+      0,
+      error instanceof Error ? `Horizon request failed: ${error.message}` : 'Horizon request failed.'
+    )
   }
 }
 
@@ -97,10 +179,84 @@ export async function fetchUsdcBalance(
   const usdcIssuer = USDC_ISSUERS[network]
   const match = account.balances.find(
     (b) =>
-      b.asset_type !== 'native' &&
-      b.asset_code === USDC_ASSET_CODE &&
-      b.asset_issuer === usdcIssuer
+      b.asset_type !== 'native' && b.asset_code === USDC_ASSET_CODE && b.asset_issuer === usdcIssuer
   )
 
   return match ? Number(match.balance) : 0
+}
+
+/**
+ * Loads the current source-account sequence from Horizon for transaction building.
+ *
+ * @param address - Stellar public key (G…).
+ * @param network - Active Stellar network.
+ * @param signal - Optional `AbortSignal`.
+ */
+export async function loadAccount(
+  address: string,
+  network: CredenceNetwork,
+  signal?: AbortSignal
+): Promise<HorizonAccountSequence> {
+  if (typeof window === 'undefined') {
+    throw new HorizonError(0, 'Horizon account loading is only available in a browser.')
+  }
+
+  const response = await fetchHorizon(
+    `${HORIZON_URLS[network]}/accounts/${encodeURIComponent(address)}`,
+    { signal }
+  )
+
+  if (!response.ok) {
+    throw new HorizonError(response.status, `Horizon account request failed (${response.status})`)
+  }
+
+  const account = (await response.json()) as HorizonAccountSequence
+  if (typeof account.sequence !== 'string' || !/^\d+$/.test(account.sequence)) {
+    throw new HorizonError(response.status, 'Horizon returned an invalid account sequence.')
+  }
+
+  return { sequence: account.sequence }
+}
+
+/**
+ * Submits one signed transaction to Horizon.
+ *
+ * The helper deliberately does not retry: a transport failure can leave the
+ * submission outcome uncertain for a financial transaction.
+ *
+ * @param xdr - Signed Stellar transaction envelope XDR.
+ * @param network - Active Stellar network.
+ * @param signal - Optional `AbortSignal`.
+ * @returns The hash supplied by Horizon for the submitted transaction.
+ */
+export async function submitTransaction(
+  xdr: string,
+  network: CredenceNetwork,
+  signal?: AbortSignal
+): Promise<string> {
+  if (typeof window === 'undefined') {
+    throw new HorizonError(0, 'Horizon transaction submission is only available in a browser.')
+  }
+
+  const response = await fetchHorizon(`${HORIZON_URLS[network]}/transactions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ tx: xdr }),
+    signal,
+  })
+
+  const payload = (await response.json().catch(() => ({}))) as HorizonTransactionResponse
+  if (!response.ok) {
+    throw new HorizonError(
+      response.status,
+      payload.detail || `Horizon transaction submission failed (${response.status})`,
+      payload.extras?.result_codes
+    )
+  }
+
+  if (typeof payload.hash !== 'string' || payload.hash.length === 0) {
+    throw new HorizonError(response.status, 'Horizon response did not include a transaction hash.')
+  }
+
+  return payload.hash
 }

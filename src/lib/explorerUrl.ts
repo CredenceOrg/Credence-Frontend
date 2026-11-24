@@ -5,6 +5,12 @@ import type { CredenceNetwork } from './networkLabels'
  *
  * `'test'` is Credence's internal name for Stellar testnet.
  */
+export function explorerUrl(network: string, hash: string): string {
+  const base =
+    network === 'test'
+      ? 'https://stellar.expert/explorer/testnet/tx'
+      : 'https://stellar.expert/explorer/public/tx'
+  return `${base}/${encodeURIComponent(hash)}`
 function networkSegment(network: CredenceNetwork): string {
   return network === 'test' ? 'testnet' : 'public'
 }

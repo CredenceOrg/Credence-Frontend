@@ -10,7 +10,7 @@ import {
 const sample: Transaction[] = [
   {
     id: 'tx-1',
-    type: 'bond_create',
+    type: 'bond',
     amountUsdc: 1000,
     status: 'confirmed',
     timestamp: '2026-01-15T12:00:00Z',
@@ -19,33 +19,34 @@ const sample: Transaction[] = [
   {
     id: 'tx-2',
     type: 'withdraw',
-    amountUsdc: null,
+    amountUsdc: undefined,
     status: 'failed',
     timestamp: '2026-01-16T08:30:00Z',
     hash: 'G"QUOTE,COMMA\nNEWLINE',
   },
 ]
 
+const normalThreeRowExport = [
+  'id,type,status,amountUSDC,timestamp,hash',
+  'tx-1,bond,confirmed,1000,2026-01-15T12:00:00Z,ABC123',
+  'tx-2,withdraw,failed,,2026-01-16T08:30:00Z,GQUOTE',
+  'tx-3,attestation,pending,12.5,2026-01-17T09:45:00Z,b6d396a8',
+].join('\r\n') + '\r\n'
+
 describe('transactionsToCsv', () => {
   it('renders a header row even when no transactions are provided', () => {
-    expect(transactionsToCsv([])).toBe(
-      EXPORT_COLUMNS.map((c) => c.header).join(',') + '\r\n'
-    )
+    expect(transactionsToCsv([])).toBe(EXPORT_COLUMNS.map((c) => c.header).join(',') + '\r\n')
   })
 
   it('renders each transaction in column order with the documented headers', () => {
     const csv = transactionsToCsv(sample)
 
-    expect(csv).toContain(
-      'id,type,status,amountUSDC,timestamp,hash'
-    )
-    expect(csv).toContain('tx-1,bond_create,confirmed,1000,2026-01-15T12:00:00Z,ABC123')
+    expect(csv).toContain('id,type,status,amountUSDC,timestamp,hash')
+    expect(csv).toContain('tx-1,bond,confirmed,1000,2026-01-15T12:00:00Z,ABC123')
     // RFC 4180 wraps the raw value when it contains special chars; the
     // embedded newline + comma + quote inside the hash are escaped, so the
     // value appears wrapped and the embedded quote is doubled.
-    expect(csv).toContain(
-      'tx-2,withdraw,failed,,2026-01-16T08:30:00Z,"G""QUOTE,COMMA\nNEWLINE"'
-    )
+    expect(csv).toContain('tx-2,withdraw,failed,,2026-01-16T08:30:00Z,"G""QUOTE,COMMA\nNEWLINE"')
   })
 
   it('emits empty cells for missing amountUsdc values', () => {
@@ -61,6 +62,20 @@ describe('transactionsToCsv', () => {
 
   it('terminates with a trailing CRLF', () => {
     expect(transactionsToCsv(sample).endsWith('\r\n')).toBe(true)
+  })
+
+  it('neutralises spreadsheet formula-injection prefixes', () => {
+    const formulaTx: Transaction = {
+      id: 'tx-formula',
+      type: 'bond',
+      amountUsdc: 50,
+      status: 'pending',
+      timestamp: '2026-01-17T09:00:00Z',
+      hash: '=SUM(A1:A2)',
+    }
+    const csv = transactionsToCsv([formulaTx])
+    expect(csv).toContain("'=SUM(A1:A2)")
+    expect(csv).not.toContain(',=SUM(A1:A2)')
   })
 })
 

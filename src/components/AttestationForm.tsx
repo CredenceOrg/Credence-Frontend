@@ -1,11 +1,19 @@
-import React, { useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import AddressInput from './AddressInput'
 import Select from './controls/Select'
-import { FormField } from './forms/FormField'
+import { FormField, Textarea } from './forms'
 import Button from './Button'
 import ConfirmDialog from './ConfirmDialog'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useToast } from './ToastProvider'
+import { ATTESTATION_EVENTS, type AttestationPayload } from '../events'
+import FilePicker from './FilePicker'
+import {
+  EVIDENCE_FILE_ACCEPT,
+  hashFile,
+  MAX_EVIDENCE_FILE_SIZE_BYTES,
+} from '../lib/fileHash'
 
 /**
  * Props for the AttestationForm component.
@@ -15,7 +23,7 @@ export interface AttestationFormProps {
    * Callback triggered when an attestation is successfully confirmed and submitted.
    * Receives the finalized attestation data.
    */
-  onSubmitSuccess?: (payload: { subject: string; type: string; evidence: string }) => void
+  onSubmitSuccess?: (payload: AttestationPayload) => void | Promise<unknown>
   /**
    * Disables form fields and the submit action during submission or external loading.
    */
@@ -26,19 +34,29 @@ export interface AttestationFormProps {
  * AttestationForm handles the input and validation for submitting attestations.
  * Validation Contract:
  * - A valid Stellar subject public key address is required.
- * - Evidence text is required and cannot exceed 500 characters.
+ * - Evidence text or one valid evidence file is required.
+ * - Evidence text cannot exceed 2,000 characters and evidence files are hashed locally.
  * - Confirms the submission using a customized ConfirmDialog.
  */
-export default function AttestationForm({ onSubmitSuccess, disabled = false }: AttestationFormProps) {
+export default function AttestationForm({
+  onSubmitSuccess,
+  disabled = false,
+}: AttestationFormProps) {
   const { addToast } = useToast()
   const { copy, copied } = useCopyToClipboard()
+  const reducedMotion = useReducedMotion()
   const [subject, setSubject] = useState('')
   const [isSubjectValid, setIsSubjectValid] = useState(false)
-  const [type, setType] = useState('identity')
+  const [type, setType] = useState<string>(ATTESTATION_EVENTS.TYPES.IDENTITY)
   const [evidence, setEvidence] = useState('')
+  const [evidenceFiles, setEvidenceFiles] = useState<File[]>([])
+  const [evidenceHash, setEvidenceHash] = useState<string>()
+  const [hashProgress, setHashProgress] = useState<number | null>(null)
+  const [fileError, setFileError] = useState<string>()
   const [errors, setErrors] = useState<{ subject?: string; evidence?: string }>({})
   const [confirmOpen, setConfirmOpen] = useState(false)
   const submitButtonRef = useRef<HTMLButtonElement>(null)
+  const hashControllerRef = useRef<AbortController | null>(null)
 
   const handleSubjectChange = (val: string) => {
     setSubject(val)
@@ -55,6 +73,33 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
     }
   }
 
+  const handleFilesChange = (files: File[]) => {
+    hashControllerRef.current?.abort()
+    setEvidenceFiles(files)
+    setEvidenceHash(undefined)
+    setHashProgress(null)
+    setFileError(undefined)
+    setErrors((previous) => ({ ...previous, evidence: undefined }))
+
+    const file = files[0]
+    if (!file) return
+
+    const controller = new AbortController()
+    hashControllerRef.current = controller
+    setHashProgress(0)
+    void hashFile(file, {
+      signal: controller.signal,
+      onProgress: setHashProgress,
+    }).then((hash) => {
+      setEvidenceHash(hash)
+      setHashProgress(100)
+    }).catch((error: unknown) => {
+      if (error instanceof Error && error.name === 'AbortError') return
+      setFileError(error instanceof Error ? error.message : 'Unable to hash evidence file.')
+      setHashProgress(null)
+    })
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -66,10 +111,12 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
       newErrors.subject = 'Invalid address. Stellar public keys are 56 characters starting with G.'
     }
 
-    if (!evidence.trim()) {
-      newErrors.evidence = 'Evidence is required.'
-    } else if (new TextEncoder().encode(evidence).length > 28) {
-      newErrors.evidence = 'Evidence cannot exceed 28 bytes.'
+    if (!evidence.trim() && evidenceFiles.length === 0) {
+      newErrors.evidence = 'Evidence is required: enter text or attach a file.'
+    } else if (evidence.length > 2000) {
+      newErrors.evidence = 'Evidence cannot exceed 2,000 characters.'
+    } else if (evidenceFiles.length > 0 && !evidenceHash) {
+      newErrors.evidence = 'Wait for the evidence file hash before submitting.'
     }
 
     setErrors(newErrors)
@@ -81,19 +128,58 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
     setConfirmOpen(true)
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setConfirmOpen(false)
     addToast('success', 'Attestation submitted successfully.')
-    onSubmitSuccess?.({ subject, type, evidence })
+    const file = evidenceFiles[0]
+    onSubmitSuccess?.({
+      subject,
+      type,
+      evidence: evidence.trim() || `Attached evidence file: ${file?.name ?? ''}`,
+      ...(file && evidenceHash
+        ? {
+            evidenceHash,
+            evidenceFile: {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              lastModified: file.lastModified,
+            },
+          }
+        : {}),
+    })
+    const payload: AttestationPayload = { subject, type, evidence }
     setSubject('')
     setEvidence('')
-    setType('identity')
+    hashControllerRef.current?.abort()
+    hashControllerRef.current = null
+    setEvidenceFiles([])
+    setEvidenceHash(undefined)
+    setHashProgress(null)
+    setFileError(undefined)
+    setType(ATTESTATION_EVENTS.TYPES.IDENTITY)
     setErrors({})
+
+    const result = onSubmitSuccess?.(payload)
+    if (result && typeof (result as Promise<unknown>).then === 'function') {
+      try {
+        await result
+        addToast('success', 'Attestation submitted successfully.')
+      } catch {
+        // Error feedback and rollback are handled by the caller.
+      }
+      return
+    }
+    addToast('success', 'Attestation submitted successfully.')
   }
 
   const handleCancel = () => {
     setConfirmOpen(false)
   }
+
+  useEffect(() => {
+    return () => hashControllerRef.current?.abort()
+  }, [])
 
   return (
     <>
@@ -125,9 +211,9 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
             value={type}
             onChange={setType}
             options={[
-              { value: 'identity', label: 'Identity Verification' },
-              { value: 'peer-vouch', label: 'Peer Vouch' },
-              { value: 'credential', label: 'Credential / Certification' },
+              { value: ATTESTATION_EVENTS.TYPES.IDENTITY, label: 'Identity Verification' },
+              { value: ATTESTATION_EVENTS.TYPES.PEER_VOUCH, label: 'Peer Vouch' },
+              { value: ATTESTATION_EVENTS.TYPES.CREDENTIAL, label: 'Credential / Certification' },
             ]}
           />
         </FormField>
@@ -136,29 +222,15 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
           <FormField
             id="evidence-input"
             label="Evidence"
-            hint="Add supporting proof or description (max 28 bytes)"
+            hint="Add supporting proof or description (max 2,000 chars), or attach a file"
             error={errors.evidence}
           >
-            <textarea
-              id="evidence-input"
+            <Textarea
               value={evidence}
               onChange={handleEvidenceChange}
               disabled={disabled}
               placeholder="Provide proof or verification details..."
               rows={4}
-              style={{
-                width: '100%',
-                padding: 'var(--credence-space-3)',
-                borderRadius: 'var(--credence-radius-lg)',
-                border: '1px solid var(--credence-border-default)',
-                background: 'var(--credence-surface-card)',
-                color: 'var(--credence-text-primary)',
-                minHeight: '100px',
-                fontFamily: 'var(--credence-font-family-base)',
-                fontSize: 'var(--credence-font-size-base)',
-                resize: 'vertical',
-                boxSizing: 'border-box',
-              }}
             />
           </FormField>
           <div
@@ -170,17 +242,32 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
             }}
             aria-live="polite"
           >
-            {new TextEncoder().encode(evidence).length} / 28 bytes
+            {evidence.length} / 2,000 chars
           </div>
         </div>
 
-        <Button
-          ref={submitButtonRef}
-          type="submit"
-          variant="primary"
+        <FilePicker
+          id="attestation-evidence-file"
+          label="Evidence file"
+          hint="PDF, PNG, JPEG, or plain text. Maximum 10 MB. The file stays in your browser."
+          files={evidenceFiles}
+          onChange={handleFilesChange}
+          onValidationError={setFileError}
+          accept={EVIDENCE_FILE_ACCEPT}
+          maxSizeBytes={MAX_EVIDENCE_FILE_SIZE_BYTES}
           disabled={disabled}
-          fullWidth
-        >
+          error={fileError}
+        />
+        {hashProgress !== null && (
+          <div>
+            <p role="status" aria-live="polite">
+              {hashProgress < 100 ? `Hashing evidence file: ${hashProgress}%` : 'Evidence file SHA-256 ready.'}
+            </p>
+            {evidenceHash && <code aria-label="Evidence SHA-256">{evidenceHash}</code>}
+          </div>
+        )}
+
+        <Button ref={submitButtonRef} type="submit" variant="primary" disabled={disabled} fullWidth>
           Submit Attestation
         </Button>
       </form>
@@ -225,8 +312,16 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
               >
                 Subject
               </strong>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--credence-space-2)' }}>
-                <code style={{ fontSize: 'var(--credence-font-size-sm)', wordBreak: 'break-all', flex: 1 }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--credence-space-2)' }}
+              >
+                <code
+                  style={{
+                    fontSize: 'var(--credence-font-size-sm)',
+                    wordBreak: 'break-all',
+                    flex: 1,
+                  }}
+                >
                   {subject}
                 </code>
                 <button
@@ -249,15 +344,29 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
                     color: 'var(--credence-text-secondary)',
                     cursor: 'pointer',
                     flexShrink: 0,
-                    transition: 'all 0.2s ease',
+                    transition: reducedMotion ? 'none' : 'all 0.2s ease',
                   }}
                 >
                   {copied ? (
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                     </svg>
@@ -278,9 +387,9 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
                 Type
               </strong>
               <span style={{ fontSize: 'var(--credence-font-size-sm)' }}>
-                {type === 'identity'
+                {type === ATTESTATION_EVENTS.TYPES.IDENTITY
                   ? 'Identity Verification'
-                  : type === 'peer-vouch'
+                  : type === ATTESTATION_EVENTS.TYPES.PEER_VOUCH
                     ? 'Peer Vouch'
                     : 'Credential / Certification'}
               </span>
@@ -305,8 +414,14 @@ export default function AttestationForm({ onSubmitSuccess, disabled = false }: A
                   color: 'var(--credence-text-primary)',
                 }}
               >
-                {evidence}
+                {evidence || (evidenceFiles[0] ? `Attached evidence file: ${evidenceFiles[0].name}` : '')}
               </p>
+              {evidenceFiles[0] && evidenceHash && (
+                <>
+                  <p>{evidenceFiles[0].name} · {evidenceFiles[0].size} bytes · {evidenceFiles[0].type || 'unknown type'}</p>
+                  <code>{evidenceHash}</code>
+                </>
+              )}
             </div>
           </div>
         </ConfirmDialog>

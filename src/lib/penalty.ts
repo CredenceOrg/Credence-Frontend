@@ -9,19 +9,10 @@
  */
 
 import { formatUsdc } from './format'
+import type { Bond, BondStatus } from './bondPenalty'
 
 /** Lifecycle state of a bond, which determines its early-withdrawal penalty rate. */
-export type BondStatus = 'active' | 'locked' | 'grace-period'
-
-/** Minimal bond shape used by the mock data layer and penalty calculations. */
-export interface MockBond {
-  /** Stable identifier for the bond within the mock dataset. */
-  id: number
-  /** Principal amount in USDC. */
-  amountUsdc: number
-  /** Current lifecycle status driving the penalty rate. */
-  status: BondStatus
-}
+export type { BondStatus }
 
 /**
  * Returns the early-withdrawal penalty rate (as a decimal fraction) for a bond status.
@@ -58,9 +49,7 @@ export function getPenaltyRate(status: BondStatus): number {
  * // → { bondAmount: '1,000 USDC', penaltyPercent: 20, penaltyAmount: '200 USDC',
  * //     resultingBalance: '800 USDC', penaltyUsdc: 200 }
  */
-export function computeWithdrawBreakdown(
-  bond: MockBond
-): {
+export function computeWithdrawBreakdown(bond: Bond): {
   bondAmount: string
   penaltyAmount: string
   penaltyPercent: number

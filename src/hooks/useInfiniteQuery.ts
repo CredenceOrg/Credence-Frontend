@@ -8,7 +8,7 @@ type InfiniteQueryOptions<TItem, TCursor> = {
   }>
 }
 
-type InfiniteQueryState<TItem, TCursor> = {
+type InfiniteQueryState<TItem> = {
   data: TItem[]
   status: 'idle' | 'loading' | 'success' | 'error'
   error: Error | null
@@ -20,10 +20,10 @@ type InfiniteQueryState<TItem, TCursor> = {
 export function useInfiniteQuery<TItem, TCursor>({
   queryKey,
   fetchPage,
-}: InfiniteQueryOptions<TItem, TCursor>): InfiniteQueryState<TItem, TCursor> {
+}: InfiniteQueryOptions<TItem, TCursor>): InfiniteQueryState<TItem> {
   const [items, setItems] = useState<TItem[]>([])
   const [cursor, setCursor] = useState<TCursor | null>(null)
-  const [status, setStatus] = useState<InfiniteQueryState<TItem, TCursor>['status']>('idle')
+  const [status, setStatus] = useState<InfiniteQueryState<TItem>['status']>('idle')
   const [error, setError] = useState<Error | null>(null)
   const [hasNextPage, setHasNextPage] = useState(true)
   const [isFetchingNextPage, setIsFetchingNextPage] = useState(false)

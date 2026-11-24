@@ -1,16 +1,69 @@
-import { beforeAll, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { SettingsProvider } from './context/SettingsContext'
-import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import Layout from './components/Layout'
+import RequireWallet from './components/RequireWallet'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import Bond from './pages/Bond'
 import TrustScore from './pages/TrustScore'
+import TrustSummary from './pages/TrustSummary'
 import Settings from './pages/Settings'
+import SignIn from './pages/SignIn'
 import NotFound from './pages/NotFound'
+import type { WalletContextValue } from './context/WalletContext'
+
+let mockWalletState: WalletContextValue
+
+vi.mock('./context/WalletContext', () => ({
+  useWallet: () => mockWalletState,
+  useWalletContext: () => mockWalletState,
+  WalletProvider: ({ children }: { children: ReactNode }) => children,
+}))
+
+function createWalletState(overrides: Partial<WalletContextValue> = {}): WalletContextValue {
+  return {
+    address: '',
+    isConnected: false,
+    connected: false,
+    isConnecting: false,
+    isRestoring: false,
+    error: null,
+    connect: vi.fn().mockResolvedValue(undefined),
+    disconnect: vi.fn(),
+    network: null,
+    lastReauthTime: null,
+    reauth: vi.fn().mockResolvedValue(false),
+    requestReauth: vi.fn().mockResolvedValue(false),
+    isReauthRequired: vi.fn().mockReturnValue(false),
+    ...overrides,
+  }
+}
+
+function LocationDisplay() {
+  const location = useLocation()
+  return (
+    <output data-testid="location-display">
+      {`${location.pathname}${location.search}${location.hash}`}
+    </output>
+  )
+}
+
+const { mockRefetch } = vi.hoisted(() => ({ mockRefetch: vi.fn() }))
+
+vi.mock('./hooks/useTrustScore', () => ({
+  useTrustScore: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+    refetch: mockRefetch,
+  }),
+}))
+
+const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
 
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -28,26 +81,36 @@ beforeAll(() => {
   })
 })
 
+beforeEach(() => {
+  mockWalletState = createWalletState()
+})
+
 function renderRoutes(initialEntries: string[]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <SettingsProvider>
         <ToastProvider>
-          <WalletProvider>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Home />} />
+          <LocationDisplay />
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Home />} />
+              <Route path="trust" element={<TrustScore />} />
+              <Route path="trust/summary" element={<TrustSummary />} />
+              <Route path="signin" element={<SignIn />} />
+              <Route element={<RequireWallet />}>
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="bond" element={<Bond />} />
                 <Route path="trust" element={<TrustScore />} />
+                <Route path="trust/summary" element={<TrustSummary />} />
+                <Route path="trust/:address" element={<TrustScore />} />
                 <Route path="settings" element={<Settings />} />
-                <Route path="*" element={<NotFound />} />
               </Route>
-            </Routes>
-          </WalletProvider>
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
         </ToastProvider>
       </SettingsProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
 }
 
@@ -59,10 +122,8 @@ function getDesktopNavLink(name: RegExp) {
 describe('App routing integration', () => {
   it.each([
     ['/', 'Credence — Economic Trust'],
-    ['/bond', 'Bond USDC'],
     ['/trust', 'Trust Score'],
-    ['/settings', 'Settings'],
-  ])('renders the page heading for %s', async (path, expectedHeading) => {
+  ])('renders public route %s when disconnected', async (path, expectedHeading) => {
     renderRoutes([path])
 
     expect(await screen.findByRole('heading', { name: expectedHeading })).toBeInTheDocument()
@@ -76,6 +137,19 @@ describe('App routing integration', () => {
     expect(screen.queryByRole('heading', { name: /page not found/i })).not.toBeInTheDocument()
   })
 
+  it('loads a valid trust profile route and keeps the summary route distinct', async () => {
+    mockRefetch.mockClear()
+    const { unmount } = renderRoutes([`/trust/${VALID_ADDRESS}`])
+
+    expect(await screen.findByRole('heading', { name: 'Trust Score' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue(VALID_ADDRESS)
+    expect(mockRefetch).toHaveBeenCalledOnce()
+
+    unmount()
+    renderRoutes(['/trust/summary'])
+    expect(await screen.findByRole('heading', { name: 'No address supplied' })).toBeInTheDocument()
+  })
+
   it('renders NotFound for a deep unknown route', async () => {
     renderRoutes(['/some/deep/unknown'])
 
@@ -83,7 +157,47 @@ describe('App routing integration', () => {
     expect(screen.getByText('404')).toBeInTheDocument()
   })
 
-  it('navigates via header links and updates active-link state', async () => {
+  it('redirects disconnected visits on private routes to /signin?next=... without flashing private content', async () => {
+    renderRoutes(['/bond?tab=active'])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location-display')).toHaveTextContent(
+        '/signin?next=%2Fbond%3Ftab%3Dactive'
+      )
+    })
+    expect(screen.queryByRole('heading', { name: 'Bond USDC' })).not.toBeInTheDocument()
+  })
+
+  it('shows a loading state while wallet session is restoring with no flash of private content', () => {
+    mockWalletState = createWalletState({ isRestoring: true })
+    renderRoutes(['/settings'])
+
+    expect(screen.getByRole('status')).toHaveTextContent(/restoring wallet session/i)
+    expect(screen.queryByRole('heading', { name: 'Settings' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('location-display')).toHaveTextContent('/settings')
+  })
+
+  it.each([
+    ['/bond', 'Bond USDC'],
+    ['/settings', 'Settings'],
+  ])('renders private route %s when connected', async (path, expectedHeading) => {
+    mockWalletState = createWalletState({
+      address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+      isConnected: true,
+      connected: true,
+    })
+    renderRoutes([path])
+
+    expect(await screen.findByRole('heading', { name: expectedHeading })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /page not found/i })).not.toBeInTheDocument()
+  })
+
+  it('navigates via header links and updates active-link state when connected', async () => {
+    mockWalletState = createWalletState({
+      address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+      isConnected: true,
+      connected: true,
+    })
     renderRoutes(['/'])
 
     const bondLink = getDesktopNavLink(/bond/i)
@@ -102,4 +216,64 @@ describe('App routing integration', () => {
     expect(await screen.findByRole('heading', { name: 'Settings' })).toBeInTheDocument()
     expect(settingsLink).toHaveAttribute('aria-current', 'page')
   })
+
+  it('redirects back to the original private route after connecting on /signin', async () => {
+    const { rerender } = renderRoutes(['/bond?tab=active'])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location-display')).toHaveTextContent(
+        '/signin?next=%2Fbond%3Ftab%3Dactive'
+      )
+    })
+
+    mockWalletState = createWalletState({
+      address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+      isConnected: true,
+      connected: true,
+    })
+
+    rerender(
+      <MemoryRouter initialEntries={['/signin?next=%2Fbond%3Ftab%3Dactive']}>
+        <SettingsProvider>
+          <ToastProvider>
+            <LocationDisplay />
+            <Routes>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Home />} />
+                <Route path="trust" element={<TrustScore />} />
+                <Route path="trust/summary" element={<TrustSummary />} />
+                <Route path="signin" element={<SignIn />} />
+                <Route element={<RequireWallet />}>
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="bond" element={<Bond />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </ToastProvider>
+        </SettingsProvider>
+      </MemoryRouter>
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Bond USDC' })).toBeInTheDocument()
+    expect(screen.getByTestId('location-display')).toHaveTextContent('/bond?tab=active')
+  })
+
+  it.each(['https://evil.com', '//evil.com'])(
+    'ignores malicious next=%s and redirects to /dashboard after connect',
+    async (maliciousNext) => {
+      mockWalletState = createWalletState({
+        address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+        isConnected: true,
+        connected: true,
+      })
+
+      renderRoutes([`/signin?next=${encodeURIComponent(maliciousNext)}`])
+
+      await waitFor(() => {
+        expect(screen.getByTestId('location-display')).toHaveTextContent('/dashboard')
+      })
+    }
+  )
 })

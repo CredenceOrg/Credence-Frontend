@@ -33,7 +33,9 @@ fresh.
 - **One store, many keys** — `src/widgetCache/WidgetCache.tsx` exposes a
   module-level `WidgetCacheStore`. Keys are arbitrary strings — we use a
   colon-namespaced convention (`bond:active-bonds`, `trust:recent-activity`)
-  to avoid collisions across pages.
+  to avoid collisions across pages. `useWidgetCache` automatically scopes keys
+  by the active `network` (`SettingsContext`) and wallet `address`
+  (`WalletContext`), and aborts in-flight requests when either changes.
 - **Per-key isolation** — `useWidgetCache.refresh('a')` only invalidates
   widget `'a'`. Widget `'b'` keeps its data, spinner state, and `lastUpdated`
   timestamp untouched.
@@ -53,7 +55,10 @@ call `useWidgetCache` and render a `<WidgetRefreshButton>`.
 import { useWidgetCache } from '../widgetCache'
 import { WidgetRefreshButton } from '../components/widget'
 
-interface BondRow { id: number; amountUsdc: number }
+interface BondRow {
+  id: number
+  amountUsdc: number
+}
 
 async function fetchActiveBonds(): Promise<BondRow[]> {
   const res = await fetch('/api/bonds')
@@ -81,7 +86,11 @@ export function ActiveBondsWidget() {
       ) : widget.error ? (
         <ErrorState type="network" action={{ label: 'Retry', onClick: widget.refresh }} />
       ) : (
-        <ul>{widget.data?.map((b) => <li key={b.id}>{b.amountUsdc} USDC</li>)}</ul>
+        <ul>
+          {widget.data?.map((b) => (
+            <li key={b.id}>{b.amountUsdc} USDC</li>
+          ))}
+        </ul>
       )}
     </article>
   )
@@ -97,33 +106,33 @@ Mounts the singleton store into the React tree. Wrap as high as needed
 
 ### `useWidgetCache<T>(key, fetcher, options?)`
 
-| Argument                              | Type                          | Purpose                                                                                 |
-|---------------------------------------|-------------------------------|-----------------------------------------------------------------------------------------|
-| `key`                                 | `string`                      | Stable widget identifier. Must be unique app-wide. Convention: `page:widget-name`.      |
-| `fetcher`                             | `() => Promise<T>`            | Async function that produces the widget's data. Called on mount and on every refresh.   |
-| `options.enabled`                      | `boolean \| undefined`        | `false` skips the initial automatic fetch. Defaults to `true`.                          |
+| Argument          | Type                   | Purpose                                                                               |
+| ----------------- | ---------------------- | ------------------------------------------------------------------------------------- |
+| `key`             | `string`               | Stable widget identifier. Must be unique app-wide. Convention: `page:widget-name`.    |
+| `fetcher`         | `() => Promise<T>`     | Async function that produces the widget's data. Called on mount and on every refresh. |
+| `options.enabled` | `boolean \| undefined` | `false` skips the initial automatic fetch. Defaults to `true`.                        |
 
 Returns:
 
-| Property      | Type             | Notes                                                                                       |
-|---------------|------------------|---------------------------------------------------------------------------------------------|
-| `data`        | `T \| undefined` | Last successfully resolved payload. Kept while a refresh is in flight.                      |
-| `isLoading`   | `boolean`        | `true` while a fetch for this key is in flight (including the very first one).             |
-| `isSuccess`   | `boolean`        | Mirror of `status === 'success'`.                                                           |
-| `isError`     | `boolean`        | Mirror of `status === 'error'`.                                                             |
+| Property      | Type             | Notes                                                                                              |
+| ------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
+| `data`        | `T \| undefined` | Last successfully resolved payload. Kept while a refresh is in flight.                             |
+| `isLoading`   | `boolean`        | `true` while a fetch for this key is in flight (including the very first one).                     |
+| `isSuccess`   | `boolean`        | Mirror of `status === 'success'`.                                                                  |
+| `isError`     | `boolean`        | Mirror of `status === 'error'`.                                                                    |
 | `error`       | `Error \| und.`  | Surfaced fetcher error. Previous data is preserved so the UI does not blank on transient failures. |
-| `lastUpdated` | `number \| und.` | `Date.now()` timestamp of the most recent successful fetch. Drives the "Last updated X" tooltip. |
-| `refresh`     | `() => void`     | Force a re-fetch for this widget only. Supersedes any in-flight refresh for the same key.   |
+| `lastUpdated` | `number \| und.` | `Date.now()` timestamp of the most recent successful fetch. Drives the "Last updated X" tooltip.   |
+| `refresh`     | `() => void`     | Force a re-fetch for this widget only. Supersedes any in-flight refresh for the same key.          |
 
 ### `<WidgetRefreshButton />`
 
-| Prop          | Type                | Required | Notes                                                                                                |
-|---------------|---------------------|----------|------------------------------------------------------------------------------------------------------|
-| `onRefresh`   | `() => void`        | yes      | Click handler — typically `widget.refresh`.                                                            |
-| `isLoading`   | `boolean`           | no       | When `true`, the button renders a spinner, sets `aria-busy="true"`, and disables the click.          |
-| `disabled`    | `boolean`           | no       | Externally disable the button without rendering the spinner. Combined with `isLoading` if both true.  |
-| `label`       | `string`            | no       | Read aloud by screen readers ("Refresh active bonds") and shown in the tooltip. Defaults to `'widget'`. |
-| `lastUpdated` | `number`            | no       | Appends a "Last updated Xs ago" cue to the tooltip and accessible name.                              |
+| Prop          | Type         | Required | Notes                                                                                                   |
+| ------------- | ------------ | -------- | ------------------------------------------------------------------------------------------------------- |
+| `onRefresh`   | `() => void` | yes      | Click handler — typically `widget.refresh`.                                                             |
+| `isLoading`   | `boolean`    | no       | When `true`, the button renders a spinner, sets `aria-busy="true"`, and disables the click.             |
+| `disabled`    | `boolean`    | no       | Externally disable the button without rendering the spinner. Combined with `isLoading` if both true.    |
+| `label`       | `string`     | no       | Read aloud by screen readers ("Refresh active bonds") and shown in the tooltip. Defaults to `'widget'`. |
+| `lastUpdated` | `number`     | no       | Appends a "Last updated Xs ago" cue to the tooltip and accessible name.                                 |
 
 All other `ButtonHTMLAttributes` (except `onClick`, which we own) are spread
 through to the underlying `<button>`, so consumers can pass things like
@@ -133,7 +142,7 @@ through to the underlying `<button>`, so consumers can pass things like
 
 - The button's accessible name is composed: `"Refresh <label>"` while idle,
   `"Refreshing <label>"` while busy, and `"Refresh <label>. Last updated Xs
-  ago"` once at least one fetch has succeeded. Screen readers and keyboard
+ago"` once at least one fetch has succeeded. Screen readers and keyboard
   users get the same context without hidden helper text.
 - `aria-busy` flips to `"true"` while loading so users know the action is in
   progress and not silently failing.
@@ -158,6 +167,22 @@ radii):
 Adding a new widget should feel like the existing Bond / TrustScore widgets —
 just import `useWidgetCache` + `WidgetRefreshButton` and use `data-testid` if
 you need a hook for end-to-end tests.
+
+## API query cache environment overrides
+
+`useApiQuery` uses `src/config/queryCache.ts` for its in-memory cache lifecycle:
+
+- `VITE_QUERY_CACHE_DEFAULT_TTL_MS` controls how long stale data remains
+  usable and is revalidated in the background. Default: `60000` ms.
+- `VITE_QUERY_CACHE_STALE_TIME_MS` controls when an entry stops being fresh.
+  Default: `30000` ms.
+- `VITE_QUERY_CACHE_GC_TIME_MS` controls garbage collection eviction.
+  Default: `300000` ms.
+
+Each `useApiQuery` call may override these values with `staleTimeMs`, `ttlMs`,
+and `gcTimeMs`. Fresh entries are returned without a network request. Entries
+past `staleTimeMs` but within `ttlMs` are returned immediately and refreshed in
+the background. Entries past `ttlMs` are evicted and fetched normally.
 
 ## Out of scope / future work
 

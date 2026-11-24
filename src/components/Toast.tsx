@@ -1,7 +1,16 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
+import type { ToastSeverity, ToastData } from '../events'
+import { explorerUrl } from '../lib/explorerUrl'
+import { truncateAddress } from '../lib/stellar'
 import './Toast.css'
 
-export type ToastSeverity = 'info' | 'success' | 'warning' | 'danger'
+export type { ToastSeverity, ToastData }
+export interface ToastOptions {
+  txHash?: string
+  network?: string
+  /** Auto-dismiss delay in milliseconds. Zero keeps the toast until dismissed. */
+  timeoutMs?: number
+}
 
 const ICONS: Record<ToastSeverity, React.ReactNode> = {
   info: (
@@ -68,16 +77,6 @@ const ICONS: Record<ToastSeverity, React.ReactNode> = {
   ),
 }
 
-export interface ToastData {
-  id: string
-  severity: ToastSeverity
-  message: string
-  /** Resolved auto-dismiss duration. 0 means manual dismiss only. */
-  durationMs?: number
-  txHash?: string
-  network?: string
-}
-
 interface ToastProps {
   toast: ToastData
   onDismiss: (id: string) => void
@@ -93,6 +92,10 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
 
   const isHoveredRef = useRef(false)
   const isFocusedRef = useRef(false)
+  // Tracks whether the toast has already been dismissed. Once true, all
+  // timer and progress transitions become no-ops so a concurrent hover/focus
+  // event cannot resurect a dead timer or double-dismiss.
+  const isDismissedRef = useRef(false)
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -117,13 +120,19 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
 
   const startTimer = useCallback(() => {
     // Bypassed for danger severity or autoDismiss='off'
+    if (isDismissedRef.current) return
     if (durationMs <= 0 || remainingTimeRef.current <= 0) return
     clearTimer()
     lastResumeTimeRef.current = Date.now()
     timerRef.current = window.setTimeout(() => {
+      if (isDismissedRef.current) return
+      isDismissedRef.current = true
+      clearTimer()
+      setProgress(0)
       onDismiss(toast.id)
     }, remainingTimeRef.current)
     progressTimerRef.current = window.setInterval(() => {
+      if (isDismissedRef.current) return
       if (lastResumeTimeRef.current === null) return
 
       const elapsed = Date.now() - lastResumeTimeRef.current
@@ -141,6 +150,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
   }, [durationMs, onDismiss, toast.id, clearTimer, updateProgress])
 
   const pauseTimer = useCallback(() => {
+    if (isDismissedRef.current) return
     if (durationMs <= 0) return
     clearTimer()
     if (lastResumeTimeRef.current !== null) {
@@ -152,6 +162,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
   }, [durationMs, clearTimer, updateProgress])
 
   const updateTimerState = useCallback(() => {
+    if (isDismissedRef.current) return
     if (isHoveredRef.current || isFocusedRef.current) {
       pauseTimer()
     } else {
@@ -166,26 +177,39 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
   }, [startTimer, clearTimer])
 
   const handleMouseEnter = () => {
+    // Deterministic failure boundary: a hover that arrives after the toast has
+    // already been dismissed must not restart the countdown or re-emit onDismiss.
+    if (isDismissedRef.current) return
     isHoveredRef.current = true
     updateTimerState()
   }
 
   const handleMouseLeave = () => {
+    if (isDismissedRef.current) return
     isHoveredRef.current = false
     updateTimerState()
   }
 
   const handleFocus = () => {
+    if (isDismissedRef.current) return
     isFocusedRef.current = true
     updateTimerState()
   }
 
   const handleBlur = (e: React.FocusEvent) => {
+    if (isDismissedRef.current) return
     // Only resume if focus has genuinely left the toast's bounding box
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       isFocusedRef.current = false
       updateTimerState()
     }
+  }
+
+  const handleDismiss = () => {
+    if (isDismissedRef.current) return
+    isDismissedRef.current = true
+    clearTimer()
+    onDismiss(toast.id)
   }
 
   return (
@@ -223,12 +247,39 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       </div>
       <div className="toast__content">
         <span className="toast__message">{toast.message}</span>
-        {/* toast.txHash functionality removed temporarily to fix build errors */}
+        {toast.txHash && (
+          <div className="toast__action">
+            <span className="toast__tw-hash">{truncateAddress(toast.txHash)}</span>
+            <a
+              href={explorerUrl(toast.network ?? 'public', toast.txHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="toast__link"
+              aria-label="View transaction on Stellar Explorer"
+            >
+              View on Explorer
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+                className="toast__link-arrow"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </a>
+          </div>
+        )}
       </div>
       <button
         type="button"
         className="toast__dismiss"
-        onClick={() => onDismiss(toast.id)}
+        onClick={handleDismiss}
         aria-label={`Dismiss ${toast.severity} notification`}
       >
         <svg

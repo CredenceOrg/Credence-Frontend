@@ -16,17 +16,20 @@
  * @returns `true` if the URL should be treated as external / leaving the app.
  */
 export function isExternalUrl(href: string | undefined): boolean {
-  if (!href || href === '#') return false;
-  if (href.startsWith('/') || href.startsWith('.')) return false;
+  if (!href || href === '#') return false
+  if (href.startsWith('/') || href.startsWith('.')) return false
 
   // Allow mailto: links — they open the system mail client, not the browser.
-  if (href.startsWith('mailto:')) return true;
+  if (href.startsWith('mailto:')) return true
 
   try {
-    const url = new URL(href, window.location.href);
-    return url.origin !== window.location.origin && (url.protocol === 'http:' || url.protocol === 'https:');
+    const url = new URL(href, window.location.href)
+    return (
+      url.origin !== window.location.origin &&
+      (url.protocol === 'http:' || url.protocol === 'https:')
+    )
   } catch {
     // If URL parsing fails, err on the side of it not being a standard external URL
-    return false;
+    return false
   }
 }

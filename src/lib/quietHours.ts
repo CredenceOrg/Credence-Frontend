@@ -73,11 +73,7 @@ export function parseHHmm(value: unknown): ParsedTime {
  * - Invalid inputs short-circuit to `false` rather than throwing so the
  *   toast provider stays robust against malformed persisted state.
  */
-export function isWithinQuietHours(
-  start: string,
-  end: string,
-  referenceMinutes: number,
-): boolean {
+export function isWithinQuietHours(start: string, end: string, referenceMinutes: number): boolean {
   if (!Number.isFinite(referenceMinutes)) return false
   const parsedStart = parseHHmm(start)
   const parsedEnd = parseHHmm(end)
@@ -86,17 +82,13 @@ export function isWithinQuietHours(
 
   if (parsedStart.totalMinutes < parsedEnd.totalMinutes) {
     return (
-      referenceMinutes >= parsedStart.totalMinutes &&
-      referenceMinutes <= parsedEnd.totalMinutes
+      referenceMinutes >= parsedStart.totalMinutes && referenceMinutes <= parsedEnd.totalMinutes
     )
   }
 
   // Cross-midnight: quiet hours covers from `start` through end-of-day, AND
   // from start-of-day through `end`.
-  return (
-    referenceMinutes >= parsedStart.totalMinutes ||
-    referenceMinutes <= parsedEnd.totalMinutes
-  )
+  return referenceMinutes >= parsedStart.totalMinutes || referenceMinutes <= parsedEnd.totalMinutes
 }
 
 /**
@@ -117,8 +109,39 @@ export function nowMinutesSinceMidnight(reference: Date = new Date()): number {
  */
 export function isQuietHoursActive(
   window: QuietHoursWindow,
-  reference: Date = new Date(),
+  reference: Date = new Date()
 ): boolean {
   if (!window.enabled) return false
   return isWithinQuietHours(window.start, window.end, nowMinutesSinceMidnight(reference))
+}
+
+/**
+ * Return the first moment strictly after `reference` at which the quiet hours
+ * window is no longer active.
+ *
+ * Returns `reference` unchanged when the window is disabled, malformed, or
+ * simply not active right now — callers can therefore always pass the result
+ * straight to a timer. When the window crosses midnight and `reference` is
+ * after the configured end (e.g. 23:00 for a 22:00–07:00 window) the next end
+ * is on the following day.
+ */
+export function deferUntilQuietHoursEnd(
+  window: QuietHoursWindow,
+  reference: Date = new Date()
+): Date {
+  if (!isQuietHoursActive(window, reference)) return reference
+
+  const parsedEnd = parseHHmm(window.end)
+  if (!parsedEnd.ok) return reference
+
+  const end = new Date(reference.getTime())
+  end.setHours(parsedEnd.hours, parsedEnd.minutes, 0, 0)
+
+  // `end` is inclusive, so landing exactly on it still counts as quiet. Move
+  // to the next day's end in that case rather than sending inside the window.
+  if (end.getTime() <= reference.getTime()) {
+    end.setDate(end.getDate() + 1)
+  }
+
+  return end
 }

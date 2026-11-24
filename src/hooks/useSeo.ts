@@ -79,8 +79,15 @@ export function useSeo({
       if (!restoreOnUnmount) return
       if (wasCreated) {
         metaEl?.parentNode?.removeChild(metaEl)
-      } else if (previousContent !== null && metaEl) {
-        metaEl.setAttribute('content', previousContent)
+      } else if (metaEl) {
+        // Faithfully restore the prior state: if the tag had no `content`
+        // attribute before this hook ran, remove the attribute rather than
+        // leaving the route's value behind.
+        if (previousContent === null) {
+          metaEl.removeAttribute('content')
+        } else {
+          metaEl.setAttribute('content', previousContent)
+        }
       }
     }
   }, [description, restoreOnUnmount])

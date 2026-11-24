@@ -320,9 +320,7 @@
   text-align: right;
 }
 
-/**
- * Form field wrapper styles (if not already defined)
- */
+/** Form field wrapper styles. */
 .form-field {
   display: flex;
   flex-direction: column;
@@ -339,15 +337,6 @@
   font-size: var(--credence-font-size-sm);
   color: var(--credence-text-secondary);
   margin-top: -var(--credence-space-1);
-}
-
-.form-error {
-  font-size: var(--credence-font-size-sm);
-  color: var(--credence-color-danger-text);
-  margin-top: -var(--credence-space-1);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--credence-space-1);
 }
 
 /**
@@ -411,4 +400,129 @@
     width: 24px;
     height: 24px;
   }
+}
+
+/**
+ * Address book picker button & combobox popover
+ */
+.address-input-book-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-md);
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    border-color var(--credence-motion-duration-base) var(--credence-motion-easing-standard),
+    color var(--credence-motion-duration-base) var(--credence-motion-easing-standard);
+  flex-shrink: 0;
+}
+
+.address-input-book-button:hover:not(:disabled) {
+  background: var(--credence-color-slate-50);
+  border-color: var(--credence-text-secondary);
+  color: var(--credence-text-primary);
+}
+
+.address-input-book-button:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.address-input-book-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme='dark'] .address-input-book-button {
+  border-color: var(--credence-color-slate-700);
+}
+
+[data-theme='dark'] .address-input-book-button:hover:not(:disabled) {
+  background: var(--credence-color-slate-700);
+  border-color: var(--credence-color-slate-600);
+}
+
+.address-input-book-popover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--credence-space-2);
+  padding: var(--credence-space-2);
+  background: var(--credence-surface-card);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.address-input-book-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--credence-space-2);
+  background: transparent;
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-md);
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-color-danger-text);
+}
+
+.address-input-book-filter:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.address-input-book-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.address-input-book-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--credence-space-2);
+  padding: var(--credence-space-2);
+  border-radius: var(--credence-radius-md);
+  cursor: pointer;
+}
+
+.address-input-book-option--active,
+.address-input-book-option:hover {
+  background: var(--credence-color-slate-50);
+}
+
+[data-theme='dark'] .address-input-book-option--active,
+[data-theme='dark'] .address-input-book-option:hover {
+  background: var(--credence-color-slate-800);
+}
+
+.address-input-book-option-label {
+  font-weight: var(--credence-font-weight-semibold);
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-primary);
+}
+
+.address-input-book-option-address {
+  font-family: monospace;
+  font-size: var(--credence-font-size-xs);
+  color: var(--credence-text-secondary);
+}
+
+.address-input-book-empty {
+  padding: var(--credence-space-2);
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+  text-align: center;
 }

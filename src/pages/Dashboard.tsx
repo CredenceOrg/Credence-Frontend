@@ -1,31 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link, useSearchParams } from 'react-router-dom'
 import ActionCard from '../components/ActionCard'
 import ActivityTimeline from '../components/ActivityTimeline'
-import AddressDisplay from '../components/AddressDisplay'
 import Badge from '../components/Badge'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
+import { PinWidgetButton } from '../components/PinWidgetButton'
 import TrustGauge from '../components/TrustGauge'
-import { EmptyState, LoadingSkeleton } from '../components/states'
+import { WidgetRefreshButton } from '../components/widget/WidgetRefreshButton'
+import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import {
   ONBOARDING_COMPLETION_STORAGE_KEY,
   ONBOARDING_STEP_COUNT,
   ONBOARDING_STEP_STORAGE_KEY,
 } from '../config/onboarding'
 import { useWallet } from '../context/WalletContext'
-import { useTranslation } from 'react-i18next'
+import { useActivity } from '../hooks/useActivity'
+import { useBonds } from '../hooks/useBonds'
+import { usePinnedWidgets } from '../hooks/usePinnedWidgets'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useSeo } from '../hooks/useSeo'
+import { useTrustScore } from '../hooks/useTrustScore'
 import { formatUsdc } from '../lib/format'
-import { useQuery } from '../hooks/useQuery'
-import { useIsMobile } from '../hooks/useMediaQuery'
-import { apiFetch } from '../api/client'
-import type { TrustScore, TrustTier } from '../api/types'
+import { tierForScore } from '../lib/tier'
 import './Dashboard.css'
-
-const TRUST_SCORE = 684
-const TRUST_TIER = 'gold'
 
 const onboardingSteps = [
   {
@@ -50,47 +49,48 @@ const onboardingSteps = [
   },
 ] as const
 
-const activeBonds = [
-  { id: 'bond-001', amountUsdc: 2500, status: 'grace-period', unlockLabel: 'May 12, 2026' },
-  { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
-] as const
-
 const shortcuts = [
-  { to: '/bond', label: 'Create bond', description: 'Lock more USDC into reputation bonds.' },
+  {
+    to: '/bond',
+    label: 'Create bond',
+    description: 'Start a new USDC bond with trust-backed terms.',
+  },
   {
     to: '/trust',
     label: 'View trust score',
-    description: 'Look up score details and tier context.',
+    description: 'See the details behind your on-chain reputation.',
   },
   {
     to: '/attestations',
     label: 'Review attestations',
-    description: 'Open recent evidence and claims.',
+    description: 'Check recent attestations and protocol approvals.',
   },
-]
+] as const
 
 export default function Dashboard() {
-  const { t } = useTranslation()
   useSeo({
     title: 'Dashboard',
     description:
-      'Monitor your trust score tier, outstanding bonds, pending grace periods, and recent identity attestations.',
+      'Monitor your Credence trust score, active USDC bonds, and recent protocol activity from one place.',
   })
 
   const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
-  const { t } = useTranslation()
-  const location = useLocation()
+  const { pinned, togglePin, isPinned, move } = usePinnedWidgets()
+  const reducedMotion = useReducedMotion()
   const [searchParams] = useSearchParams()
-
-  const buildWidgetUrl = (widget: string): string => {
-    return `${window.location.origin}${location.pathname}?widget=${widget}`
-  }
   const widgetParam = searchParams.get('widget')
+  const trustScoreQuery = useTrustScore(address)
+  const bondsQuery = useBonds(address)
+  const activityQuery = useActivity(address)
+  const trustScore = trustScoreQuery.data?.score
+  const trustTier = trustScore !== undefined ? tierForScore(trustScore) : undefined
+  const activeBonds = bondsQuery.data ?? []
   const totalBonded = activeBonds.reduce((total, bond) => total + bond.amountUsdc, 0)
   const [onboardingStep, setOnboardingStep] = useState(0)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(false)
+  const [widgetAnnouncement, setWidgetAnnouncement] = useState('')
 
   useEffect(() => {
     if (!connected) return
@@ -113,137 +113,263 @@ export default function Dashboard() {
     setShowOnboarding(true)
   }, [connected])
 
-  const shortcuts = [
-    { to: '/bond', label: t('dashboard.createBond'), description: t('dashboard.createBondDescription') },
-    { to: '/trust', label: t('dashboard.viewTrustScore'), description: t('dashboard.viewTrustScoreDescription') },
-    { to: '/attestations', label: t('dashboard.reviewAttestations'), description: t('dashboard.reviewAttestationsDescription') },
-  ]
-
   const showTrustScore = !widgetParam || widgetParam === 'trust-score'
   const showActiveBonds = !widgetParam || widgetParam === 'active-bonds'
   const showRecentActivity = !widgetParam || widgetParam === 'recent-activity'
   const showShortcuts = !widgetParam || widgetParam === 'shortcuts'
 
-  // Primary data query (disabled when offline via useQuery internally)
-  const fetchTrustScore = useCallback(() => {
-    if (!address) return Promise.reject(new Error('Wallet not connected'))
-    return apiFetch<TrustScore>(`/trust-score/${address}`)
-  }, [address])
+  const currentOnboardingStep = useMemo(() => onboardingSteps[onboardingStep], [onboardingStep])
 
-  const { data: trustData, refetch } = useQuery(fetchTrustScore, {
-    enabled: connected && !!address,
-  })
-
-  const displayScore = trustData?.score ?? TRUST_SCORE
-  const displayTier = (trustData?.tier ?? TRUST_TIER) as TrustTier
-
-  // Pull to refresh gestures
-  const touchStartRef = useRef<number>(0)
-  const [pullDistance, setPullDistance] = useState<number>(0)
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
-  const isMobile = useIsMobile()
-  const [online, setOnline] = useState(typeof window !== 'undefined' ? window.navigator.onLine : true)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const handleOnline = () => setOnline(true)
-    const handleOffline = () => setOnline(false)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isMobile || window.scrollY > 0 || isRefreshing || !online) return
-    touchStartRef.current = e.touches[0].clientY
+  const completeOnboarding = () => {
+    window.localStorage.removeItem(ONBOARDING_STEP_STORAGE_KEY)
+    window.localStorage.setItem(ONBOARDING_COMPLETION_STORAGE_KEY, new Date().toISOString())
+    setOnboardingCompleted(true)
+    setShowOnboarding(false)
   }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isMobile || window.scrollY > 0 || isRefreshing || !online) return
-    const currentY = e.touches[0].clientY
-    const diff = currentY - touchStartRef.current
-    if (diff > 0) {
-      const pull = Math.min(diff * 0.4, 80)
-      setPullDistance(pull)
-    }
+  const skipOnboarding = () => {
+    completeOnboarding()
   }
 
-  const handleTouchEnd = async () => {
-    if (!isMobile || isRefreshing || !online) return
-    if (pullDistance >= 60) {
-      setIsRefreshing(true)
-      setPullDistance(60)
-      try {
-        await refetch()
-      } catch (err) {
-        console.error('Failed to refresh dashboard data:', err)
-      } finally {
-        setIsRefreshing(false)
-        setPullDistance(0)
+  const advanceOnboarding = () => {
+    if (onboardingStep >= onboardingSteps.length - 1) {
+      completeOnboarding()
+      return
+    }
+
+    const nextStep = onboardingStep + 1
+    window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(nextStep))
+    setOnboardingStep(nextStep)
+  }
+
+  const goBackOnboarding = () => {
+    if (onboardingStep === 0) return
+
+    const previousStep = onboardingStep - 1
+    window.localStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(previousStep))
+    setOnboardingStep(previousStep)
+  }
+
+  const renderWidgetControls = (slug: string, title: string) => {
+    const position = pinned.indexOf(slug)
+
+    const moveWidget = (delta: number) => {
+      if (position === -1) return
+
+      const newPosition = Math.max(0, Math.min(pinned.length - 1, position + delta))
+      if (newPosition === position) return
+
+      move(slug, delta)
+      setWidgetAnnouncement(`${title} moved to position ${newPosition + 1} of ${pinned.length}.`)
+    }
+
+    return (
+      <div className="dashboard__widgetControls" role="group" aria-label={`${title} widget controls`}>
+        <PinWidgetButton
+          slug={slug}
+          widgetTitle={title}
+          isPinned={isPinned(slug)}
+          onToggle={togglePin}
+        />
+        {position !== -1 && (
+          <>
+            <button
+              type="button"
+              className="dashboard__widgetOrderButton"
+              aria-label={`Move ${title} earlier`}
+              onClick={() => moveWidget(-1)}
+              disabled={position === 0}
+            >
+              Earlier
+            </button>
+            <button
+              type="button"
+              className="dashboard__widgetOrderButton"
+              aria-label={`Move ${title} later`}
+              onClick={() => moveWidget(1)}
+              disabled={position === pinned.length - 1}
+            >
+              Later
+            </button>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  const widgets = [
+    {
+      slug: 'trust-score',
+      title: 'Trust Score',
+      visible: showTrustScore,
+      content: (
+        <ActionCard title="Trust Score">
+          {trustScoreQuery.isLoading ? (
+            <LoadingSkeleton variant="stat-widget" rows={2} />
+          ) : trustScoreQuery.isError || trustScore === undefined || trustTier === undefined ? (
+            <ErrorState
+              title="Unable to load trust score"
+              description="We couldn't fetch your trust score. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => {
+                  void trustScoreQuery.refetch()
+                },
+              }}
+            />
+          ) : (
+            <>
+              <div className="dashboard__cardHeader">
+                <div>
+                  <p className="dashboard__metric">{trustScore}</p>
+                  <p className="dashboard__metricLabel">Current score</p>
+                </div>
+                <Badge variant={trustTier} label={`${trustTier} Tier`} />
+              </div>
+              <TrustGauge
+                score={trustScore}
+                tier={trustTier}
+                className="dashboard__trustGauge"
+                id="dashboard-trust-gauge"
+              />
+            </>
+          )}
+          <WidgetRefreshButton
+            onClick={() => {
+              void trustScoreQuery.refetch()
+            }}
+            isLoading={trustScoreQuery.isFetching}
+            label="Refresh trust score"
+          />
+        </ActionCard>
+      ),
+    },
+    {
+      slug: 'active-bonds',
+      title: 'Active Bonds',
+      visible: showActiveBonds,
+      content: (
+        <ActionCard title="Active Bonds">
+          {bondsQuery.isLoading ? (
+            <LoadingSkeleton variant="bond-row" rows={2} />
+          ) : bondsQuery.isError ? (
+            <ErrorState
+              title="Unable to load bonds"
+              description="We couldn't fetch your active bonds. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => {
+                  void bondsQuery.refetch()
+                },
+              }}
+            />
+          ) : activeBonds.length === 0 ? (
+            <EmptyState
+              illustration="bond"
+              title="No active bonds"
+              description="You don't have any active bonds yet."
+            />
+          ) : (
+            <>
+              <div className="dashboard__cardHeader">
+                <div>
+                  <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
+                  <p className="dashboard__metricLabel">{activeBonds.length} active bonds</p>
+                </div>
+                <Badge variant="active" />
+              </div>
+              <ul className="dashboard__bondList" aria-label="Active bond summary">
+                {activeBonds.map((bond) => (
+                  <li className="dashboard__bondRow" key={bond.id}>
+                    <div>
+                      <p className="dashboard__bondAmount">{formatUsdc(bond.amountUsdc)}</p>
+                      <p className="dashboard__bondMeta">Unlocks {bond.unlockLabel}</p>
+                    </div>
+                    <Badge variant={bond.status} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <WidgetRefreshButton
+            onClick={() => {
+              void bondsQuery.refetch()
+            }}
+            isLoading={bondsQuery.isFetching}
+            label="Refresh active bonds"
+          />
+        </ActionCard>
+      ),
+    },
+    {
+      slug: 'recent-activity',
+      title: 'Recent Activity',
+      visible: showRecentActivity,
+      content: (
+        <ActionCard title="Recent Activity">
+          {activityQuery.isLoading ? (
+            <LoadingSkeleton variant="list-row" rows={3} />
+          ) : activityQuery.isError ? (
+            <ErrorState
+              title="Unable to load activity"
+              description="We couldn't fetch your recent activity. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => {
+                  void activityQuery.refetch()
+                },
+              }}
+            />
+          ) : (
+            <ActivityTimeline compact items={activityQuery.data} />
+          )}
+          <WidgetRefreshButton
+            onClick={() => {
+              void activityQuery.refetch()
+            }}
+            isLoading={activityQuery.isFetching}
+            label="Refresh recent activity"
+          />
+        </ActionCard>
+      ),
+    },
+    {
+      slug: 'shortcuts',
+      title: 'Shortcuts',
+      visible: showShortcuts,
+      content: (
+        <ActionCard title="Shortcuts">
+          <div className="dashboard__shortcutList">
+            {shortcuts.map((shortcut) => (
+              <Link className="dashboard__shortcut" key={shortcut.to} to={shortcut.to}>
+                <span className="dashboard__shortcutLabel">{shortcut.label}</span>
+                <span className="dashboard__shortcutDescription">{shortcut.description}</span>
+              </Link>
+            ))}
+          </div>
+          <Button type="button" variant="secondary" onClick={() => window.scrollTo({ top: 0 })}>
+            Back to summary
+          </Button>
+        </ActionCard>
+      ),
+    },
+  ]
+  const orderedWidgets = widgets
+    .map((widget, defaultPosition) => ({ ...widget, defaultPosition }))
+    .filter((widget) => widget.visible)
+    .sort((a, b) => {
+      const aPinnedPosition = pinned.indexOf(a.slug)
+      const bPinnedPosition = pinned.indexOf(b.slug)
+      if (aPinnedPosition !== -1 && bPinnedPosition !== -1) {
+        return aPinnedPosition - bPinnedPosition
       }
-    } else {
-      setPullDistance(0)
-    }
-  }
+      if (aPinnedPosition !== -1) return -1
+      if (bPinnedPosition !== -1) return 1
+      return a.defaultPosition - b.defaultPosition
+    })
 
   return (
-    <div
-      className="dashboard"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={
-        isMobile && pullDistance > 0
-          ? { transform: `translateY(${pullDistance}px)`, transition: 'none' }
-          : isMobile
-          ? { transform: 'translateY(0)', transition: 'transform 0.3s ease-out' }
-          : undefined
-      }
-    >
-      {isMobile && (pullDistance > 0 || isRefreshing) && (
-        <div
-          className={`dashboard__pullIndicator ${isRefreshing ? 'dashboard__pullIndicator--refreshing' : ''}`}
-          style={{
-            transform: `translateY(-${Math.max(40, pullDistance)}px)`,
-            opacity: Math.min(pullDistance / 60, 1),
-          }}
-        >
-          {isRefreshing ? (
-            <span className="dashboard__pullSpinner" />
-          ) : (
-            <svg
-              className="dashboard__pullArrow"
-              style={{ transform: `rotate(${Math.min(pullDistance * 3, 180)}deg)` }}
-              viewBox="0 0 24 24"
-              width="20"
-              height="20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <polyline points="19 12 12 19 5 12" />
-            </svg>
-          )}
-          <span className="dashboard__pullLabel">
-            {isRefreshing
-              ? t('dashboard.refreshing', 'Refreshing...')
-              : pullDistance >= 60
-              ? t('dashboard.releaseToRefresh', 'Release to refresh')
-              : t('dashboard.pullToRefresh', 'Pull to refresh')}
-          </span>
-        </div>
-      )}
-
-      {!online && (
-        <Banner severity="warning">
-          {t('dashboard.offlineBanner', 'You are currently offline. Pull-to-refresh is disabled.')}
-        </Banner>
-      )}
-
+    <div className={`dashboard${reducedMotion ? ' dashboard--reduced-motion' : ''}`}>
       <header className="dashboard__header">
         <div>
           <h1 className="dashboard__title">{t('dashboard.title')}</h1>
@@ -254,7 +380,9 @@ export default function Dashboard() {
         {connected && address && (
           <div className="dashboard__wallet" aria-label="Connected wallet">
             <span className="dashboard__walletLabel">{t('dashboard.wallet')}</span>
-            <AddressDisplay address={address} className="dashboard__walletAddress" />
+            <code className="dashboard__walletAddress">
+              {address.slice(0, 8)}...{address.slice(-6)}
+            </code>
           </div>
         )}
       </header>
@@ -323,79 +451,19 @@ export default function Dashboard() {
           )}
 
           <div className="dashboard__grid">
-            {showTrustScore && (
-              <ActionCard title="Trust Score" shareableLink={buildWidgetUrl('trust-score')}>
-                <div className="dashboard__cardHeader">
-                  <div>
-                    <p className="dashboard__metric">{displayScore}</p>
-                    <p className="dashboard__metricLabel">Current score</p>
-                  </div>
-                  <Badge variant={displayTier} label={`${displayTier.charAt(0).toUpperCase()}${displayTier.slice(1)} Tier`} />
-                </div>
-                <TrustGauge
-                  score={displayScore}
-                  tier={displayTier}
-                  className="dashboard__trustGauge"
-                  id="dashboard-trust-gauge"
-                />
-              </ActionCard>
-            )}
-
-            {showActiveBonds && (
-              <ActionCard title="Active Bonds" shareableLink={buildWidgetUrl('active-bonds')}>
-                <div className="dashboard__cardHeader">
-                  <div>
-                    <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
-                    <p className="dashboard__metricLabel">{activeBonds.length} active bonds</p>
-                  </div>
-                  <Badge variant="active" />
-                </div>
-                <ul className="dashboard__bondList" aria-label="Active bond summary">
-                  {activeBonds.map((bond) => (
-                    <li className="dashboard__bondRow" key={bond.id}>
-                      <div>
-                        <p className="dashboard__bondAmount">{formatUsdc(bond.amountUsdc)}</p>
-                        <p className="dashboard__bondMeta">Unlocks {bond.unlockLabel}</p>
-                      </div>
-                      <Badge variant={bond.status} />
-                    </li>
-                  ))}
-                </ul>
-              </ActionCard>
-            )}
+            {orderedWidgets.map((widget) => (
+              <div className="dashboard__widget" key={widget.slug}>
+                {renderWidgetControls(widget.slug, widget.title)}
+                {widget.content}
+              </div>
+            ))}
           </div>
-
-          <div className="dashboard__grid dashboard__grid--activity">
-            {showRecentActivity && (
-              <ActionCard title="Recent Activity" shareableLink={buildWidgetUrl('recent-activity')}>
-                <ActivityTimeline compact />
-              </ActionCard>
-            )}
-
-            {showShortcuts && (
-              <ActionCard title="Shortcuts" shareableLink={buildWidgetUrl('shortcuts')}>
-                <div className="dashboard__shortcutList">
-                  {shortcuts.map((shortcut) => (
-                    <Link className="dashboard__shortcut" key={shortcut.to} to={shortcut.to}>
-                      <span className="dashboard__shortcutLabel">{shortcut.label}</span>
-                      <span className="dashboard__shortcutDescription">{shortcut.description}</span>
-                    </Link>
-                  ))}
-                </div>
-                <Button type="button" variant="secondary" onClick={() => window.scrollTo({ top: 0 })}>
-                  Back to summary
-                </Button>
-              </ActionCard>
-            )}
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {widgetAnnouncement}
           </div>
         </>
       )}
 
-      {connected && (
-        <Banner severity="info">
-          {t('dashboard.mockDataBanner')}
-        </Banner>
-      )}
     </div>
   )
 }

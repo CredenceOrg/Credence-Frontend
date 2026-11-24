@@ -8,15 +8,27 @@ import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
  *  pending  – value changed and is waiting out the debounce window
  *  saving   – debounce settled; the supplied `save()` promise is in flight
  *  saved    – most recent save() resolved; `lastSavedAt` is set
+ *  queued   – most recent save() was persisted to the offline outbox and will
+ *             be replayed on reconnect; `lastSavedValue` is updated so the
+ *             value is not re-debounced, and `lastSavedAt` is set
  *  error    – most recent save() rejected; `error` is set, `lastSavedValue`
  *             is preserved so a retry isn't a step backward in correctness
  */
-export type AutoSaveStatus =
-  | 'idle'
-  | 'pending'
-  | 'saving'
-  | 'saved'
-  | 'error'
+export type AutoSaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'queued' | 'error'
+
+/**
+ * Sentinel returned by `save()` when the write could not reach the network
+ * and was instead persisted to the offline outbox. The hook treats this as a
+ * successful-but-deferred save and surfaces `status: 'queued'`.
+ */
+export const OFFLINE_QUEUED = Symbol('offline-queued')
+
+export type AutoSaveSaveResult = unknown | typeof OFFLINE_QUEUED
+
+/** Returns `true` when `result` is the offline-queued sentinel. */
+export function isOfflineQueued(result: unknown): result is typeof OFFLINE_QUEUED {
+  return result === OFFLINE_QUEUED
+}
 
 export interface UseDebouncedAutoSaveOptions<T> {
   /**
@@ -30,7 +42,7 @@ export interface UseDebouncedAutoSaveOptions<T> {
    * in-flight save; pass `signal` to your fetch helper so cancellation
    * propagates to the network layer.
    */
-  save: (value: T, signal: AbortSignal) => Promise<unknown> | unknown
+  save: (value: T, signal: AbortSignal) => Promise<AutoSaveSaveResult> | AutoSaveSaveResult
   /** Override default debounce delay (`AUTO_SAVE_DEFAULTS.DEBOUNCE_MS`). */
   delayMs?: number
   /**
@@ -47,6 +59,19 @@ export interface UseDebouncedAutoSaveOptions<T> {
   onSaved?: (value: T) => void
   /** Called on failed save (after `error` is updated). */
   onError?: (err: Error, value: T) => void
+  /**
+   * Called when a save was deferred to the offline outbox (after `status`
+   * becomes `'queued'`). Optional; useful for telemetry / toasts.
+   */
+  onQueued?: (value: T) => void
+  /**
+   * Optional subscription to outbox flush completion. When provided, the hook
+   * subscribes on mount and transitions `'queued'` → `'saved'` once the
+   * outbox reports that all pending entries for the current epoch have been
+   * replayed. The callback receives a listener and must return an unsubscribe
+   * function.
+   */
+  subscribeToOutboxFlush?: (onFlushed: () => void) => () => void
 }
 
 export interface UseDebouncedAutoSaveResult {
@@ -82,7 +107,8 @@ const defaultEquals = (a: any, b: any): boolean => Object.is(a, b)
  * provide `isEqual` — see `UseDebouncedAutoSaveOptions.isEqual`.
  */
 export function useDebouncedAutoSave<T>(
-  options: UseDebouncedAutoSaveOptions<T>) : UseDebouncedAutoSaveResult {
+  options: UseDebouncedAutoSaveOptions<T>
+): UseDebouncedAutoSaveResult {
   const {
     value,
     save,
@@ -91,6 +117,8 @@ export function useDebouncedAutoSave<T>(
     enabled = true,
     onSaved,
     onError,
+    onQueued,
+    subscribeToOutboxFlush,
   } = options
 
   const [status, setStatus] = useState<AutoSaveStatus>('idle')
@@ -106,6 +134,8 @@ export function useDebouncedAutoSave<T>(
   onSavedRef.current = onSaved
   const onErrorRef = useRef(onError)
   onErrorRef.current = onError
+  const onQueuedRef = useRef(onQueued)
+  onQueuedRef.current = onQueued
 
   // One AbortController per in-flight save; superseded on the next runSave.
   const inflightRef = useRef<AbortController | null>(null)
@@ -136,12 +166,17 @@ export function useDebouncedAutoSave<T>(
       setStatus('saving')
       setError(null)
       try {
-        await saveRef.current(valueToSave, controller.signal)
+        const result = await saveRef.current(valueToSave, controller.signal)
         if (controller.signal.aborted) return
         setLastSavedValue(valueToSave)
         setLastSavedAt(Date.now())
-        setStatus('saved')
-        onSavedRef.current?.(valueToSave)
+        if (isOfflineQueued(result)) {
+          setStatus('queued')
+          onQueuedRef.current?.(valueToSave)
+        } else {
+          setStatus('saved')
+          onSavedRef.current?.(valueToSave)
+        }
       } catch (err) {
         // If we were aborted (superseded by a newer save, or component unmounted)
         // we intentionally swallow the error: the next runSave owns the
@@ -214,6 +249,17 @@ export function useDebouncedAutoSave<T>(
     abortInflight()
     setStatus(lastSavedValue !== undefined ? 'saved' : 'idle')
   }, [clearPending, abortInflight, lastSavedValue])
+
+  // Subscribe to outbox flush completion: a queued write that has been
+  // replayed successfully transitions back to 'saved'. Only the 'queued'
+  // status is affected; other statuses are left untouched.
+  useEffect(() => {
+    if (!subscribeToOutboxFlush) return
+    const unsubscribe = subscribeToOutboxFlush(() => {
+      setStatus((prev) => (prev === 'queued' ? 'saved' : prev))
+    })
+    return unsubscribe
+  }, [subscribeToOutboxFlush])
 
   // Cleanup on unmount: cancel the debounce timer and abort any in-flight save.
   useEffect(() => {

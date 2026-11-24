@@ -192,8 +192,7 @@ describe('SpeedDial', () => {
   it('action buttons have tabIndex=-1 when menu is closed', () => {
     renderSpeedDial()
     // When closed all action buttons (inside collapsed list) should have tabIndex=-1
-    const actionButtons = document
-      .querySelectorAll<HTMLButtonElement>('.speedDial__action')
+    const actionButtons = document.querySelectorAll<HTMLButtonElement>('.speedDial__action')
     actionButtons.forEach((btn) => {
       expect(btn).toHaveAttribute('tabindex', '-1')
     })
@@ -202,8 +201,7 @@ describe('SpeedDial', () => {
   it('action buttons have tabIndex=0 when menu is open', () => {
     renderSpeedDial()
     fireEvent.click(screen.getByRole('button', { name: /open quick actions/i }))
-    const actionButtons = document
-      .querySelectorAll<HTMLButtonElement>('.speedDial__action')
+    const actionButtons = document.querySelectorAll<HTMLButtonElement>('.speedDial__action')
     actionButtons.forEach((btn) => {
       expect(btn).toHaveAttribute('tabindex', '0')
     })

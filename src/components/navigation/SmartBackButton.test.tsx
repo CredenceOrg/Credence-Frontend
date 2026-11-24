@@ -40,9 +40,7 @@ describe('SmartBackButton', () => {
   })
 
   it('navigates_to_prior_route_path_when_from_state_is_present', async () => {
-    renderSmartBackNavigation([
-      { pathname: '/test-page', state: { from: '/trust' } },
-    ])
+    renderSmartBackNavigation([{ pathname: '/test-page', state: { from: '/trust' } }])
 
     fireEvent.click(screen.getByRole('button', { name: /go back/i }))
 

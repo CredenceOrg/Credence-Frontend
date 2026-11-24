@@ -23,7 +23,7 @@
 .progress__track {
   width: 100%;
   overflow: hidden;
-  background-color: var(--credence-color-slate-200, #e2e8f0);
+  background-color: var(--credence-color-slate-200);
   border-radius: var(--credence-radius-full, 9999px);
 }
 
@@ -31,16 +31,17 @@
 .progress--determinate .progress__fill {
   height: 100%;
   width: var(--progress-fill, 0%);
-  background-color: var(--credence-color-primary, #3b82d4);
+  background-color: var(--credence-color-primary);
   border-radius: var(--credence-radius-full, 9999px);
-  transition: width var(--credence-motion-duration-base, 200ms) var(--credence-motion-easing-standard, ease);
+  transition: width var(--credence-motion-duration-base, 200ms)
+    var(--credence-motion-easing-standard, ease);
 }
 
 /* Indeterminate fill — sliding animation */
 .progress--indeterminate .progress__fill {
   height: 100%;
   width: 40%;
-  background-color: var(--credence-color-primary, #3b82d4);
+  background-color: var(--credence-color-primary);
   border-radius: var(--credence-radius-full, 9999px);
   animation: progress-indeterminate var(--credence-motion-duration-slow, 1400ms) linear infinite;
 }
@@ -52,6 +53,23 @@
   100% {
     transform: translateX(300%);
   }
+}
+
+/* Colour variants — fill colour (kept after determinate/indeterminate so it isn't overridden by the default primary background-color set above; equal-specificity selectors resolve by source order) */
+.progress--color-primary .progress__fill {
+  background-color: var(--credence-color-primary);
+}
+
+.progress--color-success .progress__fill {
+  background-color: var(--credence-color-success-border);
+}
+
+.progress--color-warning .progress__fill {
+  background-color: var(--credence-color-warning-border);
+}
+
+.progress--color-danger .progress__fill {
+  background-color: var(--credence-color-danger-action);
 }
 
 /* Striped variant — diagonal stripe pattern on the fill */

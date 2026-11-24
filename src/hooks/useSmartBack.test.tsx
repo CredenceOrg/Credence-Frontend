@@ -16,7 +16,10 @@ function TestComponent({ fallback }: { fallback?: string }) {
   )
 }
 
-function renderSmartBackApp(initialEntries: (string | { pathname: string; state?: unknown })[], fallback?: string) {
+function renderSmartBackApp(
+  initialEntries: (string | { pathname: string; state?: unknown })[],
+  fallback?: string
+) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <Routes>
@@ -32,9 +35,7 @@ function renderSmartBackApp(initialEntries: (string | { pathname: string; state?
 
 describe('useSmartBack hook', () => {
   it('honours_prior_route_path_when_from_state_is_present', async () => {
-    renderSmartBackApp([
-      { pathname: '/detail', state: { from: '/trust' } },
-    ])
+    renderSmartBackApp([{ pathname: '/detail', state: { from: '/trust' } }])
 
     expect(screen.getByTestId('current-location')).toHaveTextContent('/detail')
 

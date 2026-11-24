@@ -21,7 +21,7 @@
  */
 
 import { render, act } from '@testing-library/react'
-import React, { useRef } from 'react'
+import { useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useFocusTrap } from './useFocusTrap'
 
@@ -39,11 +39,7 @@ interface NestedTrapProps {
   innerActive?: boolean
 }
 
-function NestedTrapFixture({
-  onOuterEscape,
-  onInnerEscape,
-  innerActive = true,
-}: NestedTrapProps) {
+function NestedTrapFixture({ onOuterEscape, onInnerEscape, innerActive = true }: NestedTrapProps) {
   const outerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
 

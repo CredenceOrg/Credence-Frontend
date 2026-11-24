@@ -1,0 +1,144 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   ErrorBoundary fallback container
+   ─────────────────────────────────────────────────────────────────────────
+   Centres the standardised ErrorState panel vertically inside the
+   viewport. Used by both ErrorBoundary's default fallback and
+   RouteErrorPage's router-level error element.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.error-fallback-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  padding: var(--credence-space-6);
+  gap: var(--credence-space-4);
+}
+
+/* Route-level errors take the full viewport so they remain centred even on
+   a freshly-mounted route that has not laid out the rest of the shell yet. */
+.error-fallback-container--full {
+  min-height: 100vh;
+}
+
+.error-fallback-secondary-link {
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: var(--credence-font-weight-medium);
+  /* The link is keyboard-only — make it 44px tall so it satisfies WCAG
+     2.5.5 target size on focus rings. */
+  padding: var(--credence-space-2) var(--credence-space-3);
+  border-radius: var(--credence-radius-sm);
+}
+
+.error-fallback-secondary-link:hover {
+  color: var(--credence-text-primary);
+}
+
+.error-fallback-secondary-link:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.error-fallback-diagnostics {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--credence-space-3);
+  max-width: 32rem;
+  width: 100%;
+}
+
+.error-fallback-id-row {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--credence-space-2);
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+}
+
+.error-fallback-id-label {
+  font-weight: var(--credence-font-weight-medium);
+}
+
+.error-fallback-id-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-space-2);
+  padding: var(--credence-space-1) var(--credence-space-2);
+  border-radius: var(--credence-radius-sm);
+  background-color: var(--credence-surface-subtle, var(--credence-color-surface-hover));
+  border: 1px solid var(--credence-border-subtle, var(--credence-color-danger-border));
+}
+
+.error-fallback-id-value {
+  font-family: var(--credence-font-family-mono);
+  font-size: var(--credence-font-size-xs, 0.85em);
+  color: var(--credence-text-primary);
+  word-break: break-all;
+}
+
+.error-fallback-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--credence-space-1);
+  padding: var(--credence-space-1) var(--credence-space-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--credence-radius-sm);
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-xs, 0.85em);
+  font-weight: var(--credence-font-weight-medium);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.error-fallback-copy-btn:hover {
+  color: var(--credence-text-primary);
+  background-color: var(--credence-color-surface-hover);
+}
+
+.error-fallback-copy-btn:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
+.error-fallback-copy-btn--copied {
+  color: var(--credence-color-success);
+}
+
+.error-fallback-details {
+  width: 100%;
+  border-radius: var(--credence-radius-md, var(--credence-radius-sm));
+  border: 1px solid var(--credence-border-subtle, var(--credence-color-danger-border));
+  padding: var(--credence-space-2) var(--credence-space-3);
+  font-size: var(--credence-font-size-sm);
+  color: var(--credence-text-secondary);
+}
+
+.error-fallback-details__summary {
+  cursor: pointer;
+  font-weight: var(--credence-font-weight-medium);
+  color: var(--credence-text-primary);
+}
+
+.error-fallback-details__summary:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--credence-radius-sm);
+}
+
+.error-fallback-details__message {
+  margin: var(--credence-space-2) 0 0;
+  font-family: var(--credence-font-family-mono);
+  font-size: var(--credence-font-size-xs, 0.85em);
+  word-break: break-word;
+  white-space: pre-wrap;
+}

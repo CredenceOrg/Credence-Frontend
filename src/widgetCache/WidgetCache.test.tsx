@@ -95,7 +95,7 @@ describe('useWidgetCache', () => {
     // Key isolation — widget B should NOT have been re-fetched.
     expect(bFetcher).toHaveBeenCalledTimes(1)
 
-    const bEntry = __TESTING__.store.get<string[]>('probe:b')
+    const bEntry = __TESTING__.store.get<string[]>('public:anon:probe:b')
     expect(bEntry.status).toBe('success')
     expect(bEntry.data).toEqual(['b1'])
   })
@@ -199,10 +199,7 @@ describe('useWidgetCache', () => {
     // `invalidate()` evicts the cache entry and notifies subscribers.
     // Mounted components re-render with status → idle. A subsequent call to
     // `refresh()` (or a new mount) will kick off the next fetch.
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(['v1'])
-      .mockResolvedValueOnce(['v2'])
+    const fetcher = vi.fn().mockResolvedValueOnce(['v1']).mockResolvedValueOnce(['v2'])
 
     function Probe() {
       const widget = useWidgetCache<string[]>('probe:invalidate', fetcher)
@@ -279,7 +276,7 @@ describe('useWidgetCache', () => {
     // Widget B was never invalidated: its fetcher should still have been called
     // exactly once and its data must still be present.
     expect(bFetcher).toHaveBeenCalledTimes(1)
-    const bEntry = __TESTING__.store.get<string[]>('probe:inv-b')
+    const bEntry = __TESTING__.store.get<string[]>('public:anon:probe:inv-b')
     expect(bEntry.status).toBe('success')
     expect(bEntry.data).toEqual(['b'])
   })
@@ -292,10 +289,7 @@ describe('useWidgetCache', () => {
       resolveSecond = res
     })
 
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(['first'])
-      .mockReturnValueOnce(secondFetch)
+    const fetcher = vi.fn().mockResolvedValueOnce(['first']).mockReturnValueOnce(secondFetch)
 
     const capturedStatuses: string[] = []
 
@@ -432,10 +426,7 @@ describe('useWidgetCache', () => {
       resolveSecond = res
     })
 
-    const fetcher = vi
-      .fn()
-      .mockReturnValueOnce(firstFetch)
-      .mockReturnValueOnce(secondFetch)
+    const fetcher = vi.fn().mockReturnValueOnce(firstFetch).mockReturnValueOnce(secondFetch)
 
     function Probe() {
       const widget = useWidgetCache<string[]>('probe:supersede', fetcher)
@@ -485,10 +476,7 @@ describe('useWidgetCache', () => {
   it('multiple_subscribers_all_update_when_a_shared_key_is_refreshed', async () => {
     // All components subscribed to the same key must receive the updated data
     // when one of them (or an external caller) triggers a refresh.
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(['original'])
-      .mockResolvedValueOnce(['refreshed'])
+    const fetcher = vi.fn().mockResolvedValueOnce(['original']).mockResolvedValueOnce(['refreshed'])
 
     function Probe({ id, showRefresh = false }: { id: string; showRefresh?: boolean }) {
       const widget = useWidgetCache<string[]>('probe:multi-refresh', fetcher)
@@ -511,9 +499,7 @@ describe('useWidgetCache', () => {
       </>
     )
 
-    await waitFor(() =>
-      expect(screen.getByTestId('data-a')).toHaveTextContent('original')
-    )
+    await waitFor(() => expect(screen.getByTestId('data-a')).toHaveTextContent('original'))
     expect(screen.getByTestId('data-b')).toHaveTextContent('original')
     expect(fetcher).toHaveBeenCalledTimes(1)
 
@@ -523,11 +509,130 @@ describe('useWidgetCache', () => {
     })
 
     // Both subscribers must receive the updated data from the single shared fetch.
-    await waitFor(() =>
-      expect(screen.getByTestId('data-a')).toHaveTextContent('refreshed')
-    )
+    await waitFor(() => expect(screen.getByTestId('data-a')).toHaveTextContent('refreshed'))
     expect(screen.getByTestId('data-b')).toHaveTextContent('refreshed')
     // Only one new fetch despite two mounted subscribers.
     expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+
+  // ---------------------------------------------------------------------------
+  // PII scrubbing before storage
+  // ---------------------------------------------------------------------------
+
+  it('scrubs_pii_from_fetcher_data_before_it_reaches_the_cache', async () => {
+    // This is the negative case that motivated the fix: before scrubbing was
+    // wired into `setEntry`, the raw fetcher payload — including PII —
+    // landed in the shared cache verbatim and was readable by any widget
+    // subscribed to this key.
+    const fetcher = vi.fn().mockResolvedValue({
+      id: 1,
+      trustScore: 92,
+      owner: { fullName: 'Dana Lee', email: 'dana@example.com' },
+    })
+
+    function Probe() {
+      const widget = useWidgetCache<{
+        id: number
+        trustScore: number
+        owner: { fullName: string; email: string }
+      }>('probe:pii', fetcher)
+      return (
+        <div>
+          <span data-testid="status">{widget.status}</span>
+          <span data-testid="email">{widget.data?.owner.email ?? ''}</span>
+          <span data-testid="score">{widget.data?.trustScore ?? ''}</span>
+        </div>
+      )
+    }
+
+    renderWithProvider(<Probe />)
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('success'))
+
+    // PII is redacted...
+    expect(screen.getByTestId('email')).toHaveTextContent('[REDACTED]')
+    // ...but non-PII data is preserved.
+    expect(screen.getByTestId('score')).toHaveTextContent('92')
+
+    const entry = __TESTING__.store.get<{ owner: { fullName: string; email: string } }>('public:anon:probe:pii')
+    expect(entry.data?.owner.email).toBe('[REDACTED]')
+    expect(entry.data?.owner.fullName).toBe('[REDACTED]')
+  })
+
+  it('surfaces_a_typed_error_and_keeps_previous_data_when_a_payload_cannot_be_scrubbed', async () => {
+    // Explicit failure mode: a circular payload can't be safely deep-cloned
+    // and scrubbed, so the store must reject it via `entry.error` (typed
+    // `PIIScrubError`) rather than caching it raw or crashing the render.
+    const circular: Record<string, unknown> = { id: 1 }
+    circular.self = circular
+
+    const fetcher = vi.fn().mockResolvedValueOnce(['ok']).mockResolvedValueOnce(circular)
+
+    function Probe() {
+      const widget = useWidgetCache<unknown>('probe:pii-error', fetcher)
+      return (
+        <div>
+          <span data-testid="status">{widget.status}</span>
+          <span data-testid="error">{widget.error?.name ?? ''}</span>
+          <button type="button" onClick={widget.refresh}>
+            refresh
+          </button>
+        </div>
+      )
+    }
+
+    renderWithProvider(<Probe />)
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('success'))
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'refresh' }))
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('error'))
+    expect(screen.getByTestId('error')).toHaveTextContent('PIIScrubError')
+
+    // Previous (already-scrubbed) data is preserved, not overwritten with
+    // the raw, un-scrubbable payload.
+    const entry = __TESTING__.store.get('public:anon:probe:pii-error')
+    expect(entry.data).toEqual(['ok'])
+  })
+
+  it('scopes cache keys by network and wallet address', async () => {
+    let currentNetwork: 'public' | 'test' = 'public'
+    let currentAddress = 'GADDR1'
+
+    const { useSettings } = await import('../context/SettingsContext')
+    const { useWallet } = await import('../context/WalletContext')
+    vi.spyOn(await import('../context/SettingsContext'), 'useSettings').mockImplementation(
+      () => ({ ...useSettings(), network: currentNetwork }) as ReturnType<typeof useSettings>
+    )
+    vi.spyOn(await import('../context/WalletContext'), 'useWallet').mockImplementation(
+      () => ({ ...useWallet(), address: currentAddress }) as ReturnType<typeof useWallet>
+    )
+
+    const fetcher = vi.fn().mockImplementation(async () => [`${currentNetwork}:${currentAddress}`])
+
+    function Probe() {
+      const widget = useWidgetCache<string[]>('probe:scoped', fetcher)
+      return <span data-testid="val">{widget.data?.[0] ?? 'empty'}</span>
+    }
+
+    const { rerender } = renderWithProvider(<Probe />)
+    await waitFor(() => expect(screen.getByTestId('val')).toHaveTextContent('public:GADDR1'))
+
+    currentNetwork = 'test'
+    rerender(
+      <WidgetCacheProvider>
+        <Probe />
+      </WidgetCacheProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('val')).toHaveTextContent('test:GADDR1'))
+
+    currentAddress = 'GADDR2'
+    rerender(
+      <WidgetCacheProvider>
+        <Probe />
+      </WidgetCacheProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('val')).toHaveTextContent('test:GADDR2'))
   })
 })

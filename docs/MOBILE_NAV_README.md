@@ -200,6 +200,7 @@ As of the current implementation, mobile navigation uses two complementary compo
 - **`MobileNav`** (`src/components/navigation/MobileNav.tsx`) — Hamburger button (☰) in the header that opens a slide-in drawer. Shows secondary/overflow routes only: Home and Settings. Visible at ≤ 640 px (`BREAKPOINTS.SM`).
 
 Navigation link data for both components is centrally managed in `src/config/navLinks.ts`:
+
 - `PRIMARY_NAV_LINKS` → consumed by `BottomNav`
 - `SECONDARY_NAV_LINKS` → consumed by `MobileNav`
 

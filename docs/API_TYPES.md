@@ -31,9 +31,7 @@ import { apiFetch } from '@/api/client'
 import type { operations, ApiResponse } from '@/api/types'
 
 // The return type is inferred from the spec — no manual annotation.
-const score = await apiFetch<ApiResponse<operations['getTrustScore']>>(
-  `/trust-score/${address}`
-)
+const score = await apiFetch<ApiResponse<operations['getTrustScore']>>(`/trust-score/${address}`)
 ```
 
 `ApiResponse<Op>` extracts the `application/json` body of the HTTP 200 response for a given operation, so the type always mirrors the spec.
@@ -63,20 +61,20 @@ npm test               # src/api/types.test.ts guards all public aliases
 
 ## What to do when the backend changes a schema
 
-| Change | Impact | Action |
-| --- | --- | --- |
-| Add optional field | Non-breaking | Run `generate:api`, types remain backwards-compatible |
-| Add required field | Breaking | Run `generate:api`, fix any callers that produce the type |
-| Remove / rename a field | Breaking | Run `generate:api`, `tsc` will surface every affected callsite |
-| Change an enum value | Breaking | Run `generate:api`, `tsc` will surface literal-type mismatches |
-| Add a new endpoint | Non-breaking | Add path + schema to spec, run `generate:api`, write a hook |
+| Change                  | Impact       | Action                                                         |
+| ----------------------- | ------------ | -------------------------------------------------------------- |
+| Add optional field      | Non-breaking | Run `generate:api`, types remain backwards-compatible          |
+| Add required field      | Breaking     | Run `generate:api`, fix any callers that produce the type      |
+| Remove / rename a field | Breaking     | Run `generate:api`, `tsc` will surface every affected callsite |
+| Change an enum value    | Breaking     | Run `generate:api`, `tsc` will surface literal-type mismatches |
+| Add a new endpoint      | Non-breaking | Add path + schema to spec, run `generate:api`, write a hook    |
 
 ## File index
 
-| File | Purpose |
-| --- | --- |
-| `openapi.yaml` | OpenAPI 3.1 spec — the single source of truth |
-| `src/api/generated.ts` | Auto-generated types (do not edit by hand) |
-| `src/api/types.ts` | Public aliases + `ApiResponse<Op>` helper |
-| `src/api/client.ts` | `apiFetch<T>()` generic HTTP wrapper |
-| `src/api/types.test.ts` | Structural type + runtime shape tests |
+| File                    | Purpose                                       |
+| ----------------------- | --------------------------------------------- |
+| `openapi.yaml`          | OpenAPI 3.1 spec — the single source of truth |
+| `src/api/generated.ts`  | Auto-generated types (do not edit by hand)    |
+| `src/api/types.ts`      | Public aliases + `ApiResponse<Op>` helper     |
+| `src/api/client.ts`     | `apiFetch<T>()` generic HTTP wrapper          |
+| `src/api/types.test.ts` | Structural type + runtime shape tests         |

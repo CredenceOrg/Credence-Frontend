@@ -12,12 +12,34 @@ export interface paths {
      */
     get: operations["getTrustScore"];
   };
+  "/trust-score/{address}/history": {
+    /** Retrieve trust score history for a Stellar address */
+    get: operations["getTrustScoreHistory"];
+  };
   "/transactions": {
     /**
      * List recent protocol transactions
      * @description Returns a cursor-paginated list of transaction events across all protocol actions (bond creation, withdrawal, attestation) visible to the authenticated wallet. Results are ordered newest-first.
      */
     get: operations["listTransactions"];
+  };
+  "/bonds": {
+    /**
+     * List bonds for the authenticated wallet
+     * @description Returns a cursor-paginated list of bonds visible to the authenticated wallet. Results are ordered newest-first.
+     */
+    get: operations["listBonds"];
+  };
+  "/bonds/{id}": {
+    /**
+     * Retrieve a single bond by ID
+     * @description Returns the full bond record for the given bond identifier.
+     */
+    get: operations["getBond"];
+  };
+  "/settings": {
+    /** Update authenticated wallet settings */
+    patch: operations["updateSettings"];
   };
 }
 
@@ -69,6 +91,20 @@ export interface components {
        * @example 2026-06-29T10:00:00Z
        */
       updatedAt: string;
+    };
+    /** @description A historical trust-score observation. */
+    TrustScoreHistoryPoint: {
+      /** @description Numeric trust score at the observation time. */
+      score: number;
+      /** Format: date-time */
+      recordedAt: string;
+    };
+    /** @description Historical trust-score observations for a Stellar address. */
+    TrustScoreHistory: {
+      /** @description Stellar public key (G...) for this history. */
+      address: string;
+      /** @description Trust-score observations ordered oldest first. */
+      points: components["schemas"]["TrustScoreHistoryPoint"][];
     };
     /** @description A USDC bond registered in the Credence protocol. */
     Bond: {
@@ -129,6 +165,24 @@ export interface components {
       /** @description Opaque pagination cursor. Include as the `cursor` query parameter in the next request to retrieve the following page. Absent when there are no more results. */
       nextCursor?: string;
     };
+    /** @description Cursor-paginated list of bonds for the authenticated wallet. */
+    BondList: {
+      items: components["schemas"]["Bond"][];
+      /** @description Opaque pagination cursor. Include as the `cursor` query parameter in the next request to retrieve the following page. Absent when there are no more results. */
+      nextCursor?: string;
+    };
+    /** @description Complete persisted settings for the authenticated wallet. */
+    Settings: {
+      /** @enum {string} */
+      themeMode: "light" | "dark" | "system";
+      network: string;
+      addressDisplay: string;
+      toastsEnabled: boolean;
+      autoDismiss: string;
+      quietHoursEnabled: boolean;
+      quietHoursStart: string;
+      quietHoursEnd: string;
+    };
     /** @description Simple message envelope returned for errors and confirmations. */
     ApiMessageResponse: {
       /**
@@ -136,6 +190,14 @@ export interface components {
        * @example Address not found.
        */
       message: string;
+    };
+    /** @description The authenticated tenant context. */
+    Tenant: {
+      /**
+       * @description Stable public identifier for the active tenant (Stellar public key).
+       * @example GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+       */
+      tenantId: string;
     };
   };
   responses: {
@@ -184,6 +246,24 @@ export interface operations {
         address: components["parameters"]["StellarAddress"];
       };
     };
+    /** @description Retrieve trust score history for a Stellar address */
+    getTrustScoreHistory: {
+      parameters: {
+        path: {
+          address: components["parameters"]["StellarAddress"];
+        };
+      };
+      responses: {
+        /** @description Trust score history returned successfully. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["TrustScoreHistory"];
+          };
+        };
+        400: components["responses"]["BadRequest"];
+        404: components["responses"]["NotFound"];
+      };
+    };
     responses: {
       /** @description Trust score returned successfully. */
       200: {
@@ -212,6 +292,64 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["TransactionList"];
         };
+      };
+      400: components["responses"]["BadRequest"];
+    };
+  };
+  /**
+   * List bonds for the authenticated wallet
+   * @description Returns a cursor-paginated list of bonds visible to the authenticated wallet. Results are ordered newest-first.
+   */
+  listBonds: {
+    parameters: {
+      query?: {
+        cursor?: components["parameters"]["CursorParam"];
+        limit?: components["parameters"]["LimitParam"];
+      };
+    };
+    responses: {
+      /** @description Paginated bond list returned successfully. */
+      200: {
+        content: {
+          "application/json": components["schemas"]["BondList"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+    };
+  };
+  /**
+   * Retrieve a single bond by ID
+   * @description Returns the full bond record for the given bond identifier.
+   */
+  getBond: {
+    parameters: {
+      path: {
+        /** @description Stable unique identifier for the bond record. */
+        id: string;
+      };
+    };
+    responses: {
+      /** @description Bond returned successfully. */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Bond"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      404: components["responses"]["NotFound"];
+    };
+  };
+  /** Update authenticated wallet settings */
+  updateSettings: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Settings"];
+      };
+    };
+    responses: {
+      /** @description Settings updated successfully. */
+      204: {
+        content: never;
       };
       400: components["responses"]["BadRequest"];
     };

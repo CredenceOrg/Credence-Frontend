@@ -1,0 +1,158 @@
+/* MutationTracker.css */
+
+.mutation-tracker {
+  --mutation-tracker-spacing: 1rem;
+  --mutation-tracker-border-radius: 8px;
+  --mutation-tracker-transition: all 0.2s ease;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--mutation-tracker-spacing);
+}
+
+.mutation-tracker__status {
+  /* Inherits Banner styling */
+}
+
+.mutation-tracker__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mutation-tracker__description {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: inherit;
+}
+
+.mutation-tracker__progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mutation-tracker__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.mutation-tracker__details {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--mutation-tracker-border-radius);
+  padding: var(--mutation-tracker-spacing);
+}
+
+.mutation-tracker__metadata {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.mutation-tracker__meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mutation-tracker__meta-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mutation-tracker__meta-value {
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  word-break: break-all;
+}
+
+.mutation-tracker__tx-hash {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-border-subtle);
+}
+
+.mutation-tracker__error {
+  color: var(--color-critical);
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .mutation-tracker__metadata {
+    grid-template-columns: 1fr;
+  }
+
+  .mutation-tracker__actions {
+    flex-direction: column;
+  }
+
+  .mutation-tracker__actions button {
+    width: 100%;
+  }
+}
+
+/* Animation for status changes */
+.mutation-tracker__status {
+  transition: var(--mutation-tracker-transition);
+}
+
+.mutation-tracker__progress {
+  animation: mutation-tracker-pulse 2s ease-in-out infinite;
+}
+
+@keyframes mutation-tracker-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Loading state */
+.mutation-tracker .loading-skeleton {
+  height: 120px;
+  border-radius: var(--mutation-tracker-border-radius);
+}
+
+/* Integration with existing design system */
+.mutation-tracker__actions .button {
+  min-width: 80px;
+}
+
+.mutation-tracker__progress .badge {
+  pointer-events: none;
+}
+
+/* High contrast mode adjustments */
+@media (prefers-contrast: high) {
+  .mutation-tracker__details {
+    border-width: 2px;
+  }
+
+  .mutation-tracker__tx-hash {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .mutation-tracker__status {
+    transition: none;
+  }
+
+  .mutation-tracker__progress {
+    animation: none;
+  }
+}

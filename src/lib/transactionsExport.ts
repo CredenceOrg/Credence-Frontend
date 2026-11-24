@@ -31,11 +31,43 @@ export const EXPORT_COLUMNS: ReadonlyArray<{
  */
 function cellValue(tx: Transaction, key: (typeof EXPORT_COLUMNS)[number]['key']): string {
   if (key === 'amountUsdcDisplay') {
-    return tx.amountUsdc == null ? '' : String(tx.amountUsdc)
+    return formatAmount(tx.amountUsdc)
   }
   const value = tx[key]
   if (value == null) return ''
-  return String(value)
+  return neutralizeFormula(stripControlCharacters(String(value)))
+}
+
+function formatAmount(value: number | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return ''
+
+  const fixed = value.toFixed(7)
+  const expanded = /e/i.test(fixed) ? expandScientificNotation(fixed) : fixed
+  const [integer, fraction] = expanded.split('.')
+  const trimmedFraction = fraction?.replace(/0+$/, '')
+  return trimmedFraction ? `${integer}.${trimmedFraction}` : integer
+}
+
+function expandScientificNotation(value: string): string {
+  const [coefficient, exponentString] = value.toLowerCase().split('e')
+  const sign = coefficient.startsWith('-') ? '-' : ''
+  const unsignedCoefficient = sign ? coefficient.slice(1) : coefficient
+  const [integer, fraction = ''] = unsignedCoefficient.split('.')
+  const digits = integer + fraction
+  const decimalPosition = integer.length + Number(exponentString)
+
+  if (decimalPosition >= digits.length) {
+    return `${sign}${digits}${'0'.repeat(decimalPosition - digits.length)}`
+  }
+  return `${sign}${digits.slice(0, decimalPosition)}.${digits.slice(decimalPosition)}`
+}
+
+function stripControlCharacters(value: string): string {
+  return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+}
+
+function neutralizeFormula(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
 }
 
 /**
@@ -44,6 +76,8 @@ function cellValue(tx: Transaction, key: (typeof EXPORT_COLUMNS)[number]['key'])
  * and escapes embedded double quotes by doubling them.
  */
 function escapeCsvField(value: string): string {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  value = safe
   if (/[",\r\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`
   }
@@ -59,6 +93,7 @@ export function transactionsToCsv(transactions: Transaction[]): string {
   const headerLine = EXPORT_COLUMNS.map((c) => escapeCsvField(c.header)).join(',')
   const lines: string[] = [headerLine]
   for (const tx of transactions) {
+    if (typeof tx?.id !== 'string' || typeof tx.hash !== 'string') continue
     lines.push(EXPORT_COLUMNS.map((c) => escapeCsvField(cellValue(tx, c.key))).join(','))
   }
   // Trailing newline matches the RFC 4180 convention and is friendly to
@@ -87,7 +122,11 @@ export function buildExportFilename(now: Date = new Date()): string {
 export function downloadCsv(
   csv: string,
   filename: string,
-  options: { document?: Document; createObjectURL?: typeof URL.createObjectURL; revokeObjectURL?: typeof URL.revokeObjectURL } = {}
+  options: {
+    document?: Document
+    createObjectURL?: typeof URL.createObjectURL
+    revokeObjectURL?: typeof URL.revokeObjectURL
+  } = {}
 ): void {
   if (typeof document === 'undefined' && !options.document) return
   const doc = options.document ?? document

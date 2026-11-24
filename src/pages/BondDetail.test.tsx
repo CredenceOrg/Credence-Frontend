@@ -27,15 +27,9 @@ vi.mock('../context/WalletContext', () => ({
   }),
 }))
 
-vi.mock('../components/ConnectWalletModal', () => ({
+vi.mock('../components/ConnectWalletDialog', () => ({
   __esModule: true,
-  default: ({
-    open,
-    onClose,
-  }: {
-    open: boolean
-    onClose: () => void
-  }) => {
+  default: ({ open, onClose }: { open: boolean; onClose: () => void }) => {
     if (!open) return null
     return (
       <div role="dialog" aria-label="Connect Freighter Wallet">
@@ -49,23 +43,28 @@ vi.mock('../components/ConnectWalletModal', () => ({
 
 vi.mock('../components/ConfirmDialog', () => ({
   __esModule: true,
-  default: ({ open, title, onConfirm, onCancel }: { open: boolean; title: string; onConfirm: () => void; onCancel: () => void }) => {
+  default: ({
+    open,
+    title,
+    onConfirm,
+    onCancel,
+  }: {
+    open: boolean
+    title: string
+    onConfirm: () => void
+    onCancel: () => void
+  }) => {
     if (!open) return null
     return (
       <div role="dialog" aria-label={title}>
         <h2>{title}</h2>
         <label htmlFor="confirm-input">Type CONFIRM</label>
-        <input
-          id="confirm-input"
-          type="text"
-          role="textbox"
-          aria-label="type confirm"
-        />
+        <input id="confirm-input" type="text" role="textbox" aria-label="type confirm" />
         <button onClick={onCancel}>Cancel</button>
         <button onClick={onConfirm}>Withdraw bond</button>
       </div>
     )
-  }
+  },
 }))
 
 let mockParams = { id: '1' }
@@ -76,7 +75,15 @@ vi.mock('react-router-dom', async (importOriginal) => {
     ...actual,
     useNavigate: () => mockNavigate,
     useParams: () => mockParams,
-    Link: ({ children, to, className }: { children: React.ReactNode; to: string; className?: string }) => (
+    Link: ({
+      children,
+      to,
+      className,
+    }: {
+      children: React.ReactNode
+      to: string
+      className?: string
+    }) => (
       <a href={to} className={className}>
         {children}
       </a>
@@ -123,7 +130,7 @@ describe('BondDetail Page', () => {
     expect(screen.getByText('Active')).toBeInTheDocument()
   })
 
-  it('renders the bond specifications (amount, lock duration, unlock date)', () => {
+  it('renders the bond specifications (amount, time remaining, lock duration, start date, unlock date)', () => {
     render(
       <MemoryRouter>
         <BondDetail />
@@ -132,9 +139,23 @@ describe('BondDetail Page', () => {
 
     expect(screen.getByText('Bonded Amount')).toBeInTheDocument()
     expect(screen.getByText('1,000 USDC')).toBeInTheDocument()
+    expect(screen.getByText('Time Remaining')).toBeInTheDocument()
+    expect(screen.getByText('30 days remaining')).toBeInTheDocument()
     expect(screen.getByText('Lock Duration')).toBeInTheDocument()
     expect(screen.getByText('30 Days')).toBeInTheDocument()
+    expect(screen.getByText('Lock Start Date')).toBeInTheDocument()
     expect(screen.getByText('Estimated Unlock Date')).toBeInTheDocument()
+  })
+
+  it('shows top-up bond button with Add USDC label', () => {
+    render(
+      <MemoryRouter>
+        <BondDetail />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByRole('button', { name: /Add USDC/i })).toBeInTheDocument()
+    expect(screen.getByText('Top-Up Bond')).toBeInTheDocument()
   })
 
   it('renders the slash-risk panel with the live penalty breakdown', () => {
@@ -162,13 +183,15 @@ describe('BondDetail Page', () => {
       </MemoryRouter>
     )
 
-    const initialUnlockDate = screen.getByText('Estimated Unlock Date').nextElementSibling?.textContent
+    const initialUnlockDate =
+      screen.getByText('Estimated Unlock Date').nextElementSibling?.textContent
     const plus30Btn = screen.getByRole('button', { name: /^\+30 Days$/i })
 
     fireEvent.click(plus30Btn)
 
     expect(screen.getByText('60 Days')).toBeInTheDocument()
-    const updatedUnlockDate = screen.getByText('Estimated Unlock Date').nextElementSibling?.textContent
+    const updatedUnlockDate =
+      screen.getByText('Estimated Unlock Date').nextElementSibling?.textContent
     expect(updatedUnlockDate).not.toBe(initialUnlockDate)
     expect(mockAddToast).toHaveBeenCalledWith('success', 'Lock duration extended by +30 days.')
 
@@ -191,7 +214,7 @@ describe('BondDetail Page', () => {
     expect(screen.getByRole('heading', { name: /Confirm bond withdrawal/i })).toBeInTheDocument()
   })
 
-  it('opens the ConnectWalletModal when withdraw is clicked while disconnected', () => {
+  it('opens the ConnectWalletDialog when withdraw is clicked while disconnected', () => {
     mockConnected = false
 
     render(
@@ -231,7 +254,7 @@ describe('BondDetail Page', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: /^Withdraw$/i }))
-    
+
     const input = screen.getByRole('textbox', { name: /type confirm/i })
     fireEvent.change(input, { target: { value: 'CONFIRM' } })
 
@@ -254,7 +277,9 @@ describe('BondDetail Page', () => {
     )
 
     expect(screen.getByText('Bond Not Found')).toBeInTheDocument()
-    expect(screen.getByText('The requested bond with ID #99 does not exist or has been removed.')).toBeInTheDocument()
+    expect(
+      screen.getByText('The requested bond with ID #99 does not exist or has been removed.')
+    ).toBeInTheDocument()
     expect(screen.getByText('← Back to Bonds')).toBeInTheDocument()
   })
 })

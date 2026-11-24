@@ -1,12 +1,44 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatUsdc,
+  formatAmount,
   formatMoney,
   normalizeUSDC,
   formatUSDC,
   formatUSDCDisplay,
   sanitizeUSDCInput,
 } from './format'
+
+describe('formatAmount', () => {
+  it('formats standard positive numbers with USDC suffix', () => {
+    expect(formatAmount(1500)).toBe('1,500 USDC')
+    expect(formatAmount(0)).toBe('0 USDC')
+    expect(formatAmount(100)).toBe('100 USDC')
+    expect(formatAmount(1_000_000)).toBe('1,000,000 USDC')
+  })
+
+  it('formats fractional amounts up to 2 decimal places', () => {
+    expect(formatAmount(1234.567)).toBe('1,234.57 USDC')
+    expect(formatAmount(0.5)).toBe('0.5 USDC')
+    expect(formatAmount(99.99)).toBe('99.99 USDC')
+  })
+
+  it('returns dash placeholder for invalid, negative, NaN, and infinite inputs', () => {
+    expect(formatAmount(NaN)).toBe('—')
+    expect(formatAmount(Infinity)).toBe('—')
+    expect(formatAmount(-Infinity)).toBe('—')
+    expect(formatAmount(-5)).toBe('—')
+    expect(formatAmount(-0.01)).toBe('—')
+    expect(formatAmount(undefined)).toBe('—')
+    expect(formatAmount(null)).toBe('—')
+  })
+
+  it('clamps values exceeding MAX_SAFE_INTEGER to MAX_SAFE_INTEGER', () => {
+    expect(formatAmount(Number.MAX_SAFE_INTEGER + 1000)).toBe(
+      `${Number.MAX_SAFE_INTEGER.toLocaleString('en-US')} USDC`
+    )
+  })
+})
 
 describe('formatUsdc', () => {
   it('formats numeric USDC amounts with suffix', () => {
@@ -205,9 +237,9 @@ describe('sanitizeUSDCInput', () => {
   })
 
   it('truncates exactly 2 decimal places (boundary: exactly 2 digits)', () => {
-    expect(sanitizeUSDCInput('1.23')).toBe('1.23')   // at limit — unchanged
-    expect(sanitizeUSDCInput('1.2')).toBe('1.2')     // under limit — unchanged
-    expect(sanitizeUSDCInput('1.230')).toBe('1.23')  // over limit — truncated
+    expect(sanitizeUSDCInput('1.23')).toBe('1.23') // at limit — unchanged
+    expect(sanitizeUSDCInput('1.2')).toBe('1.2') // under limit — unchanged
+    expect(sanitizeUSDCInput('1.230')).toBe('1.23') // over limit — truncated
   })
 })
 
@@ -408,7 +440,18 @@ describe('normalizeUSDC — strips en-US thousand commas from input before norma
 // ---------------------------------------------------------------------------
 
 describe('property: formatUSDC output is always re-parseable as a finite number', () => {
-  const validAmounts = ['0', '0.01', '0.99', '1', '100', '999', '1000', '1234.56', '999999.99', '1000000']
+  const validAmounts = [
+    '0',
+    '0.01',
+    '0.99',
+    '1',
+    '100',
+    '999',
+    '1000',
+    '1234.56',
+    '999999.99',
+    '1000000',
+  ]
 
   it.each(validAmounts)(
     'formatUSDC("%s") produces a string whose numeric value matches the input',
@@ -424,16 +467,13 @@ describe('property: formatUSDC output is always re-parseable as a finite number'
 describe('property: normalizeUSDC → formatUSDC round-trip preserves value', () => {
   const inputs = ['0', '1', '100', '1000', '1234.5', '9999.99', '1000000']
 
-  it.each(inputs)(
-    'formatUSDC(normalizeUSDC("%s")) produces a valid formatted string',
-    (input) => {
-      const normalized = normalizeUSDC(input)
-      const formatted = formatUSDC(normalized)
-      const parsed = Number(formatted.replace(/,/g, ''))
-      expect(Number.isFinite(parsed)).toBe(true)
-      expect(parsed).toBeCloseTo(Number(input), 1)
-    }
-  )
+  it.each(inputs)('formatUSDC(normalizeUSDC("%s")) produces a valid formatted string', (input) => {
+    const normalized = normalizeUSDC(input)
+    const formatted = formatUSDC(normalized)
+    const parsed = Number(formatted.replace(/,/g, ''))
+    expect(Number.isFinite(parsed)).toBe(true)
+    expect(parsed).toBeCloseTo(Number(input), 1)
+  })
 })
 
 describe('property: formatUsdc output always ends with " USDC" for finite inputs', () => {

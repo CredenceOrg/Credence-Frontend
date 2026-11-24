@@ -1,11 +1,17 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ActivityTimeline, { ActivityItem, toneToBadgeVariant, isTxHash } from './ActivityTimeline'
+import i18n from '../i18n/config'
+import ActivityTimeline, {
+  ActivityItem,
+  isTxHash,
+  toneToBadgeVariant,
+  resolveItemStatus,
+} from './ActivityTimeline'
 
 const makeItem = (overrides: Partial<ActivityItem> = {}): ActivityItem => ({
   id: 'test-1',
-  timestamp: 'Jun 20, 10:00 UTC',
+  timestamp: '2026-06-20T10:00:00.000Z',
   title: 'Test event',
   description: 'A test event description.',
   actor: 'Test Actor',
@@ -15,11 +21,12 @@ const makeItem = (overrides: Partial<ActivityItem> = {}): ActivityItem => ({
   ...overrides,
 })
 
+const amountItem = (amountUsdc: number): ActivityItem =>
+  makeItem({ id: `amount-${amountUsdc}`, amountUsdc })
+
 // Mock CopyableHash to avoid clipboard complexity in tests
 vi.mock('./CopyableHash', () => ({
-  default: ({ hash }: { hash: string }) => (
-    <span data-testid="copyable-hash">{hash}</span>
-  ),
+  default: ({ hash }: { hash: string }) => <span data-testid="copyable-hash">{hash}</span>,
 }))
 
 // Mock Badge to test variant mapping
@@ -34,12 +41,9 @@ describe('toneToBadgeVariant', () => {
     ['success', 'active'],
     ['warning', 'grace-period'],
     ['info', 'locked'],
-  ] as const)(
-    'maps tone "%s" to Badge variant "%s"',
-    (tone, expectedVariant) => {
-      expect(toneToBadgeVariant(tone)).toBe(expectedVariant)
-    }
-  )
+  ] as const)('maps tone "%s" to Badge variant "%s"', (tone, expectedVariant) => {
+    expect(toneToBadgeVariant(tone)).toBe(expectedVariant)
+  })
 })
 
 describe('isTxHash', () => {
@@ -52,6 +56,28 @@ describe('isTxHash', () => {
     ['some other meta', false],
   ])('correctly identifies "%s" as %s', (meta, expected) => {
     expect(isTxHash(meta)).toBe(expected)
+  })
+})
+
+describe('resolveItemStatus', () => {
+  it('returns explicit item.status when present', () => {
+    const item = makeItem({ status: 'accepted', tone: 'warning' })
+    expect(resolveItemStatus(item)).toBe('accepted')
+  })
+
+  it('falls back to toneToStatus when status is not present', () => {
+    const item = makeItem({ status: undefined, tone: 'warning' })
+    expect(resolveItemStatus(item)).toBe('needs-update')
+  })
+
+  it('falls back to toneToStatus for success tone', () => {
+    const item = makeItem({ status: undefined, tone: 'success' })
+    expect(resolveItemStatus(item)).toBe('accepted')
+  })
+
+  it('falls back to toneToStatus for info tone', () => {
+    const item = makeItem({ status: undefined, tone: 'info' })
+    expect(resolveItemStatus(item)).toBe('in-review')
   })
 })
 
@@ -68,34 +94,42 @@ describe('ActivityTimeline', () => {
       expect(screen.getByRole('heading', { name: 'Attestation timeline' })).toBeInTheDocument()
     })
 
-    it('shows "3 recent events" summary for the sample data', () => {
+    it('binds operation to a durable request key or nonce when provided', () => {
+      render(<ActivityTimeline nonce="test-nonce-123" />)
+      const section = screen.getByRole('region', { name: /activity and attestations/i })
+      expect(section).toHaveAttribute('data-nonce', 'test-nonce-123')
+    })
+
+    it('shows "5 recent events" summary for the sample data', () => {
       render(<ActivityTimeline />)
-      expect(screen.getByText('3 recent events')).toBeInTheDocument()
+      expect(screen.getByText('5 recent events')).toBeInTheDocument()
     })
 
     it('renders the sample timeline list', () => {
       render(<ActivityTimeline />)
       expect(screen.getByRole('list', { name: /recent timeline events/i })).toBeInTheDocument()
-      expect(screen.getAllByRole('listitem')).toHaveLength(3)
+      expect(screen.getAllByRole('listitem')).toHaveLength(5)
     })
 
-    it('renders all three sample event titles', () => {
+    it('renders all five sample event titles', () => {
       render(<ActivityTimeline />)
       expect(screen.getByText('Attestation submitted')).toBeInTheDocument()
       expect(screen.getByText('Proof mismatch detected')).toBeInTheDocument()
       expect(screen.getByText('Credential refreshed')).toBeInTheDocument()
+      expect(screen.getByText('Bond-backed identity confirmed')).toBeInTheDocument()
+      expect(screen.getByText('Stale credential flagged')).toBeInTheDocument()
     })
   })
 
   describe('empty items', () => {
     it('renders the EmptyState heading when items is an empty array', () => {
       render(<ActivityTimeline items={[]} />)
-      expect(screen.getByRole('heading', { name: /no recent activity/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
     })
 
     it('renders the EmptyState description', () => {
       render(<ActivityTimeline items={[]} />)
-      expect(screen.getByText(/new trust score events will appear here/i)).toBeInTheDocument()
+      expect(screen.getByText(/attestations and events will appear here/i)).toBeInTheDocument()
     })
 
     it('does not render the timeline list', () => {
@@ -151,16 +185,50 @@ describe('ActivityTimeline', () => {
     })
   })
 
+  describe('localized plural counts', () => {
+    beforeEach(async () => {
+      i18n.addResourceBundle(
+        'fr',
+        'translation',
+        {
+          activityTimeline: {
+            recentEvents_one: '{{count}} événement récent',
+            recentEvents_other: '{{count}} événements récents',
+          },
+        },
+        true,
+        true
+      )
+      await i18n.changeLanguage('fr')
+    })
+
+    afterEach(async () => {
+      cleanup()
+      await i18n.changeLanguage('en')
+      i18n.removeResourceBundle('fr', 'translation')
+    })
+
+    it('uses the active locale plural rules for zero, one, and many items', () => {
+      const first = makeItem({ id: 'first' })
+      const second = makeItem({ id: 'second' })
+      const { rerender } = render(<ActivityTimeline items={[]} />)
+      expect(screen.queryByText(/événement récent/)).toBeNull()
+
+      rerender(<ActivityTimeline items={[first]} />)
+      expect(screen.getByText('1 événement récent')).toBeInTheDocument()
+
+      rerender(<ActivityTimeline items={[first, second]} />)
+      expect(screen.getByText('2 événements récents')).toBeInTheDocument()
+    })
+  })
+
   describe('tone classes', () => {
-    it.each(['success', 'warning', 'info'] as const)(
-      'applies tone class "%s" to node',
-      (tone) => {
-        const { container } = render(
-          <ActivityTimeline items={[makeItem({ tone, id: `tone-${tone}` })]} />
-        )
-        expect(container.querySelector(`.activity-row__node--${tone}`)).not.toBeNull()
-      }
-    )
+    it.each(['success', 'warning', 'info'] as const)('applies tone class "%s" to node', (tone) => {
+      const { container } = render(
+        <ActivityTimeline items={[makeItem({ tone, id: `tone-${tone}` })]} />
+      )
+      expect(container.querySelector(`.activity-row__node--${tone}`)).not.toBeNull()
+    })
 
     it.each(['success', 'warning', 'info'] as const)(
       'renders Badge with correct variant for tone "%s"',
@@ -175,8 +243,11 @@ describe('ActivityTimeline', () => {
   describe('a11y semantics', () => {
     it('renders timestamps as <time> elements', () => {
       const { container } = render(<ActivityTimeline items={[makeItem()]} />)
-      expect(container.querySelector('time')).not.toBeNull()
-      expect(container.querySelector('time')?.textContent).toBe('Jun 20, 10:00 UTC')
+      const time = container.querySelector('time')
+      expect(time).not.toBeNull()
+      expect(time?.getAttribute('dateTime')).toBe('2026-06-20T10:00:00.000Z')
+      expect(time?.textContent).toContain('Jun 20, 2026')
+      expect(time?.textContent).toContain('10:00:00')
     })
 
     it('renders the rail as aria-hidden', () => {
@@ -184,108 +255,421 @@ describe('ActivityTimeline', () => {
       expect(container.querySelector('.activity-row__rail')).toHaveAttribute('aria-hidden', 'true')
     })
 
-  describe('disclosure interaction', () => {
-    it('renders disclosure button in collapsed state with aria-expanded="false"', () => {
-      render(<ActivityTimeline items={[makeItem()]} />)
-      const button = screen.getByRole('button', { name: /show details/i })
-      expect(button).toHaveAttribute('aria-expanded', 'false')
+    describe('disclosure interaction', () => {
+      it('renders disclosure button in collapsed state with aria-expanded="false"', () => {
+        render(<ActivityTimeline items={[makeItem()]} />)
+        const button = screen.getByRole('button', { name: /show details/i })
+        expect(button).toHaveAttribute('aria-expanded', 'false')
+      })
+
+      it('renders disclosure button with aria-controls pointing to panel', () => {
+        render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+        const button = screen.getByRole('button', { name: /show details/i })
+        expect(button).toHaveAttribute('aria-controls', 'details-test-item')
+      })
+
+      it('expands panel and sets aria-expanded="true" on click', async () => {
+        const user = userEvent.setup()
+        render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+        const button = screen.getByRole('button', { name: /show details/i })
+        await user.click(button)
+
+        expect(button).toHaveAttribute('aria-expanded', 'true')
+        expect(screen.getByText('Actor:')).toBeInTheDocument()
+        expect(screen.getByText('Meta:')).toBeInTheDocument()
+      })
+
+      it('collapses panel and sets aria-expanded="false" on second click', async () => {
+        const user = userEvent.setup()
+        render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+        const button = screen.getByRole('button', { name: /show details/i })
+        await user.click(button)
+        await user.click(button)
+
+        expect(button).toHaveAttribute('aria-expanded', 'false')
+        // Panel is unmounted when collapsed
+        const panel = document.getElementById('details-test-item')
+        expect(panel).toBeNull()
+      })
+
+      it('toggles panel visibility via Enter key', async () => {
+        const user = userEvent.setup()
+        render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+        const button = screen.getByRole('button', { name: /show details/i })
+        button.focus()
+        await user.keyboard('{Enter}')
+
+        expect(button).toHaveAttribute('aria-expanded', 'true')
+      })
+
+      it('toggles panel visibility via Space key', async () => {
+        const user = userEvent.setup()
+        render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+        const button = screen.getByRole('button', { name: /show details/i })
+        button.focus()
+        await user.keyboard(' ')
+
+        expect(button).toHaveAttribute('aria-expanded', 'true')
+      })
+
+      it('closes panel via Escape key and returns focus to trigger', async () => {
+        const user = userEvent.setup()
+        render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+
+        const button = screen.getByRole('button', { name: /show details/i })
+        await user.click(button)
+
+        const panel = document.getElementById('details-test-item')
+        expect(panel).toBeInTheDocument()
+        expect(panel).not.toHaveAttribute('hidden')
+
+        // Escape should close the panel - fire on panel element
+        fireEvent.keyDown(panel!, { key: 'Escape' })
+
+        expect(button).toHaveAttribute('aria-expanded', 'false')
+        expect(button).toHaveFocus()
+      })
     })
 
-    it('renders disclosure button with aria-controls pointing to panel', () => {
-      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
-      const button = screen.getByRole('button', { name: /show details/i })
-      expect(button).toHaveAttribute('aria-controls', 'details-test-item')
+    describe('meta rendering', () => {
+      it('renders tx hash meta via CopyableHash component', async () => {
+        const user = userEvent.setup()
+        render(<ActivityTimeline items={[makeItem({ meta: 'Tx 0x93a1...22f4' })]} />)
+
+        const button = screen.getByRole('button', { name: /show details/i })
+        await user.click(button)
+
+        expect(screen.getByTestId('copyable-hash')).toBeInTheDocument()
+        expect(screen.getByTestId('copyable-hash').textContent).toBe('Tx 0x93a1...22f4')
+      })
+
+      it('renders non-tx meta as plain text', async () => {
+        const user = userEvent.setup()
+        render(<ActivityTimeline items={[makeItem({ meta: 'Rule AV-17' })]} />)
+
+        const button = screen.getByRole('button', { name: /show details/i })
+        await user.click(button)
+
+        expect(screen.getByText('Rule AV-17')).toBeInTheDocument()
+        expect(screen.queryByTestId('copyable-hash')).toBeNull()
+      })
+    })
+  })
+
+  describe('amount display', () => {
+    it('renders a formatted amount when amountUsdc is provided', () => {
+      render(<ActivityTimeline items={[amountItem(1500)]} />)
+      expect(screen.getByText('1,500 USDC')).toBeInTheDocument()
     })
 
-    it('expands panel and sets aria-expanded="true" on click', async () => {
+    it('renders "0 USDC" for a zero amount', () => {
+      render(<ActivityTimeline items={[amountItem(0)]} />)
+      expect(screen.getByText('0 USDC')).toBeInTheDocument()
+    })
+
+    it('renders fractional amounts with correct precision', () => {
+      render(<ActivityTimeline items={[amountItem(1234.567)]} />)
+      expect(screen.getByText('1,234.57 USDC')).toBeInTheDocument()
+    })
+
+    it('does not render an amount element when amountUsdc is absent', () => {
+      const { container } = render(
+        <ActivityTimeline items={[makeItem({ amountUsdc: undefined })]} />
+      )
+      expect(container.querySelector('.activity-row__amount')).toBeNull()
+    })
+
+    it('renders "—" for NaN amount', () => {
+      render(<ActivityTimeline items={[amountItem(NaN)]} />)
+      expect(screen.getByText('—')).toBeInTheDocument()
+    })
+
+    it('renders "—" for Infinity amount', () => {
+      render(<ActivityTimeline items={[amountItem(Infinity)]} />)
+      expect(screen.getByText('—')).toBeInTheDocument()
+    })
+
+    it('renders "—" for negative amount', () => {
+      render(<ActivityTimeline items={[amountItem(-5)]} />)
+      expect(screen.getByText('—')).toBeInTheDocument()
+    })
+
+    it('renders a large amount with thousand separators', () => {
+      render(<ActivityTimeline items={[amountItem(1_000_000)]} />)
+      expect(screen.getByText('1,000,000 USDC')).toBeInTheDocument()
+    })
+
+    it('includes aria-label with formatted amount', () => {
+      render(<ActivityTimeline items={[amountItem(1500)]} />)
+      expect(screen.getByLabelText('Amount: 1,500 USDC')).toBeInTheDocument()
+    })
+
+    it('renders amounts for each item independently', () => {
+      const items = [
+        makeItem({ id: 'a', title: 'Alpha', amountUsdc: 100 }),
+        makeItem({ id: 'b', title: 'Beta' }),
+        makeItem({ id: 'c', title: 'Gamma', amountUsdc: 200 }),
+      ]
+      render(<ActivityTimeline items={items} />)
+      expect(screen.getByText('100 USDC')).toBeInTheDocument()
+      expect(screen.getByText('200 USDC')).toBeInTheDocument()
+      // Beta has no amount, so only 2 amount elements should exist
+      const amountEls = screen.getAllByText(/USDC$/)
+      // 2 explicit amounts + no hidden amounts
+      expect(amountEls).toHaveLength(2)
+    })
+  })
+
+  describe('selectable mode (onSelect provided)', () => {
+    it('renders "View details" disclosure button without aria-expanded/aria-controls', () => {
+      const onSelect = vi.fn()
+      render(<ActivityTimeline items={[makeItem({ id: 'sel-1' })]} onSelect={onSelect} />)
+
+      const button = screen.getByRole('button', { name: /view details/i })
+      expect(button).toBeInTheDocument()
+      expect(button).not.toHaveAttribute('aria-expanded')
+      expect(button).not.toHaveAttribute('aria-controls')
+    })
+
+    it('calls onSelect when row is clicked', async () => {
       const user = userEvent.setup()
-      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+      const onSelect = vi.fn()
+      const item = makeItem({ id: 'sel-1' })
+      const { container } = render(<ActivityTimeline items={[item]} onSelect={onSelect} />)
 
-      const button = screen.getByRole('button', { name: /show details/i })
+      const row = container.querySelector('.activity-row--selectable')
+      expect(row).not.toBeNull()
+      await user.click(row!)
+
+      expect(onSelect).toHaveBeenCalledTimes(1)
+      expect(onSelect).toHaveBeenCalledWith(item)
+    })
+
+    it('calls onSelect when disclosure button is clicked and stops propagation', async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+      const item = makeItem({ id: 'sel-1' })
+      render(<ActivityTimeline items={[item]} onSelect={onSelect} />)
+
+      const button = screen.getByRole('button', { name: /view details/i })
       await user.click(button)
 
-      expect(button).toHaveAttribute('aria-expanded', 'true')
-      expect(screen.getByText('Actor:')).toBeInTheDocument()
-      expect(screen.getByText('Meta:')).toBeInTheDocument()
+      // Should only be called once, not twice from row propagation
+      expect(onSelect).toHaveBeenCalledTimes(1)
+      expect(onSelect).toHaveBeenCalledWith(item)
     })
 
-    it('collapses panel and sets aria-expanded="false" on second click', async () => {
+    it('calls onSelect when Enter or Space is pressed on disclosure button', async () => {
       const user = userEvent.setup()
-      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+      const onSelect = vi.fn()
+      const item = makeItem({ id: 'sel-1' })
+      render(<ActivityTimeline items={[item]} onSelect={onSelect} />)
 
-      const button = screen.getByRole('button', { name: /show details/i })
-      await user.click(button)
-      await user.click(button)
-
-      expect(button).toHaveAttribute('aria-expanded', 'false')
-      // Panel should have hidden attribute when collapsed
-      const panel = document.getElementById('details-test-item')
-      expect(panel).toHaveAttribute('hidden')
-    })
-
-    it('toggles panel visibility via Enter key', async () => {
-      const user = userEvent.setup()
-      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
-
-      const button = screen.getByRole('button', { name: /show details/i })
+      const button = screen.getByRole('button', { name: /view details/i })
       button.focus()
       await user.keyboard('{Enter}')
+      expect(onSelect).toHaveBeenCalledTimes(1)
 
-      expect(button).toHaveAttribute('aria-expanded', 'true')
+      await user.keyboard(' ')
+      expect(onSelect).toHaveBeenCalledTimes(2)
     })
 
-    it('toggles panel visibility via Space key', async () => {
+    it('does not render inline detail panel when onSelect is provided', async () => {
       const user = userEvent.setup()
-      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
+      const onSelect = vi.fn()
+      render(<ActivityTimeline items={[makeItem({ id: 'sel-1' })]} onSelect={onSelect} />)
+
+      const button = screen.getByRole('button', { name: /view details/i })
+      await user.click(button)
+
+      expect(document.getElementById('details-sel-1')).toBeNull()
+    })
+  })
+
+  describe('failure-boundary coverage', () => {
+    it('falls back to the sample activity when items is omitted', () => {
+      render(<ActivityTimeline />)
+      expect(screen.getAllByRole('listitem')).toHaveLength(5)
+    })
+
+    it('keeps every panel collapsed on first render', () => {
+      render(
+        <ActivityTimeline
+          items={[makeItem({ id: 'a', title: 'Alpha' }), makeItem({ id: 'b', title: 'Beta' })]}
+        />
+      )
+      for (const button of screen.getAllByRole('button', { name: /show details/i })) {
+        expect(button).toHaveAttribute('aria-expanded', 'false')
+      }
+      expect(screen.queryByText('Actor:')).toBeNull()
+    })
+
+    it('expands only one row at a time', async () => {
+      const user = userEvent.setup()
+      render(
+        <ActivityTimeline
+          items={[makeItem({ id: 'a', title: 'Alpha' }), makeItem({ id: 'b', title: 'Beta' })]}
+        />
+      )
+
+      const [firstButton] = screen.getAllByRole('button', { name: /show details/i })
+      await user.click(firstButton)
+      expect(document.getElementById('details-a')).toBeInTheDocument()
+
+      // Expanding the sibling must collapse the previously expanded row so no
+      // two partial-detail panels are ever open at once. After the first
+      // expansion only the sibling still reads "Show details".
+      const [secondButton] = screen.getAllByRole('button', { name: /show details/i })
+      await user.click(secondButton)
+      expect(document.getElementById('details-a')).toBeNull()
+      expect(document.getElementById('details-b')).toBeInTheDocument()
+    })
+
+    it('ignores Escape when no panel is expanded', () => {
+      render(<ActivityTimeline items={[makeItem({ id: 'a' })]} />)
+
+      const section = screen.getByRole('region', { name: /activity and attestations/i })
+      fireEvent.keyDown(section, { key: 'Escape' })
+
+      const button = screen.getByRole('button', { name: /show details/i })
+      expect(button).toHaveAttribute('aria-expanded', 'false')
+      expect(screen.queryByText('Actor:')).toBeNull()
+    })
+
+    it('does not handle Escape when onSelect delegates to a drawer', () => {
+      const onSelect = vi.fn()
+      render(<ActivityTimeline items={[makeItem({ id: 'a' })]} onSelect={onSelect} />)
+
+      const section = screen.getByRole('region', { name: /activity and attestations/i })
+      fireEvent.keyDown(section, { key: 'Escape' })
+
+      // The inline path stays inert; the drawer owns its own focus trap.
+      expect(screen.getByRole('button', { name: /view details/i })).toBeInTheDocument()
+      expect(onSelect).not.toHaveBeenCalled()
+    })
+
+    it('ignores unrelated key presses on the disclosure button', async () => {
+      const user = userEvent.setup()
+      render(<ActivityTimeline items={[makeItem({ id: 'a' })]} />)
 
       const button = screen.getByRole('button', { name: /show details/i })
       button.focus()
-      await user.keyboard(' ')
-
-      expect(button).toHaveAttribute('aria-expanded', 'true')
-    })
-
-    it('closes panel via Escape key and returns focus to trigger', async () => {
-      const user = userEvent.setup()
-      render(<ActivityTimeline items={[makeItem({ id: 'test-item' })]} />)
-
-      const button = screen.getByRole('button', { name: /show details/i })
-      await user.click(button)
-
-      const panel = document.getElementById('details-test-item')
-      expect(panel).toBeInTheDocument()
-      expect(panel).not.toHaveAttribute('hidden')
-
-      // Escape should close the panel - fire on panel element
-      fireEvent.keyDown(panel!, { key: 'Escape' })
+      await user.keyboard('a')
 
       expect(button).toHaveAttribute('aria-expanded', 'false')
-      expect(button).toHaveFocus()
+    })
+
+    it('treats a null amount as absent rather than rendering "NaN"', () => {
+      const { container } = render(
+        <ActivityTimeline
+          items={[makeItem({ id: 'a', amountUsdc: null as unknown as number })]}
+        />
+      )
+      expect(container.querySelector('.activity-row__amount')).toBeNull()
+    })
+
+    it('keeps the row inert in inline mode (only the disclosure toggles)', async () => {
+      const user = userEvent.setup()
+      const { container } = render(<ActivityTimeline items={[makeItem({ id: 'a' })]} />)
+
+      const row = container.querySelector('.activity-row')
+      expect(row).not.toBeNull()
+      await user.click(row!)
+
+      expect(screen.getByRole('button', { name: /show details/i })).toHaveAttribute(
+        'aria-expanded',
+        'false'
+      )
+    })
+
+    it('does not reset expansion when nonce stays undefined across rerenders', async () => {
+      const user = userEvent.setup()
+      const item = makeItem({ id: 'a' })
+      const { rerender } = render(<ActivityTimeline items={[item]} />)
+
+      await user.click(screen.getByRole('button', { name: /show details/i }))
+      expect(document.getElementById('details-a')).toBeInTheDocument()
+
+      rerender(<ActivityTimeline items={[item]} />)
+
+      // A stable nonce must not arbitrarily collapse user-open detail panels.
+      expect(document.getElementById('details-a')).toBeInTheDocument()
+    })
+
+    it('recovers after an empty-then-populated items transition', () => {
+      const item = makeItem({ id: 'a' })
+      const { rerender } = render(<ActivityTimeline items={[]} />)
+      expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
+
+      rerender(<ActivityTimeline items={[item]} />)
+      expect(screen.queryByRole('heading', { name: /no activity yet/i })).toBeNull()
+      expect(screen.getAllByRole('listitem')).toHaveLength(1)
     })
   })
 
-  describe('meta rendering', () => {
-    it('renders tx hash meta via CopyableHash component', async () => {
+  describe('atomic rollback and state recovery invariants', () => {
+    it('resets expandedId when an expanded item is removed during refetch/filter/rollback', async () => {
       const user = userEvent.setup()
-      render(<ActivityTimeline items={[makeItem({ meta: 'Tx 0x93a1...22f4' })]} />)
+      const item1 = makeItem({ id: 'item-1', title: 'Item 1' })
+      const item2 = makeItem({ id: 'item-2', title: 'Item 2' })
 
-      const button = screen.getByRole('button', { name: /show details/i })
+      const { rerender } = render(<ActivityTimeline items={[item1, item2]} />)
+
+      // Expand item-1
+      const button = screen.getAllByRole('button', { name: /show details/i })[0]
       await user.click(button)
+      expect(screen.getByText('Actor:')).toBeInTheDocument()
+      expect(document.getElementById('details-item-1')).toBeInTheDocument()
 
-      expect(screen.getByTestId('copyable-hash')).toBeInTheDocument()
-      expect(screen.getByTestId('copyable-hash').textContent).toBe('0x93a1...22f4')
+      // Rerender with item-1 removed (e.g. rolled back or filtered)
+      rerender(<ActivityTimeline items={[item2]} />)
+
+      // Details panel for item-1 must no longer exist, leaving no partial state
+      expect(document.getElementById('details-item-1')).toBeNull()
+      expect(screen.queryByText('Actor:')).toBeNull()
     })
 
-    it('renders non-tx meta as plain text', async () => {
+    it('resets expanded state to empty slate when items become empty', async () => {
       const user = userEvent.setup()
-      render(<ActivityTimeline items={[makeItem({ meta: 'Rule AV-17' })]} />)
+      const item1 = makeItem({ id: 'item-1', title: 'Item 1' })
 
+      const { rerender } = render(<ActivityTimeline items={[item1]} />)
+
+      // Expand item-1
       const button = screen.getByRole('button', { name: /show details/i })
       await user.click(button)
+      expect(document.getElementById('details-item-1')).toBeInTheDocument()
 
-      expect(screen.getByText('Rule AV-17')).toBeInTheDocument()
-      expect(screen.queryByTestId('copyable-hash')).toBeNull()
+      // Rerender with empty items list (e.g. failed lookup or error rollback)
+      rerender(<ActivityTimeline items={[]} />)
+
+      // Panel must be unmounted and empty state displayed
+      expect(document.getElementById('details-item-1')).toBeNull()
+      expect(screen.getByRole('heading', { name: /no activity yet/i })).toBeInTheDocument()
+    })
+
+    it('resets expansion state when nonce changes (idempotency / safe replay boundary)', async () => {
+      const user = userEvent.setup()
+      const item1 = makeItem({ id: 'item-1', title: 'Item 1' })
+
+      const { rerender } = render(<ActivityTimeline items={[item1]} nonce="nonce-1" />)
+
+      // Expand item-1
+      const button = screen.getByRole('button', { name: /show details/i })
+      await user.click(button)
+      expect(button).toHaveAttribute('aria-expanded', 'true')
+      expect(document.getElementById('details-item-1')).toBeInTheDocument()
+
+      // Nonce updates (new operation / retry)
+      rerender(<ActivityTimeline items={[item1]} nonce="nonce-2" />)
+
+      const updatedButton = screen.getByRole('button', { name: /show details/i })
+      expect(updatedButton).toHaveAttribute('aria-expanded', 'false')
+      expect(document.getElementById('details-item-1')).toBeNull()
     })
   })
-})
 })

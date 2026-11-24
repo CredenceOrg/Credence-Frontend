@@ -1,8 +1,9 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTransactions } from './useTransactions'
-import { apiFetch, ApiError } from '../api/client'
+import { apiFetch, ApiError, ApiResponseShapeError } from '../api/client'
 import type { Transaction } from '../api/types'
+import { validateTransactionList } from '../api/validators'
 
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>()
@@ -14,60 +15,558 @@ vi.mock('../api/client', async (importOriginal) => {
 
 const apiFetchMock = vi.mocked(apiFetch)
 
-describe('useTransactions', () => {
+type Page = { items: Transaction[]; nextCursor?: string }
+
+let sequence: number
+function makeTx(): Transaction {
+  sequence += 1
+  return {
+    id: `tx-${sequence}`,
+    hash: `hash-${sequence}`,
+    type: 'bond',
+    status: 'confirmed',
+    amountUsdc: 100,
+    timestamp: new Date(Date.now() - sequence * 1000).toISOString(),
+  }
+}
+
+/**
+ * Responds to every incoming request with the next queued page in order. Also
+ * records the request URL so tests can assert cursor pass-through and scope.
+ */
+function setupWithPages(pages: Page[]) {
+  const urls: string[] = []
+  apiFetchMock.mockImplementation(async (path: string) => {
+    urls.push(path)
+    return pages.shift() ?? { items: [] }
+  })
+  const rendered = renderHook(() => useTransactions())
+  return { rendered, urls } as const
+}
+
+function query(url: string): URLSearchParams {
+  return new URLSearchParams(url.split('?')[1] ?? '')
+}
+
+describe('useTransactions cursor pagination', () => {
   beforeEach(() => {
     localStorage.clear()
     apiFetchMock.mockClear()
+    sequence = 0
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('optimistic update reverts on error', async () => {
-    // Setup a successful initial fetch to clear isLoading
-    let resolveInitial: (value: any) => void
-    const initialPromise = new Promise((resolve) => {
-      resolveInitial = resolve
-    })
-    apiFetchMock.mockReturnValueOnce(initialPromise)
+  it('loads an empty result and reports end-of-stream (no next cursor, no next page)', async () => {
+    const { rendered } = setupWithPages([{ items: [] }])
 
-    const { result, unmount } = renderHook(() => useTransactions())
+    await waitFor(() => expect(rendered.result.current.isLoading).toBe(false))
+    expect(rendered.result.current.data).toEqual([])
+    expect(rendered.result.current.hasNextPage).toBe(false)
+    expect(rendered.result.current.nextCursor).toBeUndefined()
+  })
 
-    // Wait for the hook to be ready
+  it('loads a single-page result and reports end-of-stream', async () => {
+    const items = [makeTx(), makeTx()]
+    const { rendered } = setupWithPages([{ items }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(2))
+    expect(rendered.result.current.data).toEqual(items)
+    expect(rendered.result.current.hasNextPage).toBe(false)
+    expect(rendered.result.current.totalPages).toBe(1)
+  })
+
+  it('sends a fixed page size and, after the first page, echoes the cursor verbatim with an unchanged scope', async () => {
+    const page1 = Array.from({ length: 20 }, () => makeTx())
+    const page2 = [makeTx()]
+    const { rendered, urls } = setupWithPages([
+      { items: page1, nextCursor: 'VERBATIM-CURSOR' },
+      { items: page2 },
+    ])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(20))
+    expect(rendered.result.current.hasNextPage).toBe(true)
+    expect(rendered.result.current.nextCursor).toBe('VERBATIM-CURSOR')
+
     await act(async () => {
-      resolveInitial({ items: [] })
-      await initialPromise
+      await rendered.result.current.goToPage(2)
     })
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(1))
 
-    expect(result.current.isLoading).toBe(false)
-    expect(result.current.data).toHaveLength(0)
+    expect(urls).toHaveLength(2)
+    // First request: no cursor, fixed limit, and no scope/filter params.
+    expect(query(urls[0]).get('limit')).toBe('20')
+    expect(query(urls[0]).get('cursor')).toBeNull()
+    // Second request: the cursor is passed through exactly as returned; the
+    // request remains scoped only to limit + cursor (authenticated server-side).
+    expect(query(urls[1]).get('cursor')).toBe('VERBATIM-CURSOR')
+    expect(query(urls[1]).get('limit')).toBe('20')
+    expect(query(urls[1]).has('address')).toBe(false)
+  })
 
-    // Add an optimistic transaction
-    const tx: Transaction = {
-      id: 'tx-123',
-      hash: 'GABCD',
-      type: 'bond_create',
-      status: 'pending',
-      amountUsdc: 100,
-      timestamp: new Date().toISOString(),
+  it('does not skip or duplicate records across pages when the server slices page-size + 1', async () => {
+    const page1 = Array.from({ length: 20 }, () => makeTx())
+    const page2 = [makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'c1' }, { items: page2 }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(20))
+    await act(async () => {
+      await rendered.result.current.goToPage(2)
+    })
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(1))
+
+    const visible = rendered.result.current.data
+    const page2Ids = page2.map((t) => t.id)
+    // Page 2 contains exactly the server-supplied records, in order, no repeats.
+    expect(visible.map((t) => t.id)).toEqual(page2Ids)
+    // Records from page 1 must not reappear (no unexpected duplication/skipping).
+    for (const tx of page1) {
+      expect(page2Ids).not.toContain(tx.id)
     }
+    expect(rendered.result.current.hasNextPage).toBe(false)
+  })
 
-    act(() => {
-      result.current.addPendingTransaction(tx)
+  it('serves the previous page from cache without issuing another network request', async () => {
+    const page1 = [makeTx()]
+    const page2 = [makeTx()]
+    const { rendered, urls } = setupWithPages([
+      { items: page1, nextCursor: 'c1' },
+      { items: page2 },
+    ])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(1))
+    await act(async () => {
+      await rendered.result.current.goToPage(2)
+    })
+    await waitFor(() => expect(rendered.result.current.page).toBe(2))
+    expect(urls).toHaveLength(2)
+
+    // Backward navigation must reuse the cached page, not re-fetch the network.
+    await act(async () => {
+      await rendered.result.current.goToPage(1)
+    })
+    expect(urls).toHaveLength(2)
+    expect(rendered.result.current.page).toBe(1)
+    expect(rendered.result.current.data).toEqual(page1)
+    expect(rendered.result.current.hasNextPage).toBe(true)
+    expect(rendered.result.current.nextCursor).toBe('c1')
+  })
+
+  it('preserves the current page when a subsequent page request fails, then recovers on retry', async () => {
+    const page1 = [makeTx(), makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'c1' }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(2))
+
+    // The next-page request fails with a server error. goToPage surfaces it in
+    // `error` state rather than throwing to the caller.
+    await act(async () => {
+      apiFetchMock.mockRejectedValueOnce(new ApiError(500, 'Boom'))
+      await rendered.result.current.goToPage(2)
     })
 
-    // Transaction should appear immediately
+    // Failure must not wipe the already-visible page or corrupt the cursor.
+    expect(rendered.result.current.error?.status).toBe(500)
+    expect(rendered.result.current.data).toEqual(page1)
+    expect(rendered.result.current.page).toBe(1)
+    expect(rendered.result.current.hasNextPage).toBe(true)
+
+    // Retry after the failure succeeds and advances to page 2.
+    await act(async () => {
+      apiFetchMock.mockImplementationOnce(() =>
+        Promise.resolve({ items: [makeTx()], nextCursor: undefined })
+      )
+      await rendered.result.current.goToPage(2)
+    })
+    expect(rendered.result.current.error).toBeNull()
+    expect(rendered.result.current.data).toHaveLength(1)
+    expect(rendered.result.current.hasNextPage).toBe(false)
+  })
+
+  it('settles on a single consistent page when the same page request is fired repeatedly', async () => {
+    const page1 = [makeTx()]
+    const page2 = [makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'c1' }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(1))
+
+    // Two rapid "load next" calls for the same page share one in-flight page-2
+    // request; the superseded call must be ignored, leaving exactly page 2.
+    let resolved!: () => void
+    const gate = new Promise<void>((res) => (resolved = res))
+    apiFetchMock.mockImplementation(() =>
+      gate.then(() => ({ items: page2, nextCursor: undefined }))
+    )
+
+    let first: Promise<void> | undefined
+    let second: Promise<void> | undefined
+    await act(async () => {
+      first = rendered.result.current.goToPage(2)
+      second = rendered.result.current.goToPage(2)
+      resolved()
+      await Promise.all([first, second])
+    })
+    await act(async () => {})
+
+    expect(rendered.result.current.data.map((t) => t.id)).toEqual(page2.map((t) => t.id))
+    expect(rendered.result.current.data).toHaveLength(1)
+    expect(rendered.result.current.page).toBe(2)
+    expect(rendered.result.current.error).toBeNull()
+  })
+
+  it('prefetch does not mutate the displayed list but records the trailing page', async () => {
+    const page1 = [makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'c1' }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(1))
+    await act(async () => {
+      apiFetchMock.mockImplementationOnce(() =>
+        Promise.resolve({ items: [makeTx()], nextCursor: undefined })
+      )
+      await rendered.result.current.prefetchPage(2)
+    })
+
+    // Prefetch is fire-and-forget: the displayed page stays page 1, but a
+    // request is issued for the trailing page using its stored cursor.
+    expect(rendered.result.current.page).toBe(1)
+    expect(rendered.result.current.data).toEqual(page1)
+    expect(apiFetchMock.mock.calls).toHaveLength(2)
+    const prefetchUrl = String(apiFetchMock.mock.calls[1][0])
+    expect(query(prefetchUrl).get('cursor')).toBe('c1')
+    expect(rendered.result.current.totalPages).toBe(2)
+  })
+
+  it('clears pagination state on refetch and starts over from page 1', async () => {
+    const { rendered } = setupWithPages([
+      { items: [makeTx()], nextCursor: 'c1' },
+      { items: [makeTx()] },
+    ])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(1))
+    expect(rendered.result.current.hasNextPage).toBe(true)
+
+    await act(async () => {
+      rendered.result.current.refetch()
+    })
+    await waitFor(() => expect(rendered.result.current.totalPages).toBe(1))
+    expect(rendered.result.current.page).toBe(1)
+    expect(rendered.result.current.hasNextPage).toBe(false)
+  })
+
+  it('preserves the current page and recovers when the server rejects an invalid cursor', async () => {
+    const page1 = [makeTx(), makeTx()]
+    const page2 = [makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'valid-cursor-1' }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(2))
+    expect(rendered.result.current.hasNextPage).toBe(true)
+
+    // The cursor is echoed verbatim; the server now rejects it as invalid.
+    await act(async () => {
+      apiFetchMock.mockRejectedValueOnce(new ApiError(400, 'Invalid cursor'))
+      await rendered.result.current.goToPage(2)
+    })
+
+    // An invalid cursor must leave the visible page and cursor chain intact.
+    expect(rendered.result.current.error?.status).toBe(400)
+    expect(rendered.result.current.data).toEqual(page1)
+    expect(rendered.result.current.page).toBe(1)
+    expect(rendered.result.current.nextCursor).toBe('valid-cursor-1')
+    expect(rendered.result.current.hasNextPage).toBe(true)
+
+    // Recovery: the same page succeeds once the cursor is accepted again.
+    await act(async () => {
+      apiFetchMock.mockImplementationOnce(() => Promise.resolve({ items: page2 }))
+      await rendered.result.current.goToPage(2)
+    })
+    expect(rendered.result.current.error).toBeNull()
+    expect(rendered.result.current.data).toEqual(page2)
+    expect(rendered.result.current.hasNextPage).toBe(false)
+
+    // The cursor was passed through unchanged (no client-side rewriting).
+    const badCursorUrl = String(
+      apiFetchMock.mock.calls.find(([p]) => String(p).includes('cursor='))?.[0]
+    )
+    expect(query(badCursorUrl).get('cursor')).toBe('valid-cursor-1')
+  })
+
+  it('handles a large result without skipping or duplicating records across pages', async () => {
+    // Emulate a server that returns a *larger* page than PAGE_SIZE, plus a
+    // final trailing page, and verify the client never drops or repeats rows.
+    const page1 = Array.from({ length: 500 }, () => makeTx())
+    const page2 = Array.from({ length: 250 }, () => makeTx())
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'big-1' }, { items: page2 }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(500))
+    expect(rendered.result.current.hasNextPage).toBe(true)
+    expect(rendered.result.current.data.map((t) => t.id)).toEqual(page1.map((t) => t.id))
+
+    await act(async () => {
+      await rendered.result.current.goToPage(2)
+    })
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(250))
+
+    // Every shipped record on page 2 is exactly what the server returned, in
+    // order, with no overlap with page 1 (no skip / no duplicate).
+    const page2Ids = new Set(page2.map((t) => t.id))
+    expect(rendered.result.current.data.map((t) => t.id)).toEqual([...page2Ids])
+    for (const tx of page1) {
+      expect(page2Ids.has(tx.id)).toBe(false)
+    }
+    expect(rendered.result.current.hasNextPage).toBe(false)
+    expect(rendered.result.current.totalPages).toBe(2)
+  })
+
+  it('does not skip or corrupt the chain when records are inserted between page fetches', async () => {
+    const page1 = [makeTx(), makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'chain-1' }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(2))
+
+    // A record is inserted on the server before page 2 is requested. The opaque
+    // cursor still returns exactly the server's page-2 slice — the client must
+    // neither drop the new record (it is a legitimate item on page 2) nor
+    // re-emit page-1 records. This is the cursor semantics guarantee.
+    const inserted = makeTx()
+    const trailing = makeTx()
+    await act(async () => {
+      apiFetchMock.mockImplementationOnce(() =>
+        Promise.resolve({ items: [inserted, trailing], nextCursor: undefined })
+      )
+      await rendered.result.current.goToPage(2)
+    })
+
+    expect(rendered.result.current.data.map((t) => t.id)).toEqual([inserted.id, trailing.id])
+    expect(rendered.result.current.hasNextPage).toBe(false)
+
+    // Page 2 was fetched using the exact cursor from page 1.
+    const page2Url = String(apiFetchMock.mock.calls[apiFetchMock.mock.calls.length - 1][0])
+    expect(query(page2Url).get('cursor')).toBe('chain-1')
+    // No scope/filter params were added, keeping the page scoped server-side.
+    expect(query(page2Url).has('address')).toBe(false)
+  })
+
+  it('refuses to navigate or fetch beyond the deterministic page ceiling', async () => {
+    const page1 = [makeTx(), makeTx()]
+    const { rendered } = setupWithPages([{ items: page1, nextCursor: 'c1' }])
+
+    await waitFor(() => expect(rendered.result.current.data).toHaveLength(2))
+
+    // goToPage(5000) is far beyond the hard page cap (MAX_PAGES). It must be a
+    // no-op that neither mutates state nor issues a network request.
+    const callsBefore = apiFetchMock.mock.calls.length
+    await act(async () => {
+      await rendered.result.current.goToPage(5000)
+    })
+
+    expect(apiFetchMock.mock.calls.length).toBe(callsBefore)
+    expect(rendered.result.current.page).toBe(1)
+    expect(rendered.result.current.data).toEqual(page1)
+    expect(rendered.result.current.hasNextPage).toBe(true)
+    expect(rendered.result.current.error).toBeNull()
+  })
+})
+
+describe('useTransactions pending transactions and boundaries', () => {
+  const PENDING_KEY = 'credence:pendingTransactions'
+
+  beforeEach(() => {
+    localStorage.clear()
+    apiFetchMock.mockReset()
+    sequence = 0
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('prepends pending transactions from storage ahead of server data', async () => {
+    const pending = makeTx()
+    const server = makeTx()
+    localStorage.setItem(PENDING_KEY, JSON.stringify([pending]))
+    apiFetchMock.mockResolvedValue({ items: [server] })
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data.map((t) => t.id)).toEqual([pending.id, server.id])
+  })
+
+  it('reconciles a mined pending transaction out of state and storage', async () => {
+    const mined = makeTx()
+    localStorage.setItem(PENDING_KEY, JSON.stringify([mined]))
+    // The server now reports the same hash as a confirmed record.
+    apiFetchMock.mockResolvedValue({ items: [{ ...mined, status: 'confirmed' }] })
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.data.map((t) => t.hash)).toEqual([mined.hash])
+    expect(JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]')).toEqual([])
+  })
+
+  it('adds pending transactions newest-first to state and storage', async () => {
+    apiFetchMock.mockResolvedValue({ items: [] })
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    const a = makeTx()
+    const b = makeTx()
+    act(() => {
+      result.current.addPendingTransaction(a)
+      result.current.addPendingTransaction(b)
+    })
+
+    expect(result.current.data.map((t) => t.id)).toEqual([b.id, a.id])
+    const stored = JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]')
+    expect(stored.map((t: Transaction) => t.id)).toEqual([b.id, a.id])
+  })
+
+  it('removes a pending transaction by hash from state and storage', async () => {
+    const removed = makeTx()
+    const kept = makeTx()
+    localStorage.setItem(PENDING_KEY, JSON.stringify([removed, kept]))
+    apiFetchMock.mockResolvedValue({ items: [] })
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.data).toHaveLength(2))
+
+    act(() => {
+      result.current.removePendingTransaction(removed.hash)
+    })
+
+    expect(result.current.data.map((t) => t.id)).toEqual([kept.id])
+    const stored = JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]')
+    expect(stored.map((t: Transaction) => t.hash)).toEqual([kept.hash])
+  })
+
+  it('treats unparsable pending storage as empty instead of throwing', async () => {
+    localStorage.setItem(PENDING_KEY, '{not-json')
+    apiFetchMock.mockResolvedValue({ items: [makeTx()] })
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
     expect(result.current.data).toHaveLength(1)
-    expect(result.current.data[0].id).toBe('tx-123')
-    
-    act(() => {
-      result.current.removePendingTransaction(tx.hash)
+    expect(result.current.error).toBeNull()
+  })
+
+  it('ignores out-of-range or current-page navigation without a request', async () => {
+    apiFetchMock.mockResolvedValue({ items: [makeTx()], nextCursor: 'c1' })
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const calls = apiFetchMock.mock.calls.length
+
+    await act(async () => {
+      await result.current.goToPage(0)
+      await result.current.goToPage(-3)
+      await result.current.goToPage(1)
     })
 
-    // The optimistic update should be reverted
-    expect(result.current.data).toHaveLength(0)
+    expect(apiFetchMock.mock.calls.length).toBe(calls)
+    expect(result.current.page).toBe(1)
+  })
+
+  it('refuses to fetch a page whose predecessor cursor was never produced', async () => {
+    // Page 1 is the last page, so no cursor for page 2 exists.
+    apiFetchMock.mockResolvedValue({ items: [makeTx()] })
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const calls = apiFetchMock.mock.calls.length
+
+    await act(async () => {
+      await result.current.goToPage(3)
+    })
+
+    expect(apiFetchMock.mock.calls.length).toBe(calls)
+    expect(result.current.page).toBe(1)
+    expect(result.current.error).toBeNull()
+  })
+
+  it('prefetch skips invalid pages and pages with an unknown predecessor cursor', async () => {
+    apiFetchMock.mockResolvedValue({ items: [makeTx()] })
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const calls = apiFetchMock.mock.calls.length
+
+    await act(async () => {
+      await result.current.prefetchPage(0)
+      await result.current.prefetchPage(4)
+    })
+
+    expect(apiFetchMock.mock.calls.length).toBe(calls)
+  })
+
+  it('wraps non-ApiError failures in a status-0 ApiError and clears stale rows', async () => {
+    apiFetchMock.mockRejectedValue(new Error('network down'))
+
+    const { result } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.error).toBeInstanceOf(ApiError)
+    expect(result.current.error?.status).toBe(0)
+    expect(result.current.error?.message).toBe('Unexpected error loading transactions')
+    expect(result.current.data).toEqual([])
+  })
+
+  it('aborts the in-flight request when the hook unmounts', async () => {
+    let capturedSignal: AbortSignal | undefined
+    apiFetchMock.mockImplementation((_path: string, options?: { signal?: AbortSignal }) => {
+      capturedSignal = options?.signal
+      // Never resolves — the hook must abort it on unmount.
+      return new Promise(() => {})
+    })
+
+    const { unmount } = renderHook(() => useTransactions())
+    expect(capturedSignal).toBeDefined()
 
     unmount()
+    expect(capturedSignal!.aborted).toBe(true)
+  })
+
+  it('preserves data referential equality across rerender calls without state change', async () => {
+    const tx = makeTx()
+    apiFetchMock.mockResolvedValueOnce({ items: [tx], nextCursor: undefined })
+
+    const { result, rerender } = renderHook(() => useTransactions())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    const firstData = result.current.data
+    rerender()
+    const secondData = result.current.data
+
+    expect(secondData).toBe(firstData)
+  })
+
+  it('passes validateTransactionList to apiFetch and surfaces retryable ApiResponseShapeError', async () => {
+    const shapeError = new ApiResponseShapeError(
+      'Invalid TransactionList response: nextCursor: expected a non-empty string when present',
+      [{ path: 'nextCursor', message: 'expected a non-empty string when present' }]
+    )
+    const tx = makeTx()
+    apiFetchMock
+      .mockRejectedValueOnce(shapeError)
+      .mockResolvedValueOnce({ items: [tx], nextCursor: undefined })
+
+    const { result } = renderHook(() => useTransactions())
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/transactions?limit=20',
+      expect.objectContaining({ validate: validateTransactionList })
+    )
+    expect(result.current.error).toBe(shapeError)
+    expect((result.current.error as ApiResponseShapeError).retryable).toBe(true)
+    expect(result.current.data).toEqual([])
+
+    await act(async () => {
+      result.current.refetch()
+    })
+
+    await waitFor(() => expect(result.current.data).toEqual([tx]))
+    expect(result.current.error).toBeNull()
   })
 })

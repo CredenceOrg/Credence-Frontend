@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react'
+import { webcrypto } from 'node:crypto'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import AttestationForm from './AttestationForm'
@@ -11,7 +12,33 @@ vi.mock('../lib/stellar', () => ({
     if (!addr) return ''
     if (addr.length <= 20) return addr
     return `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`
-  }
+  },
+  formatAddressForDisplay: (addr: string, mode?: string) => {
+    if (!addr) return ''
+    if (mode === 'full') return addr
+    if (mode === 'friendly') {
+      return addr.length <= 10
+        ? addr
+        : `${addr.substring(0, 6)}\u2026${addr.substring(addr.length - 4)}`
+    }
+    if (addr.length <= 20) return addr
+    return `${addr.substring(0, 12)}...${addr.substring(addr.length - 8)}`
+  },
+  sanitizeAddressInput: (input: string) => {
+    let sanitized = input.trim()
+    if (sanitized.toLowerCase().startsWith('stellar:')) sanitized = sanitized.slice(8)
+    if (/[^\x20-\x7E]/.test(sanitized)) {
+      return {
+        ok: false as const,
+        error: {
+          type: 'SUSPICIOUS_CHARACTERS' as const,
+          message: 'Suspicious characters detected in address.',
+        },
+        fallbackValue: sanitized,
+      }
+    }
+    return { ok: true as const, value: sanitized }
+  },
 }))
 
 // A valid 56-character Stellar public key
@@ -49,6 +76,7 @@ describe('AttestationForm', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   describe('validation and error reporting', () => {
@@ -88,14 +116,62 @@ describe('AttestationForm', () => {
       const evidenceTextarea = screen.getByRole('textbox', { name: /evidence/i })
       const countEl = document.querySelector('[aria-live="polite"]')
 
-      expect(countEl?.textContent?.trim()).toBe('0 / 28 bytes')
+      expect(countEl?.textContent?.trim()).toBe('0 / 2,000 chars')
 
       await user.type(evidenceTextarea, 'hello')
-      expect(countEl?.textContent?.trim()).toBe('5 / 28 bytes')
+      expect(countEl?.textContent?.trim()).toBe('5 / 2,000 chars')
+    })
+
+    it('rejects evidence exceeding 2,000 characters', async () => {
+      const user = userEvent.setup()
+      renderForm()
+
+      const addressInput = screen.getByRole('textbox', { name: /subject address/i })
+      const evidenceTextarea = screen.getByRole('textbox', { name: /evidence/i })
+      const submitButton = screen.getByRole('button', { name: /submit attestation/i })
+
+      await user.type(addressInput, VALID_KEY)
+      // Use fireEvent for the long string to avoid userEvent timeout
+      fireEvent.change(evidenceTextarea, { target: { value: 'A'.repeat(2001) } })
+      await user.click(submitButton)
+
+      expect(screen.getByText(/Evidence cannot exceed 2,000 characters/)).toBeInTheDocument()
     })
   })
 
   describe('ConfirmDialog submission flow', () => {
+    it('hashes an attached file and submits only its hash and metadata', async () => {
+      vi.stubGlobal('crypto', webcrypto)
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderForm(onSubmit)
+
+      await user.type(screen.getByRole('textbox', { name: /subject address/i }), VALID_KEY)
+      const file = new File(['evidence contents'], 'proof.txt', { type: 'text/plain' })
+      fireEvent.change(screen.getByTestId('file-picker-input'), { target: { files: [file] } })
+
+      const hashCode = await screen.findByLabelText('Evidence SHA-256')
+      expect(hashCode).toHaveTextContent(/^[a-f0-9]{64}$/)
+
+      await user.click(screen.getByRole('button', { name: /submit attestation/i }))
+      const confirmInput = screen.getByLabelText(/type confirm to submit/i)
+      await user.type(confirmInput, 'CONFIRM')
+      await user.click(screen.getAllByRole('button', { name: /submit attestation/i })[1]!)
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subject: VALID_KEY,
+          evidenceHash: hashCode.textContent,
+          evidenceFile: expect.objectContaining({
+            name: 'proof.txt',
+            size: file.size,
+            type: 'text/plain',
+          }),
+        })
+      )
+      expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty('file')
+    })
+
     it('opens confirm dialog with summary upon submitting valid inputs', async () => {
       const user = userEvent.setup()
       renderForm()
@@ -132,7 +208,9 @@ describe('AttestationForm', () => {
       await user.click(submitButton)
 
       const confirmInput = screen.getByLabelText(/type confirm to submit/i)
-      const submitAttestationButton = screen.getAllByRole('button', { name: /submit attestation/i })[1]
+      const submitAttestationButton = screen.getAllByRole('button', {
+        name: /submit attestation/i,
+      })[1]
 
       // Initially disabled
       expect(submitAttestationButton).toBeDisabled()
@@ -161,7 +239,9 @@ describe('AttestationForm', () => {
       await user.click(submitButton)
 
       const confirmInput = screen.getByLabelText(/type confirm to submit/i)
-      const submitAttestationButton = screen.getAllByRole('button', { name: /submit attestation/i })[1]
+      const submitAttestationButton = screen.getAllByRole('button', {
+        name: /submit attestation/i,
+      })[1]
 
       await user.type(confirmInput, 'CONFIRM')
       await user.click(submitAttestationButton)

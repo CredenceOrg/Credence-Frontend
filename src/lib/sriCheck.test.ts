@@ -40,13 +40,13 @@ describe('isCrossOrigin', () => {
 describe('extractAttr', () => {
   it('extracts double-quoted attribute value', () => {
     expect(extractAttr('src="https://cdn.example.com/a.js"', 'src')).toBe(
-      'https://cdn.example.com/a.js',
+      'https://cdn.example.com/a.js'
     )
   })
 
   it('extracts single-quoted attribute value', () => {
     expect(extractAttr("src='https://cdn.example.com/a.js'", 'src')).toBe(
-      'https://cdn.example.com/a.js',
+      'https://cdn.example.com/a.js'
     )
   })
 
@@ -95,7 +95,7 @@ describe('checkSri — NEGATIVE: CDN asset without SRI', () => {
       expect(result.violations[0].kind).toBe('missing-both')
       expect(result.violations[0].asset.tag).toBe('script')
       expect(result.violations[0].asset.url).toBe(
-        'https://cdn.jsdelivr.net/npm/some-lib@1.0/dist/lib.min.js',
+        'https://cdn.jsdelivr.net/npm/some-lib@1.0/dist/lib.min.js'
       )
     }
   })
@@ -305,7 +305,7 @@ describe('checkSri — regression: project index.html', () => {
       const msgs = result.violations.map((v) => `  • ${v.message}`).join('\n')
       throw new Error(
         `index.html has ${result.violations.length} SRI violation(s):\n${msgs}\n\n` +
-          `Add integrity="sha384-…" and crossorigin="anonymous" to each listed tag.`,
+          `Add integrity="sha384-…" and crossorigin="anonymous" to each listed tag.`
       )
     }
 

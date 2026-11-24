@@ -51,19 +51,10 @@ export interface KbdProps {
  * spacing, or radii. Dark-mode is handled via `[data-theme='dark']`.
  */
 export default function Kbd({ children, size = 'md', className = '', ariaLabel }: KbdProps) {
-  const classes = [
-    'credence-kbd',
-    `credence-kbd--${size}`,
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ')
+  const classes = ['credence-kbd', `credence-kbd--${size}`, className].filter(Boolean).join(' ')
 
   return (
-    <kbd
-      className={classes}
-      aria-label={ariaLabel ?? children}
-    >
+    <kbd className={classes} aria-label={ariaLabel ?? children}>
       {children}
     </kbd>
   )

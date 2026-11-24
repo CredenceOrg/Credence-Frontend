@@ -14,9 +14,9 @@ export const BREAKPOINTS = {
   LG: 1024,
   // Extra large devices (large desktops)
   XL: 1280,
-} as const;
+} as const
 
-export type Breakpoint = keyof typeof BREAKPOINTS;
+export type Breakpoint = keyof typeof BREAKPOINTS
 
 /**
  * Media query helpers for use in CSS-in-JS or dynamic styles
@@ -27,10 +27,10 @@ export const mediaQueries = {
   md: `@media (max-width: ${BREAKPOINTS.MD - 1}px)`,
   lg: `@media (max-width: ${BREAKPOINTS.LG - 1}px)`,
   xl: `@media (max-width: ${BREAKPOINTS.XL - 1}px)`,
-  
+
   // Min-width queries
   smMin: `@media (min-width: ${BREAKPOINTS.SM}px)`,
   mdMin: `@media (min-width: ${BREAKPOINTS.MD}px)`,
   lgMin: `@media (min-width: ${BREAKPOINTS.LG}px)`,
   xlMin: `@media (min-width: ${BREAKPOINTS.XL}px)`,
-} as const;
+} as const

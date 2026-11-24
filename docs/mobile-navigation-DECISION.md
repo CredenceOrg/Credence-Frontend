@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-29  
 **Project:** Credence-Frontend  
-**Decision:** HYBRID RESPONSIVE PATTERN (Hamburger Mobile + Horizontal Desktop)  
+**Decision:** HYBRID RESPONSIVE PATTERN (Bottom Actions on Mobile + Hamburger Drawer for Secondary Routes; Horizontal Header on Desktop)  
 **Status:** ✅ APPROVED FOR IMPLEMENTATION
 
 ---
@@ -11,8 +11,9 @@
 
 After comprehensive IA analysis of Credence-Frontend (4 pages, flat hierarchy, web application), we have selected a **Hybrid Responsive Navigation Pattern**:
 
-- **Mobile (< 640px):** Hamburger menu with slide-in drawer
-- **Tablet/Desktop (≥ 640px):** Horizontal header navigation (current pattern)
+- **Mobile (< 640px):** Fixed bottom action bar for the 5 primary routes, plus a hamburger drawer for secondary/overflow routes
+- **Tablet (640–768px):** Bottom action bar for the primary routes; the drawer is not required at this breakpoint
+- **Desktop (≥ 768px):** Horizontal header navigation (current pattern)
 
 This decision optimizes for:
 
@@ -58,25 +59,34 @@ This decision optimizes for:
 ┌─────────────────────────┐
 │ ☰  Credence      [Theme]│ ← Hamburger trigger
 └─────────────────────────┘
-│                         │
 │   [Page Content]        │
-│                         │
+└─────────────────────────┘
+┌─────────────────────────┐
+│ Dashboard  Bond  Trust  │ ← Bottom action bar
+│ Attest.  Txns          │
 └─────────────────────────┘
 
 Drawer (when open):
 ┌─────────────────┐
 │ ✕ Menu          │
 │                 │
-│ 🏠 Home         │ ← Active state highlighted
-│ 🔒 Bond         │
-│ ⭐ Trust Score  │
-│                 │
-│ ─────────────── │
-│ [Theme Toggle]  │
+│ 🏠 Home         │ ← Secondary route
+│ ⚙️ Settings     │
 └─────────────────┘
 ```
 
-#### Desktop Navigation (≥ 640px)
+#### Tablet Navigation (640–768px)
+
+```
+┌─────────────────────────────────────────────┐
+│ Credence    [Theme]                        │
+└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│ Dashboard  Bond  Trust  Attest.  Txns     │ ← Bottom action bar
+└─────────────────────────────────────────────┘
+```
+
+#### Desktop Navigation (≥ 768px)
 
 ```
 ┌─────────────────────────────────────────────┐

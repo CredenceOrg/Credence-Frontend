@@ -22,8 +22,7 @@ const meta: Meta<typeof StatusBadge> = {
     },
     ariaLabel: {
       control: 'text',
-      description:
-        'Accessible label for the badge element. Defaults to the display label.',
+      description: 'Accessible label for the badge element. Defaults to the display label.',
     },
     className: {
       control: 'text',

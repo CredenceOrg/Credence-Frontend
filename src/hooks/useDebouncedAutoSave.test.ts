@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDebouncedAutoSave } from './useDebouncedAutoSave'
+import { OUTBOX_QUEUED } from '../lib/offlineOutbox'
 
 // Drain React-act + microtask queue. `act(() => ...)` flushes effects;
 // `vi.advanceTimersByTime` flushes fake timers; `await Promise.resolve()`
@@ -64,9 +65,7 @@ describe('useDebouncedAutoSave', () => {
 
   it('surfaces errors via status=error and the error field', async () => {
     const save = vi.fn().mockRejectedValue(new Error('boom'))
-    const { result } = renderHook(() =>
-      useDebouncedAutoSave({ value: 'x', save, delayMs: 100 })
-    )
+    const { result } = renderHook(() => useDebouncedAutoSave({ value: 'x', save, delayMs: 100 }))
     await act(async () => {
       vi.advanceTimersByTime(100)
     })
@@ -114,8 +113,7 @@ describe('useDebouncedAutoSave', () => {
     const onError = vi.fn()
 
     const { result, rerender } = renderHook(
-      ({ value }) =>
-        useDebouncedAutoSave({ value, save, delayMs: 100, onError }),
+      ({ value }) => useDebouncedAutoSave({ value, save, delayMs: 100, onError }),
       { initialProps: { value: 'first' } }
     )
     await act(async () => {
@@ -144,9 +142,7 @@ describe('useDebouncedAutoSave', () => {
 
   it('cancel() drops the pending timer without calling save', async () => {
     const save = vi.fn().mockResolvedValue(undefined)
-    const { result } = renderHook(() =>
-      useDebouncedAutoSave({ value: 'x', save, delayMs: 200 })
-    )
+    const { result } = renderHook(() => useDebouncedAutoSave({ value: 'x', save, delayMs: 200 }))
     expect(result.current.status).toBe('pending')
     act(() => {
       result.current.cancel()
@@ -323,11 +319,58 @@ describe('useDebouncedAutoSave', () => {
     expect(result.current.status).toBe('idle')
   })
 
+  it('save() resolving with the outbox-queued signal sets status to queued', async () => {
+    const save = vi.fn().mockResolvedValue(OUTBOX_QUEUED)
+    const onSaved = vi.fn()
+    const { result } = renderHook(() =>
+      useDebouncedAutoSave({ value: 'offline-edit', save, delayMs: 100, onSaved })
+    )
+    await act(async () => {
+      vi.advanceTimersByTime(100)
+    })
+    await settle()
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(result.current.status).toBe('queued')
+    // A queued write is not a confirmed save, so onSaved must not fire.
+    expect(onSaved).not.toHaveBeenCalled()
+    expect(result.current.lastSavedAt).toBeNull()
+  })
+
+  it('transitions from queued to saved when the outbox flush completes', async () => {
+    const save = vi.fn().mockResolvedValue(OUTBOX_QUEUED)
+    const { result } = renderHook(() =>
+      useDebouncedAutoSave({ value: 'offline-edit', save, delayMs: 100 })
+    )
+    await act(async () => {
+      vi.advanceTimersByTime(100)
+    })
+    await settle()
+    expect(result.current.status).toBe('queued')
+
+    act(() => {
+      result.current.markFlushed()
+    })
+    expect(result.current.status).toBe('saved')
+    expect(result.current.lastSavedAt).not.toBeNull()
+  })
+
+  it('markFlushed() is a no-op when nothing is queued', async () => {
+    const save = vi.fn().mockResolvedValue(undefined)
+    const { result } = renderHook(() => useDebouncedAutoSave({ value: 'x', save, delayMs: 100 }))
+    await act(async () => {
+      vi.advanceTimersByTime(100)
+    })
+    await settle()
+    expect(result.current.status).toBe('saved')
+    act(() => {
+      result.current.markFlushed()
+    })
+    expect(result.current.status).toBe('saved')
+  })
+
   it('unmount aborts any in-flight save instead of leaking a post-unmount state update', async () => {
     const save = vi.fn().mockResolvedValue(undefined)
-    const { unmount } = renderHook(() =>
-      useDebouncedAutoSave({ value: 'x', save, delayMs: 100 })
-    )
+    const { unmount } = renderHook(() => useDebouncedAutoSave({ value: 'x', save, delayMs: 100 }))
     // Let the debounce settle so the save is in-flight…
     await act(async () => {
       vi.advanceTimersByTime(100)

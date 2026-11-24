@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import CopyableHash from './CopyableHash'
 import * as SettingsContextModule from '../context/SettingsContext'
 import * as CopyHookModule from '../hooks/useCopyToClipboard'
@@ -23,16 +23,19 @@ describe('CopyableHash', () => {
       themeMode: 'system',
       toastsEnabled: true,
       autoDismiss: '5s',
+      reauthThresholdMinutes: 15,
       setThemeMode: vi.fn(),
       setNetwork: vi.fn(),
       setAddressDisplay: vi.fn(),
       setToastsEnabled: vi.fn(),
       setAutoDismiss: vi.fn(),
+      setReauthThresholdMinutes: vi.fn(),
+      resetToDefaults: vi.fn(),
       saveSettings: vi.fn(),
       cancelSettings: vi.fn(),
       hasUnsavedChanges: false,
     })
-    
+
     // Default to successful copy
     mockCopy.mockResolvedValue(true)
     vi.mocked(CopyHookModule.default).mockReturnValue({
@@ -45,9 +48,9 @@ describe('CopyableHash', () => {
   it('renders a truncated tx hash by default', () => {
     const hash = '0x93a1234567890abcdef1234567890abcdef22f4'
     render(<CopyableHash hash={hash} />)
-    
-    // First 6 chars: "0x93a1", Last 4 chars: "22f4"
-    expect(screen.getByText('0x93a1…22f4')).toBeInTheDocument()
+
+    // Uses truncateAddress: first 12 + "..." + last 8
+    expect(screen.getByText('0x93a1234567...cdef22f4')).toBeInTheDocument()
   })
 
   it('renders a full tx hash if it is short', () => {
@@ -62,14 +65,14 @@ describe('CopyableHash', () => {
     })
     const addr = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
     render(<CopyableHash hash={addr} kind="address" />)
-    
+
     expect(screen.getByText(addr)).toBeInTheDocument()
   })
 
   it('renders an address and truncates when addressDisplay="short"', () => {
     const addr = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
     render(<CopyableHash hash={addr} kind="address" />)
-    
+
     // truncateAddress slices first 12 and last 8, separated by ...
     expect(screen.getByText('GAAZI4TCR3TY...VKOCCWNA')).toBeInTheDocument()
   })
@@ -106,7 +109,7 @@ describe('CopyableHash', () => {
   it('announces "Copied" and updates state on successful copy', async () => {
     render(<CopyableHash hash="abc" />)
     const btn = screen.getByRole('button', { name: 'Copy hash' })
-    
+
     fireEvent.click(btn)
     expect(mockCopy).toHaveBeenCalledWith('abc')
 
@@ -116,9 +119,9 @@ describe('CopyableHash', () => {
       copied: true,
       reset: vi.fn(),
     })
-    
+
     render(<CopyableHash hash="abc" />)
-    
+
     await waitFor(() => {
       // aria-live element should contain "Copied"
       expect(screen.getByText('Copied')).toBeInTheDocument()
@@ -128,10 +131,10 @@ describe('CopyableHash', () => {
   it('announces failure when copy fails', async () => {
     mockCopy.mockResolvedValue(false)
     render(<CopyableHash hash="abc" />)
-    
+
     const btn = screen.getByRole('button', { name: 'Copy hash' })
     fireEvent.click(btn)
-    
+
     await waitFor(() => {
       expect(screen.getByText('Copy failed')).toBeInTheDocument()
     })
@@ -140,5 +143,47 @@ describe('CopyableHash', () => {
   it('returns null if hash is empty', () => {
     const { container } = render(<CopyableHash hash="" />)
     expect(container).toBeEmptyDOMElement()
+  })
+
+  describe('boundary and recovery states', () => {
+    it('recovers from copy error after 3 seconds', async () => {
+      vi.useFakeTimers()
+      try {
+        mockCopy.mockResolvedValue(false)
+        render(<CopyableHash hash="abc" />)
+
+        const btn = screen.getByRole('button', { name: 'Copy hash' })
+        
+        await act(async () => {
+          fireEvent.click(btn)
+        })
+
+        expect(screen.getByText('Copy failed')).toBeInTheDocument()
+
+        await act(async () => {
+          vi.advanceTimersByTime(3000)
+        })
+
+        expect(screen.queryByText('Copy failed')).not.toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('falls back to public network for unknown network string', () => {
+      vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
+        ...vi.mocked(SettingsContextModule.useSettings)(),
+        network: 'unknown-network',
+      })
+      render(<CopyableHash hash="abc" kind="tx" />)
+      const link = screen.getByRole('link')
+      expect(link).toHaveAttribute('href', 'https://stellar.expert/explorer/public/tx/abc')
+    })
+
+    it('handles extremely long hashes safely', () => {
+      const longHash = 'A'.repeat(10000)
+      render(<CopyableHash hash={longHash} />)
+      expect(screen.getByText('AAAAAAAAAAAA...AAAAAAAA')).toBeInTheDocument()
+    })
   })
 })

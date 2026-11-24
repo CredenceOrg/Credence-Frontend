@@ -352,6 +352,9 @@ describe('WalletProvider', () => {
 
     act(() => idle(1).onIdle())
 
+    expect(h.crossTabPublish).toHaveBeenCalledWith('idle-lock', {
+      correlationId: 'corr-test',
+    })
     expect(h.advanceIdentityEpoch).toHaveBeenCalledTimes(1)
     expect(wallet.disconnect).toHaveBeenCalledTimes(1)
     // Regression guard: clearAppLocalStorage must be imported and wired into

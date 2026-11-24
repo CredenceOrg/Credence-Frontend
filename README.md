@@ -10,7 +10,7 @@ This app is part of [Credence](../README.md). It talks to the Credence backend A
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js `^20.19.0 || ^22.13.0 || >=24` (pinned in `package.json` `engines` and `.nvmrc`; run `nvm use` to pick it up)
 - npm or pnpm
 
 ## Setup

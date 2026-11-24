@@ -90,6 +90,27 @@ npm run build
 
 Ensure your widget hasn't added a disproportionate amount of kilobytes to the chunk size. Check the browser's performance tab to ensure interactions (like opening a modal or expanding a drawer) stay within a 16ms frame budget.
 
+### Run Lighthouse CI Across Primary Routes
+
+To audit performance, accessibility, and best practices across all primary routes locally, run:
+
+```bash
+npm run build && npx lhci autorun
+```
+
+`lighthouserc.json` starts the Vite preview server (`npm run preview` on `http://localhost:4173`) and runs Lighthouse (`numberOfRuns: 2`) against:
+
+| Route           | Performance | Accessibility | Best Practices | Notes                                    |
+| --------------- | ----------: | ------------: | -------------: | ---------------------------------------- |
+| `/`             |      >= 0.9 |       >= 0.95 |         >= 0.9 | Public landing page                      |
+| `/dashboard`    |      >= 0.9 |       >= 0.95 |         >= 0.9 | Wallet-gated; renders disconnected state |
+| `/bond`         |      >= 0.9 |       >= 0.95 |         >= 0.9 | Wallet-gated; renders disconnected state |
+| `/trust`        |      >= 0.9 |       >= 0.95 |         >= 0.9 | Wallet-gated; renders disconnected state |
+| `/attestations` |      >= 0.9 |       >= 0.95 |         >= 0.9 | Wallet-gated; renders disconnected state |
+| `/transactions` |      >= 0.9 |       >= 0.95 |         >= 0.9 | Wallet-gated; renders disconnected state |
+| `/settings`     |      >= 0.9 |       >= 0.95 |         >= 0.9 | Wallet-gated; renders disconnected state |
+
+HTML and JSON reports are written to `./lhci-reports` (gitignored). If you need to adjust a route threshold, document the reason in your PR and update the table above.
 ## 5. Virtualize Long Lists and Tables
 
 When rendering large datasets (for example 1,000+ rows), render only the visible window and keep the DOM size bounded.

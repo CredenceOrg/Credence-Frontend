@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from 'react'
 import { WIDGET_CACHE_DEFAULTS } from '../config/widgetCache'
+import { useSettings } from '../context/SettingsContext'
+import { useWallet } from '../context/WalletContext'
 import { scrubPII, PIIScrubError } from '../lib/piiScrub'
 
 /**
@@ -168,8 +170,22 @@ class WidgetCacheStore {
   }
 
   invalidate(key: string): void {
-    this.entries.delete(key)
+    const suffix = `:${key}`
+    for (const entryKey of this.entries.keys()) {
+      if (entryKey === key || entryKey.endsWith(suffix)) {
+        this.entries.delete(entryKey)
+        this.listeners.get(entryKey)?.forEach((fn) => fn())
+      }
+    }
     this.listeners.get(key)?.forEach((fn) => fn())
+  }
+
+  abortInFlight(key: string): void {
+    const controller = this.abortControllers.get(key)
+    if (controller) {
+      controller.abort('context-changed')
+      this.abortControllers.delete(key)
+    }
   }
 
   /**
@@ -242,6 +258,10 @@ export interface UseWidgetCacheResult<T> {
  * @param fetcher   Async function that produces the widget's data.
  * @param options   `{ enabled: false }` to skip the initial fetch.
  */
+function buildScopedWidgetKey(key: string, network: string, address: string): string {
+  return `${network}:${address || 'anon'}:${key}`
+}
+
 export function useWidgetCache<T>(
   key: string,
   fetcher: WidgetFetcher<T>,
@@ -249,6 +269,9 @@ export function useWidgetCache<T>(
 ): UseWidgetCacheResult<T> {
   const enabled = options.enabled ?? true
   const ctx = useContext(WidgetCacheContext)
+  const { network } = useSettings()
+  const { address } = useWallet()
+  const scopedKey = buildScopedWidgetKey(key, network, address)
 
   // Stable fetcher ref so identity churn from a parent re-render does not
   // cause the `refresh` identity (and therefore downstream effect
@@ -256,17 +279,20 @@ export function useWidgetCache<T>(
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
 
-  const subscribe = useCallback((listener: () => void) => store.subscribe(key, listener), [key])
-  const getSnapshot = useCallback(() => store.get<T>(key), [key])
+  const subscribe = useCallback(
+    (listener: () => void) => store.subscribe(scopedKey, listener),
+    [scopedKey]
+  )
+  const getSnapshot = useCallback(() => store.get<T>(scopedKey), [scopedKey])
   const entry = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   const refresh = useCallback(() => {
     const fn = fetcherRef.current
-    store.refresh(key, fn).catch(() => {
+    store.refresh(scopedKey, fn).catch(() => {
       // Errors are surfaced via `entry.error`; swallow here so a
       // misbehaving fetcher doesn't become an uncaught promise rejection.
     })
-  }, [key, ctx])
+  }, [scopedKey, ctx])
 
   useEffect(() => {
     if (!enabled) return
@@ -275,9 +301,12 @@ export function useWidgetCache<T>(
     // exclude `entry.status` from the deps so we don't re-fire on every
     // status transition; fetchIfIdle is the dedupe boundary, so the
     // effect only needs to re-run when `enabled` flips or the consumer
-    // targets a different `key`.
-    store.fetchIfIdle(key, fetcherRef.current)
-  }, [enabled, key])
+    // targets a different `scopedKey` (including network/address changes).
+    store.fetchIfIdle(scopedKey, fetcherRef.current)
+    return () => {
+      store.abortInFlight(scopedKey)
+    }
+  }, [enabled, scopedKey])
 
   return {
     status: entry.status,

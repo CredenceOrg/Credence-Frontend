@@ -31,6 +31,9 @@ import { useState, useCallback } from 'react'
 import { useWallet } from '../context/WalletContext'
 import { useUsdcBalance } from './useUsdcBalance'
 import { signFreighterTransaction } from '../lib/freighterClient'
+import { HorizonError, submitTransaction } from '../lib/horizon'
+import { getNetworkPassphrase, type CredenceNetwork } from '../lib/networkLabels'
+import { buildCreateBondTransactionXdr, buildWithdrawBondTransactionXdr } from '../lib/stellar'
 import {
   executeMutation,
   registerVersion,
@@ -145,7 +148,7 @@ const VALID_DURATIONS = [30, 90, 180] as const
  * and handle errors explicitly. `result.retryable` indicates if retry is safe.
  */
 export function useBondMutation(): UseBondMutationResult {
-  const { address, isConnected } = useWallet()
+  const { address, isConnected, network } = useWallet()
   const { balance } = useUsdcBalance()
 
   const [isCreating, setIsCreating] = useState(false)
@@ -186,6 +189,17 @@ export function useBondMutation(): UseBondMutationResult {
         return versionError as MutationResult<CreateBondResult>
       }
 
+      if (!network) {
+        const error: MutationResult<CreateBondResult> = {
+          ok: false,
+          code: 'validation',
+          message: 'Unable to determine the wallet network. Reconnect your wallet and try again.',
+          retryable: false,
+        }
+        setCreateError(error)
+        return error
+      }
+
       // Deduplication key: one create operation per address at a time
       const mutationKey = `create:${address}`
 
@@ -193,26 +207,36 @@ export function useBondMutation(): UseBondMutationResult {
       setCreateError(null)
 
       try {
-        const result = await executeMutation(
+        const result = await executeMutation<CreateBondResult>(
           mutationKey,
           async () => {
-            // Build transaction XDR (simulated for now)
-            const txXdr = await buildCreateBondTx(amountUsdc, durationDays, address!)
-
-            // Prompt user to sign via Freighter
-            const signResult = await signFreighterTransaction(txXdr)
-
-            if (!signResult.ok) {
-              return {
-                ok: false,
-                code: signResult.code === 'rejected' ? 'rejected' : 'unknown',
-                message: signResult.message,
-                retryable: signResult.code !== 'rejected', // Can retry network/unknown, not rejection
-              }
+            let txXdr: string
+            try {
+              txXdr = await buildCreateBondTransactionXdr(
+                amountUsdc,
+                durationDays,
+                address!,
+                network
+              )
+            } catch (error) {
+              return mapTransactionPreparationFailure(error)
             }
 
-            // Submit signed transaction to network (simulated for now)
-            const txHash = await submitTransaction(signResult.signedTxXdr)
+            if (signal?.aborted) return cancelledMutation()
+
+            // Prompt user to sign via Freighter
+            const signResult = await signFreighterTransaction(txXdr, {
+              networkPassphrase: getNetworkPassphrase(network),
+              address: address!,
+            })
+
+            if (signal?.aborted) return cancelledMutation()
+            if (!signResult.ok) {
+              return mapSigningFailure(signResult)
+            }
+
+            const submission = await submitBondTransaction(signResult.signedTxXdr, network, signal)
+            if (!submission.ok) return submission
 
             // Register version after successful operation
             if (balanceVersion !== undefined) {
@@ -224,14 +248,14 @@ export function useBondMutation(): UseBondMutationResult {
               data: {
                 amountUsdc,
                 durationDays,
-                transactionHash: txHash,
+                transactionHash: submission.data,
               },
             }
           },
           signal
         )
 
-        if (!result.ok) {
+        if (!result.ok && result.code !== 'cancelled') {
           setCreateError(result)
         }
 
@@ -240,7 +264,7 @@ export function useBondMutation(): UseBondMutationResult {
         setIsCreating(false)
       }
     },
-    [address, isConnected, balance]
+    [address, isConnected, network, balance]
   )
 
   // ---------------------------------------------------------------------------
@@ -268,6 +292,17 @@ export function useBondMutation(): UseBondMutationResult {
         return versionError as MutationResult<WithdrawBondResult>
       }
 
+      if (!network) {
+        const error: MutationResult<WithdrawBondResult> = {
+          ok: false,
+          code: 'validation',
+          message: 'Unable to determine the wallet network. Reconnect your wallet and try again.',
+          retryable: false,
+        }
+        setWithdrawError(error)
+        return error
+      }
+
       // Deduplication key: one withdraw per bondId at a time
       const mutationKey = `withdraw:${bondId}`
 
@@ -275,26 +310,35 @@ export function useBondMutation(): UseBondMutationResult {
       setWithdrawError(null)
 
       try {
-        const result = await executeMutation(
+        const result = await executeMutation<WithdrawBondResult>(
           mutationKey,
           async () => {
-            // Build withdrawal transaction XDR (simulated for now)
-            const txXdr = await buildWithdrawBondTx(bondId, address!)
-
-            // Prompt user to sign via Freighter
-            const signResult = await signFreighterTransaction(txXdr)
-
-            if (!signResult.ok) {
-              return {
-                ok: false,
-                code: signResult.code === 'rejected' ? 'rejected' : 'unknown',
-                message: signResult.message,
-                retryable: signResult.code !== 'rejected',
-              }
+            let txXdr: string
+            try {
+              txXdr = await buildWithdrawBondTransactionXdr(
+                address!,
+                network,
+                params.expectedAmount
+              )
+            } catch (error) {
+              return mapTransactionPreparationFailure(error)
             }
 
-            // Submit signed transaction to network (simulated for now)
-            const txHash = await submitTransaction(signResult.signedTxXdr)
+            if (signal?.aborted) return cancelledMutation()
+
+            // Prompt user to sign via Freighter
+            const signResult = await signFreighterTransaction(txXdr, {
+              networkPassphrase: getNetworkPassphrase(network),
+              address: address!,
+            })
+
+            if (signal?.aborted) return cancelledMutation()
+            if (!signResult.ok) {
+              return mapSigningFailure(signResult)
+            }
+
+            const submission = await submitBondTransaction(signResult.signedTxXdr, network, signal)
+            if (!submission.ok) return submission
 
             // Register version after successful operation
             if (balanceVersion !== undefined) {
@@ -305,14 +349,14 @@ export function useBondMutation(): UseBondMutationResult {
               ok: true,
               data: {
                 bondId,
-                transactionHash: txHash,
+                transactionHash: submission.data,
               },
             }
           },
           signal
         )
 
-        if (!result.ok) {
+        if (!result.ok && result.code !== 'cancelled') {
           setWithdrawError(result)
         }
 
@@ -321,7 +365,7 @@ export function useBondMutation(): UseBondMutationResult {
         setIsWithdrawing(false)
       }
     },
-    [address, isConnected]
+    [address, isConnected, network]
   )
 
   return {
@@ -363,7 +407,7 @@ function validateCreateParams(
     }
   }
 
-  if (!VALID_DURATIONS.includes(durationDays as any)) {
+  if (!VALID_DURATIONS.some((duration) => duration === durationDays)) {
     return {
       ok: false,
       code: 'validation',
@@ -411,52 +455,121 @@ function validateWithdrawParams(
 }
 
 // ---------------------------------------------------------------------------
-// Transaction Building (Simulated)
+// Mutation Failure Mapping
 // ---------------------------------------------------------------------------
 
-/**
- * Build a Stellar transaction XDR for creating a bond.
- * **TODO:** Replace with actual Stellar SDK integration.
- *
- * @param amountUsdc - Bond amount
- * @param durationDays - Lock duration
- * @param address - Stellar public key
- * @returns Transaction XDR string
- */
-async function buildCreateBondTx(
-  amountUsdc: number,
-  durationDays: number,
-  address: string
-): Promise<string> {
-  // Simulated transaction building
-  // In production, this would use Stellar SDK to build a real transaction
-  await new Promise((resolve) => setTimeout(resolve, 10)) // Simulate async work
-  return `XDR_CREATE_${amountUsdc}_${durationDays}_${address.slice(0, 8)}`
+type MutationFailure = Extract<MutationResult<never>, { ok: false }>
+type SigningFailure = Extract<Awaited<ReturnType<typeof signFreighterTransaction>>, { ok: false }>
+
+function cancelledMutation(): MutationFailure {
+  return {
+    ok: false,
+    code: 'cancelled',
+    message: 'Operation was cancelled.',
+    retryable: false,
+  }
 }
 
-/**
- * Build a Stellar transaction XDR for withdrawing a bond.
- * **TODO:** Replace with actual Stellar SDK integration.
- *
- * @param bondId - Bond identifier
- * @param address - Stellar public key
- * @returns Transaction XDR string
- */
-async function buildWithdrawBondTx(bondId: string, address: string): Promise<string> {
-  // Simulated transaction building
-  await new Promise((resolve) => setTimeout(resolve, 10))
-  return `XDR_WITHDRAW_${bondId}_${address.slice(0, 8)}`
+function mapTransactionPreparationFailure(
+  error: unknown
+): MutationFailure {
+  if (error instanceof HorizonError) {
+    return {
+      ok: false,
+      code: 'network',
+      message: error.message,
+      retryable: false,
+    }
+  }
+
+  return {
+    ok: false,
+    code: 'unknown',
+    message: error instanceof Error ? error.message : 'Unable to prepare the transaction.',
+    retryable: false,
+  }
 }
 
-/**
- * Submit a signed transaction to the Stellar network.
- * **TODO:** Replace with actual Horizon API integration.
- *
- * @param signedTxXdr - Signed transaction XDR
- * @returns Transaction hash
- */
-async function submitTransaction(_signedTxXdr: string): Promise<string> {
-  // Simulated transaction submission
-  await new Promise((resolve) => setTimeout(resolve, 50))
-  return `SIMULATED_TX_HASH_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+function mapSigningFailure(error: SigningFailure): MutationFailure {
+  if (error.code === 'rejected') {
+    return {
+      ok: false,
+      code: 'cancelled',
+      message: error.message,
+      retryable: false,
+    }
+  }
+
+  return {
+    ok: false,
+    code: error.code === 'not_installed' ? 'rejected' : 'unknown',
+    message: error.message,
+    retryable: false,
+  }
+}
+
+async function submitBondTransaction(
+  signedTxXdr: string,
+  network: CredenceNetwork,
+  signal?: AbortSignal
+): Promise<MutationResult<string>> {
+  try {
+    return {
+      ok: true,
+      data: await submitTransaction(signedTxXdr, network, signal),
+    }
+  } catch (error) {
+    if (signal?.aborted || isAbortError(error)) {
+      return {
+        ok: false,
+        code: 'cancelled',
+        message: 'Transaction submission was cancelled.',
+        retryable: false,
+      }
+    }
+
+    if (error instanceof HorizonError) {
+      const transactionCode = error.resultCodes?.transaction
+      if (transactionCode === 'tx_bad_seq') {
+        return {
+          ok: false,
+          code: 'conflict',
+          message: 'The wallet sequence changed. Refresh your account and review the transaction before trying again.',
+          retryable: true,
+        }
+      }
+
+      if (transactionCode === 'tx_insufficient_balance') {
+        return {
+          ok: false,
+          code: 'rejected',
+          message: 'The Stellar account does not have enough balance to submit this transaction.',
+          retryable: false,
+        }
+      }
+
+      if (transactionCode === 'tx_failed') {
+        return {
+          ok: false,
+          code: 'network',
+          message: 'The network rejected the transaction. Review the bond state before submitting again.',
+          retryable: false,
+        }
+      }
+    }
+
+    return {
+      ok: false,
+      code: 'network',
+      message: error instanceof Error ? error.message : 'Unable to submit the transaction.',
+      retryable: false,
+    }
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  )
 }

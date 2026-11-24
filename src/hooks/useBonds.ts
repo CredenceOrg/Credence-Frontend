@@ -15,12 +15,20 @@ export interface UseBondsResult {
   refetch: () => Promise<void>
 }
 
-export function useBonds(): UseBondsResult {
+export interface UseBondsOptions {
+  /**
+   * Set `false` to skip fetching entirely (e.g. a background feature that is
+   * switched off). Defaults to `true`; a connected wallet is still required.
+   */
+  enabled?: boolean
+}
+
+export function useBonds(options: UseBondsOptions = {}): UseBondsResult {
   const { address, network: walletNetwork } = useWallet()
   const { network: settingsNetwork } = useSettings()
   const network = walletNetwork || settingsNetwork
   const query = useApiQuery<BondsResponse>(`/bonds?limit=${PAGE_SIZE}`, {
-    enabled: Boolean(address),
+    enabled: options.enabled !== false && Boolean(address),
     identityKey: `${network}:${address}`,
   })
   const hasInvalidAmount = query.data?.items.some((bond) => {

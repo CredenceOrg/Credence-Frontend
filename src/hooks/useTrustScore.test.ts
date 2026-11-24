@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError } from '../api/client'
+import { ApiError, ApiResponseShapeError } from '../api/client'
 import type { TrustScore } from '../api/types'
+import { validateTrustScore } from '../api/validators'
 import { useTrustScore } from './useTrustScore'
 
 const apiFetchMock = vi.fn<typeof import('../api/client').apiFetch>()
@@ -774,6 +775,39 @@ describe('useTrustScore', () => {
       expect(result.current.error).toBeNull()
       expect(result.current.isLoading).toBe(false)
       expect(apiFetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('passes validateTrustScore to apiFetch and surfaces retryable ApiResponseShapeError', async () => {
+      const shapeError = new ApiResponseShapeError('Invalid TrustScore response: tier: required', [
+        { path: 'tier', message: 'required' },
+      ])
+      apiFetchMock.mockRejectedValueOnce(shapeError).mockResolvedValueOnce(mockTrustScore)
+
+      const { result } = renderHook(() => useTrustScore(VALID_ADDRESS))
+
+      await act(async () => {
+        result.current.refetch()
+      })
+
+      await waitFor(() => {
+        expect(result.current.error).toBe(shapeError)
+      })
+
+      expect(apiFetchMock).toHaveBeenCalledWith(
+        `/trust-score/${encodeURIComponent(VALID_ADDRESS)}`,
+        expect.objectContaining({ validate: validateTrustScore })
+      )
+      expect(result.current.data).toBeNull()
+      expect((result.current.error as ApiResponseShapeError).retryable).toBe(true)
+
+      await act(async () => {
+        result.current.refetch()
+      })
+
+      await waitFor(() => {
+        expect(result.current.data).toEqual(mockTrustScore)
+      })
+      expect(result.current.error).toBeNull()
     })
   })
 })

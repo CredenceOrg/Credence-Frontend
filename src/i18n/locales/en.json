@@ -82,7 +82,8 @@
       "autoDismiss": "Auto-dismiss",
       "quietHoursEnabled": "Quiet hours enabled",
       "quietHoursStart": "Quiet hours start",
-      "quietHoursEnd": "Quiet hours end"
+      "quietHoursEnd": "Quiet hours end",
+      "unlockRemindersEnabled": "Unlock reminders enabled"
     },
     "appearance": {
       "heading": "Appearance",
@@ -137,7 +138,33 @@
         "inactive": "Quiet hours are not currently active.",
         "invalidRange": "Start and end times must differ.",
         "invalidFormat": "Start and end times must be in HH:mm format (e.g. 22:00, 07:30)."
+      },
+      "unlockReminders": {
+        "heading": "Unlock reminders",
+        "description": "Get a local browser notification before a bond unlocks. Reminders follow your quiet hours and are never sent twice for the same bond.",
+        "enable": "Enable unlock reminders",
+        "hint": "Reminders appear while this app is open in a tab. Nothing is sent to a server.",
+        "permission": {
+          "granted": "Browser notifications are allowed for this site.",
+          "denied": "Browser notifications are blocked for this site. Allow them in your browser's site settings to receive reminders.",
+          "unsupported": "This browser does not support notifications, so reminders will not be shown.",
+          "request": "Allow browser notifications",
+          "requestHint": "Your browser will ask for permission before any reminder is shown."
+        }
       }
+    },
+    "addressBook": {
+      "heading": "Address Book",
+      "description": "Save trusted Stellar counterparties for quick selection.",
+      "label": "Label",
+      "address": "Stellar address",
+      "add": "Add address",
+      "edit": "Edit",
+      "remove": "Remove",
+      "empty": "No saved addresses yet for this wallet and network.",
+      "chooseFromAddressBook": "Choose from address book",
+      "filterPlaceholder": "Filter saved addresses...",
+      "noMatches": "No matching addresses"
     },
     "backup": {
       "heading": "Backup & Restore",
@@ -155,7 +182,14 @@
       "save": "Save",
       "saved": "Saved",
       "cancel": "Cancel",
-      "ariaLabel": "Save or discard settings"
+      "resetToDefaults": "Reset to defaults",
+      "ariaLabel": "Save, discard, or reset settings"
+    },
+    "resetDialog": {
+      "title": "Reset settings to defaults?",
+      "description": "This will restore theme, network, address display, notifications, and quiet hours to their default values.",
+      "confirmLabel": "Reset to defaults",
+      "confirmHint": "This will overwrite your current settings with the default values."
     },
     "importDialog": {
       "title": "Import settings?",
@@ -168,6 +202,14 @@
       "confirmHint": "This will overwrite your current settings with the imported values.",
       "confirmLabel": "Apply settings"
     },
+    "networkSwitchDialog": {
+      "title": "Switch network?",
+      "subtitle": "Pending transactions will be hidden while on another network.",
+      "description_one": "You have {{count}} pending transaction on {{currentNetwork}}. Switching to {{targetNetwork}} will hide it and show balances and pending transactions for {{targetNetwork}} instead.",
+      "description_other": "You have {{count}} pending transactions on {{currentNetwork}}. Switching to {{targetNetwork}} will hide them and show balances and pending transactions for {{targetNetwork}} instead.",
+      "confirmHint": "Your pending transactions stay saved for {{currentNetwork}} and will reappear if you switch back.",
+      "confirmLabel": "Switch network"
+    },
     "autoSave": {
       "saving": "Saving…",
       "saved": "Saved",
@@ -178,6 +220,8 @@
     "toasts": {
       "saved": "Settings saved successfully",
       "reverted": "Settings reverted to last saved state",
+      "reset": "Settings reset to defaults",
+      "resetFailed": "Failed to reset settings. Previous values were kept.",
       "exported": "Settings exported successfully",
       "imported": "Settings imported successfully",
       "importCancelled": "Import cancelled",
@@ -339,7 +383,10 @@
       "when": "When",
       "transaction": "Transaction",
       "viewOnExplorer": "View transaction {{hash}} on Stellar explorer",
-      "viewLink": "View ↗"
+      "viewLink": "View ↗",
+      "sortBy": "Sort by {{column}}",
+      "sortAscending": "{{column}}, sorted ascending. Activate to sort descending.",
+      "sortDescending": "{{column}}, sorted descending. Activate to clear sorting."
     },
     "status": {
       "all": "All",
@@ -362,25 +409,25 @@
     "bulk": {
       "selectLabel": "Select transaction {{id}}",
       "selectAll": "Select all transactions",
-      "selectedOne": "{{count}} selected",
-      "selectedOther": "{{count}} selected",
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected",
       "actionsLabel": "Bulk actions",
       "export": "Export",
       "delete": "Delete",
       "clear": "Clear selection",
       "deleteConfirm": {
         "title": "Delete transactions?",
-        "subtitle": "You are about to remove {{count}} transaction from this list.",
+        "subtitle_one": "You are about to remove {{count}} transaction from this list.",
         "subtitle_other": "You are about to remove {{count}} transactions from this list.",
         "phrase": "DELETE",
         "hint": "Removing entries from this view does not affect on-chain records.",
         "confirm": "Delete transactions",
-        "successOne": "1 transaction removed from view",
-        "successOther": "{{count}} transactions removed from view"
+        "success_one": "{{count}} transaction removed from view",
+        "success_other": "{{count}} transactions removed from view"
       },
       "exportToast": {
-        "successOne": "1 transaction exported",
-        "successOther": "{{count}} transactions exported"
+        "success_one": "{{count}} transaction exported",
+        "success_other": "{{count}} transactions exported"
       }
     }
   },
@@ -433,7 +480,9 @@
     "credentialCertification": "Credential Certification",
     "submitted": "Submitted",
     "subject": "Subject: {{subject}}",
-    "currentUser": "Current User"
+    "currentUser": "Current User",
+    "recentEvents_one": "{{count}} recent event",
+    "recentEvents_other": "{{count}} recent events"
   },
   "badge": {
     "variants": {
@@ -450,5 +499,11 @@
     "backend": "Backend error",
     "validation": "Validation error",
     "generic": "An error occurred"
+  },
+  "notifications": {
+    "unlockReminder": {
+      "title": "Bond unlock reminder",
+      "body": "One of your bonds unlocks on {{date}}."
+    }
   }
 }

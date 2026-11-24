@@ -17,6 +17,9 @@ vi.mock('../context/WalletContext', () => ({
 vi.mock('../hooks/useNetworkMismatch', () => ({ useNetworkMismatch: () => ({ mismatch: false, expected: '', actual: '' }) }))
 vi.mock('../hooks/useSeo', () => ({ useSeo: vi.fn() }))
 vi.mock('../hooks/useMediaQuery', () => ({ useIsMobile: () => false }))
+vi.mock('../hooks/useTrustHistory', () => ({
+  useTrustHistory: () => ({ data: [], isLoading: false, error: null }),
+}))
 
 const ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
 const SECOND_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'

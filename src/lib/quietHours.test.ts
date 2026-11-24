@@ -4,6 +4,7 @@ import {
   isWithinQuietHours,
   isQuietHoursActive,
   nowMinutesSinceMidnight,
+  deferUntilQuietHoursEnd,
   QUIET_HOURS_DEFAULTS,
 } from './quietHours'
 
@@ -184,5 +185,43 @@ describe('nowMinutesSinceMidnight', () => {
     const result = nowMinutesSinceMidnight()
     expect(result).toBeGreaterThanOrEqual(0)
     expect(result).toBeLessThan(24 * 60)
+  })
+})
+
+describe('deferUntilQuietHoursEnd', () => {
+  const window = { enabled: true, start: '22:00', end: '07:00' }
+  const ref = (day: number, hour: number, minute = 0) => new Date(2026, 0, day, hour, minute)
+
+  it('returns the reference unchanged when quiet hours are disabled', () => {
+    const reference = ref(10, 23)
+    expect(deferUntilQuietHoursEnd({ ...window, enabled: false }, reference)).toBe(reference)
+  })
+
+  it('returns the reference unchanged outside the window', () => {
+    const reference = ref(10, 12)
+    expect(deferUntilQuietHoursEnd(window, reference)).toBe(reference)
+  })
+
+  it('defers to the next morning for a cross-midnight window', () => {
+    expect(deferUntilQuietHoursEnd(window, ref(10, 23)).getTime()).toBe(ref(11, 7).getTime())
+  })
+
+  it('defers to the same day when the reference is in the early half of the window', () => {
+    expect(deferUntilQuietHoursEnd(window, ref(11, 2)).getTime()).toBe(ref(11, 7).getTime())
+  })
+
+  it('defers to the same day for a same-day window', () => {
+    const daytime = { enabled: true, start: '13:00', end: '15:00' }
+    expect(deferUntilQuietHoursEnd(daytime, ref(10, 14)).getTime()).toBe(ref(10, 15).getTime())
+  })
+
+  it('skips to the next day when the reference lands exactly on the end minute', () => {
+    // `end` is inclusive, so 07:00 is still quiet; the next safe minute is tomorrow.
+    expect(deferUntilQuietHoursEnd(window, ref(11, 7)).getTime()).toBe(ref(12, 7).getTime())
+  })
+
+  it('returns the reference for malformed windows', () => {
+    const reference = ref(10, 23)
+    expect(deferUntilQuietHoursEnd({ ...window, end: 'nope' }, reference)).toBe(reference)
   })
 })

@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { FormField } from './forms/FormField'
 import './AddressInput.css'
 import { useSettings } from '../context/SettingsContext'
+import { useAddressBook } from '../hooks/useAddressBook'
 import {
   isValidStellarAddress,
   truncateAddress,
@@ -10,14 +11,7 @@ import {
   type AddressDisplayMode,
 } from '../lib/stellar'
 
-// Re-exported for backwards compatibility with callers that historically
-// imported these helpers from this module. `../lib/stellar` is now the single
-// source of truth for validation and formatting.
-export { isValidStellarAddress, truncateAddress, formatAddressForDisplay }
-export type { AddressDisplayMode }
-
-/** Format-only check: 56 chars, 'G' prefix, uppercase alphanumeric. */
-const STELLAR_ADDRESS_FORMAT = /^G[A-Z0-9]{55}$/
+export { truncateAddress, formatAddressForDisplay, type AddressDisplayMode }
 
 interface AddressInputProps {
   id: string
@@ -37,12 +31,6 @@ interface AddressInputProps {
    * Takes precedence over the built-in format error when provided.
    */
   error?: string
-  /**
-   * Optional callback invoked when a clipboard read fails (permission denied,
-   * unavailable API, empty clipboard, etc.) so callers can surface a
-   * diagnostic message.
-   */
-  onPasteError?: (error: unknown) => void
 }
 
 /**
@@ -55,6 +43,7 @@ interface AddressInputInnerProps {
   inputRef: React.RefObject<HTMLInputElement>
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void
   onBlur: () => void
   onFocus: () => void
   disabled: boolean
@@ -62,6 +51,11 @@ interface AddressInputInnerProps {
   focused: boolean
   showError: boolean
   showSuccess: boolean
+  hasAddressBook: boolean
+  pickerOpen: boolean
+  listboxId: string
+  toggleButtonRef: React.RefObject<HTMLButtonElement>
+  onTogglePicker: () => void
 }
 
 function AddressInputInner({
@@ -71,6 +65,7 @@ function AddressInputInner({
   inputRef,
   value,
   onChange,
+  onPaste,
   onBlur,
   onFocus,
   disabled,
@@ -78,6 +73,11 @@ function AddressInputInner({
   focused,
   showError,
   showSuccess,
+  hasAddressBook,
+  pickerOpen,
+  listboxId,
+  toggleButtonRef,
+  onTogglePicker,
 }: AddressInputInnerProps) {
   return (
     <div
@@ -91,6 +91,7 @@ function AddressInputInner({
         aria-invalid={ariaInvalid}
         value={value}
         onChange={onChange}
+        onPaste={onPaste}
         onBlur={onBlur}
         onFocus={onFocus}
         disabled={disabled}
@@ -100,6 +101,44 @@ function AddressInputInner({
         autoComplete="off"
         autoCapitalize="off"
       />
+
+      {hasAddressBook && (
+        <button
+          ref={toggleButtonRef}
+          type="button"
+          onClick={onTogglePicker}
+          disabled={disabled}
+          className="address-input-book-button"
+          aria-label="Choose from address book"
+          title="Choose from address book"
+          aria-haspopup="listbox"
+          aria-expanded={pickerOpen}
+          aria-controls={listboxId}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M3 2.5C3 1.94772 3.44772 1.5 4 1.5H12.5C13.0523 1.5 13.5 1.94772 13.5 2.5V13.5C13.5 14.0523 13.0523 14.5 12.5 14.5H4C3.44772 14.5 3 14.0523 3 13.5V2.5Z"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M5.5 5H11M5.5 8H11M5.5 11H9"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      )}
 
       <button
         type="button"
@@ -143,54 +182,86 @@ export default function AddressInput({
   onPasteError,
 }: AddressInputProps) {
   const { addressDisplay } = useSettings()
-  const isDisabled = disabled || isLoading
+  const { entries: addressBookEntries } = useAddressBook()
 
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const toggleButtonRef = useRef<HTMLButtonElement>(null)
+  const comboboxInputRef = useRef<HTMLInputElement>(null)
 
   const [focused, setFocused] = useState(false)
   const [attempted, setAttempted] = useState(false)
-  // Tracks whether the last clipboard read failed so we can surface a
-  // diagnostic message without losing the user's existing input.
-  const [pasteFailed, setPasteFailed] = useState(false)
-  // Tracks whether the last accepted input contained characters that look like
-  // a homograph/injection attempt (e.g. zero-width spaces).
-  const [hasSuspiciousChars, setHasSuspiciousChars] = useState(false)
+  const [sanitizationError, setSanitizationError] = useState<string | undefined>(undefined)
+
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [filterQuery, setFilterQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const hasAddressBook = addressBookEntries.length > 0
+  const listboxId = `${id}-address-book-listbox`
+
+  const filteredEntries = useMemo(() => {
+    const q = filterQuery.trim().toLowerCase()
+    if (!q) return addressBookEntries
+    return addressBookEntries.filter(
+      (entry) =>
+        entry.label.toLowerCase().includes(q) || entry.address.toLowerCase().includes(q)
+    )
+  }, [addressBookEntries, filterQuery])
+
+  // Keep activeIndex within bounds when filter changes
+  useEffect(() => {
+    if (activeIndex >= filteredEntries.length) {
+      setActiveIndex(0)
+    }
+  }, [filteredEntries.length, activeIndex])
+
+  // Focus combobox input when picker opens
+  useEffect(() => {
+    if (pickerOpen) {
+      comboboxInputRef.current?.focus()
+    }
+  }, [pickerOpen])
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!pickerOpen) return
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setPickerOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [pickerOpen])
 
   const isValid = isValidStellarAddress(value)
   const isEmpty = !value
+  const looksLikeFormatValid = /^G[A-Z0-9]{55}$/.test(value)
   const showError = attempted && !isValid && !isEmpty
-  const showSuccess = attempted && isValid
+  const showSuccess = attempted && isValid && !sanitizationError
 
-  // Notify parent of validation state change. We key on the boolean
-  // result and the callback identity so consumers can pass an inline
-  // function without triggering an infinite render loop.
+  // Notify parent of validation state change
   useEffect(() => {
     onValidationChange?.(isValid)
   }, [isValid, onValidationChange])
 
-  /**
-   * Applies the shared sanitizer to raw input, forwards the (prefix-stripped)
-   * value upstream, and records whether suspicious characters were detected.
-   * Returns the sanitized value so callers can make decisions without
-   * duplicating the stripping logic.
-   */
-  const acceptSanitizedValue = useCallback(
-    (raw: string): string => {
-      const result = sanitizeAddressInput(raw)
-      if (result.ok) {
-        setHasSuspiciousChars(false)
-        onChange(result.value)
-        return result.value
-      }
-      setHasSuspiciousChars(true)
-      onChange(result.fallbackValue)
-      return result.fallbackValue
-    },
-    [onChange]
-  )
+  const applySanitizedValue = (raw: string) => {
+    const sanitized = sanitizeAddressInput(raw)
+    if (sanitized.ok) {
+      setSanitizationError(undefined)
+      onChange(sanitized.value)
+    } else {
+      setSanitizationError(sanitized.error.message)
+      onChange(sanitized.fallbackValue)
+    }
+    setAttempted(true)
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    acceptSanitizedValue(e.target.value)
+    const newValue = e.target.value
+    setSanitizationError(undefined)
+    onChange(newValue)
 
     // Mark as attempted if user starts typing
     if (!attempted) {
@@ -199,6 +270,14 @@ export default function AddressInput({
     // Any manual edit clears a prior paste failure.
     if (pasteFailed) {
       setPasteFailed(false)
+    }
+  }
+
+  const handleNativePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData?.getData('text')
+    if (typeof pasted === 'string' && pasted.length > 0) {
+      e.preventDefault()
+      applySanitizedValue(pasted)
     }
   }
 
@@ -224,21 +303,7 @@ export default function AddressInput({
   const handlePaste = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText()
-
-      // Guard: an empty or whitespace-only clipboard must not clobber the
-      // user's existing input. Surface a non-destructive failure instead.
-      if (!text || !text.trim()) {
-        setPasteFailed(true)
-        onPasteError?.(new Error('Clipboard is empty'))
-        if (inputRef.current) {
-          inputRef.current.focus()
-        }
-        return
-      }
-
-      acceptSanitizedValue(text)
-      setAttempted(true)
-      setPasteFailed(false)
+      applySanitizedValue(text)
 
       // Focus the input after paste
       if (inputRef.current) {
@@ -256,34 +321,86 @@ export default function AddressInput({
     }
   }, [acceptSanitizedValue, onPasteError])
 
-  // Distinguish a format violation (length/prefix/charset) from a
-  // checksum mismatch so the message is actionable. The compute here runs
-  // only when an error is actually rendered.
+  const handleSelectEntry = (address: string) => {
+    setSanitizationError(undefined)
+    onChange(address)
+    setAttempted(true)
+    setPickerOpen(false)
+    setFilterQuery('')
+    inputRef.current?.focus()
+  }
+
+  const handleTogglePicker = () => {
+    setPickerOpen((prev) => {
+      const next = !prev
+      if (next) {
+        setFilterQuery('')
+        setActiveIndex(0)
+      }
+      return next
+    })
+  }
+
+  const handleComboboxKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setPickerOpen(false)
+      toggleButtonRef.current?.focus()
+      return
+    }
+
+    if (filteredEntries.length === 0) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex((prev) => (prev + 1) % filteredEntries.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex((prev) => (prev - 1 + filteredEntries.length) % filteredEntries.length)
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      setActiveIndex(0)
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      setActiveIndex(filteredEntries.length - 1)
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const selected = filteredEntries[activeIndex]
+      if (selected) {
+        handleSelectEntry(selected.address)
+      }
+    }
+  }
+
   const formatError = showError
-    ? STELLAR_ADDRESS_FORMAT.test(value)
-      ? 'Invalid address. Stellar public key checksum is invalid.'
+    ? looksLikeFormatValid
+      ? 'Invalid address checksum. Please double-check the Stellar public key.'
       : 'Invalid address. Stellar public keys are 56 characters starting with G.'
     : undefined
-
-  // Error precedence: an explicit parent error wins, then a security warning
-  // about the characters we just accepted, then the format/checksum error,
-  // then the non-destructive clipboard failure.
-  const error =
-    externalError ??
-    (hasSuspiciousChars ? 'Suspicious characters detected in address.' : undefined) ??
-    formatError ??
-    (pasteFailed ? 'Unable to read clipboard. Please paste manually.' : undefined)
+  const error = externalError ?? sanitizationError ?? formatError
   const hint = 'Stellar public key format (56 characters, starts with G)'
-  // Visual + FormField success only when format is valid and no external error.
-  const successMessage = !externalError && showSuccess ? 'Valid Stellar address' : undefined
+  // Visual + FormField success only when format is valid and no external/sanitization error.
+  const successMessage = !error && showSuccess ? 'Valid Stellar address' : undefined
+
+  const activeOptionId =
+    pickerOpen && filteredEntries[activeIndex]
+      ? `${id}-address-book-option-${filteredEntries[activeIndex].id}`
+      : undefined
 
   return (
-    <div className={`address-input-wrapper ${className}`} aria-busy={isLoading || undefined}>
-      <FormField id={id} label={label} hint={hint} error={error} success={successMessage}>
+    <div ref={wrapperRef} className={`address-input-wrapper ${className}`}>
+      <FormField
+        id={id}
+        label={label}
+        hint={hint}
+        error={error}
+        success={successMessage}
+      >
         <AddressInputInner
           inputRef={inputRef}
           value={value}
           onChange={handleChange}
+          onPaste={handleNativePaste}
           onBlur={handleBlur}
           onFocus={handleFocus}
           disabled={isDisabled}
@@ -291,11 +408,71 @@ export default function AddressInput({
           focused={focused}
           showError={Boolean(error)}
           showSuccess={Boolean(successMessage)}
+          hasAddressBook={hasAddressBook}
+          pickerOpen={pickerOpen}
+          listboxId={listboxId}
+          toggleButtonRef={toggleButtonRef}
+          onTogglePicker={handleTogglePicker}
         />
       </FormField>
 
-      {/* Address echo display when valid and no external error is set */}
-      {successMessage && value && (
+      {hasAddressBook && pickerOpen && (
+        <div className="address-input-book-popover">
+          <input
+            ref={comboboxInputRef}
+            type="text"
+            role="combobox"
+            aria-label="Filter address book"
+            aria-expanded="true"
+            aria-controls={listboxId}
+            aria-autocomplete="list"
+            aria-activedescendant={activeOptionId}
+            value={filterQuery}
+            onChange={(e) => {
+              setFilterQuery(e.target.value)
+              setActiveIndex(0)
+            }}
+            onKeyDown={handleComboboxKeyDown}
+            placeholder="Filter saved addresses..."
+            className="address-input-book-filter"
+          />
+          <ul
+            id={listboxId}
+            role="listbox"
+            aria-label="Address book entries"
+            className="address-input-book-list"
+          >
+            {filteredEntries.length === 0 ? (
+              <li className="address-input-book-empty" role="presentation">
+                No matching addresses
+              </li>
+            ) : (
+              filteredEntries.map((entry, idx) => {
+                const isActive = idx === activeIndex
+                return (
+                  <li
+                    key={entry.id}
+                    id={`${id}-address-book-option-${entry.id}`}
+                    role="option"
+                    aria-selected={isActive}
+                    className={`address-input-book-option ${isActive ? 'address-input-book-option--active' : ''}`}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                    onClick={() => handleSelectEntry(entry.address)}
+                  >
+                    <span className="address-input-book-option-label">{entry.label}</span>
+                    <code className="address-input-book-option-address">
+                      {formatAddressForDisplay(entry.address, addressDisplay as AddressDisplayMode)}
+                    </code>
+                  </li>
+                )
+              })
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* Address echo display when valid */}
+      {showSuccess && value && (
         <div className="address-input-echo">
           <span className="address-input-echo-label">Recognized:</span>
           <code className="address-input-echo-value">

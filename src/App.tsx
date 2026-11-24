@@ -5,6 +5,7 @@ import { WalletProvider } from './context/WalletContext'
 import ToastProvider from './components/ToastProvider'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
+import RequireWallet from './components/RequireWallet'
 import BreakpointOverlay from './components/dev/BreakpointOverlay'
 import DebugOverlay from './components/dev/DebugOverlay'
 import { WidgetCacheProvider } from './widgetCache'
@@ -73,17 +74,24 @@ export function App({ children, errorFallback, loadingFallback }: AppProps = {})
                     <Routes>
                       <Route path="/" element={<Layout />}>
                         <Route index element={<Home />} />
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="bond" element={<Bond />} />
-                        <Route path="bond/new" element={<CreateBondPage />} />
-                        <Route path="bond/:id" element={<BondDetail />} />
                         <Route path="trust" element={<TrustScore />} />
                         <Route path="trust/summary" element={<TrustSummary />} />
+                        <Route path="trust/:address" element={<TrustScore />} />
                         <Route path="attestations" element={<Attestations />} />
                         <Route path="transactions" element={<Transactions />} />
                         <Route path="settings" element={<Settings />} />
                         <Route path="test-amount-input" element={<AmountInputTestPage />} />
                         <Route path="signin" element={<SignIn />} />
+                        <Route path="test-amount-input" element={<AmountInputTestPage />} />
+                        <Route element={<RequireWallet />}>
+                          <Route path="dashboard" element={<Dashboard />} />
+                          <Route path="bond" element={<Bond />} />
+                          <Route path="bond/new" element={<CreateBondPage />} />
+                          <Route path="bond/:id" element={<BondDetail />} />
+                          <Route path="attestations" element={<Attestations />} />
+                          <Route path="transactions" element={<Transactions />} />
+                          <Route path="settings" element={<Settings />} />
+                        </Route>
                         {import.meta.env.DEV && ToastTest && (
                           <Route path="dev/toasts" element={<ToastTest />} />
                         )}

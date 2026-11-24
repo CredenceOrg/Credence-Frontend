@@ -1,17 +1,30 @@
 export const DEFAULT_FALLBACK_ROUTE = '/dashboard'
 
+export const PUBLIC_ROUTES = ['/', '/trust', '/trust/summary', '/signin'] as const
+
+export const PRIVATE_ROUTES = [
+  '/dashboard',
+  '/bond',
+  '/bond/new',
+  '/bond/:id',
+  '/attestations',
+  '/transactions',
+  '/settings',
+] as const
+
 export interface NavigationLink {
   to: string
   label: string
+  requiresWallet?: boolean
 }
 
 export const NAV_LINKS: NavigationLink[] = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/bond', label: 'Bond' },
-  { to: '/trust', label: 'Trust Score' },
-  { to: '/attestations', label: 'Attestations' },
-  { to: '/transactions', label: 'Transactions' },
-  { to: '/settings', label: 'Settings' },
+  { to: '/dashboard', label: 'Dashboard', requiresWallet: true },
+  { to: '/bond', label: 'Bond', requiresWallet: true },
+  { to: '/trust', label: 'Trust Score', requiresWallet: false },
+  { to: '/attestations', label: 'Attestations', requiresWallet: true },
+  { to: '/transactions', label: 'Transactions', requiresWallet: true },
+  { to: '/settings', label: 'Settings', requiresWallet: true },
 ]
 
 export interface ActionLauncherItem {

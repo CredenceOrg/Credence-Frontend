@@ -214,12 +214,16 @@ export default function ConnectWalletModal({
 
   // Synchronize wallet connecting flag
   useEffect(() => {
-    if (walletIsConnecting && !onConnectRequest && isOpen) {
-      setModalState('loading')
-      setErrorMessage(null)
-      setErrorKind(null)
+    if (!onConnectRequest && isOpen) {
+      if (walletIsConnecting) {
+        setModalState('loading')
+        setErrorMessage(null)
+        setErrorKind(null)
+      } else if (modalState === 'loading') {
+        setModalState('idle')
+      }
     }
-  }, [walletIsConnecting, onConnectRequest, isOpen])
+  }, [walletIsConnecting, onConnectRequest, isOpen, modalState])
 
   // Reset state and invalidate any in-flight requests on modal close
   useEffect(() => {
@@ -231,14 +235,14 @@ export default function ConnectWalletModal({
     }
   }, [isOpen])
 
-  // Auto-close when wallet connects successfully
+  // Auto-close when wallet connects successfully (guarded against in-flight connecting state)
   useEffect(() => {
-    if (isConnected && isOpen) {
+    if (isConnected && isOpen && !walletIsConnecting && modalState !== 'loading') {
       if (typeof onClose === 'function') {
         onClose()
       }
     }
-  }, [isConnected, isOpen, onClose])
+  }, [isConnected, isOpen, walletIsConnecting, modalState, onClose])
 
   useScrollPreserver({ isActive: isOpen })
 
@@ -322,6 +326,7 @@ export default function ConnectWalletModal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
+        tabIndex={-1}
         className="connect-wallet-dialog"
         onClick={(e) => e.stopPropagation()}
       >

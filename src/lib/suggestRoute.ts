@@ -47,7 +47,7 @@ function levenshtein(a: string, b: string): number {
  */
 export function suggestRoute(
   attemptedPath: string,
-  routes: string[]
+  routes: readonly string[]
 ): {
   suggestion?: string
   confidence: number

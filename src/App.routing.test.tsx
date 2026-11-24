@@ -52,6 +52,19 @@ function LocationDisplay() {
   )
 }
 
+const { mockRefetch } = vi.hoisted(() => ({ mockRefetch: vi.fn() }))
+
+vi.mock('./hooks/useTrustScore', () => ({
+  useTrustScore: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+    refetch: mockRefetch,
+  }),
+}))
+
+const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
@@ -87,6 +100,9 @@ function renderRoutes(initialEntries: string[]) {
               <Route element={<RequireWallet />}>
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="bond" element={<Bond />} />
+                <Route path="trust" element={<TrustScore />} />
+                <Route path="trust/summary" element={<TrustSummary />} />
+                <Route path="trust/:address" element={<TrustScore />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
               <Route path="*" element={<NotFound />} />
@@ -119,6 +135,19 @@ describe('App routing integration', () => {
 
     expect(await screen.findByRole('heading', { name: 'Trust Score' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /page not found/i })).not.toBeInTheDocument()
+  })
+
+  it('loads a valid trust profile route and keeps the summary route distinct', async () => {
+    mockRefetch.mockClear()
+    const { unmount } = renderRoutes([`/trust/${VALID_ADDRESS}`])
+
+    expect(await screen.findByRole('heading', { name: 'Trust Score' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue(VALID_ADDRESS)
+    expect(mockRefetch).toHaveBeenCalledOnce()
+
+    unmount()
+    renderRoutes(['/trust/summary'])
+    expect(await screen.findByRole('heading', { name: 'No address supplied' })).toBeInTheDocument()
   })
 
   it('renders NotFound for a deep unknown route', async () => {

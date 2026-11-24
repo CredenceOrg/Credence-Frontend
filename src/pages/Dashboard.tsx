@@ -8,21 +8,23 @@ import Banner from '../components/Banner'
 import Button from '../components/Button'
 import { PinWidgetButton } from '../components/PinWidgetButton'
 import TrustGauge from '../components/TrustGauge'
-import { EmptyState, LoadingSkeleton } from '../components/states'
+import { WidgetRefreshButton } from '../components/widget/WidgetRefreshButton'
+import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import {
   ONBOARDING_COMPLETION_STORAGE_KEY,
   ONBOARDING_STEP_COUNT,
   ONBOARDING_STEP_STORAGE_KEY,
 } from '../config/onboarding'
 import { useWallet } from '../context/WalletContext'
+import { useActivity } from '../hooks/useActivity'
+import { useBonds } from '../hooks/useBonds'
 import { usePinnedWidgets } from '../hooks/usePinnedWidgets'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useSeo } from '../hooks/useSeo'
+import { useTrustScore } from '../hooks/useTrustScore'
 import { formatUsdc } from '../lib/format'
+import { tierForScore } from '../lib/tier'
 import './Dashboard.css'
-
-const TRUST_SCORE = 684
-const TRUST_TIER = 'gold'
 
 const onboardingSteps = [
   {
@@ -45,11 +47,6 @@ const onboardingSteps = [
     description: 'Use the shortcuts section to move quickly into bond creation, trust review, or attestations.',
     target: 'shortcuts',
   },
-] as const
-
-const activeBonds = [
-  { id: 'bond-001', amountUsdc: 2500, status: 'active', unlockLabel: 'May 30, 2026' },
-  { id: 'bond-002', amountUsdc: 1750, status: 'locked', unlockLabel: 'Jun 14, 2026' },
 ] as const
 
 const shortcuts = [
@@ -83,6 +80,12 @@ export default function Dashboard() {
   const reducedMotion = useReducedMotion()
   const [searchParams] = useSearchParams()
   const widgetParam = searchParams.get('widget')
+  const trustScoreQuery = useTrustScore(address)
+  const bondsQuery = useBonds(address)
+  const activityQuery = useActivity(address)
+  const trustScore = trustScoreQuery.data?.score
+  const trustTier = trustScore !== undefined ? tierForScore(trustScore) : undefined
+  const activeBonds = bondsQuery.data ?? []
   const totalBonded = activeBonds.reduce((total, bond) => total + bond.amountUsdc, 0)
   const [onboardingStep, setOnboardingStep] = useState(0)
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -201,18 +204,42 @@ export default function Dashboard() {
       visible: showTrustScore,
       content: (
         <ActionCard title="Trust Score">
-          <div className="dashboard__cardHeader">
-            <div>
-              <p className="dashboard__metric">{TRUST_SCORE}</p>
-              <p className="dashboard__metricLabel">Current score</p>
-            </div>
-            <Badge variant={TRUST_TIER} label="Gold Tier" />
-          </div>
-          <TrustGauge
-            score={TRUST_SCORE}
-            tier={TRUST_TIER}
-            className="dashboard__trustGauge"
-            id="dashboard-trust-gauge"
+          {trustScoreQuery.isLoading ? (
+            <LoadingSkeleton variant="stat-widget" rows={2} />
+          ) : trustScoreQuery.isError || trustScore === undefined || trustTier === undefined ? (
+            <ErrorState
+              title="Unable to load trust score"
+              description="We couldn't fetch your trust score. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => {
+                  void trustScoreQuery.refetch()
+                },
+              }}
+            />
+          ) : (
+            <>
+              <div className="dashboard__cardHeader">
+                <div>
+                  <p className="dashboard__metric">{trustScore}</p>
+                  <p className="dashboard__metricLabel">Current score</p>
+                </div>
+                <Badge variant={trustTier} label={`${trustTier} Tier`} />
+              </div>
+              <TrustGauge
+                score={trustScore}
+                tier={trustTier}
+                className="dashboard__trustGauge"
+                id="dashboard-trust-gauge"
+              />
+            </>
+          )}
+          <WidgetRefreshButton
+            onClick={() => {
+              void trustScoreQuery.refetch()
+            }}
+            isLoading={trustScoreQuery.isFetching}
+            label="Refresh trust score"
           />
         </ActionCard>
       ),
@@ -223,24 +250,54 @@ export default function Dashboard() {
       visible: showActiveBonds,
       content: (
         <ActionCard title="Active Bonds">
-          <div className="dashboard__cardHeader">
-            <div>
-              <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
-              <p className="dashboard__metricLabel">{activeBonds.length} active bonds</p>
-            </div>
-            <Badge variant="active" />
-          </div>
-          <ul className="dashboard__bondList" aria-label="Active bond summary">
-            {activeBonds.map((bond) => (
-              <li className="dashboard__bondRow" key={bond.id}>
+          {bondsQuery.isLoading ? (
+            <LoadingSkeleton variant="bond-row" rows={2} />
+          ) : bondsQuery.isError ? (
+            <ErrorState
+              title="Unable to load bonds"
+              description="We couldn't fetch your active bonds. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => {
+                  void bondsQuery.refetch()
+                },
+              }}
+            />
+          ) : activeBonds.length === 0 ? (
+            <EmptyState
+              illustration="bond"
+              title="No active bonds"
+              description="You don't have any active bonds yet."
+            />
+          ) : (
+            <>
+              <div className="dashboard__cardHeader">
                 <div>
-                  <p className="dashboard__bondAmount">{formatUsdc(bond.amountUsdc)}</p>
-                  <p className="dashboard__bondMeta">Unlocks {bond.unlockLabel}</p>
+                  <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
+                  <p className="dashboard__metricLabel">{activeBonds.length} active bonds</p>
                 </div>
-                <Badge variant={bond.status} />
-              </li>
-            ))}
-          </ul>
+                <Badge variant="active" />
+              </div>
+              <ul className="dashboard__bondList" aria-label="Active bond summary">
+                {activeBonds.map((bond) => (
+                  <li className="dashboard__bondRow" key={bond.id}>
+                    <div>
+                      <p className="dashboard__bondAmount">{formatUsdc(bond.amountUsdc)}</p>
+                      <p className="dashboard__bondMeta">Unlocks {bond.unlockLabel}</p>
+                    </div>
+                    <Badge variant={bond.status} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <WidgetRefreshButton
+            onClick={() => {
+              void bondsQuery.refetch()
+            }}
+            isLoading={bondsQuery.isFetching}
+            label="Refresh active bonds"
+          />
         </ActionCard>
       ),
     },
@@ -250,7 +307,29 @@ export default function Dashboard() {
       visible: showRecentActivity,
       content: (
         <ActionCard title="Recent Activity">
-          <ActivityTimeline compact />
+          {activityQuery.isLoading ? (
+            <LoadingSkeleton variant="list-row" rows={3} />
+          ) : activityQuery.isError ? (
+            <ErrorState
+              title="Unable to load activity"
+              description="We couldn't fetch your recent activity. Please try again."
+              action={{
+                label: 'Retry',
+                onClick: () => {
+                  void activityQuery.refetch()
+                },
+              }}
+            />
+          ) : (
+            <ActivityTimeline compact items={activityQuery.data} />
+          )}
+          <WidgetRefreshButton
+            onClick={() => {
+              void activityQuery.refetch()
+            }}
+            isLoading={activityQuery.isFetching}
+            label="Refresh recent activity"
+          />
         </ActionCard>
       ),
     },
@@ -385,11 +464,6 @@ export default function Dashboard() {
         </>
       )}
 
-      {connected && (
-        <Banner severity="info">
-          {t('dashboard.mockDataBanner')}
-        </Banner>
-      )}
     </div>
   )
 }

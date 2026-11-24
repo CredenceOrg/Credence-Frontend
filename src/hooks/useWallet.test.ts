@@ -1,5 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getWalletAuditTrail, resetWalletAuditTrail } from '../lib/walletAudit'
+import type { WalletAdapter } from '../lib/wallet/adapter'
+import { registerWalletAdapter, resetWalletAdapters } from '../lib/wallet/registry'
 import { useWallet } from './useWallet'
 
 const mocks = vi.hoisted(() => ({
@@ -362,5 +365,120 @@ describe('useWallet', () => {
       await result.current.connect()
     })
     expect(mocks.mockRequestFreighterAccess).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('useWallet — multi-adapter support', () => {
+  const FAKE_ADDRESS = 'GBFAKEWALLETADDRESSFORADAPTERTESTING1234567890ABCDEFGH'
+  const FAKE_SIGNED_XDR = 'AAAAAgAAAQAB...fake-signed'
+
+  function createFakeAdapter(overrides: Partial<WalletAdapter> = {}): WalletAdapter {
+    let connectedAddress: string | null = null
+    return {
+      id: 'fake-wallet',
+      name: 'FakeWallet',
+      installUrl: 'https://fakewallet.example/',
+      isInstalled: vi.fn(async () => true),
+      connect: vi.fn(async () => {
+        connectedAddress = FAKE_ADDRESS
+        return { ok: true as const, address: FAKE_ADDRESS }
+      }),
+      getAddress: vi.fn(async () => connectedAddress),
+      getNetwork: vi.fn(async () => 'public' as const),
+      signTransaction: vi.fn(async () => ({
+        ok: true as const,
+        signedTxXdr: FAKE_SIGNED_XDR,
+      })),
+      disconnect: vi.fn(() => {
+        connectedAddress = null
+      }),
+      ...overrides,
+    }
+  }
+
+  beforeEach(() => {
+    window.localStorage.clear()
+    resetWalletAuditTrail()
+    resetWalletAdapters()
+  })
+
+  afterEach(() => {
+    window.localStorage.clear()
+    resetWalletAuditTrail()
+    resetWalletAdapters()
+    vi.clearAllMocks()
+  })
+
+  it('connects and signs transactions through a second (fake) adapter', async () => {
+    const fakeAdapter = createFakeAdapter()
+    registerWalletAdapter(fakeAdapter)
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect('fake-wallet')
+    })
+
+    expect(result.current.isConnected).toBe(true)
+    expect(result.current.address).toBe(FAKE_ADDRESS)
+    expect(result.current.adapterId).toBe('fake-wallet')
+
+    const signResult = await result.current.signTransaction!('AAAAAgAAAQAB...')
+    expect(signResult).toEqual({ ok: true, signedTxXdr: FAKE_SIGNED_XDR })
+    expect(fakeAdapter.signTransaction).toHaveBeenCalledWith('AAAAAgAAAQAB...', undefined)
+  })
+
+  it('persists the chosen adapter across reload and restores with it', async () => {
+    const fakeAdapter = createFakeAdapter()
+    registerWalletAdapter(fakeAdapter)
+
+    const { result, unmount } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect('fake-wallet')
+    })
+
+    expect(window.localStorage.getItem('credence:wallet-adapter')).toBe('fake-wallet')
+    const persisted = JSON.parse(window.localStorage.getItem('credence:wallet-session') ?? 'null')
+    expect(persisted).toMatchObject({
+      address: FAKE_ADDRESS,
+      network: 'public',
+      adapterId: 'fake-wallet',
+    })
+
+    unmount()
+
+    // Simulate reload: mount a fresh hook with the same persisted localStorage.
+    const reloaded = renderHook(() => useWallet('public'))
+    await waitFor(() => {
+      expect(reloaded.result.current.isConnected).toBe(true)
+    })
+
+    expect(reloaded.result.current.adapterId).toBe('fake-wallet')
+    expect(reloaded.result.current.address).toBe(FAKE_ADDRESS)
+  })
+
+  it('includes adapterId in wallet audit events', async () => {
+    const fakeAdapter = createFakeAdapter()
+    registerWalletAdapter(fakeAdapter)
+
+    const { result } = renderHook(() => useWallet('public'))
+
+    await act(async () => {
+      await result.current.connect('fake-wallet')
+    })
+
+    act(() => {
+      result.current.disconnect()
+    })
+
+    const trail = getWalletAuditTrail()
+    const connectingEvent = trail.find((e) => e.type === 'session_connecting')
+    const connectedEvent = trail.find((e) => e.type === 'session_connected')
+    const disconnectedEvent = trail.find((e) => e.type === 'session_disconnected')
+
+    expect(connectingEvent?.adapterId).toBe('fake-wallet')
+    expect(connectedEvent?.adapterId).toBe('fake-wallet')
+    expect(disconnectedEvent?.adapterId).toBe('fake-wallet')
   })
 })

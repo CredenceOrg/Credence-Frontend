@@ -1,5 +1,8 @@
+import { ALL_NAV_LINKS, type NavLink } from './navLinks'
+
 export const DEFAULT_FALLBACK_ROUTE = '/dashboard'
 
+export interface NavigationLink extends NavLink {
 export const PUBLIC_ROUTES = ['/', '/trust', '/trust/summary', '/signin'] as const
 
 export const PRIVATE_ROUTES = [
@@ -18,6 +21,16 @@ export interface NavigationLink {
   requiresWallet?: boolean
 }
 
+const navigationLinks: NavigationLink[] = ALL_NAV_LINKS.map((link) => ({
+  ...link,
+  label: link.ariaLabel,
+}))
+
+/** Header destinations; Home is available through the brand link. */
+export const NAV_LINKS = navigationLinks.filter((link) => link.to !== '/')
+export const NOT_FOUND_LINKS = navigationLinks.filter((link) => link.quickLinkIcon)
+export const SUGGESTION_ROUTES = navigationLinks.map((link) => link.to)
+const LABELS_BY_PATH = Object.fromEntries(navigationLinks.map(({ to, label }) => [to, label]))
 export const NAV_LINKS: NavigationLink[] = [
   { to: '/dashboard', label: 'Dashboard', requiresWallet: true },
   { to: '/bond', label: 'Bond', requiresWallet: true },
@@ -38,19 +51,19 @@ export interface ActionLauncherItem {
 export const ACTION_LAUNCHER_ITEMS: ActionLauncherItem[] = [
   {
     id: 'home',
-    label: 'Home',
+    label: LABELS_BY_PATH['/'],
     description: 'Return to the Credence landing page',
     to: '/',
   },
   {
     id: 'dashboard',
-    label: 'Dashboard',
+    label: LABELS_BY_PATH['/dashboard'],
     description: 'View your activity and trust score overview',
     to: '/dashboard',
   },
   {
     id: 'bond',
-    label: 'Bond',
+    label: LABELS_BY_PATH['/bond'],
     description: 'Manage existing USDC bonds and open the bond details page',
     to: '/bond',
   },
@@ -62,25 +75,25 @@ export const ACTION_LAUNCHER_ITEMS: ActionLauncherItem[] = [
   },
   {
     id: 'trust',
-    label: 'Trust Score',
+    label: LABELS_BY_PATH['/trust'],
     description: 'Open the trust score page and recent lookup history',
     to: '/trust',
   },
   {
     id: 'attestations',
-    label: 'Attestations',
+    label: LABELS_BY_PATH['/attestations'],
     description: 'Review evidence and claims on attestations',
     to: '/attestations',
   },
   {
     id: 'transactions',
-    label: 'Transactions',
+    label: LABELS_BY_PATH['/transactions'],
     description: 'Inspect recent account transactions and activity',
     to: '/transactions',
   },
   {
     id: 'settings',
-    label: 'Settings',
+    label: LABELS_BY_PATH['/settings'],
     description: 'Change appearance, network, display, and notification preferences',
     to: '/settings',
   },
@@ -95,12 +108,10 @@ export const ACTION_LAUNCHER_ITEMS: ActionLauncherItem[] = [
 export const ACTION_LAUNCHER_RECENT_ACTIONS_KEY = 'credence:recent-actions'
 
 export const ROUTE_LABELS: Record<string, string> = {
-  '/': 'Home page',
-  '/dashboard': 'Dashboard page',
-  '/bond': 'Bond page',
+  ...Object.fromEntries(navigationLinks.map(({ to, label }) => [to, `${label} page`])),
   '/bond/new': 'Create bond page',
-  '/trust': 'Trust Score page',
   '/trust/summary': 'Trust Score summary page',
+  '/trust/:address': 'Trust Score profile page',
   '/attestations': 'Attestations page',
   '/transactions': 'Transactions page',
   '/settings': 'Settings page',

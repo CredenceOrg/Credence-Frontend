@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch, ApiError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import type { ApiResponse, operations, Transaction } from '../api/types'
+import { validateTransactionList } from '../api/validators'
+import { getTransaction } from '../lib/horizon'
 import { useWallet } from '../context/WalletContext'
 import { useSettings } from '../context/SettingsContext'
 import {
@@ -50,6 +52,11 @@ interface FetchedPage {
   nextCursor?: string
 }
 
+interface InFlightPage {
+  controller: AbortController
+  promise: Promise<FetchedPage | null>
+}
+
 export interface UseTransactionsResult {
   data: Transaction[]
   isLoading: boolean
@@ -57,6 +64,8 @@ export interface UseTransactionsResult {
   refetch: () => void
   addPendingTransaction: (tx: Transaction) => void
   removePendingTransaction: (hash: string) => void
+  /** Hashes of pending transactions that exceeded the 10-minute reconciliation cap. */
+  pendingTimeouts: string[]
   /** Current page number (1-indexed). */
   page: number
   /**
@@ -158,6 +167,7 @@ export function useTransactions(): UseTransactionsResult {
       const result = await apiFetch<TransactionsResponse>(`/transactions?${params.toString()}`, {
         signal,
         identityEpoch: epoch,
+        validate: validateTransactionList,
       })
 
       // A response that lands after abort (refetch / unmount / superseded
@@ -297,6 +307,95 @@ export function useTransactions(): UseTransactionsResult {
     }
   }, [fetchPage, walletAddress, network])
 
+  // -------------------------------------------------------------------------
+  // Pending-transaction reconciliation loop (issue #1440)
+  //
+  // Polls Horizon for each pending hash until it resolves to confirmed or
+  // failed, or until the 10-minute cap. Backoff grows 2s → 4s → 8s (capped
+  // 15s). Polling pauses while document.hidden and never runs when
+  // disconnected. Unmount / wallet or network switch tears the loop down.
+  // -------------------------------------------------------------------------
+  const [pendingTimeouts, setPendingTimeouts] = useState<string[]>([])
+  const PENDING_POLL_CAP_MS = 10 * 60 * 1000
+  const PENDING_POLL_INITIAL_MS = 2_000
+  const PENDING_POLL_MAX_MS = 15_000
+
+  const pollEpochRef = useRef(0)
+
+  useEffect(() => {
+    if (!walletAddress) return
+    const epoch = ++pollEpochRef.current
+
+    let cancelled = false
+    let delay = PENDING_POLL_INITIAL_MS
+    const startedAt = Date.now()
+
+    const tick = async () => {
+      if (cancelled || epoch !== pollEpochRef.current) return
+      if (document.hidden) {
+        setTimeout(tick, delay)
+        return
+      }
+
+      const pending = readPendingTransactions(network, walletAddress)
+      if (pending.length === 0) {
+        setPendingTimeouts([])
+        setTimeout(tick, delay)
+        return
+      }
+
+      const stillPending: typeof pending = []
+      const resolved: string[] = []
+      const timeouts: string[] = []
+
+      for (const tx of pending) {
+        if (Date.now() - startedAt > PENDING_POLL_CAP_MS) {
+          timeouts.push(tx.hash)
+          continue
+        }
+        try {
+          const lookup = await getTransaction(tx.hash, network)
+          if (lookup.status === 'found') {
+            resolved.push(tx.hash)
+            if (lookup.successful) {
+              writePendingTransactions(network, walletAddress, pending.filter((p) => p.hash !== tx.hash))
+            } else {
+              // failed on-chain — drop from pending
+              writePendingTransactions(network, walletAddress, pending.filter((p) => p.hash !== tx.hash))
+            }
+          } else if (lookup.status === 'notFound') {
+            stillPending.push(tx)
+          }
+          // 'failed' (transport error) — keep it pending, backoff will retry
+          else {
+            stillPending.push(tx)
+          }
+        } catch {
+          stillPending.push(tx)
+        }
+      }
+
+      if (cancelled || epoch !== pollEpochRef.current) return
+
+      setPendingData(readPendingTransactions(network, walletAddress))
+      setPendingTimeouts(timeouts)
+
+      // Any resolution triggers a server-list refetch.
+      if (resolved.length > 0) {
+        fetchTransactions()
+      }
+
+      delay = Math.min(delay * 2, PENDING_POLL_MAX_MS)
+      setTimeout(tick, delay)
+    }
+
+    setTimeout(tick, delay)
+
+    return () => {
+      cancelled = true
+    }
+  }, [network, walletAddress, fetchTransactions])
+
   const goToPage = useCallback(
     async (pageNum: number) => {
       if (pageNum < 1 || pageNum > MAX_PAGES || pageNum === page) return
@@ -422,17 +521,23 @@ export function useTransactions(): UseTransactionsResult {
     void fetchTransactions()
   }, [abortInFlightPages, fetchTransactions])
 
-  const addPending = useCallback((tx: Transaction) => {
-    if (!walletAddress) return
-    addPendingToStorage(network, walletAddress, tx)
-    setPendingData((prev) => [{ ...tx, _network: network }, ...prev])
-  }, [network, walletAddress])
+  const addPending = useCallback(
+    (tx: Transaction) => {
+      if (!walletAddress) return
+      addPendingToStorage(network, walletAddress, tx)
+      setPendingData((prev) => [{ ...tx, _network: network }, ...prev])
+    },
+    [network, walletAddress]
+  )
 
-  const removePendingByHash = useCallback((hash: string) => {
-    if (!walletAddress) return
-    removePendingFromStorage(network, walletAddress, hash)
-    setPendingData((prev) => prev.filter((tx) => tx.hash !== hash))
-  }, [network, walletAddress])
+  const removePendingByHash = useCallback(
+    (hash: string) => {
+      if (!walletAddress) return
+      removePendingFromStorage(network, walletAddress, hash)
+      setPendingData((prev) => prev.filter((tx) => tx.hash !== hash))
+    },
+    [network, walletAddress]
+  )
 
   useEffect(() => {
     mountedRef.current = true
@@ -477,6 +582,7 @@ export function useTransactions(): UseTransactionsResult {
     refetch,
     addPendingTransaction: addPending,
     removePendingTransaction: removePendingByHash,
+    pendingTimeouts,
     page,
     totalPages,
     hasNextPage,

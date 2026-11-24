@@ -1,9 +1,11 @@
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 import type { ReactElement } from 'react'
 import { render as rtlRender, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TEST_IDS } from '../config/testIds'
+import i18n from '../i18n/config'
 import Transactions from './Transactions'
 import type { Transaction } from '../api/types'
 import type { TransactionWithNetwork } from '../lib/pendingTransactionsStorage'
@@ -217,6 +219,7 @@ describe('Transactions page', () => {
       expect(within(table).getByText('attestation')).toBeInTheDocument()
       // Bulk bar renders but stays visually hidden while selection is empty.
       expect(getBulkBar().hasAttribute('hidden')).toBe(true)
+      expect(within(getBulkBar()).getByText('0 selected')).toBeInTheDocument()
     })
 
     it('renders the table when the filter is "all" by default', () => {
@@ -239,6 +242,25 @@ describe('Transactions page', () => {
       // Only the failed row remains visible.
       expect(screen.queryByText('bond')).not.toBeInTheDocument()
       expect(screen.getByText('withdraw')).toBeInTheDocument()
+    })
+
+    it('keeps DOM node count bounded for very large transaction lists', () => {
+      const manyTransactions = Array.from({ length: 5000 }, (_, index) => ({
+        id: `tx-${index}`,
+        type: 'bond_create',
+        amountUsdc: 1000,
+        status: 'confirmed',
+        timestamp: '2026-01-15T12:00:00Z',
+        hash: `hash-${index}`,
+      })) as unknown as Transaction[]
+
+      mockLoaded(manyTransactions)
+      render(<Transactions />)
+
+      const rows = document.querySelectorAll('tbody tr')
+      expect(rows.length).toBeLessThan(120)
+      expect(screen.getByLabelText('Select transaction tx-0')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Select transaction tx-4999')).not.toBeInTheDocument()
     })
   })
 
@@ -286,6 +308,46 @@ describe('Transactions page', () => {
       const row = cb.closest('tr')!
       expect(row.className).toContain('transactions__row--selected')
       expect(row.getAttribute('data-selected')).toBe('true')
+    })
+  })
+
+  describe('localized plural counts', () => {
+    beforeEach(async () => {
+      i18n.addResourceBundle(
+        'fr',
+        'translation',
+        {
+          transactions: {
+            bulk: {
+              selected_one: '{{count}} sélectionné',
+              selected_other: '{{count}} sélectionnés',
+            },
+          },
+        },
+        true,
+        true
+      )
+      await i18n.changeLanguage('fr')
+    })
+
+    afterEach(async () => {
+      cleanup()
+      await i18n.changeLanguage('en')
+      i18n.removeResourceBundle('fr', 'translation')
+    })
+
+    it('uses the active locale plural rules for zero, one, and many selections', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      expect(within(getBulkBar()).getByText('0 sélectionné')).toBeInTheDocument()
+
+      await user.click(rowCheckboxFor('tx-1'))
+      expect(within(getBulkBar()).getByText('1 sélectionné')).toBeInTheDocument()
+
+      await user.click(rowCheckboxFor('tx-2'))
+      expect(within(getBulkBar()).getByText('2 sélectionnés')).toBeInTheDocument()
     })
   })
 
@@ -433,7 +495,7 @@ describe('Transactions page', () => {
       render(<Transactions />)
       await user.click(getSelectAll())
       await user.click(screen.getByTestId(TEST_IDS.TX_BULK_EXPORT_BUTTON))
-      expect(addToastMock).toHaveBeenCalledWith('success', expect.stringContaining('3'))
+      expect(addToastMock).toHaveBeenCalledWith('success', '3 transactions exported')
     })
   })
 
@@ -444,7 +506,24 @@ describe('Transactions page', () => {
       render(<Transactions />)
       await user.click(rowCheckboxFor('tx-1'))
       await user.click(screen.getByTestId(TEST_IDS.TX_BULK_DELETE_BUTTON))
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      const dialog = screen.getByRole('dialog')
+      expect(dialog).toBeInTheDocument()
+      expect(
+        within(dialog).getByText('You are about to remove 1 transaction from this list.')
+      ).toBeInTheDocument()
+    })
+
+    it('uses a plural subtitle for multiple selected transactions', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+      await user.click(getSelectAll())
+      await user.click(screen.getByTestId(TEST_IDS.TX_BULK_DELETE_BUTTON))
+      expect(
+        within(screen.getByRole('dialog')).getByText(
+          'You are about to remove 3 transactions from this list.'
+        )
+      ).toBeInTheDocument()
     })
 
     it('cancels from the dialog without removing anything', async () => {
@@ -478,6 +557,7 @@ describe('Transactions page', () => {
       expect(screen.getByText('withdraw')).toBeInTheDocument()
       // Selection clears + bar hides.
       expect(getBulkBar().hasAttribute('hidden')).toBe(true)
+      expect(addToastMock).toHaveBeenCalledWith('success', '2 transactions removed from view')
     })
 
     it('disables the confirm button until DELETE is typed', async () => {
@@ -557,6 +637,91 @@ describe('Transactions page', () => {
       // visible by toggling a row first.
       await user.click(rowCheckboxFor('tx-1'))
       expect(screen.getByRole('region', { name: /bulk actions/i })).toBe(getBulkBar())
+    })
+  })
+
+  describe('column sorting', () => {
+    function bodyCellTexts(columnIndex: number): string[] {
+      const table = screen.getByRole('table')
+      return within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[columnIndex].textContent?.trim() ?? '')
+    }
+
+    function ariaSortFor(column: string): string | null {
+      return screen
+        .getByRole('button', { name: new RegExp(`^${column}`, 'i') })
+        .closest('th')!
+        .getAttribute('aria-sort')
+    }
+
+    it('keeps the server order and aria-sort="none" by default', () => {
+      mockLoaded()
+      render(<Transactions />)
+
+      expect(bodyCellTexts(1)).toEqual(['bond_create', 'withdraw', 'attest'])
+      expect(ariaSortFor('sort by type')).toBe('none')
+      expect(ariaSortFor('sort by amount')).toBe('none')
+    })
+
+    it('cycles ascending → descending → server order on repeated header clicks', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      await user.click(screen.getByRole('button', { name: /sort by type/i }))
+      expect(bodyCellTexts(1)).toEqual(['attest', 'bond_create', 'withdraw'])
+      expect(ariaSortFor('type, sorted ascending')).toBe('ascending')
+
+      await user.click(screen.getByRole('button', { name: /type, sorted ascending/i }))
+      expect(bodyCellTexts(1)).toEqual(['withdraw', 'bond_create', 'attest'])
+      expect(ariaSortFor('type, sorted descending')).toBe('descending')
+
+      await user.click(screen.getByRole('button', { name: /type, sorted descending/i }))
+      expect(bodyCellTexts(1)).toEqual(['bond_create', 'withdraw', 'attest'])
+      expect(ariaSortFor('sort by type')).toBe('none')
+    })
+
+    it('sorts by amount and keeps rows without an amount last in both directions', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      await user.click(screen.getByRole('button', { name: /sort by amount/i }))
+      expect(bodyCellTexts(1)).toEqual(['attest', 'bond_create', 'withdraw'])
+      expect(bodyCellTexts(2)).toEqual(['250 USDC', '1,000 USDC', '—'])
+
+      await user.click(screen.getByRole('button', { name: /amount, sorted ascending/i }))
+      expect(bodyCellTexts(1)).toEqual(['bond_create', 'attest', 'withdraw'])
+      expect(bodyCellTexts(2)).toEqual(['1,000 USDC', '250 USDC', '—'])
+    })
+
+    it('sorts the loaded page by date', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      await user.click(screen.getByRole('button', { name: /sort by when/i }))
+      expect(bodyCellTexts(1)).toEqual(['bond_create', 'withdraw', 'attest'])
+      expect(ariaSortFor('when, sorted ascending')).toBe('ascending')
+
+      await user.click(screen.getByRole('button', { name: /when, sorted ascending/i }))
+      expect(bodyCellTexts(1)).toEqual(['attest', 'withdraw', 'bond_create'])
+      expect(ariaSortFor('when, sorted descending')).toBe('descending')
+    })
+
+    it('preserves the selection and bulk actions across a sort', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      await user.click(rowCheckboxFor('tx-1'))
+      await user.click(screen.getByRole('button', { name: /sort by amount/i }))
+
+      expect(rowCheckboxFor('tx-1').checked).toBe(true)
+      expect(getBulkBar().hasAttribute('hidden')).toBe(false)
+      expect(within(getBulkBar()).getByText('1 selected')).toBeInTheDocument()
     })
   })
 

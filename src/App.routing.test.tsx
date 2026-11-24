@@ -9,8 +9,22 @@ import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import Bond from './pages/Bond'
 import TrustScore from './pages/TrustScore'
+import TrustSummary from './pages/TrustSummary'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
+
+const { mockRefetch } = vi.hoisted(() => ({ mockRefetch: vi.fn() }))
+
+vi.mock('./hooks/useTrustScore', () => ({
+  useTrustScore: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+    refetch: mockRefetch,
+  }),
+}))
+
+const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
 
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -40,6 +54,8 @@ function renderRoutes(initialEntries: string[]) {
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="bond" element={<Bond />} />
                 <Route path="trust" element={<TrustScore />} />
+                <Route path="trust/summary" element={<TrustSummary />} />
+                <Route path="trust/:address" element={<TrustScore />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
@@ -74,6 +90,19 @@ describe('App routing integration', () => {
 
     expect(await screen.findByRole('heading', { name: 'Trust Score' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /page not found/i })).not.toBeInTheDocument()
+  })
+
+  it('loads a valid trust profile route and keeps the summary route distinct', async () => {
+    mockRefetch.mockClear()
+    const { unmount } = renderRoutes([`/trust/${VALID_ADDRESS}`])
+
+    expect(await screen.findByRole('heading', { name: 'Trust Score' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue(VALID_ADDRESS)
+    expect(mockRefetch).toHaveBeenCalledOnce()
+
+    unmount()
+    renderRoutes(['/trust/summary'])
+    expect(await screen.findByRole('heading', { name: 'No address supplied' })).toBeInTheDocument()
   })
 
   it('renders NotFound for a deep unknown route', async () => {

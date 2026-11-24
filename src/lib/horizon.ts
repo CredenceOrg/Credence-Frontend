@@ -33,6 +33,49 @@ export function getUsdcIssuer(network: CredenceNetwork): string {
 }
 
 // ---------------------------------------------------------------------------
+// Transaction reconciliation (issue #1440)
+// ---------------------------------------------------------------------------
+
+/** Outcome of a pending-transaction lookup against Horizon. */
+export type HorizonTransactionLookup =
+  | { status: 'found'; successful: boolean }
+  | { status: 'notFound' }
+  | { status: 'failed' }
+
+/**
+ * Looks up a single transaction by hash on the given Horizon network.
+ *
+ * - `found` — the transaction has been included in a ledger; `successful`
+ *   reports whether the envelope's result code was 0 (tx succeeded).
+ * - `notFound` — Horizon returned 404 (still pending or unknown hash).
+ * - `failed` — transport / HTTP failure; callers should retry with backoff.
+ */
+export async function getTransaction(
+  hash: string,
+  network: CredenceNetwork,
+  signal?: AbortSignal
+): Promise<HorizonTransactionLookup> {
+  if (typeof window === 'undefined') return { status: 'notFound' }
+
+  const url = `${HORIZON_URLS[network]}/transactions/${encodeURIComponent(hash)}`
+
+  let response: Response
+  try {
+    response = await fetch(url, { signal })
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') throw err
+    return { status: 'failed' }
+  }
+
+  if (response.status === 404) return { status: 'notFound' }
+
+  if (!response.ok) return { status: 'failed' }
+
+  const tx = (await response.json()) as { successful?: boolean }
+  return { status: 'found', successful: tx.successful === true }
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 

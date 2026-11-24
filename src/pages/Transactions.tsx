@@ -58,13 +58,16 @@ export default function Transactions() {
   }
 
   const { network: settingsNetwork } = useSettings()
-  const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage } =
+  const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage, pendingTimeouts } =
     useTransactions()
   const { addToast } = useToast()
   const [filter, setFilter] = useState<StatusFilter>('all')
   // Column sort is client-side and applies to the loaded page only. `null`
   // keeps the API's newest-first order, which is the table default.
   const [sort, setSort] = useState<TransactionSortState>(null)
+
+  // Pending transactions that exceeded the 10-minute Horizon reconciliation cap
+  const timeoutCount = pendingTimeouts.length
 
   // Helper to get the network for a transaction (use stored network for pending, settings for server)
   const getTxNetwork = useCallback(
@@ -272,6 +275,26 @@ export default function Transactions() {
         <h1 className="transactions__title">{t('transactions.title')}</h1>
       </div>
       <p className="transactions__description">{t('transactions.description')}</p>
+
+      {timeoutCount > 0 && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="pending-timeout-banner"
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            border: '1px solid var(--warning, #d29922)',
+            background: 'rgba(210,153,34,0.12)',
+            marginBottom: 16,
+            fontSize: 14,
+          }}
+        >
+          {timeoutCount === 1
+            ? '1 pending transaction is taking longer than expected to confirm. It will keep retrying in the background — you can refresh the page or check it on a block explorer.'
+            : `${timeoutCount} pending transactions are taking longer than expected to confirm. They will keep retrying in the background — you can refresh the page or check them on a block explorer.`}
+        </div>
+      )}
 
       {isLoading && (
         <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading transactions">

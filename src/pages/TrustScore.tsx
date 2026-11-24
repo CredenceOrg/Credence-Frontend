@@ -210,8 +210,7 @@ export default function TrustScore() {
             onClick: () => setNetwork(walletNetwork === 'test' ? 'test' : 'public'),
           }}
         >
-          Credence is set to {networkMismatch.expected}, but
-          Freighter is on{' '}
+          Credence is set to {networkMismatch.expected}, but Freighter is on{' '}
           {networkMismatch.actual}
         </Banner>
       )}
@@ -272,11 +271,15 @@ export default function TrustScore() {
                 <span className="trustScore__heroFooterItem">
                   {formatAddress(data.address, addressDisplay, walletAddress)}
                 </span>
-                <span className="trustScore__heroFooterSep" aria-hidden="true">&middot;</span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">
+                  &middot;
+                </span>
                 <span className="trustScore__heroFooterItem">
                   {data.attestations} attestation{data.attestations !== 1 ? 's' : ''}
                 </span>
-                <span className="trustScore__heroFooterSep" aria-hidden="true">&middot;</span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">
+                  &middot;
+                </span>
                 <span className="trustScore__heroFooterItem">
                   Updated{' '}
                   {new Date(data.updatedAt).toLocaleDateString('en-US', {
@@ -383,18 +386,18 @@ export default function TrustScore() {
               </div>
             )}
             <Button
-            type="button"
-            onClick={handleLookup}
-            variant="primary"
-            fullWidth
-            disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
-            isLoading={isConnected && isLoading}
-            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
-            className="trustScore__buttonRow"
-          >
-            {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
-          </Button>
-        </div>
+              type="button"
+              onClick={handleLookup}
+              variant="primary"
+              fullWidth
+              disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
+              isLoading={isConnected && isLoading}
+              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+              className="trustScore__buttonRow"
+            >
+              {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
+            </Button>
+          </div>
         </ConnectGate>
 
         <div className="trustScore__card">
@@ -415,15 +418,11 @@ export default function TrustScore() {
         </Banner>
       )}
 
-      <Banner severity="info">
-        {t('trustScore.infoBanner')}
-      </Banner>
+      <Banner severity="info">{t('trustScore.infoBanner')}</Banner>
 
       <TierLadder defaultOpen={!hasAttemptedLookup} />
 
-      <Disclaimer
-        context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments."
-      />
+      <Disclaimer context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments." />
     </div>
   )
 }

@@ -124,10 +124,10 @@ To optimize user orientation, all labels and copies follow the microcopy tone gu
 | Primary CTA Button                   | `Back to Home`                                                                                                     | Action-oriented exit path                                |
 | Secondary CTA Button                 | `Go Back`                                                                                                          | Fast history restoration                                 |
 | `.not-found-page__quick-links-title` | `Quick Navigation`                                                                                                 | Heading to clarify contextual search options             |
-| Quick Link: `/`                      | `📊 Dashboard`                                                                                                     | Direct link to home overview                             |
-| Quick Link: `/bond`                  | `🔒 Bond Management`                                                                                               | Direct link to create/manage bonds                       |
-| Quick Link: `/trust`                 | `⭐ Trust Score Lookup`                                                                                            | Direct link to lookup scores                             |
-| Quick Link: `/settings`              | `⚙️ Settings`                                                                                                      | Direct link to customize profile settings                |
+| Quick Link: `/dashboard`             | `Dashboard`                                                                                                        | Open the dashboard                                       |
+| Quick Link: `/bond`                  | `Bond`                                                                                                             | Manage bonds                                             |
+| Quick Link: `/trust`                 | `Trust Score`                                                                                                      | Look up trust scores                                     |
+| Quick Link: `/settings`              | `Settings`                                                                                                         | Customize preferences                                    |
 
 ---
 
@@ -160,3 +160,20 @@ To optimize user orientation, all labels and copies follow the microcopy tone gu
 - Margin padding reduced to `var(--credence-space-4)` to prevent layout squeeze.
 - Recovery buttons stacked vertically to maximize touch targets (minimum 44px height).
 - Quick navigation items stacked vertically into a single list layout.
+
+## Shared navigation and suggestions
+
+`src/config/navLinks.ts` owns the canonical destinations, English accessible
+labels and translation keys. Its `quickLinkIcon` metadata selects the four
+404 recovery links and their decorative SVG paths. `navigation.ts` derives
+header links, quick links, route labels and suggestion candidates from those
+records; `Layout`, `BottomNav`, `MobileNav` and `NotFound` use the same keys.
+Add or rename a navigation destination there rather than maintaining a 404 list.
+
+Dashboard links to `/dashboard`; `/` remains Home, reached by Back to Home.
+Quick-link labels match navigation: Dashboard, Bond, Trust Score and Settings.
+The 404 page passes all shared navigation destinations (including Attestations
+and Transactions) to `suggestRoute`. A confident typo match is offered as a
+normal link labelled with the destination's translated name; no automatic
+redirect occurs. Exact matches and low-confidence inputs show no suggestion.
+The page retains its Page Not Found document title even when a match is offered.

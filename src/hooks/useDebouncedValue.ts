@@ -95,7 +95,9 @@ export function useDebouncedValue<T>(
     // scheduling so at most one live timer handle exists at a time.
     releaseTimeout(timeoutRef, clearTimeoutImplRef.current)
 
-    timeoutRef.current = setTimeoutImplRef.current(() => {
+    // Call as a function: browser timers reject a React ref as their receiver.
+    const scheduleTimeout = setTimeoutImplRef.current
+    timeoutRef.current = scheduleTimeout(() => {
       // The handle is spent the moment the callback runs. Drop the reference
       // before committing so a later value change can never clear a dead
       // handle (a double release for instrumented / injected clocks).

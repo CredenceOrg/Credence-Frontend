@@ -159,3 +159,74 @@
   color: var(--credence-color-danger);
   border: 1px solid var(--credence-border-default);
 }
+
+.createBondFlow__balanceText--error {
+  color: var(--credence-color-danger);
+}
+
+.createBondFlow__retryButton {
+  font-size: var(--credence-font-size-xs, 0.75rem);
+  padding: var(--credence-space-0-5, 0.125rem) var(--credence-space-2, 0.5rem);
+}
+
+.createBondFlow__stepDescription {
+  color: var(--credence-text-secondary);
+}
+
+.createBondFlow__reviewRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--credence-space-2);
+}
+
+.createBondFlow__reviewLabel {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-base);
+}
+
+.createBondFlow__reviewValue {
+  color: var(--credence-text-primary);
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+.createBondFlow__reviewSectionHeader {
+  display: grid;
+  gap: var(--credence-space-1);
+}
+
+.createBondFlow__penaltyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--credence-space-2);
+}
+
+.createBondFlow__penaltyLabel {
+  color: var(--credence-text-secondary);
+  font-size: var(--credence-font-size-base);
+}
+
+.createBondFlow__penaltyAmount {
+  color: var(--credence-color-danger);
+  font-weight: var(--credence-font-weight-semibold);
+}
+
+.createBondFlow__resultLabel {
+  color: var(--credence-text-secondary);
+  font-weight: var(--credence-font-weight-semibold);
+  font-size: var(--credence-font-size-base);
+}
+
+.createBondFlow__resultValue {
+  font-weight: var(--credence-font-weight-bold);
+  font-size: var(--credence-font-size-lg, 1.125rem);
+}
+
+.createBondFlow__resultValue--danger {
+  color: var(--credence-color-danger);
+}
+
+.createBondFlow__resultValue--normal {
+  color: var(--credence-text-primary);
+}

@@ -1,6 +1,10 @@
-import { Component, ReactNode } from 'react'
+import { Component, ReactNode, useState } from 'react'
 import ErrorState, { type ErrorStateKind, type ErrorStateSeverity } from './states/ErrorState'
 import { reloadPageGuarded, resetAllLazyChunks } from '../lib/lazyWithRetry'
+import { captureException } from '../lib/errorReporting'
+import useCopyToClipboard from '../hooks/useCopyToClipboard'
+import { generateCorrelationId } from '../lib/walletAudit'
+import { scrubDiagnosticText } from '../lib/piiScrub'
 import './ErrorBoundary.css'
 
 export interface ErrorBoundaryProps {
@@ -55,11 +59,107 @@ interface BoundaryState {
    * Used to enforce the retry budget and guarantee termination.
    */
   retryCount: number
+  errorId: string | null
 }
 
 interface ClassifiedError {
   kind: ErrorStateKind
   severity: ErrorStateSeverity
+}
+
+function ErrorDiagnostics({ errorId, message }: { errorId: string; message: string }) {
+  const { copy, copied } = useCopyToClipboard()
+  const [copyError, setCopyError] = useState(false)
+
+  const handleCopy = async () => {
+    setCopyError(false)
+    const success = await copy(errorId)
+    if (!success) {
+      setCopyError(true)
+      setTimeout(() => setCopyError(false), 3000)
+    }
+  }
+
+  const scrubbedMessage = message.trim() ? scrubDiagnosticText(message) : ''
+  const srMessage = copied ? 'Error ID copied' : copyError ? 'Copy failed' : ''
+
+  return (
+    <div className="error-fallback-diagnostics">
+      <div className="error-fallback-id-row">
+        <span className="error-fallback-id-label">Error ID:</span>
+        <span className="error-fallback-id-control">
+          <code className="error-fallback-id-value" data-testid="error-boundary-id">
+            {errorId}
+          </code>
+          <button
+            type="button"
+            className={`error-fallback-copy-btn ${copied ? 'error-fallback-copy-btn--copied' : ''}`}
+            onClick={handleCopy}
+            aria-label="Copy error ID"
+            title={copied ? 'Copied' : 'Copy error ID'}
+          >
+            {copied ? (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 7L5 10L12 3"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ) : (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <rect
+                  x="2.5"
+                  y="3.5"
+                  width="9"
+                  height="10"
+                  rx="1.5"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                />
+                <path
+                  d="M10 2.5V1.5C10 0.947715 9.55228 0.5 9 0.5H3C2.44772 0.5 2 0.947715 2 1.5V9.5C2 10.0523 2.44772 10.5 3 10.5H4"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
+            <span className="error-fallback-copy-text">{copied ? 'Copied' : 'Copy'}</span>
+          </button>
+        </span>
+        <span className="sr-only" role="status" aria-live="polite">
+          {srMessage}
+        </span>
+      </div>
+
+      {scrubbedMessage && (
+        <details className="error-fallback-details">
+          <summary className="error-fallback-details__summary">Technical details</summary>
+          <p className="error-fallback-details__message" data-testid="error-boundary-message">
+            {scrubbedMessage}
+          </p>
+        </details>
+      )}
+    </div>
+  )
 }
 
 /**
@@ -97,7 +197,7 @@ export function isChunkLoadError(error: Error): boolean {
  *  4. Reset is idempotent: calling it when no error is present is a no-op.
  */
 export default class ErrorBoundary extends Component<Props, BoundaryState> {
-  state: BoundaryState = { hasError: false, error: null, retryCount: 0 }
+  state: BoundaryState = { hasError: false, error: null, retryCount: 0, errorId: null }
 
   private get maxRetries(): number {
     const raw = this.props.maxRetries
@@ -143,7 +243,11 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
   }
 
   static getDerivedStateFromError(error: Error): Partial<BoundaryState> {
-    return { hasError: true, error: ErrorBoundary.normalizeError(error) }
+    return {
+      hasError: true,
+      error: ErrorBoundary.normalizeError(error),
+      errorId: generateCorrelationId('err'),
+    }
   }
 
   /**
@@ -179,8 +283,19 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
         this.props.onError(payload)
       } else {
         // Dev-only diagnostic - do not log the full message in production.
-        console.error('[ErrorBoundary]', payload.name, kind, severity, retryCount)
+        console.error('[ErrorBoundary]', this.state.errorId, payload.name, kind, severity, retryCount)
       }
+
+      // Error reporting is opt-in and lazy: this resolves to a no-op when no
+      // Sentry DSN is configured, and the SDK scrubs wallet addresses and
+      // amounts from the event before it leaves the browser.
+      void captureException(normalized, {
+        source: 'ErrorBoundary',
+        kind,
+        severity,
+        retryCount,
+        exhausted,
+      })
     } catch {
       // Telemetry must never break the fallback render.
     }
@@ -206,7 +321,7 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
     }
 
     resetAllLazyChunks()
-    this.setState({ hasError: false, error: null, retryCount: nextRetryCount })
+    this.setState({ hasError: false, error: null, retryCount: nextRetryCount, errorId: null })
   }
 
   /**
@@ -216,7 +331,7 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
    */
   private handleResetAll = (): void => {
     resetAllLazyChunks()
-    this.setState({ hasError: false, error: null, retryCount: 0 })
+    this.setState({ hasError: false, error: null, retryCount: 0, errorId: null })
   }
 
   private get isExhausted(): boolean {
@@ -224,7 +339,7 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
   }
 
   private renderTerminalFallback(): ReactNode {
-    const { error } = this.state
+    const { error, errorId } = this.state
     const normalized = error ?? new Error('Unknown error')
     const { kind, severity } = this.classifyError(normalized)
 
@@ -237,6 +352,7 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
           message="The app hit an unexpected error and couldn’t recover on its own. Reload the page or head back to the home page."
           ariaLabel="Application error"
         />
+        {errorId && <ErrorDiagnostics errorId={errorId} message={normalized.message} />}
         <a className="error-fallback-secondary-link" href="/" onClick={this.handleResetAll}>
           Go to home page
         </a>
@@ -245,7 +361,7 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
   }
 
   render(): ReactNode {
-    const { hasError, error } = this.state
+    const { hasError, error, errorId } = this.state
     const { children, fallback } = this.props
 
     if (hasError && error) {
@@ -300,6 +416,7 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
             ariaLabel="Application error"
             action={{ label: 'Try again', onClick: this.handleReset }}
           />
+          {errorId && <ErrorDiagnostics errorId={errorId} message={error.message} />}
           <a className="error-fallback-secondary-link" href="/" onClick={this.handleResetAll}>
             Go to home page
           </a>

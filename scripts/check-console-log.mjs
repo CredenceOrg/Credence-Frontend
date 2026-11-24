@@ -4,73 +4,87 @@
  * Searches all JavaScript bundles in dist/ for console.log references
  * and exits with a non-zero code if any are found.
  *
- * Usage: node scripts/check-console-log.mjs [build-dir]
+ * Usage: node scripts/check-console-log.mjs [build-dir] [--methods=log]
  * Default build-dir: dist
+ * Default methods: log
  */
 
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 
-const buildDir = resolve(process.argv[2] ?? "dist");
+const args = process.argv.slice(2)
+const dirArg = args.find((a) => !a.startsWith('--'))
+const methodsArg = args.find((a) => a.startsWith('--methods='))
+
+const buildDir = resolve(dirArg ?? 'dist')
+const methods = methodsArg
+  ? methodsArg
+      .replace('--methods=', '')
+      .split(',')
+      .map((m) => m.trim())
+  : ['log']
 
 if (!existsSync(buildDir)) {
-  console.error(`❌ Build directory not found: ${buildDir}`);
-  console.error("   Run 'npm run build' first, then this check.");
-  process.exit(1);
+  console.error(`❌ Build directory not found: ${buildDir}`)
+  console.error("   Run 'npm run build' first, then this check.")
+  process.exit(1)
 }
 
 /**
- * Recursively collect all .js files in a directory.
+ * Recursively collect all script files in a directory.
  */
-function collectJSFiles(dir) {
-  const files = [];
+function collectFiles(dir) {
+  const files = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = join(dir, entry.name);
+    const fullPath = join(dir, entry.name)
     if (entry.isDirectory()) {
-      files.push(...collectJSFiles(fullPath));
-    } else if (entry.isFile() && entry.name.endsWith(".js")) {
-      files.push(fullPath);
+      if (entry.name === 'node_modules' || entry.name === '.git') continue
+      files.push(...collectFiles(fullPath))
+    } else if (
+      entry.isFile() &&
+      /\.(js|mjs|ts|tsx)$/.test(entry.name) &&
+      !/\.(test|spec)\.[^.]+$/.test(entry.name)
+    ) {
+      files.push(fullPath)
     }
   }
-  return files;
+  return files
 }
 
-const jsFiles = collectJSFiles(buildDir);
-let foundIssues = false;
+const targetFiles = collectFiles(buildDir)
+let foundIssues = false
 
-for (const file of jsFiles) {
+const methodPattern = methods.map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+const regex = new RegExp(
+  `(?<!["'\`]\\s*)(?<!\\/\\/\\s*)(?<!\\*\\s*)console\\.(${methodPattern})\\s*\\(`,
+  'g'
+)
+
+for (const file of targetFiles) {
   // Skip source maps
-  if (file.endsWith(".map")) continue;
+  if (file.endsWith('.map')) continue
 
-  const content = readFileSync(file, "utf-8");
+  const content = readFileSync(file, 'utf-8')
+  const matches = content.matchAll(regex)
 
-  // Match console.log, console.warn, console.error, console.info, console.debug calls
-  // that are NOT part of a comment or string that contains the word "console"
-  // We use a simple regex approach: look for `console.<method>(` patterns
-  const matches = content.matchAll(
-    /(?<![\"'`]\s*)(?<!\/\/\s*)(?<!\*\s*)console\.(log|warn|error|info|debug)\s*\(/g,
-  );
-
-  const fileMatches = [];
+  const fileMatches = []
   for (const match of matches) {
-    fileMatches.push(match[0]);
+    fileMatches.push(match[0])
   }
 
   if (fileMatches.length > 0) {
-    console.error(`⚠️  ${file.replace(buildDir, buildDir)}`);
+    console.error(`⚠️  ${file}`)
     for (const m of fileMatches) {
-      console.error(`   Found: ${m}`);
+      console.error(`   Found: ${m}`)
     }
-    foundIssues = true;
+    foundIssues = true
   }
 }
 
 if (foundIssues) {
-  console.error(
-    "\n❌ console.log (or console.warn/error/info/debug) calls found in production bundle.",
-  );
-  console.error("   Remove them before shipping to production.");
-  process.exit(1);
+  console.error(`\n❌ console.${methods.join('/')} calls found in production bundle.`)
+  console.error('   Remove them before shipping to production.')
+  process.exit(1)
 } else {
-  console.log("✅ No console.log calls found in production bundle.");
+  console.log('✅ No console.log calls found in production bundle.')
 }

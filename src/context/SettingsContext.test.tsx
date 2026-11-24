@@ -20,6 +20,7 @@ function StateDump() {
         quietHoursEnabled: s.quietHoursEnabled,
         quietHoursStart: s.quietHoursStart,
         quietHoursEnd: s.quietHoursEnd,
+        unlockRemindersEnabled: s.unlockRemindersEnabled,
       })}
     </pre>
   )
@@ -91,6 +92,7 @@ describe('SettingsContext persistence & theme application', () => {
       quietHoursEnabled: false,
       quietHoursStart: '22:00',
       quietHoursEnd: '07:00',
+      unlockRemindersEnabled: false,
     })
 
     // system + prefers-color-scheme false => light
@@ -108,6 +110,7 @@ describe('SettingsContext persistence & theme application', () => {
       quietHoursEnabled: true,
       quietHoursStart: '20:00',
       quietHoursEnd: '06:30',
+      unlockRemindersEnabled: true,
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
     setupMatchMedia(false)
@@ -188,6 +191,7 @@ describe('SettingsContext persistence & theme application', () => {
       quietHoursEnabled: false,
       quietHoursStart: '22:00',
       quietHoursEnd: '07:00',
+      unlockRemindersEnabled: false,
     })
   })
 
@@ -238,11 +242,13 @@ function SettingsConsumer() {
       <span data-testid="address">{s.addressDisplay}</span>
       <span data-testid="toasts">{String(s.toastsEnabled)}</span>
       <span data-testid="dismiss">{s.autoDismiss}</span>
+      <span data-testid="reminders">{String(s.unlockRemindersEnabled)}</span>
       <button onClick={() => s.setThemeMode('dark')}>set dark</button>
       <button onClick={() => s.setNetwork('test')}>set testnet</button>
       <button onClick={() => s.setAddressDisplay('full')}>set full</button>
       <button onClick={() => s.setToastsEnabled(false)}>disable toasts</button>
       <button onClick={() => s.setAutoDismiss('3s')}>set 3s</button>
+      <button onClick={() => s.setUnlockRemindersEnabled(true)}>enable reminders</button>
       <button onClick={() => s.resetToDefaults()}>reset defaults</button>
       <button onClick={() => s.saveSettings()}>save</button>
     </div>
@@ -386,6 +392,7 @@ describe('SettingsProvider', () => {
         quietHoursEnabled: false,
         quietHoursStart: '22:00',
         quietHoursEnd: '07:00',
+        unlockRemindersEnabled: false,
       })
     })
 
@@ -407,6 +414,21 @@ describe('SettingsProvider', () => {
 
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
       expect(stored.autoDismiss).toBe('3s')
+    })
+
+    it('persists unlockRemindersEnabled', async () => {
+      const user = userEvent.setup()
+      renderWithProvider()
+
+      expect(screen.getByTestId('reminders').textContent).toBe('false')
+
+      await user.click(screen.getByRole('button', { name: 'enable reminders' }))
+      await user.click(screen.getByRole('button', { name: 'save' }))
+
+      expect(screen.getByTestId('reminders').textContent).toBe('true')
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}').unlockRemindersEnabled).toBe(
+        true
+      )
     })
 
     it('resetToDefaults restores all settings and persists the defaults', async () => {
@@ -435,6 +457,7 @@ describe('SettingsProvider', () => {
         quietHoursEnabled: false,
         quietHoursStart: '22:00',
         quietHoursEnd: '07:00',
+        unlockRemindersEnabled: false,
       })
     })
   })

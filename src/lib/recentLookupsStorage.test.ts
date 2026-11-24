@@ -6,6 +6,7 @@ import {
   writeRecentLookups,
   sanitizeRecentLookups,
   addRecentLookup,
+  removeRecentLookup,
 } from './recentLookupsStorage'
 
 // Real StrKey addresses (the storage validates the CRC checksum, so the
@@ -147,5 +148,38 @@ describe('recentLookupsStorage', () => {
     vi.restoreAllMocks()
     expect(readRecentLookups()).toEqual([{ address: ADDR1, timestamp: 1 }])
     expect(localStorage.getItem(RECENT_LOOKUPS_V1_KEY)).not.toBeNull()
+  })
+
+  describe('removeRecentLookup', () => {
+    it('removes a matching address case-insensitively without mutating input', () => {
+      const existing = [
+        { address: ADDR1, timestamp: 10 },
+        { address: ADDR2, timestamp: 20 },
+      ]
+      const result = removeRecentLookup(existing, ADDR1.toLowerCase())
+
+      expect(result).toEqual([{ address: ADDR2, timestamp: 20 }])
+      expect(existing).toHaveLength(2)
+    })
+
+    it('returns sanitized items unchanged when address is not present or empty', () => {
+      const addr3 = fixtureAddress(99)
+      const existing = [
+        { address: ADDR1, timestamp: 10 },
+        { address: ADDR2, timestamp: 20 },
+      ]
+
+      expect(removeRecentLookup(existing, addr3)).toEqual(existing)
+      expect(removeRecentLookup(existing, '')).toEqual(existing)
+      expect(removeRecentLookup(existing, '   ')).toEqual(existing)
+    })
+
+    it('returns an empty array when removing the last item or given malformed input', () => {
+      expect(removeRecentLookup([{ address: ADDR1, timestamp: 10 }], ADDR1)).toEqual([])
+      expect(removeRecentLookup(null, ADDR1)).toEqual([])
+      expect(removeRecentLookup([{ address: 'GBAD', timestamp: 1 }, { address: ADDR1, timestamp: 2 }], ADDR1)).toEqual(
+        []
+      )
+    })
   })
 })

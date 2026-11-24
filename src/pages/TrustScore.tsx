@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { useEffect, useRef, useState, useMemo } from '
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
@@ -28,7 +27,7 @@ import { normalizeTrustScore } from '../lib/trustScore'
 import { useToast } from '../components/ToastProvider'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import { useRecentLookups } from '../hooks/useRecentLookups'
-import { addRecentLookup, sanitizeRecentLookups } from '../lib/recentLookupsStorage'
+import { addRecentLookup, removeRecentLookup, sanitizeRecentLookups } from '../lib/recentLookupsStorage'
 
 export interface RecentLookupItem {
   address: string
@@ -88,9 +87,11 @@ export default function TrustScore() {
   const [lookupAddress, setLookupAddress] = useState('')
   const pendingLookupRef = useRef(false)
 
-  const [history, setHistory] = useRecentLookups()
-  const safeHistory = sanitizeRecentLookups(history)
+  const [history, setHistory, removeHistoryItem] = useRecentLookups()
+  const safeHistory = useMemo(() => sanitizeRecentLookups(history), [history])
   const recordedResultRef = useRef<string | null>(null)
+  const recentItemRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  const pendingFocusRef = useRef<{ type: 'item'; address: string } | { type: 'input' } | null>(null)
 
   const { data: rawData, isLoading, error, refetch } = useTrustScore(lookupAddress)
 
@@ -176,6 +177,36 @@ export default function TrustScore() {
     // Move to top of history immediately
     setHistory(addRecentLookup(history, item.address))
     if (isCurrentLookup) refetch()
+  }
+
+  useEffect(() => {
+    const pending = pendingFocusRef.current
+    if (!pending) return
+    pendingFocusRef.current = null
+
+    if (pending.type === 'item') {
+      const nextButton = recentItemRefs.current.get(pending.address)
+      if (nextButton) {
+        nextButton.focus()
+        return
+      }
+    }
+
+    const input = document.getElementById('wallet-address')
+    if (input instanceof HTMLElement) {
+      input.focus()
+    }
+  }, [safeHistory])
+
+  const handleRemoveRecent = (targetAddress: string, index: number) => {
+    const nextHistory = removeRecentLookup(safeHistory, targetAddress)
+    if (nextHistory.length > 0) {
+      const nextIndex = Math.min(index, nextHistory.length - 1)
+      pendingFocusRef.current = { type: 'item', address: nextHistory[nextIndex].address }
+    } else {
+      pendingFocusRef.current = { type: 'input' }
+    }
+    removeHistoryItem(targetAddress)
   }
 
   const handleClearHistory = () => {
@@ -325,11 +356,19 @@ export default function TrustScore() {
                   </button>
                 </div>
                 <ul className="trustScore__recentList" aria-labelledby="recent-lookups-heading">
-                  {safeHistory.map((item: RecentLookupItem) => {
+                  {safeHistory.map((item: RecentLookupItem, index: number) => {
                     const displayLabel = formatAddress(item.address, addressDisplay, walletAddress)
+                    const truncatedAddress = truncateAddress(item.address)
                     return (
                       <li key={item.address} className="trustScore__recentListItem">
                         <button
+                          ref={(el) => {
+                            if (el) {
+                              recentItemRefs.current.set(item.address, el)
+                            } else {
+                              recentItemRefs.current.delete(item.address)
+                            }
+                          }}
                           type="button"
                           className="trustScore__recentItemBtn"
                           onClick={() => handleSelectRecent(item)}
@@ -376,6 +415,26 @@ export default function TrustScore() {
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                             </svg>
                           )}
+                        </button>
+                        <button
+                          type="button"
+                          className="trustScore__recentRemoveBtn"
+                          onClick={() => handleRemoveRecent(item.address, index)}
+                          aria-label={`Remove ${truncatedAddress} from recent lookups`}
+                          disabled={!isConnected}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            aria-hidden="true"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
                         </button>
                       </li>
                     )

@@ -17,7 +17,7 @@ export interface AttestationFormProps {
    * Callback triggered when an attestation is successfully confirmed and submitted.
    * Receives the finalized attestation data.
    */
-  onSubmitSuccess?: (payload: AttestationPayload) => void
+  onSubmitSuccess?: (payload: AttestationPayload) => void | Promise<unknown>
   /**
    * Disables form fields and the submit action during submission or external loading.
    */
@@ -87,14 +87,25 @@ export default function AttestationForm({
     setConfirmOpen(true)
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setConfirmOpen(false)
-    addToast('success', 'Attestation submitted successfully.')
-    onSubmitSuccess?.({ subject, type, evidence })
+    const payload: AttestationPayload = { subject, type, evidence }
     setSubject('')
     setEvidence('')
     setType(ATTESTATION_EVENTS.TYPES.IDENTITY)
     setErrors({})
+
+    const result = onSubmitSuccess?.(payload)
+    if (result && typeof (result as Promise<unknown>).then === 'function') {
+      try {
+        await result
+        addToast('success', 'Attestation submitted successfully.')
+      } catch {
+        // Error feedback and rollback are handled by the caller.
+      }
+      return
+    }
+    addToast('success', 'Attestation submitted successfully.')
   }
 
   const handleCancel = () => {

@@ -334,6 +334,32 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
+  /bonds/{id}:
+    get:
+      operationId: getBond
+      summary: Retrieve a single bond by ID
+      description: >
+        Returns the full bond record for the given bond identifier.
+      tags: [Bonds]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Stable unique identifier for the bond record.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bond returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bond"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /settings:
     patch:
       operationId: updateSettings

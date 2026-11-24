@@ -40,6 +40,8 @@ export interface UseWalletState {
   isConnected: boolean
   /** True while a connect request is in flight. */
   isConnecting: boolean
+  /** True while the initial wallet session restoration check is in progress. */
+  isRestoring: boolean
   /** Last connection error, if any. */
   error: WalletError | null
   /** Request wallet access (using the selected or specified adapter) and store the returned public key. */
@@ -214,6 +216,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
   const [address, setAddress] = useState('')
   const [network, setNetwork] = useState<CredenceNetwork | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(() => typeof window !== 'undefined')
   const [error, setError] = useState<WalletError | null>(null)
   const [adapterId, setAdapterId] = useState<string>(() => readPersistedAdapterId())
   const watcherStopRef = useRef<(() => void) | null>(null)
@@ -455,6 +458,25 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
           { adapterId: adapter.id }
         )
         await startWatcher(adapter)
+      try {
+        // Validate/migrate storage, but Freighter's currently allowed state is authoritative.
+        readPersistedWalletSession()
+
+        const installed = await checkFreighterInstalled()
+        if (!installed || cancelled) return
+
+        const existingAddress = await fetchFreighterAddress()
+        if (!existingAddress || cancelled) return
+
+        const restoredNetwork = await fetchFreighterNetwork()
+        if (!cancelled) {
+          applyWalletState({ address: existingAddress, network: restoredNetwork })
+          await startWatcher()
+        }
+      } finally {
+        if (!cancelled) {
+          setIsRestoring(false)
+        }
       }
     }
 
@@ -502,6 +524,7 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
     address,
     isConnected: Boolean(address),
     isConnecting,
+    isRestoring,
     error,
     connect,
     disconnect,

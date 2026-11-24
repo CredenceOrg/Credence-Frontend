@@ -24,6 +24,7 @@ const defaultWalletState: WalletContextValue = {
   isConnected: false,
   connected: false,
   isConnecting: false,
+  isRestoring: false,
   error: null,
   connect: async () => {},
   disconnect: () => {},

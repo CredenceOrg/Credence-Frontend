@@ -117,14 +117,18 @@ export function computeBondSlashBreakdown(
 // ---------------------------------------------------------------------------
 
 /**
- * Status of the MockBond representing the locking stage.
+ * Status of a {@link Bond} representing its locking stage.
  */
 export type BondStatus = 'active' | 'locked' | 'grace-period'
 
 /**
- * Interface representing a mock bond in the frontend system.
+ * Bond domain shape used by the frontend penalty and lock-date calculations.
+ *
+ * This is the single definition shared by `Bond.tsx`, `BondDetail.tsx`, the
+ * penalty helpers and the mutation boundary. It is distinct from the API
+ * transport type `Bond` in `src/api/types.ts`.
  */
-export interface MockBond {
+export interface Bond {
   /** Unique identifier for the bond */
   id: number | string
   /** Locked principal amount in USDC */
@@ -133,6 +137,8 @@ export interface MockBond {
   status: BondStatus
   /** Optional lock duration in days */
   durationDays?: number
+  /** Optional ISO 8601 timestamp of when the lock started */
+  lockStartedAt?: string
 }
 
 /**
@@ -156,10 +162,10 @@ export function getPenaltyRate(status: BondStatus): number {
 /**
  * Computes the withdrawal breakdown details (penalty and resulting balance) for a bond.
  *
- * @param bond - The MockBond object containing amount and status.
+ * @param bond - The Bond object containing amount and status.
  * @returns An object containing formatted amounts and raw penalty values.
  */
-export function computeWithdrawBreakdown(bond: MockBond): {
+export function computeWithdrawBreakdown(bond: Bond): {
   bondAmount: string
   penaltyAmount: string
   penaltyPercent: number

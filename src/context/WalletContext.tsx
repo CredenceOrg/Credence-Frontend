@@ -9,6 +9,8 @@ import SessionTimeoutDialog from '../components/SessionTimeoutDialog'
 import ReauthPrompt from '../components/ReauthPrompt'
 import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudit'
 import { clearAppLocalStorage } from '../lib/clearAppLocalStorage'
+import { getWalletAdapter } from '../lib/wallet/registry'
+import { createCrossTabBus, type CrossTabMessage, type CrossTabMessageType } from '../lib/crossTab'
 import { fetchFreighterAddress, requestFreighterAccess } from '../lib/freighterClient'
 
 export type WalletContextValue = UseWalletState & {
@@ -24,6 +26,7 @@ const defaultWalletState: WalletContextValue = {
   isConnected: false,
   connected: false,
   isConnecting: false,
+  isRestoring: false,
   error: null,
   connect: async () => {},
   disconnect: () => {},
@@ -64,6 +67,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const logoutGenRef = useRef(0)
   const latestWalletRef = useRef(wallet)
   latestWalletRef.current = wallet
+  const crossTabBusRef = useRef<ReturnType<typeof createCrossTabBus> | null>(null)
+  const previousNetworkRef = useRef(network)
   const pendingReauthRef = useRef<{
     promise: Promise<boolean>
     resolve: (success: boolean) => void
@@ -88,20 +93,28 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [wallet.isConnected, lastReauthTime])
 
-  const handleLogout = useCallback(() => {
-    logoutGenRef.current += 1
-    finishReauthPrompt(false)
-    const prevAddress = wallet.address
-    const prevNetwork = wallet.network
-    advanceIdentityEpoch()
-    wallet.disconnect()
-    // Now clear app-local storage (settings, cached data).
-    clearAppLocalStorage()
-    setShowWarning(false)
+  const teardownSession = useCallback(
+    (options: {
+      reason: CrossTabMessageType
+      correlationId: string
+      remote?: boolean
+      sourceTabId?: string
+    }) => {
+      logoutGenRef.current += 1
+      finishReauthPrompt(false)
+      const currentWallet = latestWalletRef.current
+      const prevAddress = currentWallet.address
+      const prevNetwork = currentWallet.network
+      advanceIdentityEpoch()
+      currentWallet.disconnect()
+      // Clear app-local settings and cached data in every tab at a session boundary.
+      clearAppLocalStorage()
+      setShowWarning(false)
 
     emitWalletSessionEvent('session_expired', {
       address: null,
       network: null,
+      adapterId: wallet.adapterId ?? null,
       correlationId: generateCorrelationId('session-idle-expiry'),
       metadata: {
         previousAddress: prevAddress || null,
@@ -109,19 +122,75 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         reason: 'inactivity',
       },
     })
+      const expired = options.reason === 'idle-lock'
+      emitWalletSessionEvent(expired ? 'session_expired' : 'session_disconnected', {
+        address: null,
+        network: null,
+        correlationId: options.correlationId,
+        metadata: {
+          previousAddress: prevAddress || null,
+          previousNetwork: prevNetwork || null,
+          reason:
+            options.reason === 'idle-lock'
+              ? 'inactivity'
+              : options.reason === 'network-change'
+                ? 'network-change'
+                : 'manual-disconnect',
+          remoteTriggered: Boolean(options.remote),
+          sourceTabId: options.sourceTabId ?? null,
+        },
+      })
 
-    navigate('/signin')
-    addToast('warning', 'Logged out due to inactivity.')
-  }, [wallet, navigate, addToast, finishReauthPrompt])
+      navigate('/signin')
+      if (options.remote) {
+        addToast('warning', 'Your wallet session ended in another tab. Please sign in again.')
+      } else if (expired) {
+        addToast('warning', 'Logged out due to inactivity.')
+      }
+    },
+    [navigate, addToast, finishReauthPrompt]
+  )
+
+  const handleLogout = useCallback(() => {
+    const correlationId = generateCorrelationId('session-idle-expiry')
+    crossTabBusRef.current?.publish('idle-lock', { correlationId })
+    teardownSession({ reason: 'idle-lock', correlationId })
+  }, [teardownSession])
 
   const handleStayLoggedIn = useCallback(() => {
     setShowWarning(false)
   }, [])
 
   const disconnect = useCallback(() => {
-    logoutGenRef.current += 1
-    wallet.disconnect()
-  }, [wallet.disconnect])
+    const correlationId = generateCorrelationId('wallet-disconnect')
+    crossTabBusRef.current?.publish('disconnect', { correlationId })
+    teardownSession({ reason: 'disconnect', correlationId })
+  }, [teardownSession])
+
+  useEffect(() => {
+    const bus = createCrossTabBus((message: CrossTabMessage) => {
+      // Remote messages are handled locally and deliberately never republished.
+      teardownSession({
+        reason: message.type,
+        correlationId: message.correlationId,
+        remote: true,
+        sourceTabId: message.tabId,
+      })
+    })
+    crossTabBusRef.current = bus
+    return () => {
+      bus.close()
+      crossTabBusRef.current = null
+    }
+  }, [teardownSession])
+
+  useEffect(() => {
+    if (previousNetworkRef.current === network) return
+    previousNetworkRef.current = network
+    const correlationId = generateCorrelationId('network-change')
+    crossTabBusRef.current?.publish('network-change', { correlationId, network })
+    teardownSession({ reason: 'network-change', correlationId })
+  }, [network, teardownSession])
 
   const isReauthRequired = useCallback(() => {
     if (!wallet.isConnected || lastReauthTime === null) {
@@ -151,7 +220,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         return true
       }
 
-      const access = await requestFreighterAccess()
+      const adapter = getWalletAdapter(session.adapterId)
+      const access = await adapter.connect()
       if (!access.ok) return false
       if (logoutGenRef.current !== gen) return false
       if (access.address !== session.address) {
@@ -159,7 +229,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         return false
       }
 
-      const activeAddress = await fetchFreighterAddress()
+      const activeAddress = await adapter.getAddress()
       if (logoutGenRef.current !== gen) return false
 
       if (!activeAddress || activeAddress !== session.address) {

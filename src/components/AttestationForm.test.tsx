@@ -1,3 +1,4 @@
+import { webcrypto } from 'node:crypto'
 import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -75,6 +76,7 @@ describe('AttestationForm', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   describe('validation and error reporting', () => {
@@ -138,6 +140,38 @@ describe('AttestationForm', () => {
   })
 
   describe('ConfirmDialog submission flow', () => {
+    it('hashes an attached file and submits only its hash and metadata', async () => {
+      vi.stubGlobal('crypto', webcrypto)
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      renderForm(onSubmit)
+
+      await user.type(screen.getByRole('textbox', { name: /subject address/i }), VALID_KEY)
+      const file = new File(['evidence contents'], 'proof.txt', { type: 'text/plain' })
+      fireEvent.change(screen.getByTestId('file-picker-input'), { target: { files: [file] } })
+
+      const hashCode = await screen.findByLabelText('Evidence SHA-256')
+      expect(hashCode).toHaveTextContent(/^[a-f0-9]{64}$/)
+
+      await user.click(screen.getByRole('button', { name: /submit attestation/i }))
+      const confirmInput = screen.getByLabelText(/type confirm to submit/i)
+      await user.type(confirmInput, 'CONFIRM')
+      await user.click(screen.getAllByRole('button', { name: /submit attestation/i })[1]!)
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subject: VALID_KEY,
+          evidenceHash: hashCode.textContent,
+          evidenceFile: expect.objectContaining({
+            name: 'proof.txt',
+            size: file.size,
+            type: 'text/plain',
+          }),
+        })
+      )
+      expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty('file')
+    })
+
     it('opens confirm dialog with summary upon submitting valid inputs', async () => {
       const user = userEvent.setup()
       renderForm()

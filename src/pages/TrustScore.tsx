@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { useEffect, useRef, useState, useMemo } from '
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
@@ -153,13 +152,17 @@ export default function TrustScore() {
       return
     }
 
-    if (!isAddressValid || isLoading) {
+    if (!isAddressValid) {
+      return
+    }
+
+    const trimmed = address.trim()
+    if (isLoading && trimmed === lookupAddress) {
       return
     }
 
     setHasAttemptedLookup(true)
     pendingLookupRef.current = true
-    const trimmed = address.trim()
     setLookupAddress(trimmed)
     commitAddressParam(trimmed)
   }
@@ -389,7 +392,7 @@ export default function TrustScore() {
             variant="primary"
             fullWidth
             disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
-            isLoading={isConnected && isLoading}
+            isLoading={isConnected && isLoading && address.trim() === lookupAddress}
             aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
             className="trustScore__buttonRow"
           >

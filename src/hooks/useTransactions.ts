@@ -17,7 +17,7 @@ import {
  * never requests unbounded data. Changing this value changes the page the
  * server returns, so it must remain stable across cursor requests.
  */
-const PAGE_SIZE = 20
+export const PAGE_SIZE = 20
 /**
  * Hard ceiling on the number of distinct pages the hook will ever fetch.
  *
@@ -27,7 +27,7 @@ const PAGE_SIZE = 20
  * further. This keeps ordering/end-of-stream deterministic and prevents
  * unbounded network work on a single list.
  */
-const MAX_PAGES = 1000
+export const MAX_PAGES = 1000
 /**
  * Bound on the number of pages retained in the VDOM cache and cursor map.
  *
@@ -45,9 +45,38 @@ type TransactionsResponse = ApiResponse<operations['listTransactions']>
  * must echo back verbatim to fetch the next page. `nextCursor` is `undefined`
  * when the page is the last one available (end-of-stream).
  */
-interface FetchedPage {
+export interface FetchedPage {
   items: Transaction[]
   nextCursor?: string
+}
+
+/**
+ * Fetch a single cursor page of transactions using the shared `PAGE_SIZE`
+ * and active identity epoch. Reused by both `useTransactions` and full-history
+ * CSV export so pagination parameters and session-conflict checks stay in sync.
+ */
+export async function fetchTransactionsPage(
+  cursor?: string,
+  options: { signal?: AbortSignal; identityEpoch?: number } = {}
+): Promise<FetchedPage> {
+  const params = new URLSearchParams()
+  params.set('limit', String(PAGE_SIZE))
+  if (cursor) {
+    params.set('cursor', cursor)
+  }
+
+  const epoch = options.identityEpoch ?? getIdentityEpoch()
+
+  const result = await apiFetch<TransactionsResponse>(`/transactions?${params.toString()}`, {
+    signal: options.signal,
+    identityEpoch: epoch,
+  })
+
+  if (options.signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError')
+  }
+
+  return { items: result.items, nextCursor: result.nextCursor }
 }
 
 export interface UseTransactionsResult {
@@ -146,25 +175,7 @@ export function useTransactions(): UseTransactionsResult {
         return null
       }
 
-      const params = new URLSearchParams()
-      params.set('limit', String(PAGE_SIZE))
-      if (cursor) {
-        params.set('cursor', cursor)
-      }
-
-      const epoch = getIdentityEpoch()
-
-      const result = await apiFetch<TransactionsResponse>(`/transactions?${params.toString()}`, {
-        signal,
-        identityEpoch: epoch,
-      })
-
-      // A response that lands after abort (refetch / unmount / superseded
-      // navigation) must not be written into a cache that may already have
-      // been cleared, or it would resurrect a stale chain.
-      if (signal?.aborted) {
-        throw new DOMException('The operation was aborted.', 'AbortError')
-      }
+      const result = await fetchTransactionsPage(cursor, { signal })
 
       // Advance the forward chain and cache the raw page. This is idempotent:
       // concurrent callers for the same page write the same values, so a stale

@@ -382,6 +382,16 @@
         "successOne": "1 transaction exported",
         "successOther": "{{count}} transactions exported"
       }
+    },
+    "exportAll": {
+      "button": "Export all",
+      "exporting": "Exporting…",
+      "starting": "Starting export…",
+      "progress": "Exporting page {{pages}} ({{rows}} transactions)…",
+      "cancel": "Cancel export",
+      "cancelled": "Export cancelled",
+      "rateLimited": "Rate limit reached. Please try again in {{seconds}}s.",
+      "error": "Unable to export transactions. Please try again."
     }
   },
   "common": {
@@ -450,5 +460,17 @@
     "backend": "Backend error",
     "validation": "Validation error",
     "generic": "An error occurred"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "openButton": "Notifications",
+    "openButtonUnread": "Notifications ({{count}} unread)",
+    "close": "Close notifications",
+    "markAllRead": "Mark all read",
+    "markRead": "Mark as read",
+    "clear": "Clear",
+    "empty": "No notifications yet.",
+    "suppressedQuietHours": "Quiet hours",
+    "unread": "Unread"
   }
 }

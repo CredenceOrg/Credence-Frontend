@@ -163,6 +163,32 @@
   gap: var(--credence-space-2);
 }
 
+/* ── Export all progress region ────────────────────────────────── */
+
+.transactions__exportStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--credence-space-3);
+  padding: var(--credence-space-3) var(--credence-space-4);
+  margin-bottom: var(--credence-space-4);
+  background: var(--credence-color-info-surface);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+}
+
+[data-theme='dark'] .transactions__exportStatus {
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.transactions__exportStatus-text {
+  margin: 0;
+  color: var(--credence-text-primary);
+  font-size: var(--credence-font-size-sm);
+  font-weight: var(--credence-font-weight-medium);
+}
+
 @media (max-width: 640px) {
   .transactions__table,
   .transactions__table thead,

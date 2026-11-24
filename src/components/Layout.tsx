@@ -1,8 +1,8 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink, useLocation, Link } from 'react-router-dom'
 import { PrefetchNavLink } from './PrefetchNavLink'
 import { PRELOADS_BY_PATH } from '../config/routes'
+import { NAV_LINKS } from '../config/navigation'
 import ErrorBoundary, { isChunkLoadError } from './ErrorBoundary'
 import ErrorState from './states/ErrorState'
 import { reloadPageGuarded, hasAttemptedChunkReload } from '../lib/lazyWithRetry'
@@ -51,15 +51,6 @@ export default function Layout() {
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
   const whatsNewButtonRef = useRef<HTMLButtonElement>(null)
-
-  const NAV_LINKS = [
-    { to: '/dashboard', label: t('nav.dashboard') },
-    { to: '/bond', label: t('nav.bond') },
-    { to: '/trust', label: t('nav.trustScore') },
-    { to: '/attestations', label: t('nav.attestations') },
-    { to: '/transactions', label: t('nav.transactions') },
-    { to: '/settings', label: t('nav.settings') },
-  ]
 
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
@@ -148,7 +139,7 @@ export default function Layout() {
 
           {/* Desktop: inline nav (hidden <640px via CSS) */}
           <nav aria-label="Main navigation" className="appNav">
-            {NAV_LINKS.map(({ to, label }) => (
+            {NAV_LINKS.map(({ to, labelKey }) => (
               <PrefetchNavLink
                 key={to}
                 to={to}
@@ -158,7 +149,7 @@ export default function Layout() {
                   isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
                 }
               >
-                {label}
+                {t(labelKey)}
               </PrefetchNavLink>
             ))}
           </nav>
@@ -224,11 +215,7 @@ export default function Layout() {
                     onClick: isChunk && isReloadAttempted ? reloadPageGuarded : reset,
                   }}
                 />
-                <Link
-                  to="/dashboard"
-                  className="error-fallback-secondary-link"
-                  onClick={reset}
-                >
+                <Link to="/dashboard" className="error-fallback-secondary-link" onClick={reset}>
                   Go to dashboard
                 </Link>
               </div>

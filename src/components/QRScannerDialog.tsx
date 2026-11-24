@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import jsQR from 'jsqr'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { sanitizeAddressInput } from '../lib/stellar'
 import './QRScannerDialog.css'
 
 interface QRScannerDialogProps {
@@ -11,6 +11,30 @@ interface QRScannerDialogProps {
 
 type ScannerState = 'requesting' | 'scanning' | 'error' | 'success'
 
+// Lazy-load jsqr only when scanning is needed
+let jsQRModule: typeof import('jsqr') | null = null
+async function loadJsQR() {
+  if (!jsQRModule) {
+    jsQRModule = await import('jsqr')
+  }
+  return jsQRModule.default
+type JsQrDecoder = (typeof import('jsqr'))['default']
+
+let decoderPromise: Promise<JsQrDecoder> | null = null
+
+/**
+ * Loads the jsQR decoder the first time the scanner actually runs.
+ *
+ * The dialog is the only consumer, so a static import would pull the decoder
+ * into the entry chunk and every page that never opens the scanner would pay
+ * for it. The promise is cached at module scope so reopening the dialog does
+ * not re-download the chunk.
+ */
+function loadQrDecoder(): Promise<JsQrDecoder> {
+  decoderPromise ??= import('jsqr').then((mod) => mod.default)
+  return decoderPromise
+}
+
 export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -18,6 +42,7 @@ export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDial
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const animationRef = useRef<number>(0)
+  const decoderRef = useRef<JsQrDecoder | null>(null)
 
   const [state, setState] = useState<ScannerState>('requesting')
   const [errorMessage, setErrorMessage] = useState('')
@@ -47,7 +72,7 @@ export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDial
     }
   }
 
-  function scanFrame() {
+  async function scanFrame() {
     const video = videoRef.current
     const canvas = canvasRef.current
     if (!video || !canvas) return
@@ -64,14 +89,32 @@ export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDial
     canvas.height = video.videoHeight
     ctx.drawImage(video, 0, 0)
 
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const code = jsQR(imageData.data, imageData.width, imageData.height)
+    const decode = decoderRef.current
+    if (!decode) return
 
-    if (code) {
-      stopCamera()
-      setState('success')
-      onScan(code.data)
-      return
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    
+    try {
+      const jsQR = await loadJsQR()
+      const code = jsQR(imageData.data, imageData.width, imageData.height)
+    const code = decode(imageData.data, imageData.width, imageData.height)
+
+      if (code) {
+        // Validate and sanitize the scanned QR content
+        const sanitized = sanitizeAddressInput(code.data)
+        const scannedValue = sanitized.ok ? sanitized.value : sanitized.fallbackValue
+
+        // Only accept if the scanned value looks like it could be a Stellar address
+        if (scannedValue && scannedValue.length > 0) {
+          stopCamera()
+          setState('success')
+          onScan(scannedValue)
+          return
+        }
+      }
+    } catch (err) {
+      // If jsQR fails to load or process, continue scanning
+      console.error('QR scanning error:', err)
     }
 
     animationRef.current = requestAnimationFrame(scanFrame)
@@ -84,6 +127,23 @@ export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDial
     setErrorMessage('')
 
     async function startCamera() {
+      try {
+        // Check for insecure context (non-HTTPS in production)
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setErrorMessage(
+            'Camera not available. Please use HTTPS or paste the address manually.'
+          )
+          setState('error')
+          return
+        }
+
+        decoderRef.current = await loadQrDecoder()
+      } catch {
+        setErrorMessage('Could not load the QR decoder. You can paste the address manually.')
+        setState('error')
+        return
+      }
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
@@ -103,10 +163,23 @@ export default function QRScannerDialog({ open, onScan, onClose }: QRScannerDial
         setState('scanning')
         animationRef.current = requestAnimationFrame(scanFrame)
       } catch (err) {
-        if (err instanceof DOMException && err.name === 'NotAllowedError') {
-          setErrorMessage('Camera permission denied. You can paste the address manually.')
-        } else if (err instanceof DOMException && err.name === 'NotFoundError') {
-          setErrorMessage('No camera found. You can paste the address manually.')
+        // Map specific error types to user-friendly messages
+        if (err instanceof DOMException) {
+          if (err.name === 'NotAllowedError') {
+            setErrorMessage('Camera permission denied. You can paste the address manually.')
+          } else if (err.name === 'NotFoundError') {
+            setErrorMessage('No camera found. You can paste the address manually.')
+          } else if (err.name === 'NotReadableError') {
+            setErrorMessage(
+              'Camera is already in use by another application. You can paste the address manually.'
+            )
+          } else if (err.name === 'OverconstrainedError') {
+            setErrorMessage(
+              'No camera with rear-facing mode found. You can paste the address manually.'
+            )
+          } else {
+            setErrorMessage('Could not access camera. You can paste the address manually.')
+          }
         } else {
           setErrorMessage('Could not access camera. You can paste the address manually.')
         }

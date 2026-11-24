@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { createTypedCustomEvent, SETTINGS_EVENTS } from '../events/schema'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
+import { updateSettings } from '../api/settings'
+import {
+  clearOutbox,
+  flushOutbox,
+  getOutboxPendingCount,
+  subscribeOutbox,
+} from '../lib/offlineOutbox'
 import { defaultSettings } from '../lib/settingsSchema'
 
 type ThemeMode = 'light' | 'dark' | 'system'
@@ -22,6 +29,7 @@ export interface SettingsPayload {
   quietHoursEnabled: boolean
   quietHoursStart: string
   quietHoursEnd: string
+  unlockRemindersEnabled: boolean
 }
 
 export interface SettingsState {
@@ -33,6 +41,7 @@ export interface SettingsState {
   quietHoursEnabled: boolean
   quietHoursStart: string
   quietHoursEnd: string
+  unlockRemindersEnabled: boolean
   setThemeMode: (m: ThemeMode) => void
   setNetwork: (n: NetworkOption) => void
   setAddressDisplay: (s: AddressDisplayOption) => void
@@ -41,6 +50,7 @@ export interface SettingsState {
   setQuietHoursEnabled: (b: boolean) => void
   setQuietHoursStart: (value: string) => void
   setQuietHoursEnd: (value: string) => void
+  setUnlockRemindersEnabled: (b: boolean) => void
   /**
    * Persist settings. Pass an explicit payload to save immediately (avoids the
    * stale-state race when called right after the individual setters); omit it to
@@ -50,6 +60,12 @@ export interface SettingsState {
   resetToDefaults: () => void
   cancelSettings: () => void
   hasUnsavedChanges: boolean
+  /** True when at least one settings PATCH is queued in the offline outbox. */
+  hasPendingOfflineSave: boolean
+  /** Number of settings PATCHes currently queued in the offline outbox. */
+  pendingOfflineSaveCount: number
+  /** Manually attempt to replay queued settings PATCHes (e.g. on reconnect). */
+  flushPendingOfflineSaves: () => void
 }
 
 type PersistedSettings = {
@@ -61,6 +77,7 @@ type PersistedSettings = {
   quietHoursEnabled: boolean
   quietHoursStart: string
   quietHoursEnd: string
+  unlockRemindersEnabled: boolean
 }
 
 const STORAGE_KEY = 'credence:settings'
@@ -79,6 +96,7 @@ export const DEFAULT_SETTINGS: Readonly<SettingsPayload> = {
   quietHoursEnabled: schemaDefaults.quietHoursEnabled,
   quietHoursStart: QUIET_HOURS_DEFAULTS.start,
   quietHoursEnd: QUIET_HOURS_DEFAULTS.end,
+  unlockRemindersEnabled: false,
 }
 
 const defaultPersistedSettings: PersistedSettings = { ...DEFAULT_SETTINGS }
@@ -93,10 +111,14 @@ const defaultState: SettingsState = {
   setQuietHoursEnabled: () => {},
   setQuietHoursStart: () => {},
   setQuietHoursEnd: () => {},
+  setUnlockRemindersEnabled: () => {},
   saveSettings: (_payload?: SettingsPayload) => {},
   resetToDefaults: () => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
+  hasPendingOfflineSave: false,
+  pendingOfflineSaveCount: 0,
+  flushPendingOfflineSaves: () => {},
 }
 
 const SettingsContext = createContext<SettingsState>(defaultState)
@@ -205,6 +227,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (key === 'quietHoursEnabled' && typeof entryValue !== 'boolean') return false
       if (key === 'quietHoursStart' && typeof entryValue !== 'string') return false
       if (key === 'quietHoursEnd' && typeof entryValue !== 'string') return false
+      if (key === 'unlockRemindersEnabled' && typeof entryValue !== 'boolean') return false
     }
 
     return true
@@ -244,9 +267,52 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   )
   const [quietHoursStart, setQuietHoursStart] = useState<string>(persistedSettings.quietHoursStart)
   const [quietHoursEnd, setQuietHoursEnd] = useState<string>(persistedSettings.quietHoursEnd)
+  const [unlockRemindersEnabled, setUnlockRemindersEnabled] = useState<boolean>(
+    persistedSettings.unlockRemindersEnabled
+  )
 
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
   const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)
+
+  // Offline outbox state: number of queued settings PATCHes awaiting replay.
+  const [pendingOfflineSaveCount, setPendingOfflineSaveCount] = useState<number>(() =>
+    getOutboxPendingCount()
+  )
+
+  // Keep the pending count in sync with the outbox (enqueue, flush, clear).
+  useEffect(() => {
+    setPendingOfflineSaveCount(getOutboxPendingCount())
+    return subscribeOutbox(() => {
+      setPendingOfflineSaveCount(getOutboxPendingCount())
+    })
+  }, [])
+
+  // Replay queued settings PATCHes whenever connectivity returns.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleOnline = () => {
+      void flushOutbox()
+    }
+
+    window.addEventListener('online', handleOnline)
+    // Opportunistically flush on mount in case we came back online while unmounted.
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+      void flushOutbox()
+    }
+
+    return () => window.removeEventListener('online', handleOnline)
+  }, [])
+
+  // Drop queued writes belonging to a previous identity epoch (wallet/network change).
+  useEffect(() => {
+    clearOutbox()
+    setPendingOfflineSaveCount(getOutboxPendingCount())
+  }, [network])
+
+  const flushPendingOfflineSaves = useCallback(() => {
+    void flushOutbox()
+  }, [])
 
   const hasUnsavedChanges =
     themeMode !== originalSettings.themeMode ||
@@ -256,7 +322,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     autoDismiss !== originalSettings.autoDismiss ||
     quietHoursEnabled !== originalSettings.quietHoursEnabled ||
     quietHoursStart !== originalSettings.quietHoursStart ||
-    quietHoursEnd !== originalSettings.quietHoursEnd
+    quietHoursEnd !== originalSettings.quietHoursEnd ||
+    unlockRemindersEnabled !== originalSettings.unlockRemindersEnabled
 
   const saveSettings = (next?: SettingsPayload) => {
     // A caller that just changed state in the same event handler cannot rely on
@@ -271,6 +338,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
     }
 
     setThemeMode(payload.themeMode)
@@ -281,14 +349,49 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursEnabled(payload.quietHoursEnabled)
     setQuietHoursStart(payload.quietHoursStart)
     setQuietHoursEnd(payload.quietHoursEnd)
+    setUnlockRemindersEnabled(payload.unlockRemindersEnabled)
     setPersistedSettings(payload)
     setOriginalSettings(payload)
     if (typeof window !== 'undefined') {
       window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, payload))
     }
+
+    // Persist to the backend through the outbox-aware client. Network failures are
+    // queued for replay; other failures are surfaced by updateSettings itself.
+    void updateSettings(payload).catch(() => {
+      // updateSettings already enqueues network failures; swallow here so the
+      // local save still succeeds and the indicator reflects the queued state.
+    })
   }
 
   const resetToDefaults = () => {
+    const defaults = {
+      themeMode: defaultPersistedSettings.themeMode,
+      network: defaultPersistedSettings.network,
+      addressDisplay: defaultPersistedSettings.addressDisplay,
+      toastsEnabled: defaultPersistedSettings.toastsEnabled,
+      autoDismiss: defaultPersistedSettings.autoDismiss,
+      quietHoursEnabled: defaultPersistedSettings.quietHoursEnabled,
+      quietHoursStart: defaultPersistedSettings.quietHoursStart,
+      quietHoursEnd: defaultPersistedSettings.quietHoursEnd,
+      unlockRemindersEnabled: defaultPersistedSettings.unlockRemindersEnabled,
+    }
+
+    setThemeMode(defaults.themeMode)
+    setNetwork(defaults.network)
+    setAddressDisplay(defaults.addressDisplay)
+    setToastsEnabled(defaults.toastsEnabled)
+    setAutoDismiss(defaults.autoDismiss)
+    setQuietHoursEnabled(defaults.quietHoursEnabled)
+    setQuietHoursStart(defaults.quietHoursStart)
+    setQuietHoursEnd(defaults.quietHoursEnd)
+    setUnlockRemindersEnabled(defaults.unlockRemindersEnabled)
+    setPersistedSettings(defaults)
+    setOriginalSettings(defaults)
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, defaults))
+    }
     saveSettings({ ...DEFAULT_SETTINGS })
   }
 
@@ -301,6 +404,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursEnabled(originalSettings.quietHoursEnabled)
     setQuietHoursStart(originalSettings.quietHoursStart)
     setQuietHoursEnd(originalSettings.quietHoursEnd)
+    setUnlockRemindersEnabled(originalSettings.unlockRemindersEnabled)
   }
 
   // Apply theme to document and keep it in sync with the system preference.
@@ -336,6 +440,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    unlockRemindersEnabled,
     setThemeMode,
     setNetwork,
     setAddressDisplay,
@@ -344,10 +449,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursEnabled,
     setQuietHoursStart,
     setQuietHoursEnd,
+    setUnlockRemindersEnabled,
     saveSettings,
     resetToDefaults,
     cancelSettings,
     hasUnsavedChanges,
+    hasPendingOfflineSave: pendingOfflineSaveCount > 0,
+    pendingOfflineSaveCount,
+    flushPendingOfflineSaves,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

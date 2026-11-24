@@ -41,8 +41,8 @@
 }
 
 .theme-toggle[data-state='error'] {
-  border-color: var(--credence-color-red-500, #df2020);
-  color: var(--credence-color-red-600, #b91c1c);
+  border-color: var(--credence-color-danger-toggle-border);
+  color: var(--credence-color-danger-toggle-text);
 }
 
 .theme-toggle[data-state='stale'] {
@@ -50,11 +50,11 @@
 }
 
 .theme-toggle[data-state='permission-denied'] {
-  border-color: var(--credence-color-amber-500, #f59e0b);
+  border-color: var(--credence-color-warning-border);
 }
 
 .theme-toggle[data-state='retrying'] {
-  border-color: var(--credence-color-amber-500, #f59e0b);
+  border-color: var(--credence-color-warning-border);
   border-style: dotted;
 }
 

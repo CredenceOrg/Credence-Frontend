@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Settings from './Settings'
 
@@ -18,6 +19,16 @@ vi.mock('../context/SettingsContext', () => ({
     quietHoursEnd: '07:00',
   },
   useSettings: () => mockUseSettings(),
+}))
+
+const mockUseWallet = vi.fn()
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => mockUseWallet(),
+}))
+
+const mockReadPendingTransactions = vi.fn()
+vi.mock('../lib/pendingTransactionsStorage', () => ({
+  readPendingTransactions: (...args: unknown[]) => mockReadPendingTransactions(...args),
 }))
 
 vi.mock('../hooks/useDebouncedAutoSave', () => ({
@@ -58,6 +69,7 @@ const BASE_SETTINGS = {
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
+  unlockRemindersEnabled: false,
 }
 
 /** Build a complete useSettings return value with the given overrides. */
@@ -72,6 +84,7 @@ function settingsFixture(overrides: Partial<ReturnType<typeof mockUseSettings>> 
     setQuietHoursEnabled: vi.fn(),
     setQuietHoursStart: vi.fn(),
     setQuietHoursEnd: vi.fn(),
+    setUnlockRemindersEnabled: vi.fn(),
     saveSettings: vi.fn(),
     resetToDefaults: vi.fn(),
     cancelSettings: vi.fn(),
@@ -82,6 +95,8 @@ function settingsFixture(overrides: Partial<ReturnType<typeof mockUseSettings>> 
 
 beforeEach(() => {
   mockUseSettings.mockReturnValue(settingsFixture())
+  mockUseWallet.mockReturnValue({ address: '', isConnected: false, connected: false, network: null })
+  mockReadPendingTransactions.mockReturnValue([])
   addToastMock.mockReset()
 })
 
@@ -293,6 +308,257 @@ describe('Settings — unsaved-changes guard', () => {
   })
 })
 
+describe('Settings — Address Book', () => {
+  const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('adds, edits, and removes an address book entry', async () => {
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Alice' } })
+    fireEvent.change(screen.getByLabelText('Stellar address'), { target: { value: VALID_KEY } })
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+
+    // Edit entry
+    await user.click(screen.getByRole('button', { name: 'Edit Alice' }))
+    const editLabelInput = screen.getByLabelText('Edit label')
+    fireEvent.change(editLabelInput, { target: { value: 'Alice Treasury' } })
+    await user.click(screen.getByRole('button', { name: 'Save entry' }))
+
+    expect(screen.getByText('Alice Treasury')).toBeInTheDocument()
+
+    // Remove entry
+    await user.click(screen.getByRole('button', { name: 'Remove Alice Treasury' }))
+    expect(screen.queryByText('Alice Treasury')).toBeNull()
+  })
+
+  it('rejects invalid and duplicate addresses with clear messages', async () => {
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    // Invalid address
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Bad' } })
+    fireEvent.change(screen.getByLabelText('Stellar address'), {
+      target: { value: 'not-a-valid-key' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(/invalid stellar address/i)
+
+    // Add valid address
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Alice' } })
+    fireEvent.change(screen.getByLabelText('Stellar address'), { target: { value: VALID_KEY } })
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+
+    // Duplicate address
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Alice Dup' } })
+    fireEvent.change(screen.getByLabelText('Stellar address'), { target: { value: VALID_KEY } })
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(/already in your address book/i)
+describe('Settings — network switch confirmation', () => {
+  const TEST_ADDRESS = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF'
+
+  const makePendingTx = (overrides: Record<string, unknown> = {}) => ({
+    id: 'tx-1',
+    type: 'deposit',
+    timestamp: new Date().toISOString(),
+    status: 'pending',
+    hash: 'abc123',
+    _network: 'public',
+    ...overrides,
+  })
+
+  it('skips ConfirmDialog and switches network immediately when no pending transactions exist', async () => {
+    mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      connected: true,
+      network: 'public',
+    })
+    mockReadPendingTransactions.mockReturnValue([])
+
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    expect(networkSelect.value).toBe('public')
+
+    await user.selectOptions(networkSelect, 'test')
+
+    expect(mockReadPendingTransactions).toHaveBeenCalledWith('public', TEST_ADDRESS)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('test')
+  })
+
+  it('skips ConfirmDialog when wallet is disconnected', async () => {
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    await user.selectOptions(networkSelect, 'test')
+
+    expect(mockReadPendingTransactions).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('test')
+  })
+
+  it('skips ConfirmDialog when stored transactions are no longer pending', async () => {
+    mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      connected: true,
+      network: 'public',
+    })
+    mockReadPendingTransactions.mockReturnValue([makePendingTx({ status: 'failed' })])
+describe('Settings — unlock reminders', () => {
+  const originalNotificationDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'Notification')
+
+  const stubNotification = (
+    permission: NotificationPermission,
+    requestPermission?: () => Promise<NotificationPermission>
+  ) => {
+    Object.defineProperty(globalThis, 'Notification', {
+      configurable: true,
+      writable: true,
+      value: { permission, requestPermission: requestPermission ?? vi.fn() },
+    })
+  }
+
+  afterEach(() => {
+    if (originalNotificationDescriptor) {
+      Object.defineProperty(globalThis, 'Notification', originalNotificationDescriptor)
+    } else {
+      // jsdom does not implement Notification; remove the stub we installed.
+      delete (globalThis as { Notification?: unknown }).Notification
+    }
+  })
+
+  it('renders the toggle and, when enabled, the permission status', async () => {
+    stubNotification('granted')
+    mockUseSettings.mockReturnValue(settingsFixture({ unlockRemindersEnabled: true }))
+
+    render(<Settings />)
+
+    expect(screen.getByRole('switch', { name: 'Enable unlock reminders' })).toBeChecked()
+    expect(screen.getByText('Browser notifications are allowed for this site.')).toBeInTheDocument()
+  })
+
+  it('explains how to unblock reminders when permission was denied', async () => {
+    stubNotification('denied')
+    mockUseSettings.mockReturnValue(settingsFixture({ unlockRemindersEnabled: true }))
+
+    render(<Settings />)
+
+    expect(screen.getByText(/notifications are blocked/i)).toBeInTheDocument()
+  })
+
+  it('offers a permission request button while permission is undecided', async () => {
+    const requestPermission = vi.fn().mockResolvedValue('granted')
+    stubNotification('default', requestPermission)
+    mockUseSettings.mockReturnValue(settingsFixture({ unlockRemindersEnabled: true }))
+
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    await user.selectOptions(networkSelect, 'test')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('test')
+  })
+
+  it('shows ConfirmDialog when pending transactions exist and keeps old network on Cancel', async () => {
+    mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      connected: true,
+      network: 'public',
+    })
+    mockReadPendingTransactions.mockReturnValue([makePendingTx()])
+
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    await user.selectOptions(networkSelect, 'test')
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toBeInTheDocument()
+    expect(dialog).toHaveTextContent('Switch network?')
+    expect(dialog).toHaveTextContent(/1 pending transaction/i)
+    expect(networkSelect.value).toBe('public')
+
+    const cancelButtons = screen.getAllByRole('button', { name: 'Cancel' })
+    const dialogCancel = cancelButtons.find((btn) => dialog.contains(btn))!
+    await user.click(dialogCancel)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('public')
+  })
+
+  it('applies the new network after confirming in ConfirmDialog', async () => {
+    mockUseWallet.mockReturnValue({
+      address: TEST_ADDRESS,
+      isConnected: true,
+      connected: true,
+      network: 'public',
+    })
+    mockReadPendingTransactions.mockReturnValue([
+      makePendingTx({ id: 'tx-1', hash: 'hash-1' }),
+      makePendingTx({ id: 'tx-2', hash: 'hash-2' }),
+    ])
+    await user.click(screen.getByRole('button', { name: 'Allow browser notifications' }))
+
+    expect(requestPermission).toHaveBeenCalledTimes(1)
+    expect(
+      await screen.findByText('Browser notifications are allowed for this site.')
+    ).toBeInTheDocument()
+  })
+
+  it('round-trips the setting through backup import', async () => {
+    const saveSettings = vi.fn()
+    mockUseSettings.mockReturnValue(settingsFixture({ saveSettings }))
+
+    const { container } = render(<Settings />)
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(
+      [JSON.stringify({ themeMode: 'light', unlockRemindersEnabled: true })],
+      'credence-settings.json',
+      { type: 'application/json' }
+    )
+
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    // The import dialog is type-to-confirm, so unlock it before applying.
+    const phraseInput = await screen.findByPlaceholderText('CONFIRM')
+    fireEvent.change(phraseInput, { target: { value: 'CONFIRM' } })
+    fireEvent.click(screen.getByText('Apply settings'))
+
+    await waitFor(() => {
+      expect(saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ unlockRemindersEnabled: true })
+      )
+    })
+  })
+
+  it('requests permission when the toggle is turned on from the undecided state', async () => {
+    const requestPermission = vi.fn().mockResolvedValue('default')
+    stubNotification('default', requestPermission)
+
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    const networkSelect = screen.getByLabelText('Stellar Network') as HTMLSelectElement
+    await user.selectOptions(networkSelect, 'test')
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveTextContent(/2 pending transactions/i)
 describe('Settings — reset to defaults', () => {
   const CUSTOM_SETTINGS = {
     themeMode: 'dark' as const,
@@ -371,6 +637,14 @@ describe('Settings — reset to defaults', () => {
     const confirmInput = screen.getByPlaceholderText('CONFIRM')
     await user.type(confirmInput, 'CONFIRM')
 
+    const confirmButton = screen.getByRole('button', { name: 'Switch network' })
+    await user.click(confirmButton)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(networkSelect.value).toBe('test')
+    await user.click(screen.getByRole('switch', { name: 'Enable unlock reminders' }))
+
+    expect(requestPermission).toHaveBeenCalledTimes(1)
     const confirmButtons = screen.getAllByRole('button', { name: 'Reset to defaults' })
     const dialogConfirmButton = confirmButtons[confirmButtons.length - 1]
     await user.click(dialogConfirmButton)

@@ -12,8 +12,8 @@ const defaultBreakdown: ConfirmDialogPenaltyBreakdown = {
 }
 
 function renderDialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
-  const onConfirm = vi.vn()
-  const onCancel = vi.vn()
+  const onConfirm = vi.fn()
+  const onCancel = vi.fn()
 
   const props = {
     open: true,
@@ -30,8 +30,8 @@ function renderDialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = 
 
 /** Render without a breakdown (generic destructive action use case). */
 function renderGenericDialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
-  const onConfirm = vi.vn()
-  const onCancel = vi.vn()
+  const onConfirm = vi.fn()
+  const onCancel = vi.fn()
 
   const props = {
     open: true,
@@ -72,12 +72,12 @@ describe('ConfirmDialog', () => {
   describe('rendering', () => {
     it('renders nothing when open is false', () => {
       renderDialog({ open: false })
-      expect(screen.queryBryRole('dialog')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('renders the dialog when open is true', () => {
       renderDialog()
-      expect(screen.getByrole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('has aria-modal="true"', () => {
@@ -87,7 +87,7 @@ describe('ConfirmDialog', () => {
 
     it('renders the title', () => {
       renderDialog({ title: 'Withdraw Bond' })
-      expect(screen.getByrole('heading', { name: 'Withdraw Bond' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Withdraw Bond' })).toBeInTheDocument()
     })
 
     it('renders subtitle when provided', () => {
@@ -103,7 +103,7 @@ describe('ConfirmDialog', () => {
 
     it('renders the financial breakdown', () => {
       renderDialog()
-      const dl = screen.getByrole('dialog')
+      const dl = screen.getByRole('dialog')
       expect(within(dl).getByText('Bond amount')).toBeInTheDocument()
       expect(within(dl).getByText('1,000 USDC')).toBeInTheDocument()
       expect(within(dl).getByText(/Slash penalty.*10%/)).toBeInTheDocument()
@@ -134,7 +134,7 @@ describe('ConfirmDialog', () => {
       renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFI')
-      expect(screen.getByrole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
 
     it('confirm button remains disabled for wrong case input', async () => {
@@ -142,13 +142,13 @@ describe('ConfirmDialog', () => {
       renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'confirm')
-      expect(screen.getByrole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
 
     it('confirm button becomes enabled when "CONFIRM" is typed exactly', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByrole('textbox', { name: /type.*confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
     })
@@ -166,7 +166,7 @@ describe('ConfirmDialog', () => {
       renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
-      expect(screen.getByrole('button', { name: 'Withdraw bond' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toHaveAttribute(
         'aria-disabled',
         'false'
       )
@@ -178,7 +178,7 @@ describe('ConfirmDialog', () => {
       const user = userEvent.setup()
       const { onConfirm } = renderDialog()
       // Button is disabled so click should have no effect
-      await user.click(screen.getByrole('button', { name: 'Withdraw bond' }))
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
       expect(onConfirm).not.toHaveBeenCalled()
     })
 
@@ -361,7 +361,7 @@ describe('ConfirmDialog', () => {
       const { onCancel } = renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM') // confirm gate satisfied
-      const backdrop = screen.getByrole('dialog').parentElement!
+      const backdrop = screen.getByRole('dialog').parentElement!
       await user.click(backdrop)
       expect(onCancel).toHaveBeenCalledOnce()
     })
@@ -396,7 +396,7 @@ describe('ConfirmDialog', () => {
     it('does not cancel when the backdrop is clicked while the dialog is already closed', async () => {
       const user = userEvent.setup()
       const { rerender, onConfirm, onCancel } = renderDialog()
-      const backdrop = screen.getByrole('dialog').parentElement!
+      const backdrop = screen.getByRole('dialog').parentElement!
 
       rerender(
         <ConfirmDialog
@@ -531,7 +531,7 @@ describe('ConfirmDialog', () => {
       )
 
       expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toHaveValue('')
-      expect(screen.getByrole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
   })
 
@@ -641,7 +641,7 @@ describe('ConfirmDialog', () => {
       const button = screen.getByRole('button', { name: 'Withdraw bond' })
       await user.dblClick(button)
       // The component must not double-fire the confirmation callback.
-      expect(onConfirm.mock[0].calls[0][0]).toBeDefined()
+      expect(onConfirm.mock.calls[0]).toBeDefined()
       expect(onConfirm.mock.calls.length).toBeLessThanOrEqual(2)
     })
 
@@ -649,7 +649,7 @@ describe('ConfirmDialog', () => {
       const user = userEvent.setup()
       const { onCancel } = renderDialog()
       const backdrop = screen.getByRole('dialog').parentElement!
-      await user.dlbClick(backdrop)
+      await user.dblClick(backdrop)
       expect(onCancel.mock.calls.length).toBeLessThanOrEqual(2)
     })
 
@@ -672,7 +672,7 @@ describe('ConfirmDialog', () => {
       })
       renderDialog({ onCancel })
 
-      const backdrop = screen.getByrole('dialog').parentElement!
+      const backdrop = screen.getByRole('dialog').parentElement!
       // The component must not crash the render tree and the dialog must
       // remain mounted after the callback throws.
       await user.click(backdrop)

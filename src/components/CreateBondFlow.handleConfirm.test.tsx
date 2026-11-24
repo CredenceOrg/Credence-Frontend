@@ -83,7 +83,7 @@ beforeEach(() => {
     status: 'ready',
     error: null,
     refetch: refetchBalance,
-  })
+  } as unknown as ReturnType<typeof useUsdcBalance>)
   vi.mocked(useToast).mockReturnValue({ addToast } as unknown as ReturnType<typeof useToast>)
   vi.mocked(useReducedMotion).mockReturnValue(false)
   // Silence console.warn for refused-transition diagnostics

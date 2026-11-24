@@ -174,7 +174,7 @@
 
 /*
  * Hover and active darken the fill rather than lightening it. The previous
- * hover moved to --credence-color-danger-border (#ef4444), which dropped the
+ * hover moved to --credence-color-danger-border, which dropped the
  * white label to 3.76:1; in dark mode the base fill did the same.
  *
  * Because the fill darkens, the border is pinned to --credence-color-danger-

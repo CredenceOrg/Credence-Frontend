@@ -28,6 +28,8 @@ export interface WalletSessionEvent {
   address: string | null
   /** Active Stellar network associated with this event */
   network: CredenceNetwork | null
+  /** Wallet adapter identifier associated with this event (e.g. 'freighter', 'xbull') */
+  adapterId?: string | null
   /** Detailed metadata / transition specifics */
   metadata?: Record<string, unknown>
 }
@@ -63,6 +65,7 @@ export function emitWalletSessionEvent(
   payload: {
     address: string | null
     network: CredenceNetwork | null
+    adapterId?: string | null
     correlationId?: string
     metadata?: Record<string, unknown>
   }
@@ -76,6 +79,7 @@ export function emitWalletSessionEvent(
     timestamp: new Date().toISOString(),
     address: payload.address,
     network: payload.network,
+    ...(payload.adapterId !== undefined ? { adapterId: payload.adapterId } : {}),
     metadata: payload.metadata,
   }
 

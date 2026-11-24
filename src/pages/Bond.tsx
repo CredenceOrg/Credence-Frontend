@@ -20,12 +20,16 @@ import { useSeo } from '../hooks/useSeo'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useBonds } from '../hooks/useBonds'
 import { formatUsdc } from '../lib/format'
-import { getPenaltyRate, computeWithdrawBreakdown, type MockBond } from '../lib/bondPenalty'
+import {
+  getPenaltyRate,
+  computeWithdrawBreakdown,
+  type Bond as BondModel,
+} from '../lib/bondPenalty'
 import type { Bond } from '../api/types'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
-interface BondItem extends MockBond {
+interface BondItem extends BondModel {
   id: string
   apiStatus: Bond['status']
 }

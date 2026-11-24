@@ -25,7 +25,6 @@ import { useUsdcBalance } from '../hooks/useUsdcBalance'
 import { useToast } from './ToastProvider'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { BOND_FLOW_STEP_COUNT } from '../lib/createBondFlowSteps'
-import { handleBack } from './CreateBondFlow'
 
 // ---------------------------------------------------------------------------
 // Mocks — no providers required

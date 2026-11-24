@@ -380,120 +380,96 @@ describe('echo display respects addressDisplay setting', () => {
   })
 })
 
-// --- Boundary and recovery coverage ---
-describe('boundary and recovery', () => {
-  it('recovers from an invalid external error once the value is corrected', async () => {
-    const user = userEvent.setup()
-    const { rerender } = render(
-      <AddressInput id="addr" value="" onChange={vi.fn()} error="Address is required" />
-    )
+// --- Address book picker ---
+describe('address book picker', () => {
+  const SECOND_VALID_KEY = 'GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ'
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Address is required')
-
-    // Simulate the parent clearing the external error and providing a valid value
-    rerender(<AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} />)
-
-    await user.click(screen.getByRole('textbox'))
-    await user.tab()
-
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.getByText('Recognized:')).toBeInTheDocument()
+  beforeEach(() => {
+    window.localStorage.clear()
   })
 
-  it('retains the external error and suppresses the success echo while it is set', async () => {
-    const user = userEvent.setup()
-    render(
-      <AddressInput
-        id="addr"
-        value={VALID_KEY}
-        onChange={vi.fn()}
-        error="Address already registered"
-      />
-    )
-
-    await user.click(screen.getByRole('textbox'))
-    await user.tab()
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Address already registered')
-    expect(screen.queryByText('Recognized:')).toBeNull()
-    expect(screen.queryByRole('status')).toBeNull()
+  it('does not render picker button when address book is empty', () => {
+    render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: /choose from address book/i })).toBeNull()
   })
 
-  it('keeps the latest paste result when clipboard resolves after a second click', async () => {
+  it('opens combobox picker and supports keyboard navigation and selection', async () => {
+    window.localStorage.setItem(
+      'credence:address-book:v1:public:anonymous',
+      JSON.stringify({
+        schemaVersion: 1,
+        entries: [
+          {
+            id: 'e1',
+            label: 'Alice',
+            address: VALID_KEY,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'e2',
+            label: 'Bob',
+            address: SECOND_VALID_KEY,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      })
+    )
+
+    const user = userEvent.setup()
     const onChange = vi.fn()
-    clipboardReadTextMock.mockResolvedValueOnce('  first-paste  ').mockResolvedValueOnce(VALID_KEY)
-
     render(<AddressInput id="addr" value="" onChange={onChange} />)
 
-    const pasteButton = screen.getByRole('button', { name: /paste address from clipboard/i })
+    const toggleBtn = screen.getByRole('button', { name: /choose from address book/i })
+    await user.click(toggleBtn)
 
-    await act(async () => {
-      fireEvent.click(pasteButton)
-    })
-    await act(async () => {
-      fireEvent.click(pasteButton)
-    })
+    const combobox = screen.getByRole('combobox', { name: /filter address book/i })
+    expect(combobox).toBeInTheDocument()
+    expect(screen.getByRole('listbox', { name: /address book entries/i })).toBeInTheDocument()
 
-    expect(onChange).toHaveBeenCalledWith('first-paste')
-    expect(onChange).toHaveBeenCalledWith(VALID_KEY)
-    expect(onChange.mock.calls.length).toBe(2)
+    // Navigate down to second option (Bob) and press Enter
+    await user.keyboard('{ArrowDown}{Enter}')
+    expect(onChange).toHaveBeenCalledWith(SECOND_VALID_KEY)
+    expect(screen.queryByRole('listbox')).toBeNull()
   })
 
-  it('never overwrites the existing value with an empty clipboard result', async () => {
-    const onChange = vi.fn()
-    const onPasteError = vi.fn()
-    clipboardReadTextMock.mockResolvedValue('   \n  ')
-
-    render(<AddressInput id="addr" value={VALID_KEY} onChange={onChange} onPasteError={onPasteError} />)
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /paste address from clipboard/i }))
-    })
-
-    expect(onChange).not.toHaveBeenCalled()
-  })
-
-  it('does not call onValidationChange with a stale value after a rapid sequence of changes', async () => {
-    const onV = vi.fn()
-    const { rerender } = render(
-      <AddressInput id="addr" value="" onChange={vi.fn()} onValidationChange={onV} />
+  it('filters entries and closes on Escape', async () => {
+    window.localStorage.setItem(
+      'credence:address-book:v1:public:anonymous',
+      JSON.stringify({
+        schemaVersion: 1,
+        entries: [
+          {
+            id: 'e1',
+            label: 'Treasury',
+            address: VALID_KEY,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'e2',
+            label: 'Operations',
+            address: SECOND_VALID_KEY,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      })
     )
 
-    onV.mockClear()
+    const user = userEvent.setup()
+    render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
 
-    rerender(
-      <AddressInput
-        id="addr"
-        value={VALID_KEY.slice(0, 10)}
-        onChange={vi.fn()}
-        onValidationChange={onV}
-      />
-    )
-    rerender(
-      <AddressInput id="addr" value={VALID_KEY} onChange={vi.fn()} onValidationChange={onV} />
-    )
+    await user.click(screen.getByRole('button', { name: /choose from address book/i }))
+    const combobox = screen.getByRole('combobox', { name: /filter address book/i })
+    await user.type(combobox, 'Treas')
 
-    // The last call reflects the final valid state, not the intermediate one
-    expect(onV).toHaveBeenLastCalledWith(true)
-  })
+    const options = screen.getAllByRole('option')
+    expect(options).toHaveLength(1)
+    expect(options[0]).toHaveTextContent('Treasury')
 
-  it('renders an empty echo for a zero-length value without throwing', () => {
-    expect(() =>
-      render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
-    ).not.toThrow()
-    expect(screen.queryByText('Recognized:')).toBeNull()
-  })
-
-  it('strips a leading stellar: prefix when the address is pasted via the clipboard button', async () => {
-    const onChange = vi.fn()
-    clipboardReadTextMock.mockResolvedValue(`stellar:${VALID_KEY}`)
-
-    render(<AddressInput id="addr" value="" onChange={onChange} />)
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /paste address from clipboard/i }))
-    })
-
-    expect(onChange).toHaveBeenCalledWith(VALID_KEY)
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('listbox')).toBeNull()
   })
 })

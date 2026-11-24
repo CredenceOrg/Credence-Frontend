@@ -66,6 +66,18 @@ export function addRecentLookup(
   ].slice(0, 5)
 }
 
+export function removeRecentLookup(items: unknown, address: string): RecentLookupItem[] {
+  const sanitized = sanitizeRecentLookups(items)
+  if (typeof address !== 'string') {
+    return sanitized
+  }
+  const target = address.trim().toLowerCase()
+  if (!target) {
+    return sanitized
+  }
+  return sanitized.filter((item) => item.address.toLowerCase() !== target)
+}
+
 function readV1(): RecentLookupItem[] | null {
   const res = safeReadJson<RecentLookupsV1>(RECENT_LOOKUPS_V1_KEY)
   if (!res.ok) return []

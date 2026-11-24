@@ -7,7 +7,7 @@ describe('lazy icon exports', () => {
   it('loads an icon implementation on demand', async () => {
     render(
       <Suspense fallback={<span>loading icon</span>}>
-        <CopyIcon aria-label="Copy" />
+        <CopyIcon aria-label="Copy">{null}</CopyIcon>
       </Suspense>
     )
 
@@ -17,7 +17,7 @@ describe('lazy icon exports', () => {
   it('keeps each icon independently loadable', async () => {
     render(
       <Suspense fallback={null}>
-        <WalletIcon aria-label="Wallet" />
+        <WalletIcon aria-label="Wallet">{null}</WalletIcon>
       </Suspense>
     )
 

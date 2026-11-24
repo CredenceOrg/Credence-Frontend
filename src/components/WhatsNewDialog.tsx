@@ -5,7 +5,7 @@ import { useProductUpdates } from '../hooks/useProductUpdates'
 import { useScrollPreserver } from '../hooks/useScrollPreserver'
 import type { ProductUpdate } from '../data/productUpdates'
 import Button from './Button'
-import WindowedList from './WindowedList'
+import VirtualizedList from './VirtualizedList'
 import './WhatsNewDialog.css'
 
 export interface WhatsNewDialogProps {
@@ -148,7 +148,7 @@ export default function WhatsNewDialog({ open, onClose, returnFocusRef }: WhatsN
             </Button>
           </div>
         ) : (
-          <WindowedList
+          <VirtualizedList
             className="whats-new-dialog__list"
             role="list"
             ariaLabel="Recent product updates"

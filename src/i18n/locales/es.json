@@ -1,0 +1,333 @@
+{
+  "layout": {
+    "skipToMainContent": "Ir al contenido principal",
+    "brand": "Credence",
+    "keyboardShortcuts": "Abrir atajos de teclado (Shift+?)",
+    "actionLauncher": "Abrir lanzador de acciones (Ctrl+K / Cmd+K)",
+    "actionLauncherHint": "Abrir lanzador de acciones (Ctrl+K / Cmd+K)",
+    "footer": {
+      "copyright": "© 2026 Credence Protocol. Construido sobre Stellar.",
+      "documentation": "Documentación",
+      "termsOfService": "Términos de servicio",
+      "privacyPolicy": "Política de privacidad"
+    }
+  },
+  "nav": {
+    "home": "Inicio",
+    "dashboard": "Panel",
+    "bond": "Bono",
+    "trustScore": "Puntuación de confianza",
+    "attestations": "Attestaciones",
+    "transactions": "Transacciones",
+    "settings": "Ajustes"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "description": "Supervisa la puntuación de confianza, los bonos activos y la actividad reciente del protocolo desde un solo lugar.",
+    "wallet": "Cartera",
+    "connectWalletToView": "Conecta una cartera para ver el panel",
+    "walletRequired": "Cartera requerida",
+    "connectFreighter": "Conecta Freighter para cargar tu puntuación de confianza, bonos activos y actividad reciente.",
+    "connectWallet": "Conectar cartera",
+    "trustScore": "Puntuación de confianza",
+    "currentScore": "Puntuación actual",
+    "goldTier": "Nivel oro",
+    "activeBonds": "Bonos activos",
+    "activeBondsCount": "{{count}} bonos activos",
+    "unlocks": "Se desbloquea {{date}}",
+    "recentActivity": "Actividad reciente",
+    "shortcuts": "Atajos",
+    "createBond": "Crear bono",
+    "createBondDescription": "Bloquea más USDC en bonos de reputación.",
+    "viewTrustScore": "Ver puntuación de confianza",
+    "viewTrustScoreDescription": "Consulta los detalles de la puntuación y el contexto de nivel.",
+    "reviewAttestations": "Revisar attestaciones",
+    "reviewAttestationsDescription": "Abre evidencias recientes y reclamaciones.",
+    "backToSummary": "Volver al resumen",
+    "mockDataBanner": "Las cifras del panel son datos ficticios del protocolo hasta que se conecte la indexación de cuentas en vivo.",
+    "copyLink": "Copiar enlace a esta tarjeta",
+    "linkCopied": "Enlace copiado al portapapeles"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "appearance": {
+      "heading": "Apariencia",
+      "description": "Controles para tema y preferencias visuales.",
+      "theme": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema",
+      "quickToggle": "Cambio rápido",
+      "quickToggleHint": "Usa el cambio rápido para alternar claro/oscuro inmediatamente. Los botones de tema de arriba se aplican al guardar."
+    },
+    "network": {
+      "heading": "Red",
+      "description": "Elige la red de Stellar con la que interactuar.",
+      "stellarNetwork": "Red de Stellar",
+      "public": "Pública (Mainnet)",
+      "test": "Prueba (Testnet)"
+    },
+    "display": {
+      "heading": "Pantalla",
+      "description": "Cómo se presentan las direcciones e identificadores en la interfaz.",
+      "addressFormat": "Formato de dirección",
+      "full": "Completo (G...)",
+      "short": "Corto (G...…)",
+      "friendly": "Amigable (cuando esté disponible)",
+      "language": "Idioma",
+      "languageEn": "English",
+      "languageEs": "Español"
+    },
+    "notifications": {
+      "heading": "Notificaciones",
+      "description": "Controla el comportamiento de los avisos y notificaciones.",
+      "enableToasts": "Activar avisos",
+      "autoDismissDuration": "Duración del cierre automático",
+      "off": "Desactivado (requiere cierre manual)",
+      "3seconds": "3 segundos",
+      "5seconds": "5 segundos",
+      "8seconds": "8 segundos",
+      "preview": "Vista previa",
+      "showPreview": "Mostrar vista previa",
+      "previewHint": "La vista previa respeta la configuración actual de avisos.",
+      "quietHours": {
+        "heading": "Horas silenciosas",
+        "description": "Silencia los avisos no críticos entre las horas elegidas. Los avisos de error críticos nunca se silencian.",
+        "enable": "Activar horas silenciosas",
+        "start": "Hora de inicio",
+        "end": "Hora de fin",
+        "includeCritical": "Los avisos de peligro (críticos) no se silencian.",
+        "active": "Horas silenciosas activas ahora",
+        "inactive": "Horas silenciosas inactivas",
+        "invalidRange": "La hora de fin debe ser diferente a la de inicio."
+      }
+    },
+    "backup": {
+      "heading": "Copia de seguridad y restauración",
+      "description": "Exporta tu configuración como archivo JSON o importa una configuración anterior.",
+      "exportSettings": "Exportar ajustes",
+      "importSettings": "Importar ajustes",
+      "invalidFile": "Archivo de ajustes no válido",
+      "clearError": "Limpiar error"
+    },
+    "actions": {
+      "save": "Guardar",
+      "saved": "Guardado",
+      "cancel": "Cancelar"
+    },
+    "importDialog": {
+      "title": "Importar ajustes",
+      "subtitle": "Revisa los cambios antes de aplicarlos.",
+      "noChanges": "Los ajustes importados coinciden con tu configuración actual. No se realizarán cambios.",
+      "changesIntro": "Se aplicarán los siguientes ajustes de {{file}}:",
+      "setting": "Ajuste",
+      "current": "Actual",
+      "imported": "Importado",
+      "confirmHint": "Esto sobreescribirá tu configuración actual con los valores importados.",
+      "confirmLabel": "Importar ajustes"
+    },
+    "autoSave": {
+      "saving": "Guardando…",
+      "saved": "Guardado",
+      "savedRelative": "Guardado {{when}}",
+      "error": "No se pudo guardar. Inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "toasts": {
+      "saved": "Ajustes guardados correctamente",
+      "reverted": "Ajustes revertidos al último estado guardado",
+      "exported": "Ajustes exportados correctamente",
+      "imported": "Ajustes importados correctamente",
+      "importCancelled": "Importación cancelada"
+    }
+  },
+  "bond": {
+    "title": "Bono USDC",
+    "description": "Bloquea USDC en el contrato de Credence para construir tu reputación económica.",
+    "infoBanner": "Los bonos están bloqueados durante un mínimo de 30 días. El retiro anticipado conlleva una penalización.",
+    "connectRequired": "Cartera conectada requerida",
+    "connectRequiredDescription": "Las acciones de crear bono y retirar requieren una cartera Stellar conectada.",
+    "networkMismatch": "Desajuste de red",
+    "networkMismatchDescription": "Credence está configurado en {{expected}}, pero Freighter está en {{actual}}. Cambia la app a la red de la cartera antes de crear o retirar un bono.",
+    "switchNetwork": "Cambiar app a {{network}}",
+    "slashExposure": "Exposición a penalización por retiro anticipado",
+    "slashExposureDescription": "Retirar {{amount}} mientras {{status}} puede penalizar hasta {{penaltyAmount}} ({{percent}}% de penalización). Recibirías aproximadamente {{result}}.",
+    "createNewBond": "Crear nuevo bono",
+    "createBondDescription": "Bloquea USDC con el asistente de cuatro pasos: establece un monto, elige una duración de bloqueo, revisa los términos de penalización y confirma.",
+    "amount": "Monto (USDC)",
+    "minimumAmount": "Mínimo: {{amount}} USDC",
+    "createBond": "Crear bono",
+    "connectToContinue": "Conecta una cartera para continuar",
+    "activeBonds": "Bonos activos",
+    "noActiveBonds": "Sin bonos activos",
+    "noActiveBondsDescription": "Aún no tienes bonos activos. Crea tu primer bono para empezar a construir reputación en la cadena.",
+    "createFirstBond": "Crea tu primer bono",
+    "hidePenalty": "Ocultar penalización",
+    "showPenalty": "Mostrar penalización",
+    "withdraw": "Retirar",
+    "connectToWithdraw": "Conecta una cartera para retirar",
+    "bondAmount": "Monto del bono",
+    "penalty": "Penalización ({{percent}}%)",
+    "youReceive": "Recibes",
+    "noEarlyWithdrawalPenalty": "Sin penalización por retiro anticipado",
+    "confirmWithdrawal": "Confirmar retiro del bono",
+    "withdrawalSubtitle": "Estás retirando el bono n.º {{id}} ({{amount}}).",
+    "disclaimerContext": "Bloquear USDC fija fondos en un contrato inteligente no custodial. Se aplican condiciones de penalización."
+  },
+  "trustScore": {
+    "title": "Puntuación de confianza",
+    "description": "Tu puntuación de reputación se calcula a partir del monto del bono, la duración y las attestaciones.",
+    "infoBanner": "Las puntuaciones se actualizan una vez por época. Los cambios recientes en bonos pueden no reflejarse de inmediato.",
+    "connectRequired": "Cartera conectada requerida",
+    "connectRequiredDescription": "Conecta una cartera para buscar tu propia puntuación de confianza. También puedes escribir otra dirección de Stellar para revisarla.",
+    "networkMismatch": "Desajuste de red",
+    "networkMismatchDescription": "Credence está configurado en {{expected}}, pero Freighter está en {{actual}}. Cambia la app a la red de la cartera antes de buscar una puntuación de confianza.",
+    "switchNetwork": "Cambiar app a {{network}}",
+    "results": "Resultados de puntuación de confianza",
+    "loading": "Cargando puntuación de confianza…",
+    "unableToLoad": "No se puede cargar la puntuación de confianza",
+    "tryAgain": "Intentar de nuevo",
+    "lookupIdentity": "Buscar identidad",
+    "stellarAddress": "Dirección Stellar",
+    "useMyAddress": "Usar mi dirección",
+    "lookup": "Buscar puntuación",
+    "connectToContinue": "Conecta una cartera para continuar",
+    "disclaimerContext": "Las puntuaciones de confianza son métricas del protocolo y no constituyen evaluaciones de solvencia crediticia."
+  },
+  "attestations": {
+    "title": "Attestaciones",
+    "description": "Envía evidencia criptográfica y avales para construir tu puntuación de confianza económica.",
+    "submitForm": "Enviar formulario de attestación",
+    "timeline": "Línea de tiempo de actividad",
+    "filterLabel": "Filtrar attestaciones por estado",
+    "filter": {
+      "all": "Todos los estados",
+      "success": "Aceptado / Enviado",
+      "warning": "Necesita actualización",
+      "info": "En revisión"
+    }
+  },
+  "transactions": {
+    "title": "Historial de transacciones",
+    "description": "Un registro permanente de tus eventos de bono, retiro y attestación.",
+    "loading": "Cargando transacciones…",
+    "unableToLoad": "No se pueden cargar las transacciones",
+    "tryAgain": "Intentar de nuevo",
+    "noTransactions": "Sin transacciones aún",
+    "noTransactionsDescription": "Tus eventos de bono, retiro y attestación aparecerán aquí una vez que comiences a transaccionar.",
+    "filterLabel": "Estado",
+    "filterAriaLabel": "Filtrar por estado",
+    "noResults": "Sin transacciones {{filter}}. Prueba con un filtro diferente.",
+    "table": {
+      "type": "Tipo",
+      "amount": "Monto",
+      "status": "Estado",
+      "when": "Cuándo",
+      "transaction": "Transacción",
+      "viewOnExplorer": "Ver transacción {{hash}} en el explorador de Stellar",
+      "viewLink": "Ver ↗"
+    },
+    "status": {
+      "all": "Todos",
+      "pending": "Pendiente",
+      "confirmed": "Confirmado",
+      "failed": "Fallido"
+    },
+    "relativeTime": {
+      "justNow": "ahora mismo",
+      "minutesAgo": "hace {{count}}m",
+      "hoursAgo": "hace {{count}}h",
+      "daysAgo": "hace {{count}}d"
+    },
+    "bulk": {
+      "selectLabel": "Seleccionar transacción {{id}}",
+      "selectAll": "Seleccionar todas las transacciones",
+      "selectedOne": "{{count}} seleccionada",
+      "selectedOther": "{{count}} seleccionadas",
+      "actionsLabel": "Acciones en lote",
+      "export": "Exportar",
+      "delete": "Eliminar",
+      "clear": "Limpiar selección",
+      "deleteConfirm": {
+        "title": "¿Eliminar transacciones?",
+        "subtitle": "Estás a punto de eliminar {{count}} transacción de esta lista.",
+        "subtitle_other": "Estás a punto de eliminar {{count}} transacciones de esta lista.",
+        "phrase": "ELIMINAR",
+        "hint": "Eliminar entradas de esta vista no afecta los registros en la cadena.",
+        "confirm": "Eliminar transacciones",
+        "successOne": "1 transacción eliminada de la vista",
+        "successOther": "{{count}} transacciones eliminadas de la vista"
+      },
+      "exportToast": {
+        "successOne": "1 transacción exportada",
+        "successOther": "{{count}} transacciones exportadas"
+      }
+    }
+  },
+  "common": {
+    "loading": "Cargando...",
+    "connectWallet": "Conectar cartera",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "dismiss": "Descartar",
+    "tryAgain": "Intentar de nuevo",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "submit": "Enviar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "view": "Ver",
+    "copy": "Copiar",
+    "copied": "¡Copiado!"
+  },
+  "banner": {
+    "severity": {
+      "info": "Información",
+      "success": "Éxito",
+      "warning": "Advertencia",
+      "critical": "Crítico"
+    },
+    "dismiss": "Descartar aviso"
+  },
+  "confirmDialog": {
+    "defaultConfirmPhrase": "CONFIRMAR",
+    "defaultConfirmHint": "Esta acción no se puede deshacer. Los fondos se enviarán a tu cartera conectada.",
+    "typeToConfirm": "Escribe <strong>{{phrase}}</strong> para habilitar {{action}}",
+    "confirmHint": "Esto sobreescribirá tu configuración actual con los valores importados.",
+    "breakdown": {
+      "bondAmount": "Monto del bono",
+      "slashPenalty": "Penalización ({{percent}}%)",
+      "youReceive": "Recibes"
+    },
+    "announcements": {
+      "actionEnabled": "Acción habilitada. Escribe {{phrase}} para confirmar.",
+      "actionDisabled": "Acción deshabilitada. Escribe {{phrase}} para habilitarla."
+    }
+  },
+  "activityTimeline": {
+    "identityAttestation": "Attestación de identidad",
+    "peerVouch": "Aval entre pares",
+    "credentialCertification": "Certificación de credenciales",
+    "submitted": "Enviado",
+    "subject": "Sujeto: {{subject}}"
+  },
+  "badge": {
+    "variants": {
+      "active": "Activo",
+      "locked": "Bloqueado",
+      "slashed": "Penalizado",
+      "gold": "Oro",
+      "silver": "Plata",
+      "bronze": "Bronce"
+    }
+  },
+  "errors": {
+    "network": "Error de red",
+    "backend": "Error del servidor",
+    "validation": "Error de validación",
+    "generic": "Ha ocurrido un error"
+  }
+}

@@ -1,34 +1,38 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
+import { useWallet } from '../context/WalletContext'
+import { DEFAULT_SETTINGS, useSettings } from '../context/SettingsContext'
+import { useSettings, type SettingsPayload } from '../context/SettingsContext'
 import { useToast } from '../components/ToastProvider'
-import { FormField, Input } from '../components/forms'
-import Toggle from '../components/controls/Toggle'
-import Select from '../components/controls/Select'
-import SegmentedControl from '../components/controls/SegmentedControl'
-import ConfirmDialog from '../components/ConfirmDialog'
-import { ErrorState } from '../components/states'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
 import { isQuietHoursActive, parseHHmm } from '../lib/quietHours'
+import { readPendingTransactions } from '../lib/pendingTransactionsStorage'
+import { getNetworkLabel } from '../lib/networkLabels'
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  type NotificationPermissionState,
+} from '../lib/unlockReminders'
+import { parseHHmm } from '../lib/quietHours'
 import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
+import { useSettingsBackup } from '../hooks/useSettingsBackup'
 import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
 import { updateSettings } from '../api/settings'
 import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
-import type {
-  AddressDisplayOption,
-  AutoDismissOption,
-  NetworkOption,
-  SettingsPayload,
-} from '../context/SettingsContext'
+import { useAddressBook } from '../hooks/useAddressBook'
+import { formatAddressForDisplay, type AddressDisplayMode } from '../lib/stellar'
+import type { AutoDismissOption } from '../context/SettingsContext'
 import './Settings.css'
 
 function computeDiff(
-  current: Omit<SettingsBlob, keyof unknown>,
+  current: SettingsBlob,
   incoming: SettingsBlob
 ): { key: string; from: string; to: string }[] {
   const diffs: { key: string; from: string; to: string }[] = []
-  const keys: (keyof SettingsBlob)[] = [
+  const keys: (keyof Omit<SettingsBlob, 'addressBook'>)[] = [
     'themeMode',
     'network',
     'addressDisplay',
@@ -37,14 +41,65 @@ function computeDiff(
     'quietHoursEnabled',
     'quietHoursStart',
     'quietHoursEnd',
+    'unlockRemindersEnabled',
+    'locale',
   ]
   for (const key of keys) {
     if (String(current[key]) !== String(incoming[key])) {
       diffs.push({ key, from: String(current[key]), to: String(incoming[key]) })
     }
   }
+  if (incoming.addressBook !== undefined) {
+    const currentCount = current.addressBook?.length ?? 0
+    const incomingCount = incoming.addressBook.length
+    const currentSig = JSON.stringify(
+      (current.addressBook ?? []).map((e) => [e.label, e.address])
+    )
+    const incomingSig = JSON.stringify(incoming.addressBook.map((e) => [e.label, e.address]))
+    if (currentSig !== incomingSig) {
+      diffs.push({
+        key: 'addressBook',
+        from: `${currentCount} ${currentCount === 1 ? 'entry' : 'entries'}`,
+        to: `${incomingCount} ${incomingCount === 1 ? 'entry' : 'entries'}`,
+      })
+    }
+  }
   return diffs
 }
+
+// Friendly labels for the diff table so users see "Quiet hours" instead of
+// "quietHoursEnabled" when reviewing an import preview.
+const FIELD_LABELS: Record<string, string> = {
+  themeMode: 'Theme mode',
+  network: 'Network',
+  addressDisplay: 'Address display',
+  toastsEnabled: 'Enable toasts',
+  autoDismiss: 'Auto-dismiss',
+  quietHoursEnabled: 'Quiet hours enabled',
+  quietHoursStart: 'Quiet hours start',
+  quietHoursEnd: 'Quiet hours end',
+  addressBook: 'Address book',
+  locale: 'Language',
+}
+
+const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+]
+
+const ADDRESS_OPTIONS: { value: 'full' | 'short' | 'friendly'; label: string }[] = [
+  { value: 'full', label: 'Full (G…)' },
+  { value: 'short', label: 'Short (G……)' },
+  { value: 'friendly', label: 'Friendly' },
+]
+
+import AppearanceSection from './settings/AppearanceSection'
+import NetworkSection from './settings/NetworkSection'
+import DisplaySection from './settings/DisplaySection'
+import NotificationsSection from './settings/NotificationsSection'
+import BackupSection from './settings/BackupSection'
+import './Settings.css'
 
 export default function Settings() {
   const { t } = useTranslation()
@@ -54,12 +109,29 @@ export default function Settings() {
     addressDisplay,
     toastsEnabled,
     autoDismiss,
+    setAutoDismiss,
     quietHoursEnabled,
+    setQuietHoursEnabled,
     quietHoursStart,
+    setQuietHoursStart,
     quietHoursEnd,
+    setQuietHoursEnd,
+    unlockRemindersEnabled,
+    locale,
+    setLocale,
     saveSettings,
+    resetToDefaults,
   } = useSettings()
   const { addToast } = useToast()
+  const {
+    entries: addressBookEntries,
+    addEntry,
+    updateEntry,
+    removeEntry,
+    replaceEntries,
+    maxEntries,
+  } = useAddressBook()
+  const { address, isConnected } = useWallet()
 
   useDocumentTitle(t('settings.title'))
 
@@ -75,6 +147,7 @@ export default function Settings() {
       quietHoursEnabled: t('settings.fieldLabels.quietHoursEnabled'),
       quietHoursStart: t('settings.fieldLabels.quietHoursStart'),
       quietHoursEnd: t('settings.fieldLabels.quietHoursEnd'),
+      unlockRemindersEnabled: t('settings.fieldLabels.unlockRemindersEnabled'),
     }),
     [t]
   )
@@ -97,14 +170,77 @@ export default function Settings() {
     [t]
   )
 
+  // Address book form state
+  const [newLabel, setNewLabel] = useState('')
+  const [newAddress, setNewAddress] = useState('')
+  const [addressBookError, setAddressBookError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editLabel, setEditLabel] = useState('')
+  const [editAddress, setEditAddress] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
+
+  const handleAddAddressBookEntry = (e: React.FormEvent) => {
+    e.preventDefault()
+    const result = addEntry(newLabel, newAddress)
+    if (!result.ok) {
+      setAddressBookError(result.error)
+      return
+    }
+    setAddressBookError(null)
+    setNewLabel('')
+    setNewAddress('')
+    addToast('success', `Saved "${result.entry.label}" to address book`)
+  }
+
+  const handleStartEdit = (id: string, label: string, address: string) => {
+    setEditingId(id)
+    setEditLabel(label)
+    setEditAddress(address)
+    setEditError(null)
+  }
+
+  const handleSaveEdit = (id: string) => {
+    const result = updateEntry(id, editLabel, editAddress)
+    if (!result.ok) {
+      setEditError(result.error)
+      return
+    }
+    setEditingId(null)
+    setEditError(null)
+    addToast('success', `Updated "${result.entry.label}"`)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setEditError(null)
+  }
+
+  const handleRemoveEntry = (id: string, label: string) => {
+    removeEntry(id)
+    if (editingId === id) {
+      setEditingId(null)
+      setEditError(null)
+    }
+    addToast('info', `Removed "${label}" from address book`)
+  }
+
+  // Settings draft mirrors the persisted state at mount and is what the user
+  // edits locally before pressing Save. The dirty detection below intentionally
+  // compares draft against the live context values so the Save button reflects
+  // the user's actual changes. Save / Cancel / Reset / Import paths each feed
+  // the draft explicitly, so the page does not auto-resync on every context
+  // change -- clicking ThemeToggle (or any other incidental context mutation)
+  // must not silently discard pending edits.
+  const [draft, setDraft] = useState(() => ({
+    themeMode: themeMode as 'light' | 'dark' | 'system',
   // Single settings model: every control on this page edits `draft`. Nothing
   // reaches the context, localStorage or the server until Save (or import
   // confirm). The dirty check compares the draft against the committed context
   // values, which only change through `saveSettings`. The draft deliberately
   // does not auto-resync on context changes so incidental mutations elsewhere
   // cannot silently discard pending edits.
-  const [draft, setDraft] = useState(() => ({
-    themeMode: themeMode as 'light' | 'dark' | 'system',
+  const [draft, setDraft] = useState<SettingsPayload>(() => ({
+    themeMode: themeMode as SettingsPayload['themeMode'],
     network,
     addressDisplay,
     toastsEnabled,
@@ -112,6 +248,8 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    unlockRemindersEnabled,
+    locale,
   }))
 
   const isDirty =
@@ -122,11 +260,48 @@ export default function Settings() {
     draft.autoDismiss !== autoDismiss ||
     draft.quietHoursEnabled !== quietHoursEnabled ||
     draft.quietHoursStart !== quietHoursStart ||
-    draft.quietHoursEnd !== quietHoursEnd
+    draft.quietHoursEnd !== quietHoursEnd ||
+    draft.unlockRemindersEnabled !== unlockRemindersEnabled
+    draft.locale !== locale
 
-  const updateDraft = (key: string, value: string | boolean | number) => {
+  const updateDraft = <K extends keyof SettingsPayload>(key: K, value: SettingsPayload[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
+
+  const [pendingNetworkSwitch, setPendingNetworkSwitch] = useState<{
+    nextNetwork: NetworkOption
+    pendingCount: number
+  } | null>(null)
+
+  const handleNetworkChange = useCallback(
+    (nextNetwork: NetworkOption) => {
+      if (nextNetwork === draft.network) return
+
+      const pendingCount =
+        isConnected && address
+          ? readPendingTransactions(draft.network, address).filter((tx) => tx.status === 'pending')
+              .length
+          : 0
+
+      if (pendingCount > 0) {
+        setPendingNetworkSwitch({ nextNetwork, pendingCount })
+        return
+      }
+
+      setDraft((prev) => ({ ...prev, network: nextNetwork }))
+    },
+    [draft.network, isConnected, address]
+  )
+
+  const handleNetworkSwitchConfirm = useCallback(() => {
+    if (!pendingNetworkSwitch) return
+    setDraft((prev) => ({ ...prev, network: pendingNetworkSwitch.nextNetwork }))
+    setPendingNetworkSwitch(null)
+  }, [pendingNetworkSwitch])
+
+  const handleNetworkSwitchCancel = useCallback(() => {
+    setPendingNetworkSwitch(null)
+  }, [])
 
   // Validate quiet hours draft: start and end must be valid HH:mm and must
   // differ. The provider falls back to defaults for invalid values, but we
@@ -156,10 +331,29 @@ export default function Settings() {
     })
   }, [draft.quietHoursEnabled, draft.quietHoursStart, draft.quietHoursEnd, quietHoursError])
 
+  // Notification permission is a browser-level grant rather than a setting, so
+  // it is read from the Notification API. The button below (and enabling the
+  // toggle) updates it; a denial simply leaves the feature inert.
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermissionState>(getNotificationPermission)
+
+  const requestUnlockReminderPermission = useCallback(async () => {
+    setNotificationPermission(await requestNotificationPermission())
+  }, [])
+
+  const handleUnlockRemindersToggle = (enabled: boolean) => {
+    updateDraft('unlockRemindersEnabled', enabled)
+    // Ask while the click/keypress gesture is still active, otherwise browsers
+    // may suppress the permission prompt.
+    if (enabled && notificationPermission === 'default') {
+      void requestUnlockReminderPermission()
+    }
+  }
+
   // Field-by-field equality. Memoized so reference stability keeps the auto-save
   // hook's internal effect from re-firing on every parent render.
   const draftIsEqual = useCallback(
-    (a: typeof draft, b: typeof draft) =>
+    (a: SettingsPayload, b: SettingsPayload) =>
       a.themeMode === b.themeMode &&
       a.network === b.network &&
       a.addressDisplay === b.addressDisplay &&
@@ -167,8 +361,11 @@ export default function Settings() {
       a.autoDismiss === b.autoDismiss &&
       a.quietHoursEnabled === b.quietHoursEnabled &&
       a.quietHoursStart === b.quietHoursStart &&
-      a.quietHoursEnd === b.quietHoursEnd,
+      a.quietHoursEnd === b.quietHoursEnd &&
+      a.unlockRemindersEnabled === b.unlockRemindersEnabled,
     []
+      a.locale === b.locale,
+    [],
   )
 
   // Committed settings live in the context; they only change when the user
@@ -184,6 +381,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
     }),
     [
       themeMode,
@@ -194,6 +392,7 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
     ]
   )
 
@@ -213,7 +412,8 @@ export default function Settings() {
     () => ({
       saving: t('settings.autoSave.saving'),
       saved: t('settings.autoSave.saved'),
-      savedRelative: (relative: string) => t('settings.autoSave.savedRelative', { when: relative }),
+      savedRelative: (relative: string) =>
+        t('settings.autoSave.savedRelative', { when: relative }),
       error: t('settings.autoSave.error'),
       retry: t('settings.autoSave.retry'),
     }),
@@ -232,6 +432,27 @@ export default function Settings() {
     // the change that was just made.
     saveSettings({ ...draft })
     addToast('success', t('settings.toasts.saved'))
+    const payload = {
+      themeMode: draft.themeMode,
+      network: draft.network,
+      addressDisplay: draft.addressDisplay,
+      toastsEnabled: draft.toastsEnabled,
+      autoDismiss: draft.autoDismiss,
+      quietHoursEnabled: draft.quietHoursEnabled,
+      quietHoursStart: draft.quietHoursStart,
+      quietHoursEnd: draft.quietHoursEnd,
+    }
+    setThemeMode(payload.themeMode)
+    setNetwork(payload.network)
+    setAddressDisplay(payload.addressDisplay)
+    setToastsEnabled(payload.toastsEnabled)
+    setAutoDismiss(payload.autoDismiss)
+    setQuietHoursEnabled(draft.quietHoursEnabled)
+    setQuietHoursStart(draft.quietHoursStart)
+    setQuietHoursEnd(draft.quietHoursEnd)
+    void setLocale(draft.locale)
+    saveSettings()
+    addToast('success', 'Settings saved successfully')
   }
 
   const handleCancel = () => {
@@ -248,7 +469,10 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      unlockRemindersEnabled,
+      locale,
     })
+    setDraft(committedSettings)
     addToast('info', t('settings.toasts.reverted'))
   }
 
@@ -262,6 +486,8 @@ export default function Settings() {
   }, [isDirty])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const resetButtonRef = useRef<HTMLButtonElement>(null)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [importPreview, setImportPreview] = useState<SettingsBlob | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const [importConfirmOpen, setImportConfirmOpen] = useState(false)
@@ -277,9 +503,9 @@ export default function Settings() {
     }
   }, [])
 
-  const currentSettings = useMemo(() => {
+  const currentSettings = useMemo<SettingsBlob>(() => {
     return {
-      themeMode,
+      themeMode: themeMode as 'light' | 'dark' | 'system',
       network,
       addressDisplay,
       toastsEnabled,
@@ -287,6 +513,9 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      addressBook: addressBookEntries,
+      unlockRemindersEnabled,
+      locale,
     }
   }, [
     themeMode,
@@ -297,6 +526,9 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    addressBookEntries,
+    unlockRemindersEnabled,
+    locale,
   ])
 
   const handleExport = useCallback(() => {
@@ -309,6 +541,9 @@ export default function Settings() {
       quietHoursEnabled,
       quietHoursStart,
       quietHoursEnd,
+      addressBook: addressBookEntries,
+      unlockRemindersEnabled,
+      locale,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -329,6 +564,8 @@ export default function Settings() {
     quietHoursEnabled,
     quietHoursStart,
     quietHoursEnd,
+    addressBookEntries,
+    unlockRemindersEnabled,
     addToast,
     t,
   ])
@@ -375,6 +612,16 @@ export default function Settings() {
   const handleImportConfirm = useCallback(() => {
     if (!importPreview) return
 
+    setThemeMode(importPreview.themeMode)
+    setNetwork(importPreview.network as 'public' | 'test')
+    setAddressDisplay(importPreview.addressDisplay as 'full' | 'short' | 'friendly')
+    setToastsEnabled(importPreview.toastsEnabled)
+    setAutoDismiss(importPreview.autoDismiss as AutoDismissOption)
+    setQuietHoursEnabled(importPreview.quietHoursEnabled ?? false)
+    setQuietHoursStart(importPreview.quietHoursStart ?? '22:00')
+    setQuietHoursEnd(importPreview.quietHoursEnd ?? '07:00')
+    if (importPreview.addressBook !== undefined) {
+      replaceEntries(importPreview.addressBook)
     const payload: SettingsPayload = {
       themeMode: importPreview.themeMode,
       network: importPreview.network as NetworkOption,
@@ -384,6 +631,7 @@ export default function Settings() {
       quietHoursEnabled: importPreview.quietHoursEnabled ?? false,
       quietHoursStart: importPreview.quietHoursStart ?? '22:00',
       quietHoursEnd: importPreview.quietHoursEnd ?? '07:00',
+      unlockRemindersEnabled: importPreview.unlockRemindersEnabled ?? false,
     }
 
     // Import is a commit path: mirror the imported values into the draft and
@@ -394,11 +642,49 @@ export default function Settings() {
     addToast('success', t('settings.toasts.imported'))
     resetImportState()
   }, [importPreview, saveSettings, addToast, resetImportState, t])
+    void setLocale(importPreview.locale ?? 'en')
+    saveSettings()
+    addToast('success', 'Settings imported successfully')
+    resetImportState()
+  }, [
+    importPreview,
+    setThemeMode,
+    setNetwork,
+    setAddressDisplay,
+    setToastsEnabled,
+    setAutoDismiss,
+    setQuietHoursEnabled,
+    setQuietHoursStart,
+    setQuietHoursEnd,
+    replaceEntries,
+    setLocale,
+    saveSettings,
+    addToast,
+    resetImportState,
+  ])
 
   const handleImportCancel = useCallback(() => {
     resetImportState()
     addToast('info', t('settings.toasts.importCancelled'))
   }, [resetImportState, addToast, t])
+
+  const handleResetConfirm = useCallback(() => {
+    const previousDraft = { ...draft }
+    try {
+      setDraft({ ...DEFAULT_SETTINGS })
+      resetToDefaults()
+      setResetConfirmOpen(false)
+      addToast('success', t('settings.toasts.reset'))
+    } catch {
+      setDraft(previousDraft)
+      setResetConfirmOpen(false)
+      addToast('danger', t('settings.toasts.resetFailed'))
+    }
+  }, [draft, resetToDefaults, addToast, t])
+
+  const handleResetCancel = useCallback(() => {
+    setResetConfirmOpen(false)
+  }, [])
 
   const diffs = importPreview ? computeDiff(currentSettings, importPreview) : []
 
@@ -408,37 +694,21 @@ export default function Settings() {
     if (diffs.length === 0) {
       return <p>{t('settings.importDialog.noChanges')}</p>
     }
+  const handleImportedPayload = useCallback(
+    (payload: SettingsPayload) => {
+      // Import is a commit path: mirror the imported values into the draft and
+      // hand the same snapshot to `saveSettings`, so the page and the committed
+      // context can never diverge.
+      setDraft(payload)
+      saveSettings(payload)
+    },
+    [saveSettings]
+  )
 
-    return (
-      <div>
-        <p>
-          {t('settings.importDialog.changesIntro', { file: importFileName || 'file' })}
-        </p>
-        <table className="settings-diff-table">
-          <thead>
-            <tr>
-              <th>{t('settings.importDialog.setting')}</th>
-              <th>{t('settings.importDialog.current')}</th>
-              <th>{t('settings.importDialog.imported')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {diffs.map((d) => (
-              <tr key={d.key}>
-                <td>{FIELD_LABELS[d.key] || d.key}</td>
-                <td>
-                  <code>{d.from}</code>
-                </td>
-                <td>
-                  <code>{d.to}</code>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }, [importPreview, diffs, importFileName, FIELD_LABELS, t])
+  const backup = useSettingsBackup({
+    currentSettings: committedSettings,
+    onImportConfirm: handleImportedPayload,
+  })
 
   return (
     <div className="settings-page">
@@ -484,7 +754,7 @@ export default function Settings() {
         >
           <Select
             value={draft.network}
-            onChange={(v) => updateDraft('network', v as NetworkOption)}
+            onChange={(v) => handleNetworkChange(v as NetworkOption)}
             options={[
               { value: 'public', label: t('settings.network.public') },
               { value: 'test', label: t('settings.network.test') },
@@ -518,6 +788,148 @@ export default function Settings() {
           />
           <p className="settings-field-hint">{t('settings.display.friendlyHint')}</p>
         </fieldset>
+
+        <FormField id="language-select" label="Language">
+          <Select
+            id="language-select"
+            value={draft.locale}
+            onChange={(v) => updateDraft('locale', v)}
+            options={[
+              { value: 'en', label: 'English' },
+              { value: 'es', label: 'Español' },
+            ]}
+            ariaLabel="Display language"
+          />
+        </FormField>
+      </section>
+
+      {/* ── Address Book ────────────────────────────────────────── */}
+      <section className="settings-section" aria-labelledby="address-book-heading">
+        <h2 id="address-book-heading">Address Book</h2>
+        <p className="settings-section__description">
+          Save trusted Stellar counterparties for quick selection ({addressBookEntries.length} /{' '}
+          {maxEntries}).
+        </p>
+
+        <form onSubmit={handleAddAddressBookEntry} className="settings-address-book-form" noValidate>
+          <FormField id="address-book-label" label="Label">
+            <Input
+              value={newLabel}
+              onChange={(e) => {
+                setNewLabel(e.target.value)
+                if (addressBookError) setAddressBookError(null)
+              }}
+              placeholder="e.g. Treasury, Alice"
+              maxLength={64}
+              autoComplete="off"
+            />
+          </FormField>
+
+          <FormField id="address-book-address" label="Stellar address">
+            <Input
+              value={newAddress}
+              onChange={(e) => {
+                setNewAddress(e.target.value)
+                if (addressBookError) setAddressBookError(null)
+              }}
+              placeholder="G..."
+              autoComplete="off"
+            />
+          </FormField>
+
+          {addressBookError && (
+            <div role="alert" className="settings-address-book-error">
+              {addressBookError}
+            </div>
+          )}
+
+          <button type="submit" className="settings-btn settings-btn--secondary">
+            Add address
+          </button>
+        </form>
+
+        {addressBookEntries.length === 0 ? (
+          <p className="settings-field-hint">No saved addresses yet for this wallet and network.</p>
+        ) : (
+          <ul className="settings-address-book-list" aria-label="Saved addresses">
+            {addressBookEntries.map((entry) => (
+              <li key={entry.id} className="settings-address-book-item">
+                {editingId === entry.id ? (
+                  <div className="settings-address-book-edit">
+                    <Input
+                      aria-label="Edit label"
+                      value={editLabel}
+                      onChange={(e) => {
+                        setEditLabel(e.target.value)
+                        if (editError) setEditError(null)
+                      }}
+                      maxLength={64}
+                    />
+                    <Input
+                      aria-label="Edit Stellar address"
+                      value={editAddress}
+                      onChange={(e) => {
+                        setEditAddress(e.target.value)
+                        if (editError) setEditError(null)
+                      }}
+                    />
+                    {editError && (
+                      <div role="alert" className="settings-address-book-error">
+                        {editError}
+                      </div>
+                    )}
+                    <div className="settings-address-book-item-actions">
+                      <button
+                        type="button"
+                        className="settings-btn settings-btn--primary"
+                        onClick={() => handleSaveEdit(entry.id)}
+                      >
+                        Save entry
+                      </button>
+                      <button
+                        type="button"
+                        className="settings-btn settings-btn--secondary"
+                        onClick={handleCancelEdit}
+                      >
+                        Cancel edit
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="settings-address-book-row">
+                    <div className="settings-address-book-info">
+                      <strong>{entry.label}</strong>{' '}
+                      <code>
+                        {formatAddressForDisplay(
+                          entry.address,
+                          addressDisplay as AddressDisplayMode
+                        )}
+                      </code>
+                    </div>
+                    <div className="settings-address-book-item-actions">
+                      <button
+                        type="button"
+                        className="settings-btn settings-btn--secondary"
+                        onClick={() => handleStartEdit(entry.id, entry.label, entry.address)}
+                        aria-label={`Edit ${entry.label}`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="settings-btn settings-btn--secondary"
+                        onClick={() => handleRemoveEntry(entry.id, entry.label)}
+                        aria-label={`Remove ${entry.label}`}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* ── Notifications ───────────────────────────────────────── */}
@@ -615,58 +1027,119 @@ export default function Settings() {
             />
           </FormField>
         </fieldset>
-      </section>
 
-      {/* ── Backup & Restore ────────────────────────────────────── */}
-      <section className="settings-section" aria-labelledby="backup-heading">
-        <h2 id="backup-heading">{t('settings.backup.heading')}</h2>
-        <p className="settings-section__description">
-          {t('settings.backup.description')}
-        </p>
+        {/* Unlock reminders sub-section */}
+        <fieldset className="settings-fieldset settings-fieldset--card">
+          <legend className="settings-fieldset__legend settings-fieldset__legend--card">
+            {t('settings.notifications.unlockReminders.heading')}
+          </legend>
+          <p className="settings-section__description">
+            {t('settings.notifications.unlockReminders.description')}
+          </p>
 
-        <div className="settings-backup-row">
-          <button
-            type="button"
-            className="settings-btn settings-btn--secondary"
-            onClick={handleExport}
-            aria-label={t('settings.backup.exportAriaLabel')}
+          <FormField
+            id="unlock-reminders-enabled"
+            label={t('settings.notifications.unlockReminders.enable')}
+            hint={t('settings.notifications.unlockReminders.hint')}
           >
-            {t('settings.backup.exportSettings')}
-          </button>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json,application/json"
-            onChange={handleFileChange}
-            className="sr-only"
-            aria-hidden="true"
-            tabIndex={-1}
-          />
-          <button
-            type="button"
-            className="settings-btn settings-btn--secondary"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label={t('settings.backup.importAriaLabel')}
-          >
-            {t('settings.backup.importSettings')}
-          </button>
-        </div>
-
-        {importError && (
-          <div role="alert" className="settings-import-error">
-            <ErrorState
-              type="validation"
-              title={t('settings.backup.invalidFile')}
-              message={importError}
-              action={{
-                label: t('settings.backup.clearError'),
-                onClick: resetImportState,
-              }}
+            <Toggle
+              checked={draft.unlockRemindersEnabled}
+              onChange={handleUnlockRemindersToggle}
+              ariaLabel={t('settings.notifications.unlockReminders.enable')}
             />
-          </div>
-        )}
+          </FormField>
+
+          {draft.unlockRemindersEnabled && (
+            <>
+              {notificationPermission === 'granted' && (
+                <p className="settings-field-hint" role="status">
+                  {t('settings.notifications.unlockReminders.permission.granted')}
+                </p>
+              )}
+
+              {notificationPermission === 'denied' && (
+                <p className="settings-field-hint" role="status">
+                  {t('settings.notifications.unlockReminders.permission.denied')}
+                </p>
+              )}
+
+              {notificationPermission === 'unsupported' && (
+                <p className="settings-field-hint" role="status">
+                  {t('settings.notifications.unlockReminders.permission.unsupported')}
+                </p>
+              )}
+
+              {notificationPermission === 'default' && (
+                <div className="settings-preview-row">
+                  <button
+                    type="button"
+                    className="settings-btn settings-btn--secondary"
+                    onClick={() => void requestUnlockReminderPermission()}
+                  >
+                    {t('settings.notifications.unlockReminders.permission.request')}
+                  </button>
+                  <span className="settings-field-hint">
+                    {t('settings.notifications.unlockReminders.permission.requestHint')}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </fieldset>
       </section>
+      <AppearanceSection
+        themeMode={draft.themeMode}
+        onChange={(v) => updateDraft('themeMode', v)}
+      />
+
+      <NetworkSection
+        network={draft.network}
+        onChange={(v) => updateDraft('network', v)}
+      />
+
+      <DisplaySection
+        addressDisplay={draft.addressDisplay}
+        onChange={(v) => updateDraft('addressDisplay', v)}
+      />
+
+      <NotificationsSection
+        toastsEnabled={draft.toastsEnabled}
+        autoDismiss={draft.autoDismiss}
+        quietHoursEnabled={draft.quietHoursEnabled}
+        quietHoursStart={draft.quietHoursStart}
+        quietHoursEnd={draft.quietHoursEnd}
+        quietHoursError={quietHoursError}
+        onToastsEnabledChange={(v) => updateDraft('toastsEnabled', v)}
+        onAutoDismissChange={(v) => updateDraft('autoDismiss', v)}
+        onQuietHoursEnabledChange={(v) => updateDraft('quietHoursEnabled', v)}
+        onQuietHoursStartChange={(v) => updateDraft('quietHoursStart', v)}
+        onQuietHoursEndChange={(v) => updateDraft('quietHoursEnd', v)}
+        onPreviewToast={() => addToast('info', t('settings.toasts.preview'))}
+      />
+
+      <BackupSection
+        fileInputRef={backup.fileInputRef}
+        importError={backup.importError}
+        importConfirmOpen={backup.importConfirmOpen}
+        importFileName={backup.importFileName}
+        diffs={backup.diffs}
+        hasImportPreview={backup.importPreview !== null}
+        onExport={backup.handleExport}
+        onFileChange={backup.handleFileChange}
+        onResetImport={backup.resetImportState}
+        onImportConfirm={backup.handleImportConfirm}
+        onImportCancel={backup.handleImportCancel}
+      />
+
+      <ConfirmDialog
+        open={importConfirmOpen}
+        title="Confirm settings import"
+        description={confirmDescription}
+        confirmLabel="Apply settings"
+        cancelLabel="Cancel"
+        onConfirm={handleImportConfirm}
+        onCancel={handleImportCancel}
+      />
 
       {/* ── Actions bar ─────────────────────────────────────────── */}
       <div className="settings-actions" role="group" aria-label={t('settings.actions.ariaLabel')}>
@@ -692,6 +1165,14 @@ export default function Settings() {
         >
           {t('settings.actions.cancel')}
         </button>
+        <button
+          ref={resetButtonRef}
+          type="button"
+          className="settings-btn settings-btn--secondary"
+          onClick={() => setResetConfirmOpen(true)}
+        >
+          {t('settings.actions.resetToDefaults')}
+        </button>
       </div>
 
       <ConfirmDialog
@@ -701,6 +1182,38 @@ export default function Settings() {
         confirmLabel={t('settings.importDialog.confirmLabel')}
         onConfirm={handleImportConfirm}
         onCancel={handleImportCancel}
+      />
+
+      <ConfirmDialog
+        open={pendingNetworkSwitch !== null}
+        title={t('settings.networkSwitchDialog.title')}
+        subtitle={t('settings.networkSwitchDialog.subtitle')}
+        description={
+          pendingNetworkSwitch ? (
+            <p>
+              {t('settings.networkSwitchDialog.description', {
+                count: pendingNetworkSwitch.pendingCount,
+                currentNetwork: getNetworkLabel(draft.network),
+                targetNetwork: getNetworkLabel(pendingNetworkSwitch.nextNetwork),
+              })}
+            </p>
+          ) : null
+        }
+        confirmLabel={t('settings.networkSwitchDialog.confirmLabel')}
+        confirmHint={t('settings.networkSwitchDialog.confirmHint', {
+          currentNetwork: getNetworkLabel(draft.network),
+        })}
+        variant="info"
+        onConfirm={handleNetworkSwitchConfirm}
+        onCancel={handleNetworkSwitchCancel}
+        open={resetConfirmOpen}
+        title={t('settings.resetDialog.title')}
+        description={<p>{t('settings.resetDialog.description')}</p>}
+        confirmLabel={t('settings.resetDialog.confirmLabel')}
+        confirmHint={t('settings.resetDialog.confirmHint')}
+        returnFocusRef={resetButtonRef}
+        onConfirm={handleResetConfirm}
+        onCancel={handleResetCancel}
       />
     </div>
   )

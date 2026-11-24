@@ -28,6 +28,15 @@ const h = vi.hoisted(() => ({
   advanceIdentityEpoch: vi.fn(),
   clearAppLocalStorage: vi.fn(),
   emitWalletSessionEvent: vi.fn(),
+  crossTabMessageHandler: null as null | ((message: {
+    type: 'disconnect' | 'idle-lock' | 'network-change'
+    tabId: string
+    correlationId: string
+    timestamp: number
+    network?: 'public' | 'test'
+  }) => void),
+  crossTabPublish: vi.fn(),
+  crossTabClose: vi.fn(),
 }))
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => h.navigate }))
@@ -52,6 +61,22 @@ vi.mock('../hooks/useIdleTimeout', () => ({
 vi.mock('../lib/walletAudit', () => ({
   emitWalletSessionEvent: (...args: unknown[]) => h.emitWalletSessionEvent(...args),
   generateCorrelationId: () => 'corr-test',
+}))
+vi.mock('../lib/crossTab', () => ({
+  createCrossTabBus: (onMessage: (message: {
+    type: 'disconnect' | 'idle-lock' | 'network-change'
+    tabId: string
+    correlationId: string
+    timestamp: number
+    network?: 'public' | 'test'
+  }) => void) => {
+    h.crossTabMessageHandler = onMessage
+    return {
+      tabId: 'tab-test',
+      publish: (...args: unknown[]) => h.crossTabPublish(...args),
+      close: () => h.crossTabClose(),
+    }
+  },
 }))
 vi.mock('../components/SessionTimeoutDialog', () => ({
   default: ({
@@ -147,6 +172,9 @@ describe('WalletProvider', () => {
     h.advanceIdentityEpoch.mockReset()
     h.clearAppLocalStorage.mockReset()
     h.emitWalletSessionEvent.mockReset()
+    h.crossTabMessageHandler = null
+    h.crossTabPublish.mockReset()
+    h.crossTabClose.mockReset()
   })
 
   afterEach(() => {
@@ -241,6 +269,10 @@ describe('WalletProvider', () => {
     rerender(<Tree />)
 
     expect(wallet.disconnect).toHaveBeenCalledTimes(1)
+    expect(h.crossTabPublish).toHaveBeenCalledWith('disconnect', { correlationId: 'corr-test' })
+    expect(h.advanceIdentityEpoch).toHaveBeenCalledTimes(1)
+    expect(h.clearAppLocalStorage).toHaveBeenCalledTimes(1)
+    expect(h.navigate).toHaveBeenCalledWith('/signin')
     expect(screen.getByTestId('isConnected')).toHaveTextContent('false')
     expect(screen.getByTestId('address')).toHaveTextContent('none')
     expect(screen.getByTestId('reauthTime')).toHaveTextContent('null')
@@ -334,6 +366,65 @@ describe('WalletProvider', () => {
         metadata: expect.objectContaining({ reason: 'inactivity' }),
       })
     )
+  })
+
+  it('tears down a session after a remote tab event without echoing it', () => {
+    const wallet = makeWallet({
+      address: 'GABC',
+      isConnected: true,
+      disconnect: vi.fn(() => {
+        h.state.wallet.isConnected = false
+        h.state.wallet.address = ''
+      }),
+    })
+    h.state.wallet = wallet
+    render(<Tree />)
+
+    act(() => {
+      h.crossTabMessageHandler?.({
+        type: 'idle-lock',
+        tabId: 'tab-remote',
+        correlationId: 'remote-idle-123',
+        timestamp: Date.now(),
+      })
+    })
+
+    expect(wallet.disconnect).toHaveBeenCalledOnce()
+    expect(h.advanceIdentityEpoch).toHaveBeenCalledOnce()
+    expect(h.clearAppLocalStorage).toHaveBeenCalledOnce()
+    expect(h.navigate).toHaveBeenCalledWith('/signin')
+    expect(h.crossTabPublish).not.toHaveBeenCalled()
+    expect(h.emitWalletSessionEvent).toHaveBeenCalledWith(
+      'session_expired',
+      expect.objectContaining({
+        correlationId: 'remote-idle-123',
+        metadata: expect.objectContaining({
+          remoteTriggered: true,
+          sourceTabId: 'tab-remote',
+        }),
+      })
+    )
+  })
+
+  it('broadcasts a network change and tears down the current session', () => {
+    const wallet = makeWallet({
+      address: 'GABC',
+      isConnected: true,
+      disconnect: vi.fn(),
+    })
+    h.state.wallet = wallet
+    const { rerender } = render(<Tree />)
+
+    h.state.settings = { network: 'test', reauthThresholdMinutes: 15 }
+    rerender(<Tree />)
+
+    expect(h.crossTabPublish).toHaveBeenCalledWith('network-change', {
+      correlationId: 'corr-test',
+      network: 'test',
+    })
+    expect(wallet.disconnect).toHaveBeenCalled()
+    expect(h.advanceIdentityEpoch).toHaveBeenCalled()
+    expect(h.clearAppLocalStorage).toHaveBeenCalled()
   })
 
   it('exposes the same value through the legacy useWallet alias inside a provider', () => {

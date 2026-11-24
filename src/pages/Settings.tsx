@@ -1,16 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { DEFAULT_SETTINGS, useSettings } from '../context/SettingsContext'
+import { useSettings, type SettingsPayload } from '../context/SettingsContext'
 import { useToast } from '../components/ToastProvider'
-import { FormField, Input } from '../components/forms'
-import Toggle from '../components/controls/Toggle'
-import Select from '../components/controls/Select'
-import SegmentedControl from '../components/controls/SegmentedControl'
-import ConfirmDialog from '../components/ConfirmDialog'
-import { ErrorState } from '../components/states'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { validateAndNormalize, type SettingsBlob } from '../lib/settingsSchema'
 import { isQuietHoursActive, parseHHmm } from '../lib/quietHours'
@@ -21,7 +16,9 @@ import {
   requestNotificationPermission,
   type NotificationPermissionState,
 } from '../lib/unlockReminders'
+import { parseHHmm } from '../lib/quietHours'
 import { useDebouncedAutoSave } from '../hooks/useDebouncedAutoSave'
+import { useSettingsBackup } from '../hooks/useSettingsBackup'
 import { AutoSaveIndicator, type AutoSaveIndicatorLabels } from '../components/indicators'
 import { updateSettings } from '../api/settings'
 import { AUTO_SAVE_DEFAULTS } from '../config/autoSave'
@@ -96,6 +93,13 @@ const ADDRESS_OPTIONS: { value: 'full' | 'short' | 'friendly'; label: string }[]
   { value: 'short', label: 'Short (G……)' },
   { value: 'friendly', label: 'Friendly' },
 ]
+
+import AppearanceSection from './settings/AppearanceSection'
+import NetworkSection from './settings/NetworkSection'
+import DisplaySection from './settings/DisplaySection'
+import NotificationsSection from './settings/NotificationsSection'
+import BackupSection from './settings/BackupSection'
+import './Settings.css'
 
 export default function Settings() {
   const { t } = useTranslation()
@@ -229,6 +233,14 @@ export default function Settings() {
   // must not silently discard pending edits.
   const [draft, setDraft] = useState(() => ({
     themeMode: themeMode as 'light' | 'dark' | 'system',
+  // Single settings model: every control on this page edits `draft`. Nothing
+  // reaches the context, localStorage or the server until Save (or import
+  // confirm). The dirty check compares the draft against the committed context
+  // values, which only change through `saveSettings`. The draft deliberately
+  // does not auto-resync on context changes so incidental mutations elsewhere
+  // cannot silently discard pending edits.
+  const [draft, setDraft] = useState<SettingsPayload>(() => ({
+    themeMode: themeMode as SettingsPayload['themeMode'],
     network,
     addressDisplay,
     toastsEnabled,
@@ -252,7 +264,7 @@ export default function Settings() {
     draft.unlockRemindersEnabled !== unlockRemindersEnabled
     draft.locale !== locale
 
-  const updateDraft = (key: string, value: string | boolean | number) => {
+  const updateDraft = <K extends keyof SettingsPayload>(key: K, value: SettingsPayload[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -341,7 +353,7 @@ export default function Settings() {
   // Field-by-field equality. Memoized so reference stability keeps the auto-save
   // hook's internal effect from re-firing on every parent render.
   const draftIsEqual = useCallback(
-    (a: typeof draft, b: typeof draft) =>
+    (a: SettingsPayload, b: SettingsPayload) =>
       a.themeMode === b.themeMode &&
       a.network === b.network &&
       a.addressDisplay === b.addressDisplay &&
@@ -400,7 +412,8 @@ export default function Settings() {
     () => ({
       saving: t('settings.autoSave.saving'),
       saved: t('settings.autoSave.saved'),
-      savedRelative: (relative: string) => t('settings.autoSave.savedRelative', { when: relative }),
+      savedRelative: (relative: string) =>
+        t('settings.autoSave.savedRelative', { when: relative }),
       error: t('settings.autoSave.error'),
       retry: t('settings.autoSave.retry'),
     }),
@@ -459,6 +472,7 @@ export default function Settings() {
       unlockRemindersEnabled,
       locale,
     })
+    setDraft(committedSettings)
     addToast('info', t('settings.toasts.reverted'))
   }
 
@@ -680,37 +694,21 @@ export default function Settings() {
     if (diffs.length === 0) {
       return <p>{t('settings.importDialog.noChanges')}</p>
     }
+  const handleImportedPayload = useCallback(
+    (payload: SettingsPayload) => {
+      // Import is a commit path: mirror the imported values into the draft and
+      // hand the same snapshot to `saveSettings`, so the page and the committed
+      // context can never diverge.
+      setDraft(payload)
+      saveSettings(payload)
+    },
+    [saveSettings]
+  )
 
-    return (
-      <div>
-        <p>
-          {t('settings.importDialog.changesIntro', { file: importFileName || 'file' })}
-        </p>
-        <table className="settings-diff-table">
-          <thead>
-            <tr>
-              <th>{t('settings.importDialog.setting')}</th>
-              <th>{t('settings.importDialog.current')}</th>
-              <th>{t('settings.importDialog.imported')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {diffs.map((d) => (
-              <tr key={d.key}>
-                <td>{FIELD_LABELS[d.key] || d.key}</td>
-                <td>
-                  <code>{d.from}</code>
-                </td>
-                <td>
-                  <code>{d.to}</code>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }, [importPreview, diffs, importFileName, FIELD_LABELS, t])
+  const backup = useSettingsBackup({
+    currentSettings: committedSettings,
+    onImportConfirm: handleImportedPayload,
+  })
 
   return (
     <div className="settings-page">
@@ -1089,57 +1087,49 @@ export default function Settings() {
           )}
         </fieldset>
       </section>
+      <AppearanceSection
+        themeMode={draft.themeMode}
+        onChange={(v) => updateDraft('themeMode', v)}
+      />
 
-      {/* ── Backup & Restore ────────────────────────────────────── */}
-      <section className="settings-section" aria-labelledby="backup-heading">
-        <h2 id="backup-heading">{t('settings.backup.heading')}</h2>
-        <p className="settings-section__description">
-          {t('settings.backup.description')}
-        </p>
+      <NetworkSection
+        network={draft.network}
+        onChange={(v) => updateDraft('network', v)}
+      />
 
-        <div className="settings-backup-row">
-          <button
-            type="button"
-            className="settings-btn settings-btn--secondary"
-            onClick={handleExport}
-            aria-label={t('settings.backup.exportAriaLabel')}
-          >
-            {t('settings.backup.exportSettings')}
-          </button>
+      <DisplaySection
+        addressDisplay={draft.addressDisplay}
+        onChange={(v) => updateDraft('addressDisplay', v)}
+      />
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json,application/json"
-            onChange={handleFileChange}
-            className="sr-only"
-            aria-hidden="true"
-            tabIndex={-1}
-          />
-          <button
-            type="button"
-            className="settings-btn settings-btn--secondary"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label={t('settings.backup.importAriaLabel')}
-          >
-            {t('settings.backup.importSettings')}
-          </button>
-        </div>
+      <NotificationsSection
+        toastsEnabled={draft.toastsEnabled}
+        autoDismiss={draft.autoDismiss}
+        quietHoursEnabled={draft.quietHoursEnabled}
+        quietHoursStart={draft.quietHoursStart}
+        quietHoursEnd={draft.quietHoursEnd}
+        quietHoursError={quietHoursError}
+        onToastsEnabledChange={(v) => updateDraft('toastsEnabled', v)}
+        onAutoDismissChange={(v) => updateDraft('autoDismiss', v)}
+        onQuietHoursEnabledChange={(v) => updateDraft('quietHoursEnabled', v)}
+        onQuietHoursStartChange={(v) => updateDraft('quietHoursStart', v)}
+        onQuietHoursEndChange={(v) => updateDraft('quietHoursEnd', v)}
+        onPreviewToast={() => addToast('info', t('settings.toasts.preview'))}
+      />
 
-        {importError && (
-          <div role="alert" className="settings-import-error">
-            <ErrorState
-              type="validation"
-              title={t('settings.backup.invalidFile')}
-              message={importError}
-              action={{
-                label: t('settings.backup.clearError'),
-                onClick: resetImportState,
-              }}
-            />
-          </div>
-        )}
-      </section>
+      <BackupSection
+        fileInputRef={backup.fileInputRef}
+        importError={backup.importError}
+        importConfirmOpen={backup.importConfirmOpen}
+        importFileName={backup.importFileName}
+        diffs={backup.diffs}
+        hasImportPreview={backup.importPreview !== null}
+        onExport={backup.handleExport}
+        onFileChange={backup.handleFileChange}
+        onResetImport={backup.resetImportState}
+        onImportConfirm={backup.handleImportConfirm}
+        onImportCancel={backup.handleImportCancel}
+      />
 
       <ConfirmDialog
         open={importConfirmOpen}

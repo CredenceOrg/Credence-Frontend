@@ -153,6 +153,19 @@
         }
       }
     },
+    "addressBook": {
+      "heading": "Address Book",
+      "description": "Save trusted Stellar counterparties for quick selection.",
+      "label": "Label",
+      "address": "Stellar address",
+      "add": "Add address",
+      "edit": "Edit",
+      "remove": "Remove",
+      "empty": "No saved addresses yet for this wallet and network.",
+      "chooseFromAddressBook": "Choose from address book",
+      "filterPlaceholder": "Filter saved addresses...",
+      "noMatches": "No matching addresses"
+    },
     "backup": {
       "heading": "Backup & Restore",
       "description": "Export your settings as a JSON file, or import settings from a previous export.",
@@ -181,6 +194,14 @@
       "imported": "Imported",
       "confirmHint": "This will overwrite your current settings with the imported values.",
       "confirmLabel": "Apply settings"
+    },
+    "networkSwitchDialog": {
+      "title": "Switch network?",
+      "subtitle": "Pending transactions will be hidden while on another network.",
+      "description_one": "You have {{count}} pending transaction on {{currentNetwork}}. Switching to {{targetNetwork}} will hide it and show balances and pending transactions for {{targetNetwork}} instead.",
+      "description_other": "You have {{count}} pending transactions on {{currentNetwork}}. Switching to {{targetNetwork}} will hide them and show balances and pending transactions for {{targetNetwork}} instead.",
+      "confirmHint": "Your pending transactions stay saved for {{currentNetwork}} and will reappear if you switch back.",
+      "confirmLabel": "Switch network"
     },
     "autoSave": {
       "saving": "Saving…",
@@ -353,7 +374,10 @@
       "when": "When",
       "transaction": "Transaction",
       "viewOnExplorer": "View transaction {{hash}} on Stellar explorer",
-      "viewLink": "View ↗"
+      "viewLink": "View ↗",
+      "sortBy": "Sort by {{column}}",
+      "sortAscending": "{{column}}, sorted ascending. Activate to sort descending.",
+      "sortDescending": "{{column}}, sorted descending. Activate to clear sorting."
     },
     "status": {
       "all": "All",

@@ -9,6 +9,19 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useWallet } from '../context/WalletContext'
 import { truncateAddress } from '../lib/stellar'
 
+export function formatTimestamp(date: Date = new Date()): string {
+  return (
+    date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'UTC',
+    }) + ' UTC'
+  )
+}
+
 export default function Attestations() {
   const { t } = useTranslation()
   const { address, isConnected } = useWallet()
@@ -34,6 +47,8 @@ export default function Attestations() {
       statusLabel: t('activityTimeline.submitted'),
       tone: 'success',
       meta: t('activityTimeline.subject', { subject: payload.subject.substring(0, 8) }),
+      ...(payload.evidenceHash ? { evidenceHash: payload.evidenceHash } : {}),
+      ...(payload.evidenceFile ? { evidenceFile: payload.evidenceFile } : {}),
     }
 
     setItems((prev) => [newItem, ...prev])

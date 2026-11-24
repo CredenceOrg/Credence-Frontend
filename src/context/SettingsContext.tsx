@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { createTypedCustomEvent, SETTINGS_EVENTS } from '../events/schema'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
+import { updateSettings } from '../api/settings'
+import {
+  clearOutbox,
+  flushOutbox,
+  getOutboxPendingCount,
+  subscribeOutbox,
+} from '../lib/offlineOutbox'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
@@ -52,6 +59,12 @@ export interface SettingsState {
   resetToDefaults: () => void
   cancelSettings: () => void
   hasUnsavedChanges: boolean
+  /** True when at least one settings PATCH is queued in the offline outbox. */
+  hasPendingOfflineSave: boolean
+  /** Number of settings PATCHes currently queued in the offline outbox. */
+  pendingOfflineSaveCount: number
+  /** Manually attempt to replay queued settings PATCHes (e.g. on reconnect). */
+  flushPendingOfflineSaves: () => void
 }
 
 type PersistedSettings = {
@@ -98,6 +111,9 @@ const defaultState: SettingsState = {
   resetToDefaults: () => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
+  hasPendingOfflineSave: false,
+  pendingOfflineSaveCount: 0,
+  flushPendingOfflineSaves: () => {},
 }
 
 const SettingsContext = createContext<SettingsState>(defaultState)
@@ -253,6 +269,46 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
   const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)
 
+  // Offline outbox state: number of queued settings PATCHes awaiting replay.
+  const [pendingOfflineSaveCount, setPendingOfflineSaveCount] = useState<number>(() =>
+    getOutboxPendingCount()
+  )
+
+  // Keep the pending count in sync with the outbox (enqueue, flush, clear).
+  useEffect(() => {
+    setPendingOfflineSaveCount(getOutboxPendingCount())
+    return subscribeOutbox(() => {
+      setPendingOfflineSaveCount(getOutboxPendingCount())
+    })
+  }, [])
+
+  // Replay queued settings PATCHes whenever connectivity returns.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleOnline = () => {
+      void flushOutbox()
+    }
+
+    window.addEventListener('online', handleOnline)
+    // Opportunistically flush on mount in case we came back online while unmounted.
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+      void flushOutbox()
+    }
+
+    return () => window.removeEventListener('online', handleOnline)
+  }, [])
+
+  // Drop queued writes belonging to a previous identity epoch (wallet/network change).
+  useEffect(() => {
+    clearOutbox()
+    setPendingOfflineSaveCount(getOutboxPendingCount())
+  }, [network])
+
+  const flushPendingOfflineSaves = useCallback(() => {
+    void flushOutbox()
+  }, [])
+
   const hasUnsavedChanges =
     themeMode !== originalSettings.themeMode ||
     network !== originalSettings.network ||
@@ -294,6 +350,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, payload))
     }
+
+    // Persist to the backend through the outbox-aware client. Network failures are
+    // queued for replay; other failures are surfaced by updateSettings itself.
+    void updateSettings(payload).catch(() => {
+      // updateSettings already enqueues network failures; swallow here so the
+      // local save still succeeds and the indicator reflects the queued state.
+    })
   }
 
   const resetToDefaults = () => {
@@ -385,6 +448,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     resetToDefaults,
     cancelSettings,
     hasUnsavedChanges,
+    hasPendingOfflineSave: pendingOfflineSaveCount > 0,
+    pendingOfflineSaveCount,
+    flushPendingOfflineSaves,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

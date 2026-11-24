@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { getPenaltyRate, computeWithdrawBreakdown } from './penalty'
-import type { BondStatus, MockBond } from './penalty'
+import type { BondStatus } from './penalty'
+import type { Bond } from './bondPenalty'
+
+/** Test-only alias; production code uses `Bond`. */
+type MockBond = Bond
 
 describe('getPenaltyRate', () => {
   it('returns 0 for active bonds', () => {

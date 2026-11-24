@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Settings from './Settings'
 
@@ -294,6 +294,58 @@ describe('Settings — unsaved-changes guard', () => {
   })
 })
 
+describe('Settings — Address Book', () => {
+  const VALID_KEY = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('adds, edits, and removes an address book entry', async () => {
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Alice' } })
+    fireEvent.change(screen.getByLabelText('Stellar address'), { target: { value: VALID_KEY } })
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+
+    // Edit entry
+    await user.click(screen.getByRole('button', { name: 'Edit Alice' }))
+    const editLabelInput = screen.getByLabelText('Edit label')
+    fireEvent.change(editLabelInput, { target: { value: 'Alice Treasury' } })
+    await user.click(screen.getByRole('button', { name: 'Save entry' }))
+
+    expect(screen.getByText('Alice Treasury')).toBeInTheDocument()
+
+    // Remove entry
+    await user.click(screen.getByRole('button', { name: 'Remove Alice Treasury' }))
+    expect(screen.queryByText('Alice Treasury')).toBeNull()
+  })
+
+  it('rejects invalid and duplicate addresses with clear messages', async () => {
+    const user = userEvent.setup()
+    render(<Settings />)
+
+    // Invalid address
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Bad' } })
+    fireEvent.change(screen.getByLabelText('Stellar address'), {
+      target: { value: 'not-a-valid-key' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(/invalid stellar address/i)
+
+    // Add valid address
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Alice' } })
+    fireEvent.change(screen.getByLabelText('Stellar address'), { target: { value: VALID_KEY } })
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+
+    // Duplicate address
+    fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Alice Dup' } })
+    fireEvent.change(screen.getByLabelText('Stellar address'), { target: { value: VALID_KEY } })
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(/already in your address book/i)
 describe('Settings — network switch confirmation', () => {
   const TEST_ADDRESS = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF'
 

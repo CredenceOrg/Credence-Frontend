@@ -28,6 +28,8 @@ import { useToast } from '../components/ToastProvider'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import { useRecentLookups } from '../hooks/useRecentLookups'
 import { addRecentLookup, sanitizeRecentLookups } from '../lib/recentLookupsStorage'
+import TrustHistoryChart from '../components/TrustHistoryChart'
+import { useTrustHistory } from '../hooks/useTrustHistory'
 
 export interface RecentLookupItem {
   address: string
@@ -92,6 +94,11 @@ export default function TrustScore() {
   const recordedResultRef = useRef<string | null>(null)
 
   const { data: rawData, isLoading, error, refetch } = useTrustScore(lookupAddress)
+  const {
+    data: historyPoints,
+    isLoading: isHistoryLoading,
+    error: historyError,
+  } = useTrustHistory(lookupAddress)
 
   // The API response is unvalidated at runtime. Normalise it once at the
   // render boundary so every downstream expression (hero badge, gauge,
@@ -290,6 +297,14 @@ export default function TrustScore() {
                 </span>
               </div>
             </div>
+          )}
+
+          {lookupAddress && (
+            <TrustHistoryChart
+              points={historyPoints}
+              isLoading={isHistoryLoading}
+              error={historyError?.message}
+            />
           )}
         </section>
       )}

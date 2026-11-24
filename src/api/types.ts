@@ -27,6 +27,8 @@ export type { components, operations, paths } from './generated'
 export type BondStatus = components['schemas']['BondStatus']
 export type TrustTier = components['schemas']['TrustTier']
 export type TrustScore = components['schemas']['TrustScore']
+export type TrustScoreHistory = components['schemas']['TrustScoreHistory']
+export type TrustScoreHistoryPoint = components['schemas']['TrustScoreHistoryPoint']
 export type Bond = components['schemas']['Bond']
 export type BondList = components['schemas']['BondList']
 export type Transaction = components['schemas']['Transaction']

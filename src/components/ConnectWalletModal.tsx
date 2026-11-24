@@ -351,7 +351,7 @@ export default function ConnectWalletModal({
                   <a
                     href={FREIGHTER_INSTALL_URL}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="connect-wallet-dialog__install-link"
                   >
                     Install Freighter

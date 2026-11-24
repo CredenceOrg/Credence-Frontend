@@ -222,8 +222,6 @@ sequenceDiagram
 
 ---
 
----
-
 ## Cross-tab wallet session synchronization
 
 Wallet session boundaries are shared across open tabs through `src/lib/crossTab.ts`.

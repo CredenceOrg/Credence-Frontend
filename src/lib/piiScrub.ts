@@ -27,6 +27,30 @@ const PII_KEY_PATTERN =
 
 const EMAIL_VALUE_PATTERN = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i
 
+/**
+ * Global twin of {@link EMAIL_VALUE_PATTERN} used when rewriting free-form
+ * text (crash reports), where every occurrence must be replaced, not just the
+ * first one.
+ */
+const EMAIL_VALUE_PATTERN_GLOBAL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi
+
+/**
+ * Stellar account (`G…`) and contract (`C…`) identifiers: a type prefix
+ * followed by 55 base-32 characters. Wallet addresses are the most sensitive
+ * value this app handles, so they are stripped from anything leaving the
+ * browser.
+ */
+const STELLAR_ADDRESS_PATTERN = /\b[GC][A-Z2-7]{55}\b/g
+
+/**
+ * Money-shaped keys. Crash reports keep the *shape* of a failure but not the
+ * user's balances, so these are redacted alongside classic PII.
+ */
+const TELEMETRY_AMOUNT_KEY_PATTERN =
+  /^(amount|amounts|amount[-_]?usdc|balance|balances|total[-_]?amount)$/i
+
+const CIRCULAR_PLACEHOLDER = '[Circular]'
+
 const REDACTED = '[REDACTED]'
 
 /**
@@ -98,4 +122,65 @@ function scrubValue(value: unknown, key: string | undefined, seen: WeakSet<objec
  */
 export function scrubPII<T>(value: T): T {
   return scrubValue(value, undefined, new WeakSet<object>()) as T
+}
+
+function scrubTelemetryString(value: string): string {
+  return value
+    .replace(EMAIL_VALUE_PATTERN_GLOBAL, REDACTED)
+    .replace(STELLAR_ADDRESS_PATTERN, REDACTED)
+}
+
+function scrubTelemetryValue(
+  value: unknown,
+  key: string | undefined,
+  seen: WeakSet<object>
+): unknown {
+  if (key !== undefined && (PII_KEY_PATTERN.test(key) || TELEMETRY_AMOUNT_KEY_PATTERN.test(key))) {
+    return REDACTED
+  }
+
+  if (typeof value === 'string') {
+    return scrubTelemetryString(value)
+  }
+
+  // Errors are reported to Sentry as the exception itself, but they can also
+  // arrive inside `extra`/`contexts`. Keep the class name, drop the raw
+  // message and stack, which routinely embed addresses and amounts.
+  if (value instanceof Error) {
+    return { name: value.name, message: scrubTelemetryString(value.message) }
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => scrubTelemetryValue(item, undefined, seen))
+  }
+
+  if (isPlainObject(value)) {
+    if (seen.has(value)) return CIRCULAR_PLACEHOLDER
+    seen.add(value)
+    const result: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value)) {
+      result[k] = scrubTelemetryValue(v, k, seen)
+    }
+    seen.delete(value)
+    return result
+  }
+
+  return value
+}
+
+/**
+ * Deep-clone `value` for transmission to a third-party error reporter,
+ * redacting:
+ *   - known PII object keys (same list as {@link scrubPII});
+ *   - amount/balance keys, so balances never leave the device;
+ *   - any Stellar account (`G…`) or contract (`C…`) address inside a string;
+ *   - any email address inside a string;
+ *   - `Error` instances, reduced to their class name.
+ *
+ * Unlike {@link scrubPII} this never throws: crash reporting must survive
+ * whatever shape a failing component hands it. Circular references collapse to
+ * a `'[Circular]'` marker instead of aborting the report.
+ */
+export function scrubTelemetryPII<T>(value: T): T {
+  return scrubTelemetryValue(value, undefined, new WeakSet<object>()) as T
 }

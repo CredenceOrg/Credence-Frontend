@@ -1,6 +1,7 @@
 import { Component, ReactNode } from 'react'
 import ErrorState, { type ErrorStateKind, type ErrorStateSeverity } from './states/ErrorState'
 import { reloadPageGuarded, resetAllLazyChunks } from '../lib/lazyWithRetry'
+import { captureException } from '../lib/errorReporting'
 import './ErrorBoundary.css'
 
 export interface ErrorBoundaryProps {
@@ -181,6 +182,17 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
         // Dev-only diagnostic - do not log the full message in production.
         console.error('[ErrorBoundary]', payload.name, kind, severity, retryCount)
       }
+
+      // Error reporting is opt-in and lazy: this resolves to a no-op when no
+      // Sentry DSN is configured, and the SDK scrubs wallet addresses and
+      // amounts from the event before it leaves the browser.
+      void captureException(normalized, {
+        source: 'ErrorBoundary',
+        kind,
+        severity,
+        retryCount,
+        exhausted,
+      })
     } catch {
       // Telemetry must never break the fallback render.
     }

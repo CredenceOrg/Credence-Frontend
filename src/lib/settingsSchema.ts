@@ -22,6 +22,8 @@ export interface SettingsBlob {
   quietHoursEnd: string
   /** Optional wallet-scoped address book entries included in backup/restore. */
   addressBook?: AddressBookEntry[]
+  /** When true, local browser notifications remind the user before a bond unlocks. */
+  unlockRemindersEnabled: boolean
 }
 
 const VALID_THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system']
@@ -38,6 +40,7 @@ const DEFAULT_SETTINGS: SettingsBlob = {
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
+  unlockRemindersEnabled: false,
 }
 
 export function defaultSettings(): SettingsBlob {
@@ -158,6 +161,9 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
         result.addressBook = coerceAddressBookEntries(input.addressBook)
       }
     }
+  // Optional for the same backwards-compatibility reason as quiet hours.
+  if (input.unlockRemindersEnabled !== undefined) {
+    result.unlockRemindersEnabled = Boolean(input.unlockRemindersEnabled)
   }
 
   if (errors.length > 0) {

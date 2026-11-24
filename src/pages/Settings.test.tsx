@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Settings from './Settings'
 
@@ -58,6 +59,7 @@ const BASE_SETTINGS = {
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
+  unlockRemindersEnabled: false,
 }
 
 /** Build a complete useSettings return value with the given overrides. */
@@ -72,6 +74,7 @@ function settingsFixture(overrides: Partial<ReturnType<typeof mockUseSettings>> 
     setQuietHoursEnabled: vi.fn(),
     setQuietHoursStart: vi.fn(),
     setQuietHoursEnd: vi.fn(),
+    setUnlockRemindersEnabled: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     hasUnsavedChanges: false,
@@ -401,6 +404,52 @@ describe('Settings — network switch confirmation', () => {
       network: 'public',
     })
     mockReadPendingTransactions.mockReturnValue([makePendingTx({ status: 'failed' })])
+describe('Settings — unlock reminders', () => {
+  const originalNotificationDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'Notification')
+
+  const stubNotification = (
+    permission: NotificationPermission,
+    requestPermission?: () => Promise<NotificationPermission>
+  ) => {
+    Object.defineProperty(globalThis, 'Notification', {
+      configurable: true,
+      writable: true,
+      value: { permission, requestPermission: requestPermission ?? vi.fn() },
+    })
+  }
+
+  afterEach(() => {
+    if (originalNotificationDescriptor) {
+      Object.defineProperty(globalThis, 'Notification', originalNotificationDescriptor)
+    } else {
+      // jsdom does not implement Notification; remove the stub we installed.
+      delete (globalThis as { Notification?: unknown }).Notification
+    }
+  })
+
+  it('renders the toggle and, when enabled, the permission status', async () => {
+    stubNotification('granted')
+    mockUseSettings.mockReturnValue(settingsFixture({ unlockRemindersEnabled: true }))
+
+    render(<Settings />)
+
+    expect(screen.getByRole('switch', { name: 'Enable unlock reminders' })).toBeChecked()
+    expect(screen.getByText('Browser notifications are allowed for this site.')).toBeInTheDocument()
+  })
+
+  it('explains how to unblock reminders when permission was denied', async () => {
+    stubNotification('denied')
+    mockUseSettings.mockReturnValue(settingsFixture({ unlockRemindersEnabled: true }))
+
+    render(<Settings />)
+
+    expect(screen.getByText(/notifications are blocked/i)).toBeInTheDocument()
+  })
+
+  it('offers a permission request button while permission is undecided', async () => {
+    const requestPermission = vi.fn().mockResolvedValue('granted')
+    stubNotification('default', requestPermission)
+    mockUseSettings.mockReturnValue(settingsFixture({ unlockRemindersEnabled: true }))
 
     const user = userEvent.setup()
     render(<Settings />)
@@ -452,6 +501,44 @@ describe('Settings — network switch confirmation', () => {
       makePendingTx({ id: 'tx-1', hash: 'hash-1' }),
       makePendingTx({ id: 'tx-2', hash: 'hash-2' }),
     ])
+    await user.click(screen.getByRole('button', { name: 'Allow browser notifications' }))
+
+    expect(requestPermission).toHaveBeenCalledTimes(1)
+    expect(
+      await screen.findByText('Browser notifications are allowed for this site.')
+    ).toBeInTheDocument()
+  })
+
+  it('round-trips the setting through backup import', async () => {
+    const saveSettings = vi.fn()
+    mockUseSettings.mockReturnValue(settingsFixture({ saveSettings }))
+
+    const { container } = render(<Settings />)
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(
+      [JSON.stringify({ themeMode: 'light', unlockRemindersEnabled: true })],
+      'credence-settings.json',
+      { type: 'application/json' }
+    )
+
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    // The import dialog is type-to-confirm, so unlock it before applying.
+    const phraseInput = await screen.findByPlaceholderText('CONFIRM')
+    fireEvent.change(phraseInput, { target: { value: 'CONFIRM' } })
+    fireEvent.click(screen.getByText('Apply settings'))
+
+    await waitFor(() => {
+      expect(saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ unlockRemindersEnabled: true })
+      )
+    })
+  })
+
+  it('requests permission when the toggle is turned on from the undecided state', async () => {
+    const requestPermission = vi.fn().mockResolvedValue('default')
+    stubNotification('default', requestPermission)
 
     const user = userEvent.setup()
     render(<Settings />)
@@ -470,5 +557,8 @@ describe('Settings — network switch confirmation', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(networkSelect.value).toBe('test')
+    await user.click(screen.getByRole('switch', { name: 'Enable unlock reminders' }))
+
+    expect(requestPermission).toHaveBeenCalledTimes(1)
   })
 })

@@ -35,6 +35,7 @@ const DEFAULTS: SettingsPayload = {
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
+  unlockRemindersEnabled: false,
 }
 
 function wrapper({ children }: { children: ReactNode }) {

@@ -68,7 +68,7 @@ export default function Disclaimer({
             Full terms &amp; conditions
           </span>
         ) : (
-          <a href={termsHref} aria-label="Read full terms and conditions">
+          <a href={termsHref} aria-label="Read Full terms & conditions">
             Full terms &amp; conditions
           </a>
         )}

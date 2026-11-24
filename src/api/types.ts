@@ -30,6 +30,7 @@ export type TrustScore = components['schemas']['TrustScore']
 export type Bond = components['schemas']['Bond']
 export type BondList = components['schemas']['BondList']
 export type Transaction = components['schemas']['Transaction']
+export type TransactionList = components['schemas']['TransactionList']
 export type ApiMessageResponse = components['schemas']['ApiMessageResponse']
 export type Tenant = components['schemas']['Tenant']
 

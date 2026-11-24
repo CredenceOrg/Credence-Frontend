@@ -23,6 +23,8 @@ import FooterLink from './FooterLink'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+import { useSettings } from '../context/SettingsContext'
+import { THEME_CHANNEL_EVENT, getCurrentTheme, getNextTheme } from '../lib/themeCycle'
 import { useRouteFocus } from '../hooks/useRouteFocus'
 import { DOM_EVENTS } from '../events'
 import './Layout.css'
@@ -38,6 +40,8 @@ export default function Layout() {
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt)
+  const [themeAnnouncement, setThemeAnnouncement] = useState('')
+  const { applyThemeMode } = useSettings()
 
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
@@ -94,6 +98,22 @@ export default function Layout() {
   // Global keyboard shortcuts help dialog (Shift+?)
   useKeyboardShortcut(['Shift', '?'], () => setShortcutsOpen(true))
 
+  // Toggle light / dark theme (T). The hook already ignores typing contexts
+  // (inputs, textareas, selects, contenteditable) and Ctrl/Cmd/Alt combos.
+  const toggleTheme = useCallback(
+    (event: KeyboardEvent) => {
+      // Shift+T is not the documented shortcut; auto-repeat would flicker the theme.
+      if (event.shiftKey || event.repeat) return
+      const next = getNextTheme(getCurrentTheme())
+      applyThemeMode(next)
+      // Keep the header ThemeToggle's icon/label in sync.
+      window.dispatchEvent(new CustomEvent(THEME_CHANNEL_EVENT, { detail: { theme: next } }))
+      setThemeAnnouncement(`Switched to ${next} mode`)
+    },
+    [applyThemeMode]
+  )
+  useKeyboardShortcut('T', toggleTheme, { preventDefault: false })
+
   return (
     <div className="appShell">
       <a className="skip-link" href="#main-content">
@@ -102,6 +122,15 @@ export default function Layout() {
 
       {/* Screen reader SPA route transition updates manager */}
       <RouteAnnouncer />
+      <div
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="theme-announcer"
+      >
+        {themeAnnouncement}
+      </div>
 
       <header className="appHeader">
         <div className="container appHeader-inner">

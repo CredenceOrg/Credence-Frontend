@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './ThemeToggle.css'
+import { THEME_CHANNEL_EVENT, getNextTheme, type Theme } from '../lib/themeCycle'
 
 const THEME_STORAGE_KEY = 'theme'
-const THEME_CHANNEL_EVENT = 'theme-change'
 
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
-export type Theme = 'light' | 'dark'
+export type { Theme }
 
 function isValidTheme(value: unknown): value is Theme {
   return value === 'light' || value === 'dark'
@@ -183,10 +183,10 @@ export default function ThemeToggle() {
 
   const toggleTheme = () => {
     hasExplicitChoice.current = true
-    commitTheme(theme === 'light' ? 'dark' : 'light')
+    commitTheme(getNextTheme(theme))
   }
 
-  const nextTheme = theme === 'light' ? 'dark' : 'light'
+  const nextTheme = getNextTheme(theme)
 
   return (
     <button

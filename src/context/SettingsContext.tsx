@@ -3,7 +3,7 @@ import { createTypedCustomEvent, SETTINGS_EVENTS } from '../events/schema'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
 
-type ThemeMode = 'light' | 'dark' | 'system'
+export type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
 export type NetworkOption = 'public' | 'test'
 /** Address display option literal union */
@@ -46,6 +46,11 @@ export interface SettingsState {
    * persist the current context state.
    */
   saveSettings: (next?: SettingsPayload) => void
+  /**
+   * Apply and persist only the theme mode (e.g. from the `T` shortcut), leaving any
+   * other unsaved edits in the settings form untouched.
+   */
+  applyThemeMode: (m: ThemeMode) => void
   resetToDefaults: () => void
   cancelSettings: () => void
   hasUnsavedChanges: boolean
@@ -89,6 +94,7 @@ const defaultState: SettingsState = {
   setQuietHoursStart: () => {},
   setQuietHoursEnd: () => {},
   saveSettings: (_payload?: SettingsPayload) => {},
+  applyThemeMode: (_m: ThemeMode) => {},
   resetToDefaults: () => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
@@ -283,6 +289,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const applyThemeMode = (mode: ThemeMode) => {
+    const next: PersistedSettings = { ...persistedSettings, themeMode: mode }
+    setThemeMode(mode)
+    setPersistedSettings(next)
+    setOriginalSettings((prev) => ({ ...prev, themeMode: mode }))
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, next))
+    }
+  }
+
   const resetToDefaults = () => {
     const defaults = {
       themeMode: defaultPersistedSettings.themeMode,
@@ -364,6 +380,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursStart,
     setQuietHoursEnd,
     saveSettings,
+    applyThemeMode,
     resetToDefaults,
     cancelSettings,
     hasUnsavedChanges,

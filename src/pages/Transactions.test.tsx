@@ -238,6 +238,25 @@ describe('Transactions page', () => {
       expect(screen.queryByText('bond_create')).not.toBeInTheDocument()
       expect(screen.getByText('withdraw')).toBeInTheDocument()
     })
+
+    it('keeps DOM node count bounded for very large transaction lists', () => {
+      const manyTransactions = Array.from({ length: 5000 }, (_, index) => ({
+        id: `tx-${index}`,
+        type: 'bond_create',
+        amountUsdc: 1000,
+        status: 'confirmed',
+        timestamp: '2026-01-15T12:00:00Z',
+        hash: `hash-${index}`,
+      })) as unknown as Transaction[]
+
+      mockLoaded(manyTransactions)
+      render(<Transactions />)
+
+      const rows = document.querySelectorAll('tbody tr')
+      expect(rows.length).toBeLessThan(120)
+      expect(screen.getByLabelText('Select transaction tx-0')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Select transaction tx-4999')).not.toBeInTheDocument()
+    })
   })
 
   describe('row-level selection', () => {

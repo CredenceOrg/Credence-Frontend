@@ -111,3 +111,9 @@ npm run build && npx lhci autorun
 | `/settings`     |      >= 0.9 |       >= 0.95 |         >= 0.9 | Wallet-gated; renders disconnected state |
 
 HTML and JSON reports are written to `./lhci-reports` (gitignored). If you need to adjust a route threshold, document the reason in your PR and update the table above.
+## 5. Virtualize Long Lists and Tables
+
+When rendering large datasets (for example 1,000+ rows), render only the visible window and keep the DOM size bounded.
+
+- Use the shared VirtualizedList primitive for long lists and list-like experiences.
+- For native tables, keep table semantics valid (`table`, `thead`, `tbody`) and use spacer rows inside `tbody` instead of replacing rows with non-table elements.

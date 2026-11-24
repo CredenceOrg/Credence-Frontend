@@ -59,6 +59,20 @@ beforeEach(() => {
 })
 
 describe('ThemeToggle', () => {
+  it.each([
+    ['light', true, 'false', 'Switch to dark mode'],
+    ['dark', false, 'true', 'Switch to light mode'],
+  ] as const)(
+    'initializes from saved %s settings even when the OS differs',
+    (mode, osDark, pressed, name) => {
+      localStorage.setItem('credence:settings', JSON.stringify({ themeMode: mode }))
+      window.matchMedia = mockMatchMedia(osDark)
+      renderToggle()
+      expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', pressed)
+      expect(screen.getByRole('button')).toHaveAccessibleName(name)
+    }
+  )
+
   it('renders a button', () => {
     renderToggle()
     expect(screen.getByRole('button')).toBeInTheDocument()

@@ -10,8 +10,8 @@
  * - Race condition prevention
  */
 
-import { describe, test, expect, beforeEach, vi } from 'vitest'
-import { MutationManager, createIdempotencyKey, type MutationResult } from '../lib/mutationManager'
+import { describe, test, expect, beforeEach } from 'vitest'
+import { MutationManager, createIdempotencyKey } from '../lib/mutationManager'
 
 /** Mock API response for Bond creation. */
 interface Bond {
@@ -39,7 +39,7 @@ describe('Mutation Integration - Bond and Trust Score Operations', () => {
     mockApiFailureCount = 0
   }
 
-  const mockCreateBond = async (amount: number, duration: number): Promise<Bond> => {
+  const mockCreateBond = async (amount: number, _duration: number): Promise<Bond> => {
     // Simulate network latency
     await new Promise((r) => setTimeout(r, mockApiDelay))
 

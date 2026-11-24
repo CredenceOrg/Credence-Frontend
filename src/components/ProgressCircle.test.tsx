@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import Progress, { ProgressCircle } from './Progress'
+import ProgressCircle from './Progress'
 
 describe('ProgressCircle', () => {
   it.each(['sm', 'md', 'lg'] as const)('renders the %s size preset', (size) => {
-    const { container } = render(<ProgressCircle value={50} size={size} />)
+    const { container } = render(<ProgressCircle aria-label="Progress" value={50} size={size} />)
 
     expect(container.firstElementChild).toHaveClass(`progress-circle--${size}`)
   })
 
   it('renders a determinate progress value', () => {
-    render(<ProgressCircle value={65} />)
+    render(<ProgressCircle aria-label="Progress" value={65} />)
 
     const progress = screen.getByRole('progressbar')
     expect(progress).toHaveAttribute('aria-valuenow', '65')
@@ -20,7 +20,7 @@ describe('ProgressCircle', () => {
   })
 
   it('renders the indeterminate state without a determinate value', () => {
-    const { container } = render(<ProgressCircle indeterminate />)
+    const { container } = render(<ProgressCircle aria-label="Progress" {...({ indeterminate: true } as Record<string, unknown>)} />)
 
     expect(container.firstElementChild).toHaveClass('progress-circle--indeterminate')
     expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-valuenow')
@@ -29,14 +29,14 @@ describe('ProgressCircle', () => {
   it.each(['primary', 'success', 'warning', 'danger'] as const)(
     'applies the %s colour variant',
     (variant) => {
-      const { container } = render(<ProgressCircle value={50} variant={variant} />)
+      const { container } = render(<ProgressCircle aria-label="Progress" value={50} {...({ variant } as Record<string, unknown>)} />)
 
       expect(container.firstElementChild).toHaveClass(`progress-circle--${variant}`)
     }
   )
 
   it('preserves the zero-value boundary as determinate progress', () => {
-    render(<ProgressCircle value={0} />)
+    render(<ProgressCircle aria-label="Progress" value={0} />)
 
     const progress = screen.getByRole('progressbar')
     expect(progress).toHaveAttribute('aria-valuenow', '0')

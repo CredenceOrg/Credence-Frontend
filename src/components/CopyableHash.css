@@ -21,7 +21,7 @@
   background: transparent;
   border: none;
   border-radius: var(--credence-radius-sm, 0.25rem);
-  color: var(--credence-color-text-muted, #666);
+  color: var(--credence-color-text-muted);
   cursor: pointer;
   transition:
     color 0.2s ease,
@@ -30,18 +30,18 @@
 
 .copyable-hash__copy-btn:hover,
 .copyable-hash__link:hover {
-  color: var(--credence-color-text, #111);
-  background-color: var(--credence-color-surface-hover, rgba(0, 0, 0, 0.05));
+  color: var(--credence-color-text);
+  background-color: var(--credence-color-surface-hover);
 }
 
 .copyable-hash__copy-btn:focus-visible,
 .copyable-hash__link:focus-visible {
-  outline: 2px solid var(--credence-color-primary, #0055ff);
+  outline: 2px solid var(--credence-color-primary);
   outline-offset: 2px;
 }
 
 .copyable-hash__copy-btn--copied {
-  color: var(--credence-color-success, #008800);
+  color: var(--credence-color-success);
 }
 
 .copyable-hash__copy-btn--loading {
@@ -59,7 +59,7 @@
   align-items: center;
   gap: var(--credence-spacing-2xs, 0.25rem);
   font-size: 0.8em;
-  color: var(--credence-color-danger, #cc0000);
+  color: var(--credence-color-danger-inline);
   margin-left: var(--credence-spacing-2xs, 0.25rem);
 }
 
@@ -83,7 +83,7 @@
 }
 
 .copyable-hash__retry-btn:focus-visible {
-  outline: 2px solid var(--credence-color-primary, #0055ff);
+  outline: 2px solid var(--credence-color-primary);
   outline-offset: 1px;
 }
 

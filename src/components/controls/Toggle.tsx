@@ -8,7 +8,13 @@ interface ToggleProps {
   ariaLabel?: string
   disabled?: boolean
   isLoading?: boolean
+  loadingLabel?: string
   error?: string
+  onRetry?: () => void
+  retryLabel?: string
+  isStale?: boolean
+  staleMessage?: string
+  disabledReason?: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean | 'true' | 'false'
   'aria-required'?: boolean | 'true' | 'false'

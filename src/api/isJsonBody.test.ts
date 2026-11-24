@@ -19,12 +19,12 @@ describe('isJsonBody', () => {
   it('returns false for primitives (rejection)', () => {
     expect(isJsonBody('')).toBe(false)
     expect(isJsonBody('foo')).toBe(false)
-    expect(isJsonBody(0)).toBe(false)
-    expect(isJsonBody(1)).toBe(false)
-    expect(isJsonBody(true)).toBe(false)
-    expect(isJsonBody(false)).toBe(false)
-    expect(isJsonBody(Symbol('test'))).toBe(false)
-    expect(isJsonBody(BigInt(10))).toBe(false)
+    expect(isJsonBody(0 as unknown as Parameters<typeof isJsonBody>[0])).toBe(false)
+    expect(isJsonBody(1 as unknown as Parameters<typeof isJsonBody>[0])).toBe(false)
+    expect(isJsonBody(true as unknown as Parameters<typeof isJsonBody>[0])).toBe(false)
+    expect(isJsonBody(false as unknown as Parameters<typeof isJsonBody>[0])).toBe(false)
+    expect(isJsonBody(Symbol('test') as unknown as Parameters<typeof isJsonBody>[0])).toBe(false)
+    expect(isJsonBody(BigInt(10) as unknown as Parameters<typeof isJsonBody>[0])).toBe(false)
   })
 
   it('returns false for native BodyInit non-JSON types (boundary/rejection)', () => {

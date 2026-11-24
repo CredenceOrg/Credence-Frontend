@@ -169,7 +169,7 @@ describe('WhatsNewDialog – state transitions', () => {
   // ── Empty updates list ────────────────────────────────────────────────────
 
   it('renders neither error nor spinner when updates is empty and no error/loading', () => {
-    // WindowedList returns null when items is empty and no emptyMessage is passed,
+    // VirtualizedList returns null when items is empty and no emptyMessage is passed,
     // so no list element is expected — but crucially neither the error panel nor
     // the loading spinner must be shown either.
     setHookState({ updates: [], isLoading: false, error: null })

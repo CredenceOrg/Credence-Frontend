@@ -713,7 +713,7 @@ describe('BackToTop — mount, visibility and accessibility boundaries', () => {
         <BackToTop />
       </form>
     )
-    const submitSpy = vi.fn((e: React.FormEvent) => e.preventDefault())
+    const submitSpy = vi.fn((e: Event) => e.preventDefault())
     const form = screen.getByRole('button', { name: /back to top/i }).closest('form')!
     form.addEventListener('submit', submitSpy)
 

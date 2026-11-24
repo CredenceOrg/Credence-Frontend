@@ -199,12 +199,7 @@ export default function Transactions() {
     if (count === 0) return
     const csv = transactionsToCsv(orderedSelected)
     downloadCsv(csv, buildExportFilename())
-    addToast(
-      'success',
-      count === 1
-        ? t('transactions.bulk.exportToast.successOne')
-        : t('transactions.bulk.exportToast.successOther', { count })
-    )
+    addToast('success', t('transactions.bulk.exportToast.success', { count }))
   }, [orderedSelected, addToast, t])
 
   // ── Delete confirmation flow ───────────────────────────────────────
@@ -236,12 +231,7 @@ export default function Transactions() {
       return next
     })
     setSelectedIds(new Set())
-    addToast(
-      'success',
-      count === 1
-        ? t('transactions.bulk.deleteConfirm.successOne')
-        : t('transactions.bulk.deleteConfirm.successOther', { count })
-    )
+    addToast('success', t('transactions.bulk.deleteConfirm.success', { count }))
     setIsDeleting(false)
     setDeleteDialogOpen(false)
   }, [orderedSelected, addToast, t])
@@ -318,9 +308,7 @@ export default function Transactions() {
             data-testid={TEST_IDS.TX_BULK_ACTIONS_BAR}
           >
             <p className="transactions__bulkActions-count" aria-live="polite">
-              {selectedIds.size === 1
-                ? t('transactions.bulk.selectedOne', { count: 1 })
-                : t('transactions.bulk.selectedOther', { count: selectedIds.size })}
+              {t('transactions.bulk.selected', { count: selectedIds.size })}
             </p>
             <div className="transactions__bulkActions-buttons">
               <Button
@@ -482,11 +470,9 @@ export default function Transactions() {
       <ConfirmDialog
         open={isDeleteDialogOpen}
         title={t('transactions.bulk.deleteConfirm.title')}
-        subtitle={
-          orderedSelected.length === 1
-            ? t('transactions.bulk.deleteConfirm.subtitle', { count: 1 })
-            : t('transactions.bulk.deleteConfirm.subtitle_other', { count: orderedSelected.length })
-        }
+        subtitle={t('transactions.bulk.deleteConfirm.subtitle', {
+          count: orderedSelected.length,
+        })}
         confirmPhrase={t('transactions.bulk.deleteConfirm.phrase')}
         confirmHint={t('transactions.bulk.deleteConfirm.hint')}
         confirmLabel={t('transactions.bulk.deleteConfirm.confirm')}

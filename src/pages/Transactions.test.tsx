@@ -1,7 +1,8 @@
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TEST_IDS } from '../config/testIds'
+import i18n from '../i18n/config'
 import Transactions from './Transactions'
 import type { Transaction } from '../api/types'
 import type { TransactionWithNetwork } from '../lib/pendingTransactionsStorage'
@@ -213,6 +214,7 @@ describe('Transactions page', () => {
       expect(within(table).getByText('attest')).toBeInTheDocument()
       // Bulk bar renders but stays visually hidden while selection is empty.
       expect(getBulkBar().hasAttribute('hidden')).toBe(true)
+      expect(within(getBulkBar()).getByText('0 selected')).toBeInTheDocument()
     })
 
     it('renders the table when the filter is "all" by default', () => {
@@ -282,6 +284,46 @@ describe('Transactions page', () => {
       const row = cb.closest('tr')!
       expect(row.className).toContain('transactions__row--selected')
       expect(row.getAttribute('data-selected')).toBe('true')
+    })
+  })
+
+  describe('localized plural counts', () => {
+    beforeEach(async () => {
+      i18n.addResourceBundle(
+        'fr',
+        'translation',
+        {
+          transactions: {
+            bulk: {
+              selected_one: '{{count}} sélectionné',
+              selected_other: '{{count}} sélectionnés',
+            },
+          },
+        },
+        true,
+        true
+      )
+      await i18n.changeLanguage('fr')
+    })
+
+    afterEach(async () => {
+      cleanup()
+      await i18n.changeLanguage('en')
+      i18n.removeResourceBundle('fr', 'translation')
+    })
+
+    it('uses the active locale plural rules for zero, one, and many selections', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+
+      expect(within(getBulkBar()).getByText('0 sélectionné')).toBeInTheDocument()
+
+      await user.click(rowCheckboxFor('tx-1'))
+      expect(within(getBulkBar()).getByText('1 sélectionné')).toBeInTheDocument()
+
+      await user.click(rowCheckboxFor('tx-2'))
+      expect(within(getBulkBar()).getByText('2 sélectionnés')).toBeInTheDocument()
     })
   })
 
@@ -429,7 +471,7 @@ describe('Transactions page', () => {
       render(<Transactions />)
       await user.click(getSelectAll())
       await user.click(screen.getByTestId(TEST_IDS.TX_BULK_EXPORT_BUTTON))
-      expect(addToastMock).toHaveBeenCalledWith('success', expect.stringContaining('3'))
+      expect(addToastMock).toHaveBeenCalledWith('success', '3 transactions exported')
     })
   })
 
@@ -440,7 +482,24 @@ describe('Transactions page', () => {
       render(<Transactions />)
       await user.click(rowCheckboxFor('tx-1'))
       await user.click(screen.getByTestId(TEST_IDS.TX_BULK_DELETE_BUTTON))
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      const dialog = screen.getByRole('dialog')
+      expect(dialog).toBeInTheDocument()
+      expect(
+        within(dialog).getByText('You are about to remove 1 transaction from this list.')
+      ).toBeInTheDocument()
+    })
+
+    it('uses a plural subtitle for multiple selected transactions', async () => {
+      const user = userEvent.setup()
+      mockLoaded()
+      render(<Transactions />)
+      await user.click(getSelectAll())
+      await user.click(screen.getByTestId(TEST_IDS.TX_BULK_DELETE_BUTTON))
+      expect(
+        within(screen.getByRole('dialog')).getByText(
+          'You are about to remove 3 transactions from this list.'
+        )
+      ).toBeInTheDocument()
     })
 
     it('cancels from the dialog without removing anything', async () => {
@@ -474,6 +533,7 @@ describe('Transactions page', () => {
       expect(screen.getByText('withdraw')).toBeInTheDocument()
       // Selection clears + bar hides.
       expect(getBulkBar().hasAttribute('hidden')).toBe(true)
+      expect(addToastMock).toHaveBeenCalledWith('success', '2 transactions removed from view')
     })
 
     it('disables the confirm button until DELETE is typed', async () => {

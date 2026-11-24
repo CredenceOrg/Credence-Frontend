@@ -409,25 +409,25 @@
     "bulk": {
       "selectLabel": "Select transaction {{id}}",
       "selectAll": "Select all transactions",
-      "selectedOne": "{{count}} selected",
-      "selectedOther": "{{count}} selected",
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected",
       "actionsLabel": "Bulk actions",
       "export": "Export",
       "delete": "Delete",
       "clear": "Clear selection",
       "deleteConfirm": {
         "title": "Delete transactions?",
-        "subtitle": "You are about to remove {{count}} transaction from this list.",
+        "subtitle_one": "You are about to remove {{count}} transaction from this list.",
         "subtitle_other": "You are about to remove {{count}} transactions from this list.",
         "phrase": "DELETE",
         "hint": "Removing entries from this view does not affect on-chain records.",
         "confirm": "Delete transactions",
-        "successOne": "1 transaction removed from view",
-        "successOther": "{{count}} transactions removed from view"
+        "success_one": "{{count}} transaction removed from view",
+        "success_other": "{{count}} transactions removed from view"
       },
       "exportToast": {
-        "successOne": "1 transaction exported",
-        "successOther": "{{count}} transactions exported"
+        "success_one": "{{count}} transaction exported",
+        "success_other": "{{count}} transactions exported"
       }
     }
   },
@@ -480,7 +480,9 @@
     "credentialCertification": "Credential Certification",
     "submitted": "Submitted",
     "subject": "Subject: {{subject}}",
-    "currentUser": "Current User"
+    "currentUser": "Current User",
+    "recentEvents_one": "{{count}} recent event",
+    "recentEvents_other": "{{count}} recent events"
   },
   "badge": {
     "variants": {

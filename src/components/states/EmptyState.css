@@ -139,21 +139,21 @@
 /* error — danger surface, warm icon background */
 .empty-state--error .empty-state__icon {
   background: var(--credence-color-danger-surface-strong);
-  color: var(--credence-color-danger, #c0392b);
+  color: var(--credence-color-danger-state);
 }
 
 .empty-state--error .empty-state__title {
-  color: var(--credence-color-danger, #c0392b);
+  color: var(--credence-color-danger-state);
 }
 
 /* stale — warning surface, muted amber icon */
 .empty-state--stale .empty-state__icon {
-  background: var(--credence-color-warning-surface, rgba(255, 165, 0, 0.1));
-  color: var(--credence-color-warning, #e67e22);
+  background: var(--credence-color-warning-surface);
+  color: var(--credence-color-warning-state);
 }
 
 .empty-state--stale .empty-state__title {
-  color: var(--credence-color-warning, #e67e22);
+  color: var(--credence-color-warning-state);
 }
 
 /* permission — subdued; lock icon on a neutral surface */

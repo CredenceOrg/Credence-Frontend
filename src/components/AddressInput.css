@@ -469,6 +469,7 @@
   border-radius: var(--credence-radius-md);
   color: var(--credence-text-primary);
   font-size: var(--credence-font-size-sm);
+  color: var(--credence-color-danger-text);
 }
 
 .address-input-book-filter:focus-visible {

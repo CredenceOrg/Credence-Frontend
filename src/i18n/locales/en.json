@@ -181,6 +181,14 @@
       "confirmHint": "This will overwrite your current settings with the imported values.",
       "confirmLabel": "Apply settings"
     },
+    "networkSwitchDialog": {
+      "title": "Switch network?",
+      "subtitle": "Pending transactions will be hidden while on another network.",
+      "description_one": "You have {{count}} pending transaction on {{currentNetwork}}. Switching to {{targetNetwork}} will hide it and show balances and pending transactions for {{targetNetwork}} instead.",
+      "description_other": "You have {{count}} pending transactions on {{currentNetwork}}. Switching to {{targetNetwork}} will hide them and show balances and pending transactions for {{targetNetwork}} instead.",
+      "confirmHint": "Your pending transactions stay saved for {{currentNetwork}} and will reappear if you switch back.",
+      "confirmLabel": "Switch network"
+    },
     "autoSave": {
       "saving": "Saving…",
       "saved": "Saved",

@@ -45,6 +45,7 @@ function computeDiff(
     'quietHoursStart',
     'quietHoursEnd',
     'unlockRemindersEnabled',
+    'locale',
   ]
   for (const key of keys) {
     if (String(current[key]) !== String(incoming[key])) {
@@ -81,6 +82,7 @@ const FIELD_LABELS: Record<string, string> = {
   quietHoursStart: 'Quiet hours start',
   quietHoursEnd: 'Quiet hours end',
   addressBook: 'Address book',
+  locale: 'Language',
 }
 
 const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string }[] = [
@@ -111,6 +113,8 @@ export default function Settings() {
     quietHoursEnd,
     setQuietHoursEnd,
     unlockRemindersEnabled,
+    locale,
+    setLocale,
     saveSettings,
     resetToDefaults,
   } = useSettings()
@@ -233,6 +237,7 @@ export default function Settings() {
     quietHoursStart,
     quietHoursEnd,
     unlockRemindersEnabled,
+    locale,
   }))
 
   const isDirty =
@@ -245,6 +250,7 @@ export default function Settings() {
     draft.quietHoursStart !== quietHoursStart ||
     draft.quietHoursEnd !== quietHoursEnd ||
     draft.unlockRemindersEnabled !== unlockRemindersEnabled
+    draft.locale !== locale
 
   const updateDraft = (key: string, value: string | boolean | number) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -346,6 +352,8 @@ export default function Settings() {
       a.quietHoursEnd === b.quietHoursEnd &&
       a.unlockRemindersEnabled === b.unlockRemindersEnabled,
     []
+      a.locale === b.locale,
+    [],
   )
 
   // Committed settings live in the context; they only change when the user
@@ -411,6 +419,27 @@ export default function Settings() {
     // the change that was just made.
     saveSettings({ ...draft })
     addToast('success', t('settings.toasts.saved'))
+    const payload = {
+      themeMode: draft.themeMode,
+      network: draft.network,
+      addressDisplay: draft.addressDisplay,
+      toastsEnabled: draft.toastsEnabled,
+      autoDismiss: draft.autoDismiss,
+      quietHoursEnabled: draft.quietHoursEnabled,
+      quietHoursStart: draft.quietHoursStart,
+      quietHoursEnd: draft.quietHoursEnd,
+    }
+    setThemeMode(payload.themeMode)
+    setNetwork(payload.network)
+    setAddressDisplay(payload.addressDisplay)
+    setToastsEnabled(payload.toastsEnabled)
+    setAutoDismiss(payload.autoDismiss)
+    setQuietHoursEnabled(draft.quietHoursEnabled)
+    setQuietHoursStart(draft.quietHoursStart)
+    setQuietHoursEnd(draft.quietHoursEnd)
+    void setLocale(draft.locale)
+    saveSettings()
+    addToast('success', 'Settings saved successfully')
   }
 
   const handleCancel = () => {
@@ -428,6 +457,7 @@ export default function Settings() {
       quietHoursStart,
       quietHoursEnd,
       unlockRemindersEnabled,
+      locale,
     })
     addToast('info', t('settings.toasts.reverted'))
   }
@@ -471,6 +501,7 @@ export default function Settings() {
       quietHoursEnd,
       addressBook: addressBookEntries,
       unlockRemindersEnabled,
+      locale,
     }
   }, [
     themeMode,
@@ -483,6 +514,7 @@ export default function Settings() {
     quietHoursEnd,
     addressBookEntries,
     unlockRemindersEnabled,
+    locale,
   ])
 
   const handleExport = useCallback(() => {
@@ -497,6 +529,7 @@ export default function Settings() {
       quietHoursEnd,
       addressBook: addressBookEntries,
       unlockRemindersEnabled,
+      locale,
     }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -595,6 +628,7 @@ export default function Settings() {
     addToast('success', t('settings.toasts.imported'))
     resetImportState()
   }, [importPreview, saveSettings, addToast, resetImportState, t])
+    void setLocale(importPreview.locale ?? 'en')
     saveSettings()
     addToast('success', 'Settings imported successfully')
     resetImportState()
@@ -609,6 +643,7 @@ export default function Settings() {
     setQuietHoursStart,
     setQuietHoursEnd,
     replaceEntries,
+    setLocale,
     saveSettings,
     addToast,
     resetImportState,
@@ -755,6 +790,19 @@ export default function Settings() {
           />
           <p className="settings-field-hint">{t('settings.display.friendlyHint')}</p>
         </fieldset>
+
+        <FormField id="language-select" label="Language">
+          <Select
+            id="language-select"
+            value={draft.locale}
+            onChange={(v) => updateDraft('locale', v)}
+            options={[
+              { value: 'en', label: 'English' },
+              { value: 'es', label: 'Español' },
+            ]}
+            ariaLabel="Display language"
+          />
+        </FormField>
       </section>
 
       {/* ── Address Book ────────────────────────────────────────── */}

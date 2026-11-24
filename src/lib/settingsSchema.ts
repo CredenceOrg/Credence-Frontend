@@ -5,8 +5,10 @@ import {
   type AddressBookEntry,
 } from './addressBookStorage'
 import { isValidStellarAddress, sanitizeAddressInput } from './stellar'
+import { SUPPORTED_LOCALES, type SupportedLocale } from '../i18n/config'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+export type { SupportedLocale }
 
 export interface SettingsBlob {
   themeMode: ThemeMode
@@ -24,6 +26,8 @@ export interface SettingsBlob {
   addressBook?: AddressBookEntry[]
   /** When true, local browser notifications remind the user before a bond unlocks. */
   unlockRemindersEnabled: boolean
+  /** UI display language. Defaults to `'en'`. */
+  locale: SupportedLocale
 }
 
 const VALID_THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system']
@@ -41,6 +45,7 @@ export const DEFAULT_SETTINGS: Readonly<SettingsBlob> = {
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
   unlockRemindersEnabled: false,
+  locale: 'en',
 }
 
 export function defaultSettings(): SettingsBlob {
@@ -164,6 +169,13 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
   // Optional for the same backwards-compatibility reason as quiet hours.
   if (input.unlockRemindersEnabled !== undefined) {
     result.unlockRemindersEnabled = Boolean(input.unlockRemindersEnabled)
+  // locale is optional for backwards-compatibility with exports that predate this field.
+  if (input.locale !== undefined) {
+    if ((SUPPORTED_LOCALES as readonly string[]).includes(input.locale as string)) {
+      result.locale = input.locale as SupportedLocale
+    } else {
+      errors.push(`locale must be one of: ${SUPPORTED_LOCALES.join(', ')}`)
+    }
   }
 
   if (errors.length > 0) {

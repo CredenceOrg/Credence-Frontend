@@ -12,12 +12,19 @@ import {
 import { defaultSettings } from '../lib/settingsSchema'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+import { useLocale } from '../hooks/useLocale'
+import { isSupportedLocale, type SupportedLocale } from '../i18n/config'
+import { QUIET_HOURS_DEFAULTS, parseHHmm } from '../lib/quietHours'
+
+type ThemeMode = 'light' | 'dark' | 'system'
 /** Network option literal union */
 export type NetworkOption = 'public' | 'test'
 /** Address display option literal union */
 export type AddressDisplayOption = 'full' | 'short' | 'friendly'
 /** Auto dismiss option literal union */
 export type AutoDismissOption = 'off' | '3s' | '5s' | '8s'
+/** Re-export so consumers can import from one place. */
+export type { SupportedLocale }
 
 /** The persisted settings payload (the subset of state written to localStorage). */
 export interface SettingsPayload {
@@ -30,6 +37,7 @@ export interface SettingsPayload {
   quietHoursStart: string
   quietHoursEnd: string
   unlockRemindersEnabled: boolean
+  locale: SupportedLocale
 }
 
 export interface SettingsState {
@@ -42,6 +50,7 @@ export interface SettingsState {
   quietHoursStart: string
   quietHoursEnd: string
   unlockRemindersEnabled: boolean
+  locale: SupportedLocale
   setThemeMode: (m: ThemeMode) => void
   setNetwork: (n: NetworkOption) => void
   setAddressDisplay: (s: AddressDisplayOption) => void
@@ -51,6 +60,9 @@ export interface SettingsState {
   setQuietHoursStart: (value: string) => void
   setQuietHoursEnd: (value: string) => void
   setUnlockRemindersEnabled: (b: boolean) => void
+  setLocale: (l: SupportedLocale) => Promise<void>
+  /** True while a locale bundle is being fetched. */
+  isLocaleLoading: boolean
   /**
    * Persist settings. Pass an explicit payload to save immediately (avoids the
    * stale-state race when called right after the individual setters); omit it to
@@ -83,6 +95,7 @@ type PersistedSettings = {
   quietHoursStart: string
   quietHoursEnd: string
   unlockRemindersEnabled: boolean
+  locale: SupportedLocale
 }
 
 const STORAGE_KEY = 'credence:settings'
@@ -102,6 +115,7 @@ export const DEFAULT_SETTINGS: Readonly<SettingsPayload> = {
   quietHoursStart: QUIET_HOURS_DEFAULTS.start,
   quietHoursEnd: QUIET_HOURS_DEFAULTS.end,
   unlockRemindersEnabled: false,
+  locale: 'en',
 }
 
 const defaultPersistedSettings: PersistedSettings = { ...DEFAULT_SETTINGS }
@@ -117,6 +131,8 @@ const defaultState: SettingsState = {
   setQuietHoursStart: () => {},
   setQuietHoursEnd: () => {},
   setUnlockRemindersEnabled: () => {},
+  setLocale: async () => {},
+  isLocaleLoading: false,
   saveSettings: (_payload?: SettingsPayload) => {},
   applyThemeMode: (_m: ThemeMode) => {},
   resetToDefaults: () => {},
@@ -209,6 +225,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const parsed = parseHHmm(v)
     return parsed.ok ? `${pad2(parsed.hours)}:${pad2(parsed.minutes)}` : fallback
   }
+  const coerceLocale = (v: unknown): SupportedLocale =>
+    isSupportedLocale(v) ? v : defaultPersistedSettings.locale
 
   const hasPersistedSettings = (
     value: Partial<PersistedSettings> | undefined
@@ -259,6 +277,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       safePersistedSettingsRaw.quietHoursEnd,
       defaultPersistedSettings.quietHoursEnd
     ),
+    locale: coerceLocale(persistedSettingsRaw.locale),
   }
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(persistedSettings.themeMode)
@@ -276,6 +295,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [unlockRemindersEnabled, setUnlockRemindersEnabled] = useState<boolean>(
     persistedSettings.unlockRemindersEnabled
   )
+
+  // useLocale owns bundle loading, i18n.changeLanguage(), and its own localStorage key.
+  // We initialise it with the coerced persisted value so the two stores stay in sync.
+  const { locale, setLocale, isLoading: isLocaleLoading } = useLocale()
 
   // Tracks the last explicitly saved state; drives unsaved-changes detection and cancel.
   const [originalSettings, setOriginalSettings] = useState<PersistedSettings>(persistedSettings)
@@ -336,6 +359,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     // the render closure (React batches updates), so prefer the explicit payload
     // when one is supplied. Omitting it commits the current context state.
     const payload: SettingsPayload = next ?? {
+    locale !== originalSettings.locale
+
+  // Auto-persist any draft change immediately so values survive a page reload.
+  useEffect(() => {
+    setPersistedSettings({
       themeMode,
       network,
       addressDisplay,
@@ -356,6 +384,33 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursStart(payload.quietHoursStart)
     setQuietHoursEnd(payload.quietHoursEnd)
     setUnlockRemindersEnabled(payload.unlockRemindersEnabled)
+      locale,
+    })
+  }, [
+    themeMode,
+    network,
+    addressDisplay,
+    toastsEnabled,
+    autoDismiss,
+    quietHoursEnabled,
+    quietHoursStart,
+    quietHoursEnd,
+    locale,
+    setPersistedSettings,
+  ])
+
+  const saveSettings = () => {
+    const payload: PersistedSettings = {
+      themeMode,
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
+      locale,
+    }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
     if (typeof window !== 'undefined') {
@@ -421,6 +476,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursStart(originalSettings.quietHoursStart)
     setQuietHoursEnd(originalSettings.quietHoursEnd)
     setUnlockRemindersEnabled(originalSettings.unlockRemindersEnabled)
+    void setLocale(originalSettings.locale)
   }
 
   // Apply theme to document and keep it in sync with the system preference.
@@ -457,6 +513,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     quietHoursStart,
     quietHoursEnd,
     unlockRemindersEnabled,
+    locale,
     setThemeMode,
     setNetwork,
     setAddressDisplay,
@@ -466,6 +523,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursStart,
     setQuietHoursEnd,
     setUnlockRemindersEnabled,
+    setLocale,
+    isLocaleLoading,
     saveSettings,
     applyThemeMode,
     resetToDefaults,

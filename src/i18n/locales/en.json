@@ -322,6 +322,22 @@
     }
   },
   "transactions": {
+    "filters": {
+      "type": "Transaction type",
+      "allTypes": "All types",
+      "types": {
+        "bond": "Bond",
+        "withdraw": "Withdrawal",
+        "attestation": "Attestation"
+      },
+      "from": "From date (UTC)",
+      "to": "To date (UTC)",
+      "search": "Search transactions",
+      "searchPlaceholder": "Hash, ID, type or status",
+      "results": "{{count}} of {{total}} loaded transactions",
+      "clear": "Clear filters",
+      "noResults": "No transactions match these filters."
+    },
     "title": "Transaction History",
     "description": "A durable record of your bond, withdrawal, and attestation events.",
     "loading": "Loading transactions…",

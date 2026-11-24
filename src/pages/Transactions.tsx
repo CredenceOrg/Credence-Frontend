@@ -1,4 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Input } from '../components/forms/Input'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import {
+  applyTransactionFilters,
+  parseTransactionFilters,
+  serializeTransactionFilters,
+  DEFAULT_TRANSACTION_FILTERS,
+  TRANSACTION_TYPES,
+  type TransactionFilters,
+  type StatusFilter,
+  type TypeFilter,
+} from '../lib/transactionFilters'
 import { useTranslation } from 'react-i18next'
 import './Transactions.css'
 import Badge from '../components/Badge'
@@ -19,8 +32,6 @@ import { truncateAddress } from '../lib/stellar'
 import { formatUsdc } from '../lib/format'
 import type { Transaction } from '../api/types'
 import type { TransactionWithNetwork } from '../lib/pendingTransactionsStorage'
-
-type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
 
 const STATUS_BADGE_MAP: Record<Transaction['status'], string> = {
   pending: 'locked',
@@ -54,7 +65,19 @@ export default function Transactions() {
   const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage } =
     useTransactions()
   const { addToast } = useToast()
-  const [filter, setFilter] = useState<StatusFilter>('all')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const filters = useMemo(() => parseTransactionFilters(searchParams), [searchParams])
+  const debouncedQuery = useDebouncedValue(filters.q, 300)
+  const updateFilters = useCallback(
+    (patch: Partial<TransactionFilters>, replace = false) => {
+      setSearchParams(
+        (current) =>
+          serializeTransactionFilters({ ...parseTransactionFilters(current), ...patch }, current),
+        { replace }
+      )
+    },
+    [setSearchParams]
+  )
 
   // Helper to get the network for a transaction (use stored network for pending, settings for server)
   const getTxNetwork = useCallback(
@@ -84,10 +107,11 @@ export default function Transactions() {
 
   const filtered = useMemo(
     () =>
-      filter === 'all'
-        ? visibleTransactions
-        : visibleTransactions.filter((tx) => tx.status === filter),
-    [visibleTransactions, filter]
+      applyTransactionFilters(visibleTransactions, {
+        ...filters,
+        q: filters.q === '' ? '' : debouncedQuery,
+      }),
+    [visibleTransactions, filters, debouncedQuery]
   )
 
   // Reset transient overlays when the underlying dataset changes (refetch
@@ -256,6 +280,93 @@ export default function Transactions() {
         />
       )}
 
+      {hasData && (
+        <>
+          <div className="transactions__filterRow">
+            <div className="transactions__filterField">
+              <label htmlFor="tx-status-filter" className="transactions__filterLabel">
+                {t('transactions.filterLabel')}
+              </label>
+              <Select
+                id="tx-status-filter"
+                value={filters.status}
+                onChange={(value) => updateFilters({ status: value as StatusFilter })}
+                options={STATUS_OPTIONS}
+                ariaLabel={t('transactions.filterAriaLabel')}
+              />
+            </div>
+            <div className="transactions__filterField">
+              <label htmlFor="tx-type-filter" className="transactions__filterLabel">
+                {t('transactions.filters.type')}
+              </label>
+              <Select
+                id="tx-type-filter"
+                value={filters.type}
+                onChange={(value) => updateFilters({ type: value as TypeFilter })}
+                options={[
+                  { value: 'all', label: t('transactions.filters.allTypes') },
+                  ...TRANSACTION_TYPES.map((value) => ({
+                    value,
+                    label: t(`transactions.filters.types.${value}`),
+                  })),
+                ]}
+              />
+            </div>
+            <div className="transactions__filterField">
+              <label htmlFor="tx-from-filter" className="transactions__filterLabel">
+                {t('transactions.filters.from')}
+              </label>
+              <Input
+                id="tx-from-filter"
+                type="date"
+                value={filters.from}
+                max={filters.to || undefined}
+                onChange={(event) => updateFilters({ from: event.target.value })}
+              />
+            </div>
+            <div className="transactions__filterField">
+              <label htmlFor="tx-to-filter" className="transactions__filterLabel">
+                {t('transactions.filters.to')}
+              </label>
+              <Input
+                id="tx-to-filter"
+                type="date"
+                value={filters.to}
+                min={filters.from || undefined}
+                onChange={(event) => updateFilters({ to: event.target.value })}
+              />
+            </div>
+            <div className="transactions__filterField transactions__filterField--search">
+              <label htmlFor="tx-search-filter" className="transactions__filterLabel">
+                {t('transactions.filters.search')}
+              </label>
+              <Input
+                id="tx-search-filter"
+                type="search"
+                value={filters.q}
+                placeholder={t('transactions.filters.searchPlaceholder')}
+                onChange={(event) => updateFilters({ q: event.target.value }, true)}
+              />
+            </div>
+          </div>
+          <div className="transactions__filterSummary">
+            <p aria-live="polite" aria-atomic="true">
+              {t('transactions.filters.results', {
+                count: filtered.length,
+                total: visibleTransactions.length,
+              })}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => updateFilters(DEFAULT_TRANSACTION_FILTERS)}
+            >
+              {t('transactions.filters.clear')}
+            </Button>
+          </div>
+        </>
+      )}
+
       {hasData && visibleTransactions.length === 0 && (
         <EmptyState
           illustration="activity"
@@ -308,21 +419,8 @@ export default function Transactions() {
             </div>
           </div>
 
-          <div className="transactions__filterRow">
-            <label htmlFor="tx-status-filter" className="transactions__filterLabel">
-              {t('transactions.filterLabel')}
-            </label>
-            <Select
-              id="tx-status-filter"
-              value={filter}
-              onChange={(v) => setFilter(v as StatusFilter)}
-              options={STATUS_OPTIONS}
-              ariaLabel={t('transactions.filterAriaLabel')}
-            />
-          </div>
-
           {filtered.length === 0 ? (
-            <p className="transactions__noResults">{t('transactions.noResults', { filter })}</p>
+            <p className="transactions__noResults">{t('transactions.filters.noResults')}</p>
           ) : (
             <table className="transactions__table" aria-label="Transaction history">
               <thead>

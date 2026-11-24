@@ -1,4 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
+import type { ReactElement } from 'react'
+import { render as rtlRender, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TEST_IDS } from '../config/testIds'
@@ -54,23 +56,25 @@ beforeEach(() => {
 })
 
 const TX_BASE = {
-  type: 'bond_create',
+  type: 'bond',
   amountUsdc: 1000,
   status: 'confirmed',
   timestamp: '2026-01-15T12:00:00Z',
 }
 
-const TX1 = { id: 'tx-1', ...TX_BASE } as const
+const TX1 = { id: 'tx-1', hash: 'hash-tx-1', ...TX_BASE } as const
 const TX2 = {
   id: 'tx-2',
+  hash: 'hash-tx-2',
   type: 'withdraw',
-  amountUsdc: null,
+  amountUsdc: undefined,
   status: 'failed',
   timestamp: '2026-01-16T08:30:00Z',
 } as const
 const TX3 = {
   id: 'tx-3',
-  type: 'attest',
+  hash: 'hash-tx-3',
+  type: 'attestation',
   amountUsdc: 250,
   status: 'pending',
   timestamp: '2026-01-17T09:45:00Z',
@@ -208,9 +212,9 @@ describe('Transactions page', () => {
       mockLoaded()
       render(<Transactions />)
       const table = screen.getByRole('table')
-      expect(within(table).getByText('bond_create')).toBeInTheDocument()
+      expect(within(table).getByText('bond')).toBeInTheDocument()
       expect(within(table).getByText('withdraw')).toBeInTheDocument()
-      expect(within(table).getByText('attest')).toBeInTheDocument()
+      expect(within(table).getByText('attestation')).toBeInTheDocument()
       // Bulk bar renders but stays visually hidden while selection is empty.
       expect(getBulkBar().hasAttribute('hidden')).toBe(true)
     })
@@ -233,7 +237,7 @@ describe('Transactions page', () => {
         'failed'
       )
       // Only the failed row remains visible.
-      expect(screen.queryByText('bond_create')).not.toBeInTheDocument()
+      expect(screen.queryByText('bond')).not.toBeInTheDocument()
       expect(screen.getByText('withdraw')).toBeInTheDocument()
     })
   })
@@ -452,7 +456,7 @@ describe('Transactions page', () => {
       await user.click(screen.getByRole('button', { name: 'Cancel' }))
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       // The row is still visible.
-      expect(screen.getByText('bond_create')).toBeInTheDocument()
+      expect(screen.getByText('bond')).toBeInTheDocument()
     })
 
     it('removes selected rows after typing DELETE and confirming', async () => {
@@ -468,8 +472,8 @@ describe('Transactions page', () => {
       await user.click(within(dialog).getByRole('button', { name: /delete transactions/i }))
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(screen.queryByText('bond_create')).not.toBeInTheDocument()
-      expect(screen.queryByText('attest')).not.toBeInTheDocument()
+      expect(screen.queryByText('bond')).not.toBeInTheDocument()
+      expect(screen.queryByText('attestation')).not.toBeInTheDocument()
       // The non-selected row remains.
       expect(screen.getByText('withdraw')).toBeInTheDocument()
       // Selection clears + bar hides.
@@ -504,7 +508,7 @@ describe('Transactions page', () => {
       // Cancel via Escape instead of clicking the confirm button.
       await user.keyboard('{Escape}')
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(screen.getByText('bond_create')).toBeInTheDocument()
+      expect(screen.getByText('bond')).toBeInTheDocument()
     })
   })
 
@@ -598,5 +602,140 @@ describe('Transactions page', () => {
         'https://stellar.expert/explorer/public/tx'
       )
     })
+  })
+})
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: MemoryRouter })
+}
+
+const FILTER_ROWS: Transaction[] = [
+  {
+    id: 'filter-1',
+    hash: 'ABC111',
+    type: 'bond',
+    status: 'confirmed',
+    timestamp: '2026-01-15T00:00:00Z',
+  },
+  {
+    id: 'filter-2',
+    hash: 'DEF222',
+    type: 'withdraw',
+    status: 'failed',
+    timestamp: '2026-01-16T23:59:59Z',
+  },
+  {
+    id: 'filter-3',
+    hash: 'ABC333',
+    type: 'bond',
+    status: 'confirmed',
+    timestamp: '2026-01-17T12:00:00Z',
+  },
+]
+
+function FilterLocation() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  return (
+    <>
+      <output data-testid="filter-url">{location.search}</output>
+      <button onClick={() => navigate(-1)}>Back in history</button>
+      <button onClick={() => navigate(1)}>Forward in history</button>
+    </>
+  )
+}
+
+function renderFilters(query = '') {
+  return rtlRender(
+    <MemoryRouter initialEntries={[`/transactions${query}`]}>
+      <Transactions />
+      <FilterLocation />
+    </MemoryRouter>
+  )
+}
+
+function filterUrl() {
+  return new URLSearchParams(screen.getByTestId('filter-url').textContent ?? '')
+}
+
+describe('Transactions URL filters', () => {
+  beforeEach(() => mockLoaded(FILTER_ROWS))
+
+  it('hydrates combined filters from a shared URL and restores them on remount', () => {
+    const query = '?status=confirmed&type=bond&from=2026-01-15&to=2026-01-15&q=abc'
+    const view = renderFilters(query)
+    expect(screen.getByLabelText('Transaction type')).toHaveValue('bond')
+    expect(screen.getByLabelText('From date (UTC)')).toHaveValue('2026-01-15')
+    expect(screen.getByLabelText('Search transactions')).toHaveValue('abc')
+    expect(screen.getByLabelText('Select transaction filter-1')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Select transaction filter-3')).not.toBeInTheDocument()
+    expect(screen.getByText('1 of 3 loaded transactions')).toHaveAttribute('aria-live', 'polite')
+    const persisted = `?${filterUrl()}`
+    view.unmount()
+    renderFilters(persisted)
+    expect(screen.getByLabelText('Select transaction filter-1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Search transactions')).toHaveValue('abc')
+  })
+
+  it('ignores bad URL parameters and keeps unrelated parameters when clearing filters', async () => {
+    const user = userEvent.setup()
+    renderFilters('?status=bogus&type=bogus&from=2026-02-30&tab=history')
+    expect(screen.getByLabelText('Transaction type')).toHaveValue('all')
+    expect(screen.getByText('3 of 3 loaded transactions')).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Transaction type'), 'withdraw')
+    expect(filterUrl().get('type')).toBe('withdraw')
+    expect(screen.getByText('1 of 3 loaded transactions')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(filterUrl().toString()).toBe('tab=history')
+    expect(screen.getByText('3 of 3 loaded transactions')).toBeInTheDocument()
+  })
+
+  it('combines controls, debounces text matching, and provides a recoverable empty state', async () => {
+    const user = userEvent.setup()
+    renderFilters()
+    await user.selectOptions(screen.getByLabelText('Transaction type'), 'bond')
+    fireEvent.change(screen.getByLabelText('From date (UTC)'), { target: { value: '2026-01-16' } })
+    expect(screen.getByText('1 of 3 loaded transactions')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Search transactions'), { target: { value: 'missing' } })
+    expect(filterUrl().get('q')).toBe('missing')
+    expect(screen.getByLabelText('Select transaction filter-3')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByText('No transactions match these filters.')).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(screen.getByLabelText('Search transactions')).toHaveValue('')
+    expect(screen.getByText('3 of 3 loaded transactions')).toBeInTheDocument()
+  })
+
+  it('clamps bulk selection when type and date filters hide selected rows', async () => {
+    const user = userEvent.setup()
+    renderFilters()
+    await user.click(getSelectAll())
+    await user.selectOptions(screen.getByLabelText('Transaction type'), 'bond')
+    expect(within(getBulkBar()).getByText('2 selected')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('To date (UTC)'), { target: { value: '2026-01-15' } })
+    expect(within(getBulkBar()).getByText('1 selected')).toBeInTheDocument()
+    expect(rowCheckboxFor('filter-1')).toBeChecked()
+  })
+
+  it('follows back and forward navigation without rewriting the URL', async () => {
+    const user = userEvent.setup()
+    renderFilters()
+    await user.selectOptions(screen.getByLabelText('Transaction type'), 'withdraw')
+    await user.click(screen.getByRole('button', { name: 'Back in history' }))
+    expect(screen.getByLabelText('Transaction type')).toHaveValue('all')
+    expect(screen.getByText('3 of 3 loaded transactions')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Forward in history' }))
+    expect(screen.getByLabelText('Transaction type')).toHaveValue('withdraw')
+    expect(screen.getByText('1 of 3 loaded transactions')).toBeInTheDocument()
+  })
+
+  it('keeps clear filters available when the loaded dataset is empty', async () => {
+    mockEmpty()
+    const user = userEvent.setup()
+    renderFilters('?type=bond')
+    expect(screen.getByText('0 of 0 loaded transactions')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(filterUrl().has('type')).toBe(false)
   })
 })

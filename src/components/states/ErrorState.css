@@ -46,12 +46,12 @@
 }
 
 .error-state--danger .error-state__action {
-  background: var(--credence-color-danger-action);
+  background: var(--credence-color-danger-fill);
   color: var(--credence-color-white);
 }
 
 .error-state--danger .error-state__action:hover:not(:disabled) {
-  background: var(--credence-color-danger-border);
+  background: var(--credence-color-danger-fill-hover);
 }
 
 /* Severity: warning — calmer, recoverable (validation, slow paths) */
@@ -105,8 +105,8 @@
 }
 
 .error-state--info .error-state__action {
-  background: var(--credence-color-primary-soft);
-  color: var(--credence-color-white);
+  background: var(--credence-color-primary);
+  color: var(--credence-color-on-primary);
 }
 
 .error-state--info .error-state__action:hover:not(:disabled) {

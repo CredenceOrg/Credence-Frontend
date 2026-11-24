@@ -221,10 +221,12 @@ export default function WalletConnect({
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         aria-controls={menuId}
-        aria-label={`Wallet menu for ${truncated}`}
         onClick={() => setMenuOpen((open) => !open)}
         data-testid="wallet-connected-trigger"
       >
+        {/* Let the button derive its name from the visible address and balance.
+            A separate aria-label can drift from those values and fail WCAG 2.5.3. */}
+        <span className="sr-only">Wallet menu for </span>
         <span
           className="walletConnect__avatar"
           aria-hidden="true"

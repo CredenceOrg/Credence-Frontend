@@ -4,6 +4,16 @@ The Credence frontend uses a Service Worker implemented via `vite-plugin-pwa` to
 
 ---
 
+## Service worker updates
+
+New service worker versions are offered through an in-app **Update available**
+banner instead of activating silently. Selecting **Reload** applies the update
+immediately when no application mutation is running. If a mutation is in flight,
+the reload is deferred until the mutation manager reports that all operations
+have completed.
+
+---
+
 ## What's cached
 
 ### Service Worker Cache

@@ -1,22 +1,22 @@
-import React from 'react';
+import { vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import Bond from './Bond';
-import { ToastProvider } from '../components/Toast';
+import ToastProvider from '../components/ToastProvider';
 import { SettingsProvider } from '../context/SettingsContext';
 import * as useBondMutationModule from '../hooks/useBondMutation';
 import * as useWalletModule from '../hooks/useWallet';
 
 // Mock the bond mutation hook
-jest.mock('../hooks/useBondMutation', () => ({
-  useBondMutation: jest.fn(),
+vi.mock('../hooks/useBondMutation', () => ({
+  useBondMutation: vi.fn(),
 }));
 
 // Mock the wallet hook
-jest.mock('../hooks/useWallet', () => ({
-  useWallet: jest.fn(),
+vi.mock('../hooks/useWallet', () => ({
+  useWallet: vi.fn(),
 }));
 
-const mockWithdrawBond = jest.fn();
+const mockWithdrawBond = vi.fn();
 
 function renderWithProviders(ui = <Bond />) {
   return render(
@@ -27,12 +27,12 @@ function renderWithProviders(ui = <Bond />) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   mockWithdrawBond.mockReset();
-  (useBondMutationModule.useBondMutation as jest.Mock).mockReturnValue({
+  (useBondMutationModule.useBondMutation as ReturnType<typeof vi.fn>).mockReturnValue({
     withdrawBond: mockWithdrawBond,
   });
-  (useWalletModule.useWallet as jest.Mock).mockReturnValue({
+  (useWalletModule.useWallet as ReturnType<typeof vi.fn>).mockReturnValue({
     connected: true,
     address: 'GABCDEFGHIJKLMNOPQRSTUVWXYZ2345678901234567890',
     network: 'public',
@@ -43,14 +43,14 @@ async function openWithdrawDialogForBond(bondIdLabel: string) {
   const card =
     screen.getByText(new RegExp(bondIdLabel, 'i')).closest('[data-testid="bond-card"]') ||
     screen.getByText(new RegExp(bondIdLabel, 'i')).closest('div');
-  const btn = within(card!).getByRole('button', { name: /^withdraw$/i });
+  const btn = within(card as HTMLElement).getByRole('button', { name: /^withdraw$/i });
   fireEvent.click(btn);
   await screen.findByRole('dialog');
 }
 
 describe('Bond withdraw flow', () => {
   test('success: closes dialog, shows toast with mutation hash, returns focus', async () => {
-    mockWithdrawBond.mockResolvedOnce({
+    mockWithdrawBond.mockResolvedValueOnce({
       ok: true,
       data: { bondId: '1', transactionHash: 'abc123' },
     });
@@ -81,7 +81,7 @@ describe('Bond withdraw flow', () => {
   });
 
   test('rejection: keeps dialog open, shows error, re-enables buttons', async () => {
-    mockWithdrawBond.mockResolvedOnce({
+    mockWithdrawBond.mockResolvedValueOnce({
       ok: false,
       code: 'rejected',
       retryable: false,
@@ -106,12 +106,12 @@ describe('Bond withdraw flow', () => {
   });
 
   test('network failure: retry calls withdrawBond again', async () => {
-    mockWithdrawBond.mockResolvedOnce({
+    mockWithdrawBond.mockResolvedValueOnce({
       ok: false,
       code: 'unknown',
       retryable: true,
     });
-    mockWithdrawBond.mockResolvedOnce({
+    mockWithdrawBond.mockResolvedValueOnce({
       ok: true,
       data: { bondId: '1', transactionHash: 'abc123' },
     });
@@ -159,7 +159,7 @@ describe('Bond withdraw flow', () => {
   });
 
   test('after success, opening another bond dialog has enabled buttons', async () => {
-    mockWithdrawBond.mockResolvedOnce({
+    mockWithdrawBond.mockResolvedValueOnce({
       ok: true,
       data: { bondId: '1', transactionHash: 'abc123' },
     });
@@ -189,7 +189,7 @@ describe('Bond withdraw flow', () => {
   });
 
   test('toast never contains the hard-coded hash', async () => {
-    mockWithdrawBond.mockResolvedOnce({
+    mockWithdrawBond.mockResolvedValueOnce({
       ok: true,
       data: { bondId: '1', transactionHash: 'abc123' },
     });

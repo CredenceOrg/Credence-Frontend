@@ -143,7 +143,12 @@ export function useUsdcBalance(): UseUsdcBalanceResult {
   }, [])
 
   useEffect(() => {
+    setBalance(0)
     void fetchBalance()
+    return () => {
+      abortRef.current?.abort()
+      inflightRef.current = false
+    }
   }, [fetchBalance])
 
   return {

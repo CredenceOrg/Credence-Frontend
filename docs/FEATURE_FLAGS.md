@@ -4,10 +4,11 @@ This document explains how feature flags are read and implemented on the client 
 
 ## Overview
 
-The Credence Frontend uses a lightweight, decentralized approach to feature flags. There is no centralized feature flag service or SDK. Instead, the codebase uses two primary mechanisms:
+The Credence Frontend uses a lightweight, decentralized approach to feature flags. There is no centralized feature flag service or SDK. Instead, the codebase uses three primary mechanisms:
 
 1. **Compile-time dev gating** (`import.meta.env.DEV`)
-2. **Component-level boolean props** (e.g., `isEarlyAccess`)
+2. **URL-param flags via React context** (`FeatureFlagProvider` / `useFeatureFlag`)
+3. **Component-level boolean props** (e.g., `isEarlyAccess`)
 
 ## Compile-time Dev Gating
 
@@ -60,6 +61,33 @@ export default function BreakpointOverlay() {
 - Debug panels
 - Test routes and components
 - Any UI that should never ship to production
+
+## URL-param Feature Flags
+
+`src/context/FeatureFlagContext.tsx` exposes `FeatureFlagProvider` and `useFeatureFlag(name)`. The provider is mounted inside `<BrowserRouter>` in `src/App.tsx`, reads `useLocation().search`, and memoises the parsed flags per search string. Components under the provider can read a flag without re-parsing the URL:
+
+```tsx
+import { useFeatureFlag } from '../context/FeatureFlagContext'
+
+export function DashboardSurface() {
+  const useNewLayout = useFeatureFlag('newDashboard')
+  return useNewLayout ? <NewDashboard /> : <StandardDashboard />
+}
+```
+
+Enable flags via URL, for example `?debug=1&newDashboard=1&betaChart=1`. Values `1` and `true` (case-insensitive) are on; any active flag implicitly enables `debug`. Because parsing follows the router location, flag values update on client-side navigation and back/forward transitions without a reload. Use `useFeatureFlags()` when a component needs the whole set, as `DebugOverlay` does.
+
+`getFeatureFlags(search)` in `src/config/featureFlags.ts` is the pure parser behind the provider. Pass an explicit search string; components should not read `window.location` directly. Tests render against the router with a controlled entry:
+
+```tsx
+render(
+  <MemoryRouter initialEntries={['/?newDashboard=1']}>
+    <FeatureFlagProvider>
+      <DashboardSurface />
+    </FeatureFlagProvider>
+  </MemoryRouter>
+)
+```
 
 ## Component-level Boolean Props
 
@@ -152,11 +180,12 @@ These are read at build time and exposed to the browser. Use them for URL overri
 
 ### Step 1: Choose the Right Mechanism
 
-| Mechanism             | Use Case             | Scope              |
-| --------------------- | -------------------- | ------------------ |
-| `import.meta.env.DEV` | Dev-only tools       | Build-wide         |
-| Boolean prop          | Per-component toggle | Component instance |
-| Environment variable  | URL/configuration    | Build-wide         |
+| Mechanism                     | Use Case                    | Scope                         |
+| ----------------------------- | --------------------------- | ----------------------------- |
+| `import.meta.env.DEV`         | Dev-only tools              | Build-wide                    |
+| `useFeatureFlag` via provider | Runtime URL-gated behaviour | App-wide, navigation-reactive |
+| Boolean prop                  | Per-component toggle        | Component instance            |
+| Environment variable          | URL/configuration           | Build-wide                    |
 
 ### Step 2: Implement
 
@@ -168,6 +197,14 @@ if (!import.meta.env.DEV) return null
 
 // Or for lazy-loaded routes
 const DevTool = import.meta.env.DEV ? lazy(() => import('./DevTool')) : null
+```
+
+**For URL-param flags:**
+
+```tsx
+// Register the flag in `FeatureFlags`/`DEFAULTS` in src/config/featureFlags.ts,
+// then read it from any component below FeatureFlagProvider.
+const useNewLayout = useFeatureFlag('newDashboard')
 ```
 
 **For component-level flags:**

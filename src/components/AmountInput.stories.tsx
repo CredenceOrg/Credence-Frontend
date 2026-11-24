@@ -1,6 +1,7 @@
-import React from 'react';
-import type { Meta, StoryObj } from '@storybook/react';
-import AmountInput from './AmountInput';
+import React from 'react'
+import type { Meta, StoryObj } from '@storybook/react'
+import { expect, userEvent, waitFor, within } from '@storybook/test'
+import AmountInput from './AmountInput'
 
 const meta: Meta<typeof AmountInput> = {
   title: 'Components/Forms/AmountInput',
@@ -127,28 +128,32 @@ function MaxFailureHarness({
   value,
   balance,
 }: {
-  outcome: 'error' | 'permission' | 'stale';
-  failures: number;
-  value: string;
-  balance: number;
+  outcome: 'error' | 'permission' | 'stale'
+  failures: number
+  value: string
+  balance: number
 }) {
-  const [amount, setAmount] = React.useState(value);
-  const attempts = React.useRef(0);
+  const [amount, setAmount] = React.useState(value)
+  const attempts = React.useRef(0)
 
   const onMaxRequest = React.useCallback(async () => {
-    attempts.current += 1;
-    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    attempts.current += 1
+    await new Promise((resolve) => window.setTimeout(resolve, 500))
     if (attempts.current <= failures) {
       if (outcome === 'permission') {
-        throw Object.assign(new Error('wallet scope revoked'), { name: 'PermissionError' });
+        throw Object.assign(new Error('wallet scope revoked'), { name: 'PermissionError' })
       }
       if (outcome === 'stale') {
-        throw Object.assign(new Error('balance snapshot expired'), { name: 'StaleDataError' });
+        throw Object.assign(new Error('balance snapshot expired'), { name: 'StaleDataError' })
+        throw Object.assign(new globalThis.Error('wallet scope revoked'), { name: 'PermissionError' });
       }
-      throw new TypeError('Failed to fetch');
+      if (outcome === 'stale') {
+        throw Object.assign(new globalThis.Error('balance snapshot expired'), { name: 'StaleDataError' });
+      }
+      throw new TypeError('Failed to fetch')
     }
-    return balance;
-  }, [balance, failures, outcome]);
+    return balance
+  }, [balance, failures, outcome])
 
   return (
     <AmountInput
@@ -158,28 +163,28 @@ function MaxFailureHarness({
       onMaxRequest={onMaxRequest}
       presets={[100, 500]}
     />
-  );
+  )
 }
 
-const maxFailureArgs = { value: '250.00', balance: 1000, args: {} };
+const maxFailureArgs = { value: '250.00', balance: 1000, args: {} }
 
 export const MaxNetworkError: Story = {
   ...maxFailureArgs,
   name: 'Max failed (network, retryable)',
   render: () => <MaxFailureHarness outcome="error" failures={1} {...maxFailureArgs} />,
-};
+}
 
 export const MaxPermissionDenied: Story = {
   ...maxFailureArgs,
   name: 'Max failed (permission)',
   render: () => <MaxFailureHarness outcome="permission" failures={1} {...maxFailureArgs} />,
-};
+}
 
 export const MaxStale: Story = {
   ...maxFailureArgs,
   name: 'Max failed (stale data)',
   render: () => <MaxFailureHarness outcome="stale" failures={1} {...maxFailureArgs} />,
-};
+}
 
 /**
  * Fail once, then succeed. Click Max, then Retry: the control re-enters
@@ -190,7 +195,7 @@ export const MaxRetryAfterError: Story = {
   ...maxFailureArgs,
   name: 'Retry after error recovers',
   render: () => <MaxFailureHarness outcome="error" failures={1} {...maxFailureArgs} />,
-};
+}
 
 export const BelowMin: Story = {
   name: 'Below minimum',
@@ -200,10 +205,10 @@ export const BelowMin: Story = {
     min: 10,
   },
   render: function BelowMinInteractive(args) {
-    const [value, setValue] = React.useState(args.value);
-    return <AmountInput {...args} value={value} onChange={setValue} />;
+    const [value, setValue] = React.useState(args.value)
+    return <AmountInput {...args} value={value} onChange={setValue} />
   },
-};
+}
 
 /**
  * Boundary and recovery coverage for the amount state machine.
@@ -268,18 +273,11 @@ export const RetryAfterFailure: Story = {
     const onMaxRequest = React.useCallback(async () => {
       attempts.current += 1
       await new Promise((resolve) => window.setTimeout(resolve, 350))
-      if (attempts.current === 1) throw new Error('Temporary balance service failure')
+      if (attempts.current === 1) throw new globalThis.Error('Temporary balance service failure')
       return 750
     }, [])
 
-    return (
-      <AmountInput
-        {...args}
-        value={value}
-        onChange={setValue}
-        onMaxRequest={onMaxRequest}
-      />
-    )
+    return <AmountInput {...args} value={value} onChange={setValue} onMaxRequest={onMaxRequest} />
   },
   args: {
     value: '',
@@ -292,7 +290,7 @@ export const PermissionDenied: Story = {
   args: {
     value: '250.00',
     onMaxRequest: async () => {
-      const error = new Error('Wallet permission denied')
+      const error = new globalThis.Error('Wallet permission denied')
       error.name = 'PermissionError'
       throw error
     },
@@ -304,9 +302,82 @@ export const StaleBalance: Story = {
   args: {
     value: '250.00',
     onMaxRequest: async () => {
-      const error = new Error('Balance data is stale')
+      const error = new globalThis.Error('Balance data is stale')
       error.name = 'StaleDataError'
       throw error
     },
+  },
+}
+
+/*
+ * Play functions
+ *
+ * The visuals show states that are passed in through props; these stories
+ * produce them from real interaction so a regression in sanitising,
+ * normalisation, or the validation surface fails the Interactions panel.
+ */
+
+/** Controlled harness: the sanitized value must actually come back in. */
+function ControlledAmountInput(args: React.ComponentProps<typeof AmountInput>) {
+  const [value, setValue] = React.useState(args.value)
+  return <AmountInput {...args} value={value} onChange={setValue} />
+}
+
+export const PlayAmountNormalization: Story = {
+  name: 'Play – sanitize while typing, normalize on blur',
+  args: { value: '', balance: 2000 },
+  render: (args) => <ControlledAmountInput {...args} />,
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByRole('textbox')
+
+    await step('letters are dropped and the fraction is capped at two digits', async () => {
+      await userEvent.type(input, '12a34.567')
+      expect(input).toHaveValue('1234.56')
+      expect(input).not.toHaveAttribute('aria-invalid', 'true')
+    })
+
+    await step('blurring formats the amount for display', async () => {
+      await userEvent.tab()
+      await waitFor(() => expect(input).toHaveValue('1,234.56'))
+    })
+  },
+}
+
+export const PlayOverBalanceError: Story = {
+  name: 'Play – over-balance error state',
+  args: { value: '', balance: 100 },
+  render: (args) => <ControlledAmountInput {...args} />,
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByRole('textbox')
+
+    await step('an amount above the balance is marked invalid', async () => {
+      await userEvent.type(input, '150')
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(canvas.getByRole('alert')).toHaveTextContent('Amount exceeds available balance.')
+    })
+
+    await step('lowering the amount clears the error', async () => {
+      await userEvent.clear(input)
+      await userEvent.type(input, '50')
+      expect(input).not.toHaveAttribute('aria-invalid', 'true')
+      expect(canvas.queryByRole('alert')).not.toBeInTheDocument()
+    })
+  },
+}
+
+export const PlayPresetFillsAmount: Story = {
+  name: 'Play – preset fills the amount',
+  args: { value: '', balance: 1000, presets: [100, 500] },
+  render: (args) => <ControlledAmountInput {...args} />,
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+
+    await step('clicking a preset writes the normalized amount', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: /set amount to 500 usdc/i }))
+      expect(canvas.getByRole('textbox')).toHaveValue('500.00')
+      expect(canvas.getByRole('textbox')).not.toHaveAttribute('aria-invalid', 'true')
+    })
   },
 }

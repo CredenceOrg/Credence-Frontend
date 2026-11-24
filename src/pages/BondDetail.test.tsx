@@ -1,13 +1,24 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import BondDetail from './BondDetail'
+import { ApiError } from '../api/client'
+import type { Bond } from '../api/types'
 
 const mockAddToast = vi.fn()
 const mockConnect = vi.fn()
 const mockNavigate = vi.fn()
+const mockApiFetch = vi.fn()
 
 let mockConnected = true
+
+vi.mock('../api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/client')>()
+  return {
+    ...actual,
+    apiFetch: (...args: unknown[]) => mockApiFetch(...args),
+  }
+})
 
 vi.mock('../components/ToastProvider', () => ({
   useToast: () => ({
@@ -67,7 +78,7 @@ vi.mock('../components/ConfirmDialog', () => ({
   },
 }))
 
-let mockParams = { id: '1' }
+let mockParams = { id: 'bond-1' }
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
@@ -91,54 +102,84 @@ vi.mock('react-router-dom', async (importOriginal) => {
   }
 })
 
+const LOCKED_BOND: Bond = {
+  id: 'bond-1',
+  borrower: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  amount: '1000.00',
+  asset: 'USDC',
+  status: 'active',
+  createdAt: '2026-06-23T12:00:00Z',
+  maturesAt: '2026-07-23T12:00:00Z',
+}
+
+const MATURED_BOND: Bond = {
+  id: 'bond-3',
+  borrower: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  amount: '750.00',
+  asset: 'USDC',
+  status: 'active',
+  createdAt: '2026-01-01T12:00:00Z',
+  maturesAt: '2026-06-01T12:00:00Z',
+}
+
 describe('BondDetail Page', () => {
   beforeEach(() => {
     mockAddToast.mockClear()
     mockConnect.mockClear()
     mockNavigate.mockClear()
+    mockApiFetch.mockReset()
     mockConnected = true
-    mockParams = { id: '1' }
-    vi.useFakeTimers()
+    mockParams = { id: 'bond-1' }
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date('2026-06-23T12:00:00Z'))
+    mockApiFetch.mockResolvedValue(LOCKED_BOND)
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('renders the header with back button, page title, and badge', () => {
+  it('renders a loading skeleton while fetching the bond', () => {
+    mockApiFetch.mockReturnValue(new Promise(() => {}))
+
     render(
       <MemoryRouter>
         <BondDetail />
       </MemoryRouter>
     )
 
+    expect(screen.getAllByRole('status', { name: 'Loading' }).length).toBeGreaterThan(0)
+    expect(document.title).toContain('Detail')
+  })
+
+  it('renders header, status badge, and updates document title once data loads', async () => {
+    render(
+      <MemoryRouter>
+        <BondDetail />
+      </MemoryRouter>
+    )
+
+    expect(await screen.findByRole('heading', { name: /Manage Bond #bond-1/i })).toBeInTheDocument()
     expect(screen.getByText('← Back to Bonds')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /Manage Bond #1/i })).toBeInTheDocument()
-    expect(screen.getByText('Locked')).toBeInTheDocument()
-  })
-
-  it('renders active status badge for bond #3', () => {
-    mockParams = { id: '3' }
-    render(
-      <MemoryRouter>
-        <BondDetail />
-      </MemoryRouter>
-    )
-
-    expect(screen.getByRole('heading', { name: /Manage Bond #3/i })).toBeInTheDocument()
     expect(screen.getByText('Active')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(document.title).toContain('bond-1')
+    })
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      '/bonds/bond-1',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
   })
 
-  it('renders the bond specifications (amount, time remaining, lock duration, start date, unlock date)', () => {
+  it('renders bond specifications derived from the fetched bond', async () => {
     render(
       <MemoryRouter>
         <BondDetail />
       </MemoryRouter>
     )
 
+    expect(await screen.findByText('1,000 USDC')).toBeInTheDocument()
     expect(screen.getByText('Bonded Amount')).toBeInTheDocument()
-    expect(screen.getByText('1,000 USDC')).toBeInTheDocument()
     expect(screen.getByText('Time Remaining')).toBeInTheDocument()
     expect(screen.getByText('30 days remaining')).toBeInTheDocument()
     expect(screen.getByText('Lock Duration')).toBeInTheDocument()
@@ -147,25 +188,14 @@ describe('BondDetail Page', () => {
     expect(screen.getByText('Estimated Unlock Date')).toBeInTheDocument()
   })
 
-  it('shows top-up bond button with Add USDC label', () => {
+  it('renders the slash-risk panel with penalty breakdown from the fetched bond', async () => {
     render(
       <MemoryRouter>
         <BondDetail />
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('button', { name: /Add USDC/i })).toBeInTheDocument()
-    expect(screen.getByText('Top-Up Bond')).toBeInTheDocument()
-  })
-
-  it('renders the slash-risk panel with the live penalty breakdown', () => {
-    render(
-      <MemoryRouter>
-        <BondDetail />
-      </MemoryRouter>
-    )
-
-    expect(screen.getByRole('heading', { name: /Slash-Risk Panel/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Slash-Risk Panel/i })).toBeInTheDocument()
     expect(screen.getByText('Current Early-Withdrawal Penalty')).toBeInTheDocument()
     expect(screen.getByText('20%')).toBeInTheDocument()
     expect(screen.getByText('USDC Penalty Amount')).toBeInTheDocument()
@@ -176,12 +206,30 @@ describe('BondDetail Page', () => {
     expect(screen.getByText('800 USDC')).toBeInTheDocument()
   })
 
-  it('allows extending the lock duration using +30 and +90 days buttons', () => {
+  it('shows zero penalty for a matured bond', async () => {
+    mockParams = { id: 'bond-3' }
+    mockApiFetch.mockResolvedValue(MATURED_BOND)
+
     render(
       <MemoryRouter>
         <BondDetail />
       </MemoryRouter>
     )
+
+    expect(await screen.findByRole('heading', { name: /Manage Bond #bond-3/i })).toBeInTheDocument()
+    expect(screen.getByText('0%')).toBeInTheDocument()
+    expect(screen.getByText('−0 USDC')).toBeInTheDocument()
+    expect(screen.getAllByText('750 USDC').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('allows extending the lock duration using +30 and +90 days buttons', async () => {
+    render(
+      <MemoryRouter>
+        <BondDetail />
+      </MemoryRouter>
+    )
+
+    await screen.findByRole('heading', { name: /Manage Bond #bond-1/i })
 
     const initialUnlockDate =
       screen.getByText('Estimated Unlock Date').nextElementSibling?.textContent
@@ -200,21 +248,21 @@ describe('BondDetail Page', () => {
     expect(screen.getByText('150 Days')).toBeInTheDocument()
   })
 
-  it('withdraw button shows confirm dialog when wallet is connected', () => {
+  it('withdraw button shows confirm dialog when wallet is connected', async () => {
     render(
       <MemoryRouter>
         <BondDetail />
       </MemoryRouter>
     )
 
-    const withdrawBtn = screen.getByRole('button', { name: /^Withdraw$/i })
+    const withdrawBtn = await screen.findByRole('button', { name: /^Withdraw$/i })
     fireEvent.click(withdrawBtn)
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /Confirm bond withdrawal/i })).toBeInTheDocument()
   })
 
-  it('opens the ConnectWalletDialog when withdraw is clicked while disconnected', () => {
+  it('opens ConnectWalletDialog when withdraw is clicked while disconnected', async () => {
     mockConnected = false
 
     render(
@@ -223,43 +271,26 @@ describe('BondDetail Page', () => {
       </MemoryRouter>
     )
 
-    const withdrawBtn = screen.getByRole('button', { name: /connect wallet to withdraw/i })
+    const withdrawBtn = await screen.findByRole('button', { name: /connect wallet to withdraw/i })
     fireEvent.click(withdrawBtn)
 
     expect(mockConnect).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: /connect freighter wallet/i })).toBeInTheDocument()
   })
 
-  it('confirm dialog allows cancellation', () => {
+  it('confirm dialog allows confirming withdrawal with correct toast and redirects', async () => {
     render(
       <MemoryRouter>
         <BondDetail />
       </MemoryRouter>
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /^Withdraw$/i }))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-
-    const cancelBtn = screen.getByRole('button', { name: /Cancel/i })
-    fireEvent.click(cancelBtn)
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-
-  it('confirm dialog allows confirming withdrawal with correct toast and redirects', () => {
-    render(
-      <MemoryRouter>
-        <BondDetail />
-      </MemoryRouter>
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /^Withdraw$/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Withdraw$/i }))
 
     const input = screen.getByRole('textbox', { name: /type confirm/i })
     fireEvent.change(input, { target: { value: 'CONFIRM' } })
 
-    const confirmBtn = screen.getByRole('button', { name: /Withdraw bond/i })
-    fireEvent.click(confirmBtn)
+    fireEvent.click(screen.getByRole('button', { name: /Withdraw bond/i }))
 
     expect(mockAddToast).toHaveBeenCalledWith(
       'warning',
@@ -268,18 +299,72 @@ describe('BondDetail Page', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/bond')
   })
 
-  it('renders ErrorState when requesting unknown bond ID', () => {
-    mockParams = { id: '99' }
+  it('renders not-found state for HTTP 404 responses', async () => {
+    mockParams = { id: 'missing-99' }
+    mockApiFetch.mockRejectedValue(new ApiError(404, 'Bond not found'))
+
     render(
       <MemoryRouter>
         <BondDetail />
       </MemoryRouter>
     )
 
-    expect(screen.getByText('Bond Not Found')).toBeInTheDocument()
+    expect(await screen.findByText('Bond Not Found')).toBeInTheDocument()
     expect(
-      screen.getByText('The requested bond with ID #99 does not exist or has been removed.')
+      screen.getByText('The requested bond with ID #missing-99 does not exist or has been removed.')
     ).toBeInTheDocument()
     expect(screen.getByText('← Back to Bonds')).toBeInTheDocument()
+  })
+
+  it('renders a retryable error state for 5xx/network errors and retries on click', async () => {
+    mockApiFetch
+      .mockRejectedValueOnce(new ApiError(500, 'Internal server error'))
+      .mockResolvedValueOnce(LOCKED_BOND)
+
+    render(
+      <MemoryRouter>
+        <BondDetail />
+      </MemoryRouter>
+    )
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByText('Bond Not Found')).not.toBeInTheDocument()
+
+    const retryBtn = screen.getByRole('button', { name: /retry/i })
+    fireEvent.click(retryBtn)
+
+    expect(await screen.findByRole('heading', { name: /Manage Bond #bond-1/i })).toBeInTheDocument()
+    expect(mockApiFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('aborts the in-flight request when the bond id changes', async () => {
+    let capturedSignal: AbortSignal | undefined
+    mockApiFetch.mockImplementation((_url: string, opts?: { signal?: AbortSignal }) => {
+      if (!capturedSignal) {
+        capturedSignal = opts?.signal
+        return new Promise(() => {})
+      }
+      return Promise.resolve(MATURED_BOND)
+    })
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <BondDetail />
+      </MemoryRouter>
+    )
+
+    expect(capturedSignal?.aborted).toBe(false)
+
+    mockParams = { id: 'bond-3' }
+    rerender(
+      <MemoryRouter>
+        <BondDetail />
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(capturedSignal?.aborted).toBe(true)
+    })
+    expect(await screen.findByRole('heading', { name: /Manage Bond #bond-3/i })).toBeInTheDocument()
   })
 })

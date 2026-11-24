@@ -13,6 +13,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
+type BondActionsV1 = Awaited<ReturnType<typeof bondActionStorage.createEnhancedBondAction>>['legacyUpdated']
+type MutationOperation = NonNullable<ReturnType<typeof bondActionStorage.getBondActionMutationOperation>>
 import { useEnhancedBondMutations } from '../useEnhancedBondMutations'
 import * as mutationRecovery from '../../lib/mutationRecovery'
 import * as bondActionStorage from '../../lib/bondActionStorage'
@@ -27,25 +29,23 @@ vi.mock('../../lib/log', () => ({
 }))
 
 describe('useEnhancedBondMutations', () => {
-  const mockMutationRecovery = mutationRecovery as typeof mutationRecovery
-  const mockBondActionStorage = bondActionStorage as typeof bondActionStorage
+  const mockMutationRecovery = vi.mocked(mutationRecovery)
+  const mockBondActionStorage = vi.mocked(bondActionStorage)
 
   beforeEach(() => {
     vi.clearAllMocks()
 
     // Mock mutation recovery engine
-    mockMutationRecovery.mutationRecoveryEngine = {
-      recoverPendingOperations: vi.fn().mockResolvedValue({
-        recovered: 0,
-        failed: 0,
-        operations: [],
-      }),
-      getRecoveryStatus: vi.fn().mockReturnValue({
-        active: [],
-        pending: 0,
-        failed: 0,
-      }),
-    }
+    vi.mocked(mockMutationRecovery.mutationRecoveryEngine.recoverPendingOperations).mockResolvedValue({
+      recovered: 0,
+      failed: 0,
+      operations: [],
+    })
+    vi.mocked(mockMutationRecovery.mutationRecoveryEngine.getRecoveryStatus).mockReturnValue({
+      active: [],
+      pending: 0,
+      failed: 0,
+    })
 
     // Mock bond action storage
     mockBondActionStorage.readBondActions.mockReturnValue({
@@ -57,7 +57,7 @@ describe('useEnhancedBondMutations', () => {
     mockBondActionStorage.getBondActionMutationOperation.mockReturnValue(null)
 
     mockBondActionStorage.createEnhancedBondAction.mockResolvedValue({
-      legacyUpdated: {},
+      legacyUpdated: { schemaVersion: 1, create: null, withdraw: null } as unknown as BondActionsV1,
       operationId: 'test-op-123',
       isNewOperation: true,
     })
@@ -83,7 +83,7 @@ describe('useEnhancedBondMutations', () => {
           attempts: [],
           requestMetadata: { amountUsdc: 1000 },
           isRecovered: true,
-        })
+        } as unknown as MutationOperation)
         .mockReturnValueOnce(null)
 
       const { result } = renderHook(() => useEnhancedBondMutations())
@@ -101,7 +101,7 @@ describe('useEnhancedBondMutations', () => {
     })
 
     it('displays recovery status during initialization', async () => {
-      mockMutationRecovery.mutationRecoveryEngine.recoverPendingOperations.mockResolvedValue({
+      vi.mocked(mockMutationRecovery.mutationRecoveryEngine.recoverPendingOperations).mockResolvedValue({
         recovered: 2,
         failed: 0,
         operations: ['op-1', 'op-2'],
@@ -145,7 +145,7 @@ describe('useEnhancedBondMutations', () => {
         attempts: [],
         requestMetadata: { amountUsdc: 1000 },
         isRecovered: false,
-      })
+      } as unknown as MutationOperation)
 
       const { result } = renderHook(() => useEnhancedBondMutations())
 
@@ -209,7 +209,7 @@ describe('useEnhancedBondMutations', () => {
           attempts: [],
           requestMetadata: { bondId: 123, amountUsdc: 500 },
           isRecovered: false,
-        })
+        } as unknown as MutationOperation)
 
       const { result } = renderHook(() => useEnhancedBondMutations())
 
@@ -233,11 +233,11 @@ describe('useEnhancedBondMutations', () => {
         operationId: 'failed-op',
         type: 'bond_create',
         status: 'error',
-        attempts: [{ attemptId: '1', status: 'error', error: { retryable: true } }],
+        attempts: [{ attemptId: '1', status: 'error', error: { retryable: true } }] as unknown as MutationOperation['attempts'],
         requestMetadata: { amountUsdc: 1000 },
         maxAttempts: 3,
         isRecovered: false,
-      })
+      } as unknown as MutationOperation)
 
       mockMutationRecovery.retryMutation.mockResolvedValue(true)
 
@@ -263,7 +263,7 @@ describe('useEnhancedBondMutations', () => {
         attempts: [],
         requestMetadata: { amountUsdc: 1000 },
         isRecovered: false,
-      })
+      } as unknown as MutationOperation)
 
       mockMutationRecovery.cancelMutation.mockReturnValue(true)
 
@@ -319,7 +319,7 @@ describe('useEnhancedBondMutations', () => {
         isRecovered: false,
       }
 
-      mockBondActionStorage.getBondActionMutationOperation.mockReturnValue(mockOperation)
+      mockBondActionStorage.getBondActionMutationOperation.mockReturnValue(mockOperation as unknown as MutationOperation)
 
       const { result, rerender } = renderHook(() => useEnhancedBondMutations())
 
@@ -334,9 +334,9 @@ describe('useEnhancedBondMutations', () => {
         status: 'success',
         finalTxHash: 'success-hash-123',
         completedAt: '2024-01-01T00:05:00.000Z',
-      } as unknown as ReturnType<typeof getBondActionMutationOperation>
+      } as unknown as typeof mockOperation
 
-      mockBondActionStorage.getBondActionMutationOperation.mockReturnValue(mockOperation)
+      mockBondActionStorage.getBondActionMutationOperation.mockReturnValue(mockOperation as unknown as MutationOperation)
 
       // Force update
       rerender()
@@ -382,7 +382,7 @@ describe('useEnhancedBondMutations', () => {
             attempts: [],
             requestMetadata: { amountUsdc: 1000 },
             isRecovered: false,
-          }
+          } as unknown as MutationOperation
         } else {
           return {
             operationId: 'polling-test',
@@ -392,7 +392,7 @@ describe('useEnhancedBondMutations', () => {
             requestMetadata: { amountUsdc: 1000 },
             finalTxHash: 'polling-success-hash',
             isRecovered: false,
-          }
+          } as unknown as MutationOperation
         }
       })
 
@@ -424,7 +424,7 @@ describe('useEnhancedBondMutations', () => {
         requestMetadata: { amountUsdc: 1000 },
         finalTxHash: 'completed-hash',
         isRecovered: false,
-      })
+      } as unknown as MutationOperation)
 
       const { result } = renderHook(() => useEnhancedBondMutations())
 
@@ -452,10 +452,10 @@ describe('useEnhancedBondMutations', () => {
         operationId: 'reset-test',
         type: 'bond_create',
         status: 'error',
-        attempts: [{ attemptId: '1', status: 'error' }],
+        attempts: [{ attemptId: '1', status: 'error' }] as unknown as MutationOperation['attempts'],
         requestMetadata: { amountUsdc: 1000 },
         isRecovered: false,
-      })
+      } as unknown as MutationOperation)
 
       const { result } = renderHook(() => useEnhancedBondMutations())
 

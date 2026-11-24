@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import Button from './Button'
 import ConfirmDialog from './ConfirmDialog'
+
+const EXTENSION_ERROR_MESSAGE = 'Unable to extend your session. Please retry or sign out.'
 
 export interface SessionTimeoutDialogProps {
   open: boolean
@@ -25,6 +28,7 @@ export default function SessionTimeoutDialog({
     normalizeTimeLeft(timeLeftSeconds)
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [extensionError, setExtensionError] = useState<string | null>(null)
   // Lock before awaiting so repeated clicks cannot overlap session extensions.
   const submissionInFlight = useRef(false)
 
@@ -33,6 +37,10 @@ export default function SessionTimeoutDialog({
   useEffect(() => {
     setInternalTimeLeft(normalizeTimeLeft(timeLeftSeconds))
   }, [open, timeLeftSeconds])
+
+  useEffect(() => {
+    setExtensionError(null)
+  }, [open])
 
   useEffect(() => {
     if (!open || internalTimeLeft <= 0) return
@@ -49,12 +57,13 @@ export default function SessionTimeoutDialog({
 
     submissionInFlight.current = true
     setIsSubmitting(true)
+    setExtensionError(null)
     try {
       await onStayLoggedIn()
     } catch {
       // Keep implementation details (tokens, URLs, provider messages) out of
       // the dialog while giving the user a clear retry or logout path.
-      throw new Error('Unable to extend your session. Please retry or sign out.')
+      setExtensionError(EXTENSION_ERROR_MESSAGE)
     } finally {
       submissionInFlight.current = false
       setIsSubmitting(false)
@@ -81,6 +90,19 @@ export default function SessionTimeoutDialog({
         </>
       }
     >
+      {extensionError && (
+        <div role="alert" className="confirm-dialog__error">
+          <p>{extensionError}</p>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleStayLoggedIn}
+            disabled={isSubmitting}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
       <div
         style={{
           padding: 'var(--credence-space-4)',

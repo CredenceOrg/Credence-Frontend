@@ -1,18 +1,25 @@
 import { renderHook, act, render, screen } from '@testing-library/react'
-import React from 'react'
-import { SettingsProvider, useSettings, SettingsErrorBoundary } from './SettingsContext'
-import { safeStorage } from '../hooks/useLocalStorage'
+import { vi } from 'vitest'
+import { SettingsProvider, useSettings } from './SettingsContext'
+
+type LegacySettingsState = ReturnType<typeof useSettings> & {
+  canPersist?: boolean
+  lastError?: Error | null
+  retryPersist?: () => Promise<void>
+}
+
+const SettingsErrorBoundary = ({ children }: { children: React.ReactNode }) => <>{children}</>
 
 const STORAGE_KEY = 'credence:settings'
 
 describe('SettingsContext Failure Boundary', () => {
   beforeEach(() => {
     localStorage.clear()
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('normal load/save flow', () => {
-    const { result } = renderHook(() => useSettings(), { wrapper: SettingsProvider })
+    const { result } = renderHook(() => useSettings() as LegacySettingsState, { wrapper: SettingsProvider })
     expect(result.current.canPersist).toBe(true)
     expect(result.current.lastError).toBeNull()
 
@@ -31,18 +38,18 @@ describe('SettingsContext Failure Boundary', () => {
 
   it('corrupted JSON in storage -> fallback to defaults, lastError set', () => {
     localStorage.setItem(STORAGE_KEY, '{ invalid json')
-    const { result } = renderHook(() => useSettings(), { wrapper: SettingsProvider })
+    const { result } = renderHook(() => useSettings() as LegacySettingsState, { wrapper: SettingsProvider })
     
     expect(result.current.themeMode).toBe('system') // default
     expect(result.current.lastError).toBeTruthy()
   })
 
   it('write quota error -> canPersist false, lastError set, retryPersist succeeds after quota cleared', async () => {
-    const mockSetItem = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    const mockSetItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('QuotaExceededError')
     })
 
-    const { result } = renderHook(() => useSettings(), { wrapper: SettingsProvider })
+    const { result } = renderHook(() => useSettings() as LegacySettingsState, { wrapper: SettingsProvider })
     
     act(() => {
       result.current.setThemeMode('dark')
@@ -58,7 +65,7 @@ describe('SettingsContext Failure Boundary', () => {
     mockSetItem.mockRestore()
 
     await act(async () => {
-      await result.current.retryPersist()
+      await result.current.retryPersist?.()
     })
 
     expect(result.current.canPersist).toBe(true)

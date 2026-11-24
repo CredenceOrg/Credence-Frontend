@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './ThemeToggle.css'
+import { THEME_CHANNEL_EVENT, getNextTheme, type Theme } from '../lib/themeCycle'
 
 const THEME_STORAGE_KEY = 'theme'
-const THEME_CHANNEL_EVENT = 'theme-change'
 
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
-export type Theme = 'light' | 'dark'
+export type { Theme }
 
 function isValidTheme(value: unknown): value is Theme {
   return value === 'light' || value === 'dark'
@@ -16,7 +16,7 @@ function isValidTheme(value: unknown): value is Theme {
  * Safely read the persisted theme.
  *
  * Invariants:
-* - Never throws. Storage may be disabled (private mode, SecurityError,
+ * - Never throws. Storage may be disabled (private mode, SecurityError,
  *   QuotaExceededError, etc.) or contain arbitrary corrupted data.
  * - Returns `undefined` for any value that is not exactly 'light' | 'dark'.
  *   Corrupt / injected values are never propagated into the DOM or state.
@@ -55,6 +55,16 @@ function readOSPreference(): Theme {
 }
 
 function resolveTheme(): Theme {
+  // SettingsProvider migrates the legacy key before the header mounts. Prefer
+  // the canonical record so the toggle cannot overwrite the saved theme when
+  // the lazy-loaded layout mounts after the provider's theme effect.
+  try {
+    const saved = JSON.parse(window.localStorage.getItem('credence:settings') ?? 'null')
+    if (isValidTheme(saved?.themeMode)) return saved.themeMode
+    if (saved?.themeMode === 'system') return readOSPreference()
+  } catch {
+    // Corrupt or unavailable settings must not prevent the legacy/OS fallback.
+  }
   return readPersistedTheme() ?? readOSPreference()
 }
 
@@ -183,10 +193,10 @@ export default function ThemeToggle() {
 
   const toggleTheme = () => {
     hasExplicitChoice.current = true
-    commitTheme(theme === 'light' ? 'dark' : 'light')
+    commitTheme(getNextTheme(theme))
   }
 
-  const nextTheme = theme === 'light' ? 'dark' : 'light'
+  const nextTheme = getNextTheme(theme)
 
   return (
     <button

@@ -14,6 +14,7 @@ import { useTransactions } from '../hooks/useTransactions'
 import { useToast } from '../components/ToastProvider'
 import { buildExportFilename, downloadCsv, transactionsToCsv } from '../lib/transactionsExport'
 import { explorerUrl } from '../lib/explorerUrl'
+import { VIRTUALIZED_LIST_DEFAULT_THRESHOLD } from '../config/virtualizedList'
 
 import { truncateAddress } from '../lib/stellar'
 import { formatUsdc } from '../lib/format'
@@ -21,6 +22,10 @@ import type { Transaction } from '../api/types'
 import type { TransactionWithNetwork } from '../lib/pendingTransactionsStorage'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
+
+const TRANSACTIONS_VIRTUAL_ROW_HEIGHT = 64
+const TRANSACTIONS_VIRTUAL_OVERSCAN = 6
+const TRANSACTIONS_VIRTUAL_VIEWPORT_HEIGHT = 520
 
 const STATUS_BADGE_MAP: Record<Transaction['status'], string> = {
   pending: 'locked',
@@ -179,6 +184,93 @@ export default function Transactions() {
     [filtered, selectedIds]
   )
 
+  const shouldVirtualizeRows = filtered.length >= VIRTUALIZED_LIST_DEFAULT_THRESHOLD
+  const [rowsScrollTop, setRowsScrollTop] = useState(0)
+
+  useEffect(() => {
+    setRowsScrollTop(0)
+  }, [filter, filtered.length, shouldVirtualizeRows])
+
+  const visibleRowRange = useMemo(() => {
+    if (!shouldVirtualizeRows) {
+      return { start: 0, end: filtered.length }
+    }
+
+    const visibleCount = Math.max(
+      1,
+      Math.ceil(TRANSACTIONS_VIRTUAL_VIEWPORT_HEIGHT / TRANSACTIONS_VIRTUAL_ROW_HEIGHT) + 1
+    )
+    const start = Math.max(
+      0,
+      Math.floor(rowsScrollTop / TRANSACTIONS_VIRTUAL_ROW_HEIGHT) - TRANSACTIONS_VIRTUAL_OVERSCAN
+    )
+    const end = Math.min(
+      filtered.length,
+      start + visibleCount + TRANSACTIONS_VIRTUAL_OVERSCAN * 2
+    )
+
+    return { start, end }
+  }, [filtered.length, rowsScrollTop, shouldVirtualizeRows])
+
+  const visibleRows = useMemo(
+    () => filtered.slice(visibleRowRange.start, visibleRowRange.end),
+    [filtered, visibleRowRange.end, visibleRowRange.start]
+  )
+
+  const topSpacerHeight = shouldVirtualizeRows
+    ? visibleRowRange.start * TRANSACTIONS_VIRTUAL_ROW_HEIGHT
+    : 0
+  const bottomSpacerHeight = shouldVirtualizeRows
+    ? Math.max(0, (filtered.length - visibleRowRange.end) * TRANSACTIONS_VIRTUAL_ROW_HEIGHT)
+    : 0
+
+  const renderTransactionRow = useCallback(
+    (tx: Transaction) => {
+      const selected = isRowSelected(tx.id)
+      return (
+        <tr
+          key={tx.id}
+          data-selected={selected ? 'true' : undefined}
+          className={selected ? 'transactions__row--selected' : undefined}
+        >
+          <td data-label="Select" className="transactions__selectCell">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => toggleRow(tx.id)}
+              aria-label={t('transactions.bulk.selectLabel', { id: tx.id })}
+            />
+          </td>
+          <td data-label="Type" className="transactions__type">
+            {tx.type}
+          </td>
+          <td data-label="Amount">{tx.amountUsdc != null ? formatUsdc(tx.amountUsdc) : '—'}</td>
+          <td data-label="Status">
+            <Badge variant={STATUS_BADGE_MAP[tx.status]} label={tx.status} />
+          </td>
+          <td data-label="When">
+            <time dateTime={tx.timestamp}>{relativeTime(tx.timestamp)}</time>
+          </td>
+          <td data-label="Transaction">
+            <AddressDisplay address={tx.hash} className="transactions__hash" />{' '}
+            <a
+              href={explorerUrl(getTxNetwork(tx), tx.hash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transactions__explorerLink"
+              aria-label={t('transactions.table.viewOnExplorer', {
+                hash: truncateAddress(tx.hash),
+              })}
+            >
+              {t('transactions.table.viewLink')}
+            </a>
+          </td>
+        </tr>
+      )
+    },
+    [getTxNetwork, isRowSelected, relativeTime, t, toggleRow]
+  )
+
   // ── Bulk action handlers ────────────────────────────────────────────
   const handleBulkExport = useCallback(() => {
     const count = orderedSelected.length
@@ -324,74 +416,59 @@ export default function Transactions() {
           {filtered.length === 0 ? (
             <p className="transactions__noResults">{t('transactions.noResults', { filter })}</p>
           ) : (
-            <table className="transactions__table" aria-label="Transaction history">
-              <thead>
-                <tr>
-                  <th scope="col" className="transactions__selectHeader">
-                    <input
-                      ref={selectAllRef}
-                      type="checkbox"
-                      data-testid={TEST_IDS.TX_SELECT_ALL_CHECKBOX}
-                      checked={allFilteredSelected}
-                      onChange={toggleSelectAll}
-                      aria-label={t('transactions.bulk.selectAll')}
-                    />
-                  </th>
-                  <th scope="col">{t('transactions.table.type')}</th>
-                  <th scope="col">{t('transactions.table.amount')}</th>
-                  <th scope="col">{t('transactions.table.status')}</th>
-                  <th scope="col">{t('transactions.table.when')}</th>
-                  <th scope="col">{t('transactions.table.transaction')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((tx) => {
-                  const selected = isRowSelected(tx.id)
-                  return (
-                    <tr
-                      key={tx.id}
-                      data-selected={selected ? 'true' : undefined}
-                      className={selected ? 'transactions__row--selected' : undefined}
-                    >
-                      <td data-label="Select" className="transactions__selectCell">
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() => toggleRow(tx.id)}
-                          aria-label={t('transactions.bulk.selectLabel', { id: tx.id })}
-                        />
-                      </td>
-                      <td data-label="Type" className="transactions__type">
-                        {tx.type}
-                      </td>
-                      <td data-label="Amount">
-                        {tx.amountUsdc != null ? formatUsdc(tx.amountUsdc) : '—'}
-                      </td>
-                      <td data-label="Status">
-                        <Badge variant={STATUS_BADGE_MAP[tx.status]} label={tx.status} />
-                      </td>
-                      <td data-label="When">
-                        <time dateTime={tx.timestamp}>{relativeTime(tx.timestamp)}</time>
-                      </td>
-                      <td data-label="Transaction">
-                        <AddressDisplay address={tx.hash} className="transactions__hash" />{' '}
-                        <a
-                          href={explorerUrl(getTxNetwork(tx), tx.hash)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="transactions__explorerLink"
-                          aria-label={t('transactions.table.viewOnExplorer', {
-                            hash: truncateAddress(tx.hash),
-                          })}
-                        >
-                          {t('transactions.table.viewLink')}
-                        </a>
-                      </td>
+            <div
+              style={
+                shouldVirtualizeRows
+                  ? { maxHeight: `${TRANSACTIONS_VIRTUAL_VIEWPORT_HEIGHT}px`, overflowY: 'auto' }
+                  : undefined
+              }
+              onScroll={
+                shouldVirtualizeRows
+                  ? (event) => setRowsScrollTop(event.currentTarget.scrollTop)
+                  : undefined
+              }
+            >
+              <table className="transactions__table" aria-label="Transaction history">
+                <thead>
+                  <tr>
+                    <th scope="col" className="transactions__selectHeader">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        data-testid={TEST_IDS.TX_SELECT_ALL_CHECKBOX}
+                        checked={allFilteredSelected}
+                        onChange={toggleSelectAll}
+                        aria-label={t('transactions.bulk.selectAll')}
+                      />
+                    </th>
+                    <th scope="col">{t('transactions.table.type')}</th>
+                    <th scope="col">{t('transactions.table.amount')}</th>
+                    <th scope="col">{t('transactions.table.status')}</th>
+                    <th scope="col">{t('transactions.table.when')}</th>
+                    <th scope="col">{t('transactions.table.transaction')}</th>
+                  </tr>
+                </thead>
+                <tbody role="rowgroup">
+                  {topSpacerHeight > 0 && (
+                    <tr aria-hidden="true" role="presentation">
+                      <td
+                        colSpan={6}
+                        style={{ height: `${topSpacerHeight}px`, padding: 0, border: 0 }}
+                      />
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  )}
+                  {(shouldVirtualizeRows ? visibleRows : filtered).map(renderTransactionRow)}
+                  {bottomSpacerHeight > 0 && (
+                    <tr aria-hidden="true" role="presentation">
+                      <td
+                        colSpan={6}
+                        style={{ height: `${bottomSpacerHeight}px`, padding: 0, border: 0 }}
+                      />
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {hasData && visibleTransactions.length > 0 && totalPages > 1 && (

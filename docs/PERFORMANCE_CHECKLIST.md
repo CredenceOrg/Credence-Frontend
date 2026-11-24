@@ -89,3 +89,10 @@ npm run build
 ```
 
 Ensure your widget hasn't added a disproportionate amount of kilobytes to the chunk size. Check the browser's performance tab to ensure interactions (like opening a modal or expanding a drawer) stay within a 16ms frame budget.
+
+## 5. Virtualize Long Lists and Tables
+
+When rendering large datasets (for example 1,000+ rows), render only the visible window and keep the DOM size bounded.
+
+- Use the shared VirtualizedList primitive for long lists and list-like experiences.
+- For native tables, keep table semantics valid (`table`, `thead`, `tbody`) and use spacer rows inside `tbody` instead of replacing rows with non-table elements.

@@ -12,8 +12,8 @@ For architecture and design decisions, see [docs/ARCHITECTURE.md](docs/ARCHITECT
 
 | Tool    | Minimum version | Notes                                                                                       |
 | ------- | --------------- | ------------------------------------------------------------------------------------------- |
-| Node.js | 18 LTS          | Vite 5 requires Node ≥ 18. Use the [current LTS](https://nodejs.org/) or any later release. |
-| npm     | 9               | Bundled with Node 18+. `npm install` is the only supported package manager for this repo.   |
+| Node.js | 20.19 / 22.13 / 24+ | Required by ESLint 10 (`^20.19.0 \|\| ^22.13.0 \|\| >=24`); enforced via `engines` in `package.json`. `.nvmrc` pins `22` (run `nvm use`). |
+| npm     | 9               | Bundled with the supported Node versions. `npm install` is the only supported package manager for this repo.   |
 
 Confirm your version:
 

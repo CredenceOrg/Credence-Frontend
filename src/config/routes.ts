@@ -40,3 +40,16 @@ export const PRELOADS_BY_PATH: Record<string, PreloadFn> = {
   '/transactions': preloadTransactions,
   '/settings': preloadSettings,
 }
+
+/**
+ * Browser-wide accessibility audit targets. The seven primary navigation routes
+ * come from PRELOADS_BY_PATH; the create-bond/sign-in screens and wildcard 404
+ * are valid app routes too (see App.tsx). Keep this list in sync when adding
+ * a new static route. Parameterized detail pages need representative fixtures.
+ */
+export const A11Y_AUDIT_PATHS = [
+  ...Object.keys(PRELOADS_BY_PATH),
+  '/bond/new',
+  '/signin',
+  '/a11y-nonexistent-route',
+]

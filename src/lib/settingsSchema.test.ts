@@ -12,6 +12,7 @@ describe('validateAndNormalize', () => {
       quietHoursEnabled: true,
       quietHoursStart: '23:00',
       quietHoursEnd: '06:00',
+      unlockRemindersEnabled: true,
     }
     const result = validateAndNormalize(input)
     expect(result.ok).toBe(true)
@@ -40,6 +41,7 @@ describe('validateAndNormalize', () => {
       expect(result.data.quietHoursEnabled).toBe(false)
       expect(result.data.quietHoursStart).toBe('22:00')
       expect(result.data.quietHoursEnd).toBe('07:00')
+      expect(result.data.unlockRemindersEnabled).toBe(false)
     }
   })
 
@@ -287,5 +289,44 @@ describe('defaultSettings', () => {
     expect(d.quietHoursEnabled).toBe(false)
     expect(d.quietHoursStart).toBe('22:00')
     expect(d.quietHoursEnd).toBe('07:00')
+    expect(d.unlockRemindersEnabled).toBe(false)
+  })
+})
+
+describe('unlockRemindersEnabled validation', () => {
+  it('defaults to false for older exports', () => {
+    const result = validateAndNormalize({ themeMode: 'dark' })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.unlockRemindersEnabled).toBe(false)
+    }
+  })
+
+  it('round-trips an enabled setting', () => {
+    const result = validateAndNormalize({ unlockRemindersEnabled: true })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.unlockRemindersEnabled).toBe(true)
+    }
+  })
+
+  it('coerces truthy values to true', () => {
+    const result = validateAndNormalize({ unlockRemindersEnabled: 'yes' })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.unlockRemindersEnabled).toBe(true)
+    }
+  })
+
+  it('coerces falsy values to false', () => {
+    const result = validateAndNormalize({ unlockRemindersEnabled: 0 })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.unlockRemindersEnabled).toBe(false)
+    }
   })
 })

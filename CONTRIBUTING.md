@@ -12,8 +12,8 @@ For architecture and design decisions, see [docs/ARCHITECTURE.md](docs/ARCHITECT
 
 | Tool    | Minimum version | Notes                                                                                       |
 | ------- | --------------- | ------------------------------------------------------------------------------------------- |
-| Node.js | 18 LTS          | Vite 5 requires Node ≥ 18. Use the [current LTS](https://nodejs.org/) or any later release. |
-| npm     | 9               | Bundled with Node 18+. `npm install` is the only supported package manager for this repo.   |
+| Node.js | 20.19 / 22.13 / 24+ | Required by ESLint 10 (`^20.19.0 \|\| ^22.13.0 \|\| >=24`); enforced via `engines` in `package.json`. `.nvmrc` pins `22` (run `nvm use`). |
+| npm     | 9               | Bundled with the supported Node versions. `npm install` is the only supported package manager for this repo.   |
 
 Confirm your version:
 
@@ -60,17 +60,18 @@ Vite opens at `http://localhost:5173` by default with HMR and the `/api` proxy a
 
 All scripts are defined in `package.json`. Run them from the repo root.
 
-| Script                  | Command                 | When to use                                           |
-| ----------------------- | ----------------------- | ----------------------------------------------------- |
-| `npm run dev`           | `vite`                  | Local development with HMR                            |
-| `npm run dev:reset`     | `node scripts/dev-reset.mjs` | Clear browser local storage (dev server must be running) |
-| `npm run build`         | `tsc -b && vite build`  | Production bundle; also type-checks the whole project |
-| `npm run preview`       | `vite preview`          | Serve the production build locally                    |
-| `npm run test`          | `vitest run`            | Run the full test suite once (CI mode)                |
-| `npm run test:coverage` | `vitest run --coverage` | Tests + per-file coverage report                      |
-| `npm run lint`          | `eslint .`              | Lint all source files                                 |
-| `npm run format`        | `prettier --write`      | Reformat source and docs in-place                     |
-| `npm run format:check`  | `prettier --check`      | Check formatting without modifying files (CI gate)    |
+| Script                  | Command                              | When to use                                              |
+| ----------------------- | ------------------------------------ | -------------------------------------------------------- |
+| `npm run dev`           | `vite`                               | Local development with HMR                               |
+| `npm run dev:reset`     | `node scripts/dev-reset.mjs`         | Clear browser local storage (dev server must be running) |
+| `npm run build`         | `tsc -b && vite build`               | Production bundle; also type-checks the whole project    |
+| `npm run preview`       | `vite preview`                       | Serve the production build locally                       |
+| `npm run test`          | `vitest run`                         | Run the full test suite once (CI mode)                   |
+| `npm run test:coverage` | `vitest run --coverage`              | Tests + per-file coverage report                         |
+| `npm run lint`          | `eslint .`                           | Lint all source files                                    |
+| `npm run check:bundle`  | `node scripts/check-bundle-size.mjs` | Verify gzipped chunk budgets against `dist/`             |
+| `npm run format`        | `prettier --write`                   | Reformat source and docs in-place                        |
+| `npm run format:check`  | `prettier --check`                   | Check formatting without modifying files (CI gate)       |
 
 Run type-checking on its own without bundling:
 

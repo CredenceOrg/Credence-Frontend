@@ -2,6 +2,9 @@
 
 Credence Frontend uses [Vitest](https://vitest.dev/) with [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) and [jsdom](https://github.com/jsdom/jsdom) to unit-test components and hooks.
 
+Playwright browser tests cover key end-to-end flows and run against the Vite dev
+server with a mocked Freighter wallet.
+
 ---
 
 ## Running Tests
@@ -10,7 +13,24 @@ Credence Frontend uses [Vitest](https://vitest.dev/) with [React Testing Library
 npm run test          # single run (CI)
 npm run test:watch    # watch mode (development)
 npm run coverage      # single run with coverage report
+npm run test:e2e      # Playwright browser tests
 ```
+
+### Playwright end-to-end tests
+
+The Playwright configuration starts the app with `E2E_MOCK_WALLET=true`. E2E
+specs connect through the mock Freighter API, and intercept Stellar Horizon and
+application API requests with `page.route`, so they do not require a real wallet
+extension or a backend service.
+
+```bash
+npx playwright install chromium   # one-time browser setup
+npx playwright test tests/create-bond.spec.ts tests/withdraw-bond.spec.ts
+```
+
+`tests/create-bond.spec.ts` covers amount validation, the four-step bond wizard,
+and back navigation with amount preservation. `tests/withdraw-bond.spec.ts`
+covers early-withdrawal penalty details, confirmation, and cancellation.
 
 ---
 
@@ -85,6 +105,44 @@ await user.keyboard('{Escape}')
 ```
 
 Use `fireEvent` only when you need to dispatch a specific low-level DOM event (e.g. `keydown` on a container element).
+
+---
+
+## Storybook Play Functions
+
+Stories that document a state visually should also assert the interaction that produces it. Use `@storybook/test` (the same `userEvent`/`expect`/`within` API as RTL, plus jest-dom matchers) inside a story's `play` function and wrap each assertion in `step` so the Interactions panel names the behaviour, not the click:
+
+```tsx
+import { expect, fn, userEvent, waitFor, within } from '@storybook/test'
+
+export const PlayPasteValidAddress: Story = {
+  name: 'Play – paste a valid address',
+  args: { value: '' },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+
+    await step('paste from the clipboard', async () => {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { readText: fn(async () => 'stellar:G…') },
+      })
+      await userEvent.click(canvas.getByRole('button', { name: /paste address/i }))
+    })
+
+    await step('the address is accepted', async () => {
+      await waitFor(() => expect(canvas.getByRole('textbox')).toHaveValue('G…'))
+    })
+  },
+}
+```
+
+Guidelines:
+
+- Prefix play-function stories with `Play – ` and give them a `name` that describes the behaviour.
+- Use a controlled harness (`useState`) when the component is controlled; otherwise the typed value never renders back.
+- Stub browser APIs (`navigator.clipboard`) inside `play` — never rely on real permissions.
+- Verify locally with `npm run storybook` (Interactions panel green) and `npm run build-storybook`; the stories compile as part of `tsc` too.
+- Play functions currently cover `AddressInput` (paste sanitising, character counter, invalid message, clipboard denial) and `AmountInput` (sanitising/normalising, over-balance error, presets).
 
 ---
 

@@ -37,7 +37,7 @@ useFocusTrap({
 
 When an overlay opens, focus moves into it on the next animation frame:
 
-- If `initialFocusRef` is provided, that element receives focus.
+- If `initialFocusRef` is provided and not disabled, that element receives focus.
 - Otherwise focus moves to the first focusable descendant, matched by the
   `FOCUSABLE_SELECTOR` in `useFocusTrap.ts`
   (`a[href]`, enabled form controls, `[tabindex]` >= 0).
@@ -50,7 +50,7 @@ Chosen initial-focus targets today:
 
 | Component                                     | File                                         | Initial focus |
 | --------------------------------------------- | -------------------------------------------- | ------------- |
-| `ConnectWalletModal`                          | `src/components/ConnectWalletModal.tsx`      | Cancel button |
+| `ConnectWalletModal` (canonical; `ConnectWalletDialog` re-exports it) | `src/components/ConnectWalletModal.tsx` | Cancel button |
 | `ConfirmDialog`                               | `src/components/ConfirmDialog.tsx`           | Cancel button |
 | `SessionTimeoutModal` (wraps `ConfirmDialog`) | `src/components/SessionTimeoutModal.tsx`     | Cancel button |
 | `ReauthPrompt`                                | `src/components/ReauthPrompt.tsx`            | Cancel button |
@@ -81,7 +81,8 @@ in the DOM.
 
 While `isActive` is true, `useFocusTrap` constrains Tab:
 
-- `Tab` on the last focusable element wraps to the first.
+- `Tab` on the last focusable element (or if focus has escaped the container)
+  wraps to the first.
 - `Shift+Tab` on the first (or if focus has escaped the container) wraps to the
   last.
 

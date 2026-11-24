@@ -95,7 +95,7 @@ describe('useWidgetCache', () => {
     // Key isolation — widget B should NOT have been re-fetched.
     expect(bFetcher).toHaveBeenCalledTimes(1)
 
-    const bEntry = __TESTING__.store.get<string[]>('probe:b')
+    const bEntry = __TESTING__.store.get<string[]>('public:anon:probe:b')
     expect(bEntry.status).toBe('success')
     expect(bEntry.data).toEqual(['b1'])
   })
@@ -276,7 +276,7 @@ describe('useWidgetCache', () => {
     // Widget B was never invalidated: its fetcher should still have been called
     // exactly once and its data must still be present.
     expect(bFetcher).toHaveBeenCalledTimes(1)
-    const bEntry = __TESTING__.store.get<string[]>('probe:inv-b')
+    const bEntry = __TESTING__.store.get<string[]>('public:anon:probe:inv-b')
     expect(bEntry.status).toBe('success')
     expect(bEntry.data).toEqual(['b'])
   })
@@ -554,7 +554,7 @@ describe('useWidgetCache', () => {
     // ...but non-PII data is preserved.
     expect(screen.getByTestId('score')).toHaveTextContent('92')
 
-    const entry = __TESTING__.store.get<{ owner: { fullName: string; email: string } }>('probe:pii')
+    const entry = __TESTING__.store.get<{ owner: { fullName: string; email: string } }>('public:anon:probe:pii')
     expect(entry.data?.owner.email).toBe('[REDACTED]')
     expect(entry.data?.owner.fullName).toBe('[REDACTED]')
   })
@@ -592,7 +592,47 @@ describe('useWidgetCache', () => {
 
     // Previous (already-scrubbed) data is preserved, not overwritten with
     // the raw, un-scrubbable payload.
-    const entry = __TESTING__.store.get('probe:pii-error')
+    const entry = __TESTING__.store.get('public:anon:probe:pii-error')
     expect(entry.data).toEqual(['ok'])
+  })
+
+  it('scopes cache keys by network and wallet address', async () => {
+    let currentNetwork: 'public' | 'test' = 'public'
+    let currentAddress = 'GADDR1'
+
+    const { useSettings } = await import('../context/SettingsContext')
+    const { useWallet } = await import('../context/WalletContext')
+    vi.spyOn(await import('../context/SettingsContext'), 'useSettings').mockImplementation(
+      () => ({ ...useSettings(), network: currentNetwork }) as ReturnType<typeof useSettings>
+    )
+    vi.spyOn(await import('../context/WalletContext'), 'useWallet').mockImplementation(
+      () => ({ ...useWallet(), address: currentAddress }) as ReturnType<typeof useWallet>
+    )
+
+    const fetcher = vi.fn().mockImplementation(async () => [`${currentNetwork}:${currentAddress}`])
+
+    function Probe() {
+      const widget = useWidgetCache<string[]>('probe:scoped', fetcher)
+      return <span data-testid="val">{widget.data?.[0] ?? 'empty'}</span>
+    }
+
+    const { rerender } = renderWithProvider(<Probe />)
+    await waitFor(() => expect(screen.getByTestId('val')).toHaveTextContent('public:GADDR1'))
+
+    currentNetwork = 'test'
+    rerender(
+      <WidgetCacheProvider>
+        <Probe />
+      </WidgetCacheProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('val')).toHaveTextContent('test:GADDR1'))
+
+    currentAddress = 'GADDR2'
+    rerender(
+      <WidgetCacheProvider>
+        <Probe />
+      </WidgetCacheProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('val')).toHaveTextContent('test:GADDR2'))
   })
 })

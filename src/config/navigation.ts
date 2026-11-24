@@ -88,5 +88,9 @@ export const ROUTE_LABELS: Record<string, string> = {
   ...Object.fromEntries(navigationLinks.map(({ to, label }) => [to, `${label} page`])),
   '/bond/new': 'Create bond page',
   '/trust/summary': 'Trust Score summary page',
+  '/trust/:address': 'Trust Score profile page',
+  '/attestations': 'Attestations page',
+  '/transactions': 'Transactions page',
+  '/settings': 'Settings page',
   '/signin': 'Sign in page',
 }

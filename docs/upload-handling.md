@@ -1,76 +1,32 @@
-# Upload Handling
+# Attestation Evidence Files
 
-This document explains how Credence handles large file uploads, including chunked transfer, retry mechanisms, and progress reporting.
+Attestation evidence files are processed locally in the browser. The app does
+not upload, persist, or include file contents in an attestation payload.
 
-**Audience:** Contributors and developers working on the frontend upload components.
+## Supported files and limits
 
-## Chunked Uploads
+- PDF, PNG, JPEG, and plain-text files.
+- Maximum size: 10 MiB (`MAX_EVIDENCE_FILE_SIZE_BYTES` in
+  `src/lib/fileHash.ts`).
+- SHA-256 is calculated client-side with the Web Crypto API.
 
-To reliably support large files (e.g., attestation evidence or large reports) over unstable networks, the frontend splits files into 5MB chunks before transmission.
+`hashFile` reads the `Blob.stream()` incrementally, reports progress, and
+supports cancellation through an `AbortSignal`. Web Crypto's `subtle.digest`
+requires a complete `ArrayBuffer`, so the function enforces the maximum size
+before allocating the bounded digest buffer.
 
-### How it works
+## Attestation payload
 
-1. The user selects a file via `FileInput` or drag-and-drop.
-2. The `uploadService` calculates the total number of chunks.
-3. Each chunk is read via the `File.slice()` API and uploaded sequentially.
-4. The backend reconstructs the file once all chunks are received.
+When a file is selected, the form submits only its SHA-256 digest and safe
+metadata (`name`, `size`, MIME `type`, and `lastModified`) alongside evidence
+text. The `File`, `Blob`, and file bytes are never included in the payload.
+The SHA-256 digest can be copied from the attestation detail drawer to verify
+the evidence independently.
 
-```typescript
-// Example: Chunking logic
-const CHUNK_SIZE = 5 * 1024 * 1024 // 5MB
+File type and size are checked by `FilePicker` before hashing. Failed
+validation and hashing are surfaced to the user; changing or removing the
+selected file cancels the previous digest operation.
 
-async function uploadFile(file: File) {
-  const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
-
-  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-    const start = chunkIndex * CHUNK_SIZE
-    const end = Math.min(start + CHUNK_SIZE, file.size)
-    const chunk = file.slice(start, end)
-
-    await uploadChunk(chunk, chunkIndex, totalChunks, file.name)
-  }
-}
-```
-
-## Retries
-
-Network requests can fail. We use exponential backoff with jitter to retry failed chunk uploads.
-
-- **Max Retries:** 3 per chunk.
-- **Base Delay:** 1000ms.
-- **Strategy:** If a chunk fails, wait for `delay * (2 ^ retryCount) + jitter` before retrying.
-
-```typescript
-// Example: Retry mechanism
-async function uploadWithRetry(chunk: Blob, retries = 0): Promise<void> {
-  try {
-    await api.post('/upload/chunk', chunk)
-  } catch (error) {
-    if (retries >= 3) throw error
-
-    const delay = 1000 * Math.pow(2, retries) + Math.random() * 500
-    await new Promise((resolve) => setTimeout(resolve, delay))
-
-    return uploadWithRetry(chunk, retries + 1)
-  }
-}
-```
-
-## Progress Reporting
-
-Users need visual feedback during long uploads. Progress is calculated based on the number of successfully uploaded chunks.
-
-```typescript
-// Example: Progress calculation
-let uploadedBytes = 0
-
-function onChunkSuccess(chunkSize: number, totalSize: number) {
-  uploadedBytes += chunkSize
-  const percentComplete = Math.round((uploadedBytes / totalSize) * 100)
-
-  // Update UI (e.g., progress bar, aria-valuenow)
-  updateProgressBar(percentComplete)
-}
-```
-
-This ensures the user sees a smoothly advancing progress bar rather than an indefinite spinner.
+The configured maximum is intentionally small because Web Crypto digests a
+complete buffer rather than exposing incremental SHA-256 updates. Files over
+the limit are rejected before reading.

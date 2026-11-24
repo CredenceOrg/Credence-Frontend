@@ -285,6 +285,48 @@ describe('ConnectWalletDialog — focus management', () => {
     expect(document.activeElement).toBe(triggerEl)
     document.body.removeChild(triggerEl)
   })
+
+  it('falls back to dialog container when opened while connecting (all buttons disabled)', () => {
+    mockIsConnecting = true
+    renderModal()
+    expect(document.activeElement).toBe(screen.getByRole('dialog'))
+  })
+
+  it('traps focus with Tab and Shift+Tab wrapping between first and last controls', () => {
+    renderModal()
+    const dialog = screen.getByRole('dialog')
+    const cancelBtn = screen.getByRole('button', { name: /^cancel$/i })
+    const connectBtn = screen.getByRole('button', { name: /^connect$/i })
+
+    // Shift+Tab from first focusable wraps to last
+    cancelBtn.focus()
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })
+    )
+    expect(document.activeElement).toBe(connectBtn)
+
+    // Tab from last focusable wraps to first
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    )
+    expect(document.activeElement).toBe(cancelBtn)
+  })
+
+  it('automatically restores focus to previously focused trigger when returnFocusRef is omitted', () => {
+    const triggerEl = document.createElement('button')
+    triggerEl.type = 'button'
+    document.body.appendChild(triggerEl)
+    triggerEl.focus()
+
+    const onClose = vi.fn()
+    const { rerender } = render(<ConnectWalletDialog open={true} onClose={onClose} />)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^cancel$/i }))
+
+    rerender(<ConnectWalletDialog open={false} onClose={onClose} />)
+    expect(document.activeElement).toBe(triggerEl)
+
+    document.body.removeChild(triggerEl)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -380,13 +422,22 @@ describe('ConnectWalletDialog — handleBackdropClick failure boundaries', () =>
 
     const backdrop = screen.getByRole('dialog').parentElement!
 
-    // The throw should propagate — testing-library wraps it so we can assert it
-    // was thrown without crashing the test runner. The dialog should still be
-    // in the DOM at the time of the click (it hasn't unmounted yet).
-    await expect(user.click(backdrop)).rejects.toThrow('Parent close handler exploded')
+    let caughtError: Error | null = null
+    const onWindowError = (event: ErrorEvent) => {
+      event.preventDefault()
+      caughtError = event.error as Error
+    }
+    window.addEventListener('error', onWindowError)
+    try {
+      await user.click(backdrop)
+    } finally {
+      window.removeEventListener('error', onWindowError)
+    }
 
-    // onClose was called (the error originated inside it, not before it).
+    expect(caughtError).toBeInstanceOf(Error)
+    expect((caughtError as unknown as Error).message).toBe('Parent close handler exploded')
     expect(throwingOnClose).toHaveBeenCalledOnce()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   // ── 7. Auto-close guarded when isConnecting and isConnected are both true ──
@@ -444,5 +495,21 @@ describe('ConnectWalletDialog — handleBackdropClick failure boundaries', () =>
 
     await user.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalledOnce()
+  })
+})
+
+describe('ConnectWalletDialog — wallet provider selection', () => {
+  it('allows switching to xBull and connects with the xbull adapter id', async () => {
+    const user = userEvent.setup()
+    renderModal()
+
+    const xbullOption = screen.getByRole('radio', { name: /xbull/i })
+    await user.click(xbullOption)
+
+    expect(xbullOption).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('heading', { name: /connect xbull wallet/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^connect$/i }))
+    expect(mockConnect).toHaveBeenCalledWith('xbull')
   })
 })

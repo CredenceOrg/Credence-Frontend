@@ -94,11 +94,14 @@ const { data, error, refetch } = useTrustScore(address)
 
 ## Repeated requests
 
-Calling `refetch()` multiple times in rapid succession:
+Calling `refetch()` multiple times in rapid succession (including when submitting a
+different address on the Trust Score page while an earlier lookup is still in flight):
 
-1. Each call aborts the previous request.
-2. Each call increments the fetch id.
-3. Only the **last** request's result is applied.
+1. Each call aborts the previous request via its `AbortController`.
+2. Each call increments the monotonic `fetchId`.
+3. Only the **last** request's result is applied, and `isLoading` only clears when the
+   latest `fetchId` settles.
+4. Aborted requests (`AbortError` or `signal.aborted`) never surface user-facing errors.
 
 This is safe — no duplicate state, no partial leaks, no accumulated errors.
 

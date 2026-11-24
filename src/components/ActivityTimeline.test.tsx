@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18n from '../i18n/config'
 import ActivityTimeline, {
   ActivityItem,
   isTxHash,
@@ -181,6 +182,43 @@ describe('ActivityTimeline', () => {
     it('renders the correct number of list items', () => {
       render(<ActivityTimeline items={items} />)
       expect(screen.getAllByRole('listitem')).toHaveLength(5)
+    })
+  })
+
+  describe('localized plural counts', () => {
+    beforeEach(async () => {
+      i18n.addResourceBundle(
+        'fr',
+        'translation',
+        {
+          activityTimeline: {
+            recentEvents_one: '{{count}} événement récent',
+            recentEvents_other: '{{count}} événements récents',
+          },
+        },
+        true,
+        true
+      )
+      await i18n.changeLanguage('fr')
+    })
+
+    afterEach(async () => {
+      cleanup()
+      await i18n.changeLanguage('en')
+      i18n.removeResourceBundle('fr', 'translation')
+    })
+
+    it('uses the active locale plural rules for zero, one, and many items', () => {
+      const first = makeItem({ id: 'first' })
+      const second = makeItem({ id: 'second' })
+      const { rerender } = render(<ActivityTimeline items={[]} />)
+      expect(screen.queryByText(/événement récent/)).toBeNull()
+
+      rerender(<ActivityTimeline items={[first]} />)
+      expect(screen.getByText('1 événement récent')).toBeInTheDocument()
+
+      rerender(<ActivityTimeline items={[first, second]} />)
+      expect(screen.getByText('2 événements récents')).toBeInTheDocument()
     })
   })
 

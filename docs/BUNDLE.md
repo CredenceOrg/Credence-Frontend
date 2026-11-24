@@ -175,6 +175,16 @@ Add to `package.json`:
 4. Check **Size** (transfer) vs **Content** (decoded) columns
 5. Use the **Coverage** tab to spot unused code
 
+### Lighthouse CI audit
+
+Run the multi-route Lighthouse CI suite locally after building:
+
+```bash
+npm run build && npx lhci autorun
+```
+
+This audits `/`, `/dashboard`, `/bond`, `/trust`, `/attestations`, `/transactions`, and `/settings` against the per-route assertion matrix in `lighthouserc.json` (Performance >= 0.90, Accessibility >= 0.95, Best Practices >= 0.90) and saves reports to `./lhci-reports`. See [PERFORMANCE_CHECKLIST.md](./PERFORMANCE_CHECKLIST.md) for the full route matrix.
+
 ## Guidelines for contributors
 
 1. **Lazy-load new pages.** Add a `React.lazy()` import in `src/App.tsx`

@@ -4,6 +4,7 @@ import {
   transactionsToCsv,
   buildExportFilename,
   downloadCsv,
+  exportAllTransactions,
   EXPORT_COLUMNS,
 } from './transactionsExport'
 
@@ -182,5 +183,134 @@ describe('downloadCsv', () => {
     ).not.toThrow()
     // Either no URL was created (preferred) or, in jsdom-backed runs, the global
     // document was used. We only guarantee the helper does not throw here.
+  })
+})
+
+describe('exportAllTransactions', () => {
+  const makeTx = (id: string, hash = `HASH_${id}`): Transaction => ({
+    id,
+    type: 'bond',
+    amountUsdc: 100,
+    status: 'confirmed',
+    timestamp: '2026-01-15T12:00:00Z',
+    hash,
+  })
+
+  it('walks multiple cursor pages, reports progress, and serializes every row with formula neutralization', async () => {
+    const pages: Record<string, { items: Transaction[]; nextCursor?: string }> = {
+      __first__: {
+        items: [makeTx('tx-1', '=SUM(A1:A2)'), makeTx('tx-2')],
+        nextCursor: 'cursor-2',
+      },
+      'cursor-2': {
+        items: [makeTx('tx-3')],
+        nextCursor: 'cursor-3',
+      },
+      'cursor-3': {
+        items: [makeTx('tx-4')],
+        nextCursor: undefined,
+      },
+    }
+
+    const fetchPage = vi.fn(async (cursor: string | undefined) => {
+      return pages[cursor ?? '__first__']
+    })
+    const onProgress = vi.fn()
+
+    const result = await exportAllTransactions({ fetchPage, onProgress })
+
+    expect(fetchPage).toHaveBeenCalledTimes(3)
+    expect(fetchPage).toHaveBeenNthCalledWith(1, undefined, undefined)
+    expect(fetchPage).toHaveBeenNthCalledWith(2, 'cursor-2', undefined)
+    expect(fetchPage).toHaveBeenNthCalledWith(3, 'cursor-3', undefined)
+
+    expect(onProgress).toHaveBeenNthCalledWith(1, { pagesFetched: 1, rowsFetched: 2 })
+    expect(onProgress).toHaveBeenNthCalledWith(2, { pagesFetched: 2, rowsFetched: 3 })
+    expect(onProgress).toHaveBeenNthCalledWith(3, { pagesFetched: 3, rowsFetched: 4 })
+
+    expect(result.rows).toBe(4)
+    expect(result.pagesFetched).toBe(3)
+    expect(result.truncated).toBe(false)
+    expect(result.stopReason).toBe('complete')
+    expect(result.csv).toContain("'=SUM(A1:A2)")
+    expect(result.csv).toContain('tx-1')
+    expect(result.csv).toContain('tx-4')
+  })
+
+  it('stops promptly when cancelled via AbortController', async () => {
+    const controller = new AbortController()
+    const fetchPage = vi.fn(async (cursor: string | undefined) => {
+      if (!cursor) {
+        controller.abort()
+        return { items: [makeTx('tx-1')], nextCursor: 'cursor-2' }
+      }
+      return { items: [makeTx('tx-2')], nextCursor: undefined }
+    })
+
+    await expect(
+      exportAllTransactions({ fetchPage, signal: controller.signal })
+    ).rejects.toMatchObject({ name: 'AbortError' })
+
+    expect(fetchPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects immediately if signal is already aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const fetchPage = vi.fn()
+
+    await expect(
+      exportAllTransactions({ fetchPage, signal: controller.signal })
+    ).rejects.toMatchObject({ name: 'AbortError' })
+
+    expect(fetchPage).not.toHaveBeenCalled()
+  })
+
+  it('detects cursor loops and terminates cleanly', async () => {
+    const fetchPage = vi.fn(async (cursor: string | undefined) => {
+      if (!cursor) {
+        return { items: [makeTx('tx-1')], nextCursor: 'cursor-a' }
+      }
+      if (cursor === 'cursor-a') {
+        return { items: [makeTx('tx-2')], nextCursor: 'cursor-b' }
+      }
+      // Loop back to previously seen cursor-a
+      return { items: [makeTx('tx-3')], nextCursor: 'cursor-a' }
+    })
+
+    const result = await exportAllTransactions({ fetchPage })
+
+    expect(fetchPage).toHaveBeenCalledTimes(3)
+    expect(result.rows).toBe(3)
+    expect(result.pagesFetched).toBe(3)
+    expect(result.truncated).toBe(true)
+    expect(result.stopReason).toBe('cursor_loop')
+  })
+
+  it('caps pagination at maxPages', async () => {
+    let counter = 0
+    const fetchPage = vi.fn(async () => {
+      counter += 1
+      return {
+        items: [makeTx(`tx-${counter}`)],
+        nextCursor: `cursor-${counter + 1}`,
+      }
+    })
+
+    const result = await exportAllTransactions({ fetchPage, maxPages: 3 })
+
+    expect(fetchPage).toHaveBeenCalledTimes(3)
+    expect(result.rows).toBe(3)
+    expect(result.pagesFetched).toBe(3)
+    expect(result.truncated).toBe(true)
+    expect(result.stopReason).toBe('max_pages')
+  })
+
+  it('propagates errors thrown by fetchPage', async () => {
+    const fetchPage = vi.fn(async () => {
+      throw new Error('Rate limit exceeded')
+    })
+
+    await expect(exportAllTransactions({ fetchPage })).rejects.toThrow('Rate limit exceeded')
   })
 })

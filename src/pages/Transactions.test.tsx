@@ -6,14 +6,27 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TEST_IDS } from '../config/testIds'
 import i18n from '../i18n/config'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { TEST_IDS } from '../config/testIds'
+import { ApiRateLimitError } from '../api/client'
 import Transactions from './Transactions'
 import type { Transaction } from '../api/types'
 import type { TransactionWithNetwork } from '../lib/pendingTransactionsStorage'
 
 // ── Mocks ───────────────────────────────────────────────────────────
 const mockUseTransactions = vi.fn()
+const mockFetchTransactionsPage = vi.fn()
 vi.mock('../hooks/useTransactions', () => ({
   useTransactions: () => mockUseTransactions(),
+  fetchTransactionsPage: (...args: unknown[]) => mockFetchTransactionsPage(...args),
+  MAX_PAGES: 1000,
+}))
+
+const mockUseWallet = vi.fn()
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => mockUseWallet(),
 }))
 
 // Avoid PPR side-effects on the document title by stubbing the hook.
@@ -153,7 +166,10 @@ function mockEmpty() {
 
 beforeEach(() => {
   mockUseTransactions.mockReset()
+  mockFetchTransactionsPage.mockReset()
   mockUseSettings.mockReset()
+  mockUseWallet.mockReset()
+  mockUseWallet.mockReturnValue({ address: 'GABC123', network: 'test' })
   mockUseSettings.mockReturnValue({ network: 'public' })
   addToastMock.mockReset()
   downloadCsvMock.mockReset()
@@ -766,6 +782,143 @@ describe('Transactions page', () => {
       expect(publicExplorerLink?.getAttribute('href')).toContain(
         'https://stellar.expert/explorer/public/tx'
       )
+    })
+  })
+
+  describe('export all transactions', () => {
+    it('walks multiple cursor pages, downloads full CSV, and shows success toast', async () => {
+      const user = userEvent.setup()
+      mockLoaded([TX1])
+      mockUseSettings.mockReturnValue({ network: 'test' })
+
+      const page1Items: Transaction[] = [
+        {
+          id: 'tx-p1',
+          type: 'bond',
+          amountUsdc: 100,
+          status: 'confirmed',
+          timestamp: '2026-01-15T12:00:00Z',
+          hash: 'HASH_P1',
+        },
+      ]
+      const page2Items: Transaction[] = [
+        {
+          id: 'tx-p2',
+          type: 'withdraw',
+          amountUsdc: 50,
+          status: 'confirmed',
+          timestamp: '2026-01-16T12:00:00Z',
+          hash: '=SUM(A1:A2)',
+        },
+      ]
+
+      mockFetchTransactionsPage
+        .mockResolvedValueOnce({ items: page1Items, nextCursor: 'cursor-2' })
+        .mockResolvedValueOnce({ items: page2Items, nextCursor: undefined })
+
+      render(<Transactions />)
+
+      const exportAllBtn = screen.getByTestId(TEST_IDS.TX_EXPORT_ALL_BUTTON)
+      await user.click(exportAllBtn)
+
+      await waitFor(() => {
+        expect(downloadCsvMock).toHaveBeenCalledTimes(1)
+      })
+
+      const [csvContent] = downloadCsvMock.mock.calls[0] as [string, string]
+      expect(csvContent).toContain('tx-p1')
+      expect(csvContent).toContain('tx-p2')
+      expect(csvContent).toContain("'=SUM(A1:A2)")
+      expect(addToastMock).toHaveBeenCalledWith('success', expect.stringContaining('2'))
+    })
+
+    it('cancels an in-flight export promptly and does not download CSV', async () => {
+      const user = userEvent.setup()
+      mockLoaded([TX1])
+      mockUseSettings.mockReturnValue({ network: 'test' })
+
+      let resolveFirstPage!: (value: { items: Transaction[]; nextCursor?: string }) => void
+      mockFetchTransactionsPage.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirstPage = resolve
+          })
+      )
+
+      render(<Transactions />)
+
+      await user.click(screen.getByTestId(TEST_IDS.TX_EXPORT_ALL_BUTTON))
+
+      expect(screen.getByTestId(TEST_IDS.TX_EXPORT_ALL_STATUS)).toBeInTheDocument()
+
+      await user.click(screen.getByTestId(TEST_IDS.TX_EXPORT_ALL_CANCEL_BUTTON))
+
+      resolveFirstPage({
+        items: [
+          {
+            id: 'tx-p1',
+            type: 'bond',
+            amountUsdc: 100,
+            status: 'confirmed',
+            timestamp: '2026-01-15T12:00:00Z',
+            hash: 'HASH_P1',
+          },
+        ],
+        nextCursor: 'cursor-2',
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId(TEST_IDS.TX_EXPORT_ALL_STATUS)).not.toBeInTheDocument()
+      })
+
+      expect(mockFetchTransactionsPage).toHaveBeenCalledTimes(1)
+      expect(downloadCsvMock).not.toHaveBeenCalled()
+      expect(addToastMock).toHaveBeenCalledWith('info', expect.stringMatching(/cancel/i))
+    })
+
+    it('surfaces a retry message when rate-limited', async () => {
+      const user = userEvent.setup()
+      mockLoaded([TX1])
+      mockUseSettings.mockReturnValue({ network: 'test' })
+
+      mockFetchTransactionsPage.mockRejectedValueOnce(new ApiRateLimitError(5000))
+
+      render(<Transactions />)
+
+      await user.click(screen.getByTestId(TEST_IDS.TX_EXPORT_ALL_BUTTON))
+
+      await waitFor(() => {
+        expect(addToastMock).toHaveBeenCalledWith(
+          'error',
+          expect.stringMatching(/rate limit.*5s/i)
+        )
+      })
+      expect(downloadCsvMock).not.toHaveBeenCalled()
+    })
+
+    it('aborts an in-flight export when the wallet changes', async () => {
+      const user = userEvent.setup()
+      mockLoaded([TX1])
+      mockUseSettings.mockReturnValue({ network: 'test' })
+
+      let capturedSignal: AbortSignal | undefined
+      mockFetchTransactionsPage.mockImplementationOnce(
+        (_cursor: unknown, opts?: { signal?: AbortSignal }) => {
+          capturedSignal = opts?.signal
+          return new Promise(() => {})
+        }
+      )
+
+      const { rerender } = render(<Transactions />)
+
+      await user.click(screen.getByTestId(TEST_IDS.TX_EXPORT_ALL_BUTTON))
+      expect(capturedSignal?.aborted).toBe(false)
+
+      mockUseWallet.mockReturnValue({ address: 'GNEWWALLET', network: 'test' })
+      rerender(<Transactions />)
+
+      expect(capturedSignal?.aborted).toBe(true)
+      expect(screen.queryByTestId(TEST_IDS.TX_EXPORT_ALL_STATUS)).not.toBeInTheDocument()
     })
   })
 })

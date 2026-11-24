@@ -6,7 +6,7 @@
     "actionLauncher": "Open action launcher (Ctrl+K / Cmd+K)",
     "actionLauncherHint": "Open action launcher (Ctrl+K / Cmd+K)",
     "footer": {
-      "copyright": "© 2026 Credence Protocol. Built on Stellar.",
+      "copyright": "\u00a9 2026 Credence Protocol. Built on Stellar.",
       "documentation": "Documentation",
       "termsOfService": "Terms of Service",
       "privacyPolicy": "Privacy Policy"
@@ -28,7 +28,7 @@
     "connectWallet": "Connect wallet"
   },
   "home": {
-    "title": "Credence — Economic Trust",
+    "title": "Credence \u2014 Economic Trust",
     "description": "On-chain economic identity on Stellar. Stake USDC as a programmable reputation bond.",
     "createBond": "Create bond",
     "viewTrustScore": "View trust score",
@@ -108,8 +108,8 @@
       "heading": "Display",
       "description": "How addresses and identifiers are presented in the UI.",
       "addressFormat": "Address format",
-      "full": "Full (G…)",
-      "short": "Short (G……)",
+      "full": "Full (G\u2026)",
+      "short": "Short (G\u2026\u2026)",
       "friendly": "Friendly",
       "friendlyHint": "Friendly shows a registered name when available, otherwise falls back to Short."
     },
@@ -134,7 +134,7 @@
         "startPlaceholder": "22:00",
         "endPlaceholder": "07:00",
         "includeCritical": "Danger toasts (critical) are not silenced.",
-        "active": "Quiet hours are currently active — non-critical toasts are suppressed.",
+        "active": "Quiet hours are currently active \u2014 non-critical toasts are suppressed.",
         "inactive": "Quiet hours are not currently active.",
         "invalidRange": "Start and end times must differ.",
         "invalidFormat": "Start and end times must be in HH:mm format (e.g. 22:00, 07:30)."
@@ -153,19 +153,6 @@
         }
       }
     },
-    "addressBook": {
-      "heading": "Address Book",
-      "description": "Save trusted Stellar counterparties for quick selection.",
-      "label": "Label",
-      "address": "Stellar address",
-      "add": "Add address",
-      "edit": "Edit",
-      "remove": "Remove",
-      "empty": "No saved addresses yet for this wallet and network.",
-      "chooseFromAddressBook": "Choose from address book",
-      "filterPlaceholder": "Filter saved addresses...",
-      "noMatches": "No matching addresses"
-    },
     "backup": {
       "heading": "Backup & Restore",
       "description": "Export your settings as a JSON file, or import settings from a previous export.",
@@ -182,14 +169,8 @@
       "save": "Save",
       "saved": "Saved",
       "cancel": "Cancel",
-      "resetToDefaults": "Reset to defaults",
-      "ariaLabel": "Save, discard, or reset settings"
-    },
-    "resetDialog": {
-      "title": "Reset settings to defaults?",
-      "description": "This will restore theme, network, address display, notifications, and quiet hours to their default values.",
-      "confirmLabel": "Reset to defaults",
-      "confirmHint": "This will overwrite your current settings with the default values."
+      "ariaLabel": "Save or discard settings",
+      "resetToDefaults": "Reset to defaults"
     },
     "importDialog": {
       "title": "Import settings?",
@@ -202,16 +183,8 @@
       "confirmHint": "This will overwrite your current settings with the imported values.",
       "confirmLabel": "Apply settings"
     },
-    "networkSwitchDialog": {
-      "title": "Switch network?",
-      "subtitle": "Pending transactions will be hidden while on another network.",
-      "description_one": "You have {{count}} pending transaction on {{currentNetwork}}. Switching to {{targetNetwork}} will hide it and show balances and pending transactions for {{targetNetwork}} instead.",
-      "description_other": "You have {{count}} pending transactions on {{currentNetwork}}. Switching to {{targetNetwork}} will hide them and show balances and pending transactions for {{targetNetwork}} instead.",
-      "confirmHint": "Your pending transactions stay saved for {{currentNetwork}} and will reappear if you switch back.",
-      "confirmLabel": "Switch network"
-    },
     "autoSave": {
-      "saving": "Saving…",
+      "saving": "Saving\u2026",
       "saved": "Saved",
       "savedRelative": "Saved {{when}}",
       "error": "Couldn't save. Try again.",
@@ -220,21 +193,48 @@
     "toasts": {
       "saved": "Settings saved successfully",
       "reverted": "Settings reverted to last saved state",
-      "reset": "Settings reset to defaults",
-      "resetFailed": "Failed to reset settings. Previous values were kept.",
       "exported": "Settings exported successfully",
       "imported": "Settings imported successfully",
       "importCancelled": "Import cancelled",
-      "preview": "This is a preview notification"
+      "preview": "This is a preview notification",
+      "reset": "Settings reset to defaults",
+      "resetFailed": "Failed to reset settings. Previous values were kept."
     },
-    "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+    "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+    "addressBook": {
+      "heading": "Address Book",
+      "description": "Save trusted Stellar counterparties for quick selection.",
+      "label": "Label",
+      "address": "Stellar address",
+      "add": "Add address",
+      "edit": "Edit",
+      "remove": "Remove",
+      "empty": "No saved addresses yet for this wallet and network.",
+      "chooseFromAddressBook": "Choose from address book",
+      "filterPlaceholder": "Filter saved addresses...",
+      "noMatches": "No matching addresses"
+    },
+    "resetDialog": {
+      "title": "Reset settings to defaults?",
+      "description": "This will restore theme, network, address display, notifications, and quiet hours to their default values.",
+      "confirmLabel": "Reset to defaults",
+      "confirmHint": "This will overwrite your current settings with the default values."
+    },
+    "networkSwitchDialog": {
+      "title": "Switch network?",
+      "subtitle": "Pending transactions will be hidden while on another network.",
+      "description_one": "You have {{count}} pending transaction on {{currentNetwork}}. Switching to {{targetNetwork}} will hide it and show balances and pending transactions for {{targetNetwork}} instead.",
+      "description_other": "You have {{count}} pending transactions on {{currentNetwork}}. Switching to {{targetNetwork}} will hide them and show balances and pending transactions for {{targetNetwork}} instead.",
+      "confirmHint": "Your pending transactions stay saved for {{currentNetwork}} and will reappear if you switch back.",
+      "confirmLabel": "Switch network"
+    }
   },
   "bond": {
     "title": "Bond USDC",
     "description": "Lock USDC into the Credence contract to build your economic reputation.",
     "detail": {
       "title": "Manage Bond #{{id}}",
-      "backToBonds": "← Back to Bonds",
+      "backToBonds": "\u2190 Back to Bonds",
       "notFound": "Bond Not Found",
       "notFoundMessage": "The requested bond with ID #{{id}} does not exist or has been removed.",
       "connectRequired": "Connect wallet required",
@@ -279,7 +279,7 @@
     "slashExposure": "Slash exposure on early withdrawal",
     "slashExposureDescription": "Withdrawing {{amount}} while {{status}} may slash up to {{penaltyAmount}} ({{percent}}% penalty). You would receive approximately {{result}}.",
     "createNewBond": "Create New Bond",
-    "createBondDescription": "Lock USDC using the guided four-step wizard — set an amount, choose a lock duration, review slash terms, and confirm.",
+    "createBondDescription": "Lock USDC using the guided four-step wizard \u2014 set an amount, choose a lock duration, review slash terms, and confirm.",
     "amount": "Amount (USDC)",
     "minimumAmount": "Minimum: {{amount}} USDC",
     "createBond": "Create bond",
@@ -313,7 +313,7 @@
     "networkMismatchDescription": "Credence is set to {{expected}}, but Freighter is on {{actual}}. Switch the app to the wallet network before looking up a trust score.",
     "switchNetwork": "Switch app to {{network}}",
     "results": "Trust score results",
-    "loading": "Loading trust score…",
+    "loading": "Loading trust score\u2026",
     "unableToLoad": "Unable to load trust score",
     "tryAgain": "Try again",
     "lookupIdentity": "Lookup Identity",
@@ -366,25 +366,9 @@
     }
   },
   "transactions": {
-    "filters": {
-      "type": "Transaction type",
-      "allTypes": "All types",
-      "types": {
-        "bond": "Bond",
-        "withdraw": "Withdrawal",
-        "attestation": "Attestation"
-      },
-      "from": "From date (UTC)",
-      "to": "To date (UTC)",
-      "search": "Search transactions",
-      "searchPlaceholder": "Hash, ID, type or status",
-      "results": "{{count}} of {{total}} loaded transactions",
-      "clear": "Clear filters",
-      "noResults": "No transactions match these filters."
-    },
     "title": "Transaction History",
     "description": "A durable record of your bond, withdrawal, and attestation events.",
-    "loading": "Loading transactions…",
+    "loading": "Loading transactions\u2026",
     "unableToLoad": "Unable to load transactions",
     "tryAgain": "Try again",
     "noTransactions": "No transactions yet",
@@ -399,7 +383,7 @@
       "when": "When",
       "transaction": "Transaction",
       "viewOnExplorer": "View transaction {{hash}} on Stellar explorer",
-      "viewLink": "View ↗",
+      "viewLink": "View \u2197",
       "sortBy": "Sort by {{column}}",
       "sortAscending": "{{column}}, sorted ascending. Activate to sort descending.",
       "sortDescending": "{{column}}, sorted descending. Activate to clear sorting."
@@ -425,26 +409,59 @@
     "bulk": {
       "selectLabel": "Select transaction {{id}}",
       "selectAll": "Select all transactions",
-      "selected_one": "{{count}} selected",
-      "selected_other": "{{count}} selected",
+      "selectedOne": "{{count}} selected",
+      "selectedOther": "{{count}} selected",
       "actionsLabel": "Bulk actions",
       "export": "Export",
       "delete": "Delete",
       "clear": "Clear selection",
       "deleteConfirm": {
         "title": "Delete transactions?",
-        "subtitle_one": "You are about to remove {{count}} transaction from this list.",
+        "subtitle": "You are about to remove {{count}} transaction from this list.",
         "subtitle_other": "You are about to remove {{count}} transactions from this list.",
         "phrase": "DELETE",
         "hint": "Removing entries from this view does not affect on-chain records.",
         "confirm": "Delete transactions",
+        "successOne": "1 transaction removed from view",
+        "successOther": "{{count}} transactions removed from view",
+        "subtitle_one": "You are about to remove {{count}} transaction from this list.",
         "success_one": "{{count}} transaction removed from view",
         "success_other": "{{count}} transactions removed from view"
       },
       "exportToast": {
+        "successOne": "1 transaction exported",
+        "successOther": "{{count}} transactions exported",
         "success_one": "{{count}} transaction exported",
         "success_other": "{{count}} transactions exported"
-      }
+      },
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected"
+    },
+    "filters": {
+      "type": "Transaction type",
+      "allTypes": "All types",
+      "types": {
+        "bond": "Bond",
+        "withdraw": "Withdrawal",
+        "attestation": "Attestation"
+      },
+      "from": "From date (UTC)",
+      "to": "To date (UTC)",
+      "search": "Search transactions",
+      "searchPlaceholder": "Hash, ID, type or status",
+      "results": "{{count}} of {{total}} loaded transactions",
+      "clear": "Clear filters",
+      "noResults": "No transactions match these filters."
+    },
+    "exportAll": {
+      "button": "Export all",
+      "exporting": "Exporting\u2026",
+      "starting": "Starting export\u2026",
+      "progress": "Exporting page {{pages}} ({{rows}} transactions)\u2026",
+      "cancel": "Cancel export",
+      "cancelled": "Export cancelled",
+      "rateLimited": "Rate limit reached. Please try again in {{seconds}}s.",
+      "error": "Unable to export transactions. Please try again."
     }
   },
   "common": {
@@ -520,6 +537,16 @@
     "unlockReminder": {
       "title": "Bond unlock reminder",
       "body": "One of your bonds unlocks on {{date}}."
-    }
+    },
+    "title": "Notifications",
+    "openButton": "Notifications",
+    "openButtonUnread": "Notifications ({{count}} unread)",
+    "close": "Close notifications",
+    "markAllRead": "Mark all read",
+    "markRead": "Mark as read",
+    "clear": "Clear",
+    "empty": "No notifications yet.",
+    "suppressedQuietHours": "Quiet hours",
+    "unread": "Unread"
   }
 }

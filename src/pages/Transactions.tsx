@@ -21,11 +21,19 @@ import Button from '../components/Button'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import { TEST_IDS } from '../config/testIds'
+import { ApiRateLimitError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import { useSettings } from '../context/SettingsContext'
+import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { useTransactions } from '../hooks/useTransactions'
+import { fetchTransactionsPage, MAX_PAGES, useTransactions } from '../hooks/useTransactions'
 import { useToast } from '../components/ToastProvider'
-import { buildExportFilename, downloadCsv, transactionsToCsv } from '../lib/transactionsExport'
+import {
+  buildExportFilename,
+  downloadCsv,
+  exportAllTransactions,
+  transactionsToCsv,
+  type ExportAllProgress,
+} from '../lib/transactionsExport'
 import { explorerUrl } from '../lib/explorerUrl'
 import {
   ariaSortFor,
@@ -77,6 +85,8 @@ export default function Transactions() {
 
   const { network: settingsNetwork } = useSettings()
   const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage, pendingTimeouts } =
+  const { address: walletAddress, network: walletNetwork } = useWallet()
+  const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage } =
     useTransactions()
   const { addToast } = useToast()
   const [filter, setFilter] = useState<StatusFilter>('all')
@@ -324,6 +334,103 @@ export default function Transactions() {
     addToast('success', t('transactions.bulk.exportToast.success', { count }))
   }, [orderedSelected, addToast, t])
 
+  // ── Export all (full cursor-paginated history) ──────────────────────
+  const [isExportingAll, setIsExportingAll] = useState(false)
+  const [exportProgress, setExportProgress] = useState<ExportAllProgress | null>(null)
+  const exportAbortRef = useRef<AbortController | null>(null)
+  const exportCancelledByUserRef = useRef(false)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      exportAbortRef.current?.abort()
+      exportAbortRef.current = null
+    }
+  }, [])
+
+  // Abort any in-flight full export when the active wallet or network changes.
+  useEffect(() => {
+    if (exportAbortRef.current) {
+      exportCancelledByUserRef.current = false
+      exportAbortRef.current.abort()
+      exportAbortRef.current = null
+      setIsExportingAll(false)
+      setExportProgress(null)
+    }
+  }, [walletAddress, walletNetwork, settingsNetwork])
+
+  const handleCancelExportAll = useCallback(() => {
+    exportCancelledByUserRef.current = true
+    exportAbortRef.current?.abort()
+  }, [])
+
+  const handleExportAll = useCallback(async () => {
+    if (exportAbortRef.current) return
+
+    const controller = new AbortController()
+    exportAbortRef.current = controller
+    exportCancelledByUserRef.current = false
+    const identityEpoch = getIdentityEpoch()
+
+    setIsExportingAll(true)
+    setExportProgress(null)
+
+    try {
+      const result = await exportAllTransactions({
+        fetchPage: (cursor, signal) => fetchTransactionsPage(cursor, { signal, identityEpoch }),
+        onProgress: (progress) => {
+          if (mountedRef.current && exportAbortRef.current === controller) {
+            setExportProgress(progress)
+          }
+        },
+        signal: controller.signal,
+        maxPages: MAX_PAGES,
+      })
+
+      if (!mountedRef.current || exportAbortRef.current !== controller) return
+
+      downloadCsv(result.csv, buildExportFilename())
+      addToast(
+        'success',
+        result.rows === 1
+          ? t('transactions.bulk.exportToast.successOne')
+          : t('transactions.bulk.exportToast.successOther', { count: result.rows })
+      )
+    } catch (err) {
+      if (!mountedRef.current) return
+
+      if (err instanceof ApiSessionConflictError) {
+        return
+      }
+
+      if (
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && err.name === 'AbortError')
+      ) {
+        if (exportCancelledByUserRef.current) {
+          addToast('info', t('transactions.exportAll.cancelled'))
+        }
+        return
+      }
+
+      if (err instanceof ApiRateLimitError) {
+        const seconds = Math.max(1, Math.ceil(err.retryAfterMs / 1000))
+        addToast('error', t('transactions.exportAll.rateLimited', { seconds }))
+        return
+      }
+
+      addToast('error', t('transactions.exportAll.error'))
+    } finally {
+      if (mountedRef.current && exportAbortRef.current === controller) {
+        exportAbortRef.current = null
+        setIsExportingAll(false)
+        setExportProgress(null)
+      }
+    }
+  }, [addToast, t])
+
   // ── Delete confirmation flow ───────────────────────────────────────
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -392,6 +499,17 @@ export default function Transactions() {
     <div>
       <div className="transactions__header">
         <h1 className="transactions__title">{t('transactions.title')}</h1>
+        {hasData && visibleTransactions.length > 0 && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void handleExportAll()}
+            disabled={isExportingAll}
+            data-testid={TEST_IDS.TX_EXPORT_ALL_BUTTON}
+          >
+            {isExportingAll ? t('transactions.exportAll.exporting') : t('transactions.exportAll.button')}
+          </Button>
+        )}
       </div>
       <p className="transactions__description">{t('transactions.description')}</p>
 
@@ -412,6 +530,29 @@ export default function Transactions() {
           {timeoutCount === 1
             ? '1 pending transaction is taking longer than expected to confirm. It will keep retrying in the background — you can refresh the page or check it on a block explorer.'
             : `${timeoutCount} pending transactions are taking longer than expected to confirm. They will keep retrying in the background — you can refresh the page or check them on a block explorer.`}
+      {isExportingAll && (
+        <div
+          className="transactions__exportStatus"
+          role="status"
+          aria-live="polite"
+          data-testid={TEST_IDS.TX_EXPORT_ALL_STATUS}
+        >
+          <p className="transactions__exportStatus-text">
+            {exportProgress
+              ? t('transactions.exportAll.progress', {
+                  pages: exportProgress.pagesFetched,
+                  rows: exportProgress.rowsFetched,
+                })
+              : t('transactions.exportAll.starting')}
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleCancelExportAll}
+            data-testid={TEST_IDS.TX_EXPORT_ALL_CANCEL_BUTTON}
+          >
+            {t('transactions.exportAll.cancel')}
+          </Button>
         </div>
       )}
 

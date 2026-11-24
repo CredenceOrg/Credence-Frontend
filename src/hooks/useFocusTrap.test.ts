@@ -212,4 +212,35 @@ describe('useFocusTrap', () => {
     expect(onEscape).not.toHaveBeenCalled()
     expect(document.activeElement).toBe(btn1)
   })
+
+  it('falls back to first focusable element when initialFocusRef is disabled', () => {
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      cb(0)
+      return 0
+    })
+
+    btn1.disabled = true
+    const containerRef = { current: container }
+    const initialFocusRef = { current: btn1 }
+
+    renderHook(() => useFocusTrap({ containerRef, isActive: true, initialFocusRef }))
+
+    expect(document.activeElement).toBe(btn2)
+    rafSpy.mockRestore()
+  })
+
+  it('wraps forward Tab to first element when focus is outside the container', () => {
+    const externalButton = makeFocusable('button')
+    const containerRef = { current: container }
+
+    renderHook(() => useFocusTrap({ containerRef, isActive: true }))
+
+    externalButton.focus()
+    expect(document.activeElement).toBe(externalButton)
+
+    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    container.dispatchEvent(tabEvent)
+
+    expect(document.activeElement).toBe(btn1)
+  })
 })

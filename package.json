@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
   "scripts": {
     "dev": "vite",
     "dev:reset": "node scripts/dev-reset.mjs",
@@ -13,6 +16,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "lint": "eslint .",
+    "lint:console": "node scripts/check-console-log.mjs",
+    "check:bundle": "node scripts/check-bundle-size.mjs",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\" \"docs/**/*.md\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\" \"docs/**/*.md\"",
     "storybook": "storybook dev -p 6006",
@@ -20,7 +25,9 @@
   },
   "dependencies": {
     "@lhci/cli": "^0.15.1",
+    "@sentry/browser": "^11.16.0",
     "@stellar/freighter-api": "^6.0.1",
+    "@stellar/stellar-sdk": "^13.3.0",
     "i18next": "^23.7.0",
     "i18next-browser-languagedetector": "^7.2.0",
     "jsqr": "^1.4.0",
@@ -34,6 +41,7 @@
     "workbox-strategies": "^7.4.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
     "@storybook/addon-a11y": "^8.6.18",

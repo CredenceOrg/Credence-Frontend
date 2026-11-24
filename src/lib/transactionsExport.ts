@@ -76,6 +76,8 @@ function neutralizeFormula(value: string): string {
  * and escapes embedded double quotes by doubling them.
  */
 function escapeCsvField(value: string): string {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  value = safe
   if (/[",\r\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`
   }

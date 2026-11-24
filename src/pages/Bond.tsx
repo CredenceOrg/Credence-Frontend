@@ -10,7 +10,7 @@ import Badge, { type BadgeVariant } from '../components/Badge'
 import ActionCard from '../components/ActionCard'
 import Button from '../components/Button'
 import PageHeader from '../components/PageHeader'
-import EmptyState from '../components/states/EmptyState'
+import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import AmountInput from '../components/AmountInput'
 import { FormField } from '../components/forms/FormField'
 import ConnectWalletDialog from '../components/ConnectWalletDialog'
@@ -18,24 +18,59 @@ import { useSettings } from '../context/SettingsContext'
 import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
+import { useBonds } from '../hooks/useBonds'
 import { formatUsdc } from '../lib/format'
-import { getPenaltyRate, computeWithdrawBreakdown, type MockBond } from '../lib/bondPenalty'
+import {
+  getPenaltyRate,
+  computeWithdrawBreakdown,
+  type Bond as BondModel,
+} from '../lib/bondPenalty'
+import type { Bond } from '../api/types'
 
 const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 
-const initialBonds: MockBond[] = [
-  { id: 1, amountUsdc: 1000, status: 'locked' },
-  { id: 2, amountUsdc: 500, status: 'grace-period' },
-  { id: 3, amountUsdc: 750, status: 'active' },
-]
+interface BondItem extends BondModel {
+  id: string
+  apiStatus: Bond['status']
+}
+
+function toBondItem(bond: Bond): BondItem {
+  const canBeLocked = bond.status === 'active' || bond.status === 'pending'
+  return {
+    id: bond.id,
+    amountUsdc: Number(bond.amount),
+    status:
+      canBeLocked && bond.maturesAt && Date.parse(bond.maturesAt) > Date.now()
+        ? 'locked'
+        : 'active',
+    apiStatus: bond.status,
+  }
+}
+
+function getBadgeVariant(status: Bond['status']): BadgeVariant {
+  switch (status) {
+    case 'active':
+      return 'active'
+    case 'pending':
+      return 'locked'
+    case 'slashed':
+      return 'slashed'
+    default:
+      return 'unknown'
+  }
+}
+
+function getStatusLabel(status: Bond['status']): string {
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
 
 /** Minimum USDC required to create a bond. */
 const MIN_BOND_AMOUNT = 10
 
 interface BondRowProps {
-  bond: MockBond
+  bond: BondItem
   isConnected: boolean
-  onWithdraw: (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => void
+  onWithdraw: (bond: BondItem, event: React.MouseEvent<HTMLButtonElement>) => void
   onConnect: (event: React.MouseEvent<HTMLButtonElement>) => void
 }
 
@@ -52,7 +87,10 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
       <div className="bond__rowHeader">
         <div className="bond__amountColumn">
           <span className="bond__amount">{formatUsdc(bond.amountUsdc)}</span>
-          <Badge variant={bond.status as BadgeVariant} />
+          <Badge
+            variant={getBadgeVariant(bond.apiStatus)}
+            label={getStatusLabel(bond.apiStatus)}
+          />
         </div>
         <div className="bond__actionRow">
           {hasPenalty && (
@@ -121,7 +159,8 @@ export default function Bond() {
   const { isConnected, isConnecting, connect, network: walletNetwork } = useWallet()
   const { setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
-  const [withdrawTarget, setWithdrawTarget] = useState<MockBond | null>(null)
+  const { data: bondData, isLoading: isLoadingBonds, error: bondsError, refetch } = useBonds()
+  const [withdrawTarget, setWithdrawTarget] = useState<BondItem | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const connectTriggerRef = useRef<HTMLElement | null>(null)
@@ -134,7 +173,7 @@ export default function Bond() {
   const [txStatus, setTxStatus] = useState('')
   const txStatusId = useId()
 
-  const bonds = initialBonds
+  const bonds = useMemo(() => bondData.map(toBondItem), [bondData])
 
   const handleCreateBond = useCallback(async () => {
     if (!isConnected) {
@@ -162,7 +201,7 @@ export default function Bond() {
   )
 
   const requestWithdraw = useCallback(
-    (bond: MockBond, event: React.MouseEvent<HTMLButtonElement>) => {
+    (bond: BondItem, event: React.MouseEvent<HTMLButtonElement>) => {
       withdrawTriggerRef.current = event.currentTarget
       setWithdrawTarget(bond)
     },
@@ -307,7 +346,15 @@ export default function Bond() {
           hideWhenDisconnected={true}
         >
           <ActionCard title={t('bond.activeBonds')}>
-            {bonds.length === 0 ? (
+            {isLoadingBonds ? (
+              <LoadingSkeleton variant="bond-row" rows={3} />
+            ) : bondsError ? (
+              <ErrorState
+                type="backend"
+                title={t('bond.unableToLoad')}
+                action={{ label: t('bond.tryAgain'), onClick: () => void refetch() }}
+              />
+            ) : bonds.length === 0 ? (
               <EmptyState
                 illustration="bond"
                 title={t('bond.noActiveBonds')}

@@ -19,7 +19,7 @@ const LABELS = {
 
 const SAMPLE_TX: ActivityItem = {
   id: 'd-1',
-  timestamp: 'Apr 28, 14:22 UTC',
+  timestamp: '2026-04-28T14:22:00.000Z',
   title: 'Identity attestation confirmed',
   description: 'Identity evidence package uploaded and signed for review.',
   actor: 'Validator Node 12',
@@ -31,7 +31,7 @@ const SAMPLE_TX: ActivityItem = {
 
 const SAMPLE_RULE: ActivityItem = {
   id: 'd-2',
-  timestamp: 'Apr 27, 09:48 UTC',
+  timestamp: '2026-04-27T09:48:00.000Z',
   title: 'Peer vouch mismatch detected',
   description: 'Signature payload differed.',
   actor: 'Automated Verifier',
@@ -43,7 +43,7 @@ const SAMPLE_RULE: ActivityItem = {
 
 const SAMPLE_NOTE: ActivityItem = {
   id: 'd-3',
-  timestamp: 'Apr 26, 20:11 UTC',
+  timestamp: '2026-04-26T20:11:00.000Z',
   title: 'Credential refreshed',
   description: 'Expiration window extended.',
   actor: 'System process',
@@ -97,6 +97,27 @@ describe('AttestationDetailDrawer', () => {
     )
     expect(screen.getByText('Note')).toBeInTheDocument()
     expect(screen.getByText(/Window \+90d/)).toBeInTheDocument()
+  })
+
+  it('renders attached evidence metadata and a copyable SHA-256 hash', () => {
+    const item: ActivityItem = {
+      ...SAMPLE_TX,
+      evidenceHash: 'a'.repeat(64),
+      evidenceFile: {
+        name: 'proof.pdf',
+        size: 1024,
+        type: 'application/pdf',
+        lastModified: 1780000000000,
+      },
+    }
+
+    renderDrawer(<AttestationDetailDrawer open item={item} onClose={() => {}} labels={LABELS} />)
+
+    expect(screen.getByText('Evidence file')).toBeInTheDocument()
+    expect(screen.getByText(/proof\.pdf · 1024 bytes · application\/pdf/)).toBeInTheDocument()
+    expect(screen.getByText('Evidence SHA-256')).toBeInTheDocument()
+    expect(screen.getByText('a'.repeat(64))).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy hash' })).toBeInTheDocument()
   })
 
   it('closes on Escape via the focus trap', async () => {
@@ -185,7 +206,9 @@ describe('AttestationDetailDrawer', () => {
 function expectedTimestamp(dialog: HTMLElement, ts: string) {
   const time = dialog.querySelector('time')
   expect(time).not.toBeNull()
-  expect(time?.textContent).toContain(ts)
+  expect(time).toHaveAttribute('dateTime', ts)
+  expect(time?.textContent).toContain('Apr 28, 2026')
+  expect(time?.textContent).toContain('14:22:00')
 }
 
 function fireMouseDownOnBackdrop(target: HTMLElement) {

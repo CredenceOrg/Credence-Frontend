@@ -6,30 +6,36 @@ import { ACTIVITY_ITEMS } from '../data/activity'
 import Select from '../components/controls/Select'
 import { ATTESTATION_EVENTS, type AttestationPayload, type ActivityItem } from '../events'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useWallet } from '../context/WalletContext'
+import { truncateAddress } from '../lib/stellar'
+
+export function formatTimestamp(date: Date = new Date()): string {
+  return (
+    date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'UTC',
+    }) + ' UTC'
+  )
+}
 
 export default function Attestations() {
   const { t } = useTranslation()
+  const { address, isConnected } = useWallet()
   useDocumentTitle(t('attestations.title', 'Attestations'))
   const [items, setItems] = useState<ActivityItem[]>(ACTIVITY_ITEMS)
   const [filterTone, setFilterTone] = useState<string>('all')
 
   const handleSubmitSuccess = (payload: AttestationPayload) => {
-    const formatTimestamp = () => {
-      const now = new Date()
-      return (
-        now.toLocaleDateString(undefined, {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        }) + ' UTC'
-      )
-    }
+    const actor =
+      isConnected && address ? truncateAddress(address) : t('activityTimeline.currentUser')
 
     const newItem: ActivityItem = {
       id: `evt-new-${items.length + 1}`,
-      timestamp: formatTimestamp(),
+      timestamp: new Date().toISOString(),
       title:
         payload.type === ATTESTATION_EVENTS.TYPES.IDENTITY
           ? t('activityTimeline.identityAttestation')
@@ -37,10 +43,12 @@ export default function Attestations() {
             ? t('activityTimeline.peerVouch')
             : t('activityTimeline.credentialCertification'),
       description: payload.evidence,
-      actor: 'Current User',
+      actor,
       statusLabel: t('activityTimeline.submitted'),
       tone: 'success',
       meta: t('activityTimeline.subject', { subject: payload.subject.substring(0, 8) }),
+      ...(payload.evidenceHash ? { evidenceHash: payload.evidenceHash } : {}),
+      ...(payload.evidenceFile ? { evidenceFile: payload.evidenceFile } : {}),
     }
 
     setItems((prev) => [newItem, ...prev])

@@ -588,9 +588,8 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             ) : balanceStatus === 'error' ? (
               <span className="createBondFlow__balanceErrorRow">
                 <span
-                  className="createBondFlow__balanceText"
+                  className="createBondFlow__balanceText createBondFlow__balanceText--error"
                   role="alert"
-                  style={{ color: 'var(--credence-color-danger)' }}
                 >
                   Could not load balance.
                 </span>
@@ -598,7 +597,6 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
                   type="button"
                   onClick={handleBalanceRetry}
                   className="createBondFlow__retryButton"
-                  style={{ fontSize: '0.75rem', padding: '0.125rem 0.5rem' }}
                 >
                   Retry
                 </Button>
@@ -634,7 +632,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
           <h2 ref={step2Ref} tabIndex={-1} className="createBondFlow__heading">
             Step 2: Choose Lock Duration
           </h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
+          <p className="createBondFlow__stepDescription">
             Select how long you want to lock your USDC:
           </p>
 
@@ -685,25 +683,25 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
           {/* ── Bond summary card ── */}
           <div className="createBondFlow__reviewCard">
             {/* Bond amount */}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Bond Amount:</span>
-              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-bond-amount">
+            <div className="createBondFlow__reviewRow">
+              <span className="createBondFlow__reviewLabel">Bond Amount:</span>
+              <strong className="createBondFlow__reviewValue" data-testid="review-bond-amount">
                 {formatUsdc(Number(amount))}
               </strong>
             </div>
 
             {/* Lock duration */}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Lock Duration:</span>
-              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-duration">
+            <div className="createBondFlow__reviewRow">
+              <span className="createBondFlow__reviewLabel">Lock Duration:</span>
+              <strong className="createBondFlow__reviewValue" data-testid="review-duration">
                 {duration} Days
               </strong>
             </div>
 
             {/* Unlock date */}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Estimated Unlock Date:</span>
-              <strong style={{ color: 'var(--text-primary)' }} data-testid="review-unlock-date">
+            <div className="createBondFlow__reviewRow">
+              <span className="createBondFlow__reviewLabel">Estimated Unlock Date:</span>
+              <strong className="createBondFlow__reviewValue" data-testid="review-unlock-date">
                 {duration ? calcUnlockDate(duration) : ''}
               </strong>
             </div>
@@ -711,21 +709,19 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
             <ReviewDivider />
 
             {/* ── Early-withdrawal slash section ── */}
-            <div style={{ display: 'grid', gap: 'var(--credence-space-1)' }}>
+            <div className="createBondFlow__reviewSectionHeader">
               <span className="createBondFlow__reviewBadgeLabel">If you withdraw early</span>
             </div>
 
             {slashBreakdown ? (
               <>
                 {/* Slash penalty % + amount */}
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <span style={{ color: 'var(--text-secondary)' }}>
+                <div className="createBondFlow__penaltyRow">
+                  <span className="createBondFlow__penaltyLabel">
                     Slash Penalty ({slashBreakdown.penaltyPercent}%):
                   </span>
                   <strong
-                    style={{ color: 'var(--color-danger)' }}
+                    className="createBondFlow__penaltyAmount"
                     data-testid="review-penalty-amount"
                   >
                     −{slashBreakdown.penaltyAmount}
@@ -734,23 +730,16 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
 
                 {/* Resulting balance */}
                 <div className="createBondFlow__reviewResult">
-                  <span
-                    style={{
-                      color: 'var(--text-secondary)',
-                      fontWeight: 'var(--credence-font-weight-semibold)',
-                    }}
-                  >
+                  <span className="createBondFlow__resultLabel">
                     You would receive:
                   </span>
 
                   <strong
-                    style={{
-                      color:
-                        slashBreakdown.resultingUsdc < Number(amount)
-                          ? 'var(--color-danger)'
-                          : 'var(--text-primary)',
-                      fontSize: 'var(--credence-font-size-lg, 1.125rem)',
-                    }}
+                    className={`createBondFlow__resultValue ${
+                      slashBreakdown.resultingUsdc < Number(amount)
+                        ? 'createBondFlow__resultValue--danger'
+                        : 'createBondFlow__resultValue--normal'
+                    }`}
                     data-testid="review-resulting-balance"
                   >
                     {slashBreakdown.resultingBalance}
@@ -759,9 +748,9 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
               </>
             ) : (
               /* Fallback: breakdown unavailable (should not normally be reached in step 3) */
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Slash Terms:</span>
-                <strong style={{ color: 'var(--color-danger)' }}>Penalties Apply</strong>
+              <div className="createBondFlow__reviewRow">
+                <span className="createBondFlow__reviewLabel">Slash Terms:</span>
+                <strong className="createBondFlow__penaltyAmount">Penalties Apply</strong>
               </div>
             )}
           </div>

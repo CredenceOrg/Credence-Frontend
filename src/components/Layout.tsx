@@ -14,6 +14,7 @@ import MobileNav from './navigation/MobileNav'
 import BottomNav from './navigation/BottomNav'
 import RouteAnnouncer from './RouteAnnouncer'
 import Banner from './Banner'
+import RateLimitBanner from './RateLimitBanner'
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog'
 import ActionLauncher from './ActionLauncher'
 import WhatsNewDialog from './WhatsNewDialog'
@@ -23,6 +24,7 @@ import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
 import { useRouteFocus } from '../hooks/useRouteFocus'
+import { useUnlockReminders } from '../hooks/useUnlockReminders'
 import { DOM_EVENTS } from '../events'
 import './Layout.css'
 
@@ -31,6 +33,10 @@ export default function Layout() {
   const location = useLocation()
 
   useRouteFocus()
+
+  // Opt-in background reminders for bonds that unlock soon. Inert unless the
+  // user enabled them and granted the Notification permission.
+  useUnlockReminders()
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [launcherOpen, setLauncherOpen] = useState(false)
@@ -162,6 +168,7 @@ export default function Layout() {
       )}
 
       <main id="main-content" className="appMain">
+        <RateLimitBanner />
         <ErrorBoundary
           resetKey={location.pathname}
           fallback={(error, reset) => {

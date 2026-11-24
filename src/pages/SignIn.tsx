@@ -1,18 +1,20 @@
+import { useTranslation } from 'react-i18next'
 import EmptyState from '../components/states/EmptyState'
 import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 
 export default function SignIn() {
-  useDocumentTitle('Sign In')
+  const { t } = useTranslation()
+  useDocumentTitle(t('signIn.title'))
   const { connect, isConnecting } = useWallet()
 
   return (
     <EmptyState
       illustration="trust"
-      title="Sign in to continue"
-      description="Connect your Freighter wallet to access your dashboard, bonds, and trust score."
+      title={t('signIn.heading')}
+      description={t('signIn.description')}
       action={{
-        label: 'Connect wallet',
+        label: t('signIn.connectWallet'),
         onClick: connect,
         isLoading: isConnecting,
       }}

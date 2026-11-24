@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useId, useRef, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useScrollPreserver } from '../hooks/useScrollPreserver'
+import { formatDate, formatTime } from '../lib/format'
 import { isTxHash, toneToBadgeVariant } from './ActivityTimeline'
 import Badge from './Badge'
 import Button from './Button'
@@ -66,6 +68,7 @@ export default function AttestationDetailDrawer({
   returnFocusRef,
   labels,
 }: AttestationDetailDrawerProps) {
+  const { i18n } = useTranslation()
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -166,11 +169,24 @@ export default function AttestationDetailDrawer({
               <DetailRow label={labels.windowOrNote} value={item.meta} />
             )}
             <DetailRow label={labels.evidence} value={item.description} multiline />
+            {item.evidenceFile && (
+              <DetailRow
+                label="Evidence file"
+                value={`${item.evidenceFile.name} · ${item.evidenceFile.size} bytes · ${item.evidenceFile.type || 'unknown type'}`}
+              />
+            )}
+            {item.evidenceHash && (
+              <DetailRow
+                label="Evidence SHA-256"
+                valueNode={<CopyableHash hash={item.evidenceHash} truncate={false} showExplorerLink={false} />}
+              />
+            )}
             <DetailRow
               label={labels.timestamp}
               valueNode={
                 <time className="attestationDrawer__time" dateTime={item.timestamp}>
-                  {item.timestamp}
+                  {formatDate(item.timestamp, 'medium', i18n.language)} ·{' '}
+                  {formatTime(item.timestamp, '24h', i18n.language)}
                 </time>
               }
             />

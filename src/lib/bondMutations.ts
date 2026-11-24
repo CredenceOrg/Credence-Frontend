@@ -8,16 +8,19 @@
  * - test retry/duplicate protection deterministically with fake timers
  */
 
-export async function submitCreateBond(_params: { amountUsdc: number }): Promise<{ hash: string }> {
+import type { Bond } from './bondPenalty'
+
+export async function submitCreateBond(
+  _params: Pick<Bond, 'amountUsdc'>
+): Promise<{ hash: string }> {
   // Simulated async wallet/network path.
   await new Promise((resolve) => setTimeout(resolve, 50))
   return { hash: `local-bond-create-${Date.now()}` }
 }
 
-export async function submitWithdrawBond(_params: {
-  bondId: number
-  amountUsdc: number
-}): Promise<{ hash: string }> {
+export async function submitWithdrawBond(
+  _params: Pick<Bond, 'amountUsdc'> & { bondId: number }
+): Promise<{ hash: string }> {
   await new Promise((resolve) => setTimeout(resolve, 50))
   return { hash: `local-bond-withdraw-${Date.now()}` }
 }

@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import { useRateLimitRemainingMs } from '../../hooks/useRateLimit'
 import './ErrorState.css'
 
 /**
@@ -220,6 +221,7 @@ export default function ErrorState({
   hideHeading = false,
   ariaLabel,
 }: ErrorStateProps) {
+  const rateLimitRemainingMs = useRateLimitRemainingMs()
   const resolvedSeverity = severity ?? DEFAULT_SEVERITY[type]
   const copy = ERROR_COPY[type]
   const showHeading = !hideHeading && title !== ''
@@ -249,8 +251,9 @@ export default function ErrorState({
           type="button"
           onClick={action.onClick}
           className="error-state__action"
-          disabled={action.isLoading}
+          disabled={action.isLoading || rateLimitRemainingMs > 0}
           aria-busy={action.isLoading}
+          aria-disabled={rateLimitRemainingMs > 0 || undefined}
         >
           {action.isLoading ? 'Retrying…' : action.label}
         </button>

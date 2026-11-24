@@ -1,6 +1,27 @@
 # Wallet Integration
 
-Credence reads the connected Freighter account through the `useWallet()` hook, which acts as the primary interface for Freighter interactions. This layer handles wallet state management, connection logic, and network alignment.
+Credence reads the connected Stellar account through the `useWallet()` hook, which sits on top of a provider-agnostic `WalletAdapter` interface (`src/lib/wallet/adapter.ts`). Built-in adapters are provided for **Freighter** (`src/lib/wallet/freighterAdapter.ts`) and **xBull** (`src/lib/wallet/xbullAdapter.ts`). Users can choose their wallet in `ConnectWalletDialog`, and the last chosen adapter is persisted in `localStorage` for automatic reconnect across reloads.
+
+## `WalletAdapter` Interface
+
+Every wallet provider implements `WalletAdapter`:
+
+```typescript
+export interface WalletAdapter {
+  readonly id: string
+  readonly name: string
+  readonly installUrl: string
+  isInstalled: () => Promise<boolean>
+  connect: () => Promise<WalletConnectResult>
+  getAddress: () => Promise<string | null>
+  getNetwork: () => Promise<CredenceNetwork | null>
+  signTransaction: (xdr: string, opts?: SignTransactionOptions) => Promise<WalletSignResult>
+  disconnect: () => Promise<void> | void
+  watchChanges?: (onChange: (event: WalletChangeEvent) => void) => Promise<WalletWatcherHandle | null>
+}
+```
+
+Audit events emitted via `src/lib/walletAudit.ts` include `adapterId` so session transitions can be traced per wallet provider.
 
 ## `useWallet` Hook API
 
@@ -16,12 +37,20 @@ export interface UseWalletState {
   isConnecting: boolean
   /** Last connection error, if any (not_installed, rejected, network_mismatch, unknown). */
   error: WalletError | null
-  /** Request Freighter access and store the returned public key. */
-  connect: () => Promise<void>
+  /** Request wallet access (using the selected or specified adapter) and store the returned public key. */
+  connect: (adapterId?: string) => Promise<void>
   /** Clear the local wallet session. */
   disconnect: () => void
-  /** Freighter network reported by the wallet, or null when unavailable. */
+  /** Network reported by the wallet, or null when unavailable. */
   network: CredenceNetwork | null
+  /** Active/selected wallet adapter id (e.g. 'freighter', 'xbull'). */
+  adapterId?: string
+  /** Registered wallet adapters available for selection. */
+  availableAdapters?: readonly WalletAdapter[]
+  /** Select the preferred wallet adapter for subsequent connect attempts. */
+  selectAdapter?: (adapterId: string) => void
+  /** Sign a Stellar transaction XDR using the active wallet adapter. */
+  signTransaction?: (xdr: string, opts?: SignTransactionOptions) => Promise<WalletSignResult>
 }
 ```
 

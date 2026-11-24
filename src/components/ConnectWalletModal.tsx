@@ -432,7 +432,7 @@ export default function ConnectWalletModal({
                   <a
                     href={installUrl}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="connect-wallet-dialog__install-link"
                   >
                     Install {walletName}

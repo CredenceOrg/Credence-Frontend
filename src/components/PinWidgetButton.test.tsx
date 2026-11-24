@@ -4,21 +4,26 @@ import { describe, expect, it, vi } from 'vitest'
 import { PinWidgetButton } from './PinWidgetButton'
 
 describe('PinWidgetButton', () => {
-  const defaultProps = { slug: 'test-widget', isPinned: false, onToggle: vi.fn() }
+  const defaultProps = {
+    slug: 'test-widget',
+    widgetTitle: 'Test widget',
+    isPinned: false,
+    onToggle: vi.fn(),
+  }
 
   it('renders a button', () => {
     render(<PinWidgetButton {...defaultProps} />)
     expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
-  it('has accessible name "Pin widget" when not pinned', () => {
+  it('includes the widget title in its accessible name when not pinned', () => {
     render(<PinWidgetButton {...defaultProps} isPinned={false} />)
-    expect(screen.getByRole('button')).toHaveAccessibleName('Pin widget')
+    expect(screen.getByRole('button')).toHaveAccessibleName('Pin Test widget')
   })
 
-  it('has accessible name "Unpin widget" when pinned', () => {
+  it('includes the widget title in its accessible name when pinned', () => {
     render(<PinWidgetButton {...defaultProps} isPinned={true} />)
-    expect(screen.getByRole('button')).toHaveAccessibleName('Unpin widget')
+    expect(screen.getByRole('button')).toHaveAccessibleName('Unpin Test widget')
   })
 
   it('sets aria-pressed to false when not pinned', () => {

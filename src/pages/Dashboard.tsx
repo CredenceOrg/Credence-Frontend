@@ -6,6 +6,7 @@ import ActivityTimeline from '../components/ActivityTimeline'
 import Badge from '../components/Badge'
 import Banner from '../components/Banner'
 import Button from '../components/Button'
+import { PinWidgetButton } from '../components/PinWidgetButton'
 import TrustGauge from '../components/TrustGauge'
 import { EmptyState, LoadingSkeleton } from '../components/states'
 import {
@@ -14,6 +15,8 @@ import {
   ONBOARDING_STEP_STORAGE_KEY,
 } from '../config/onboarding'
 import { useWallet } from '../context/WalletContext'
+import { usePinnedWidgets } from '../hooks/usePinnedWidgets'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useSeo } from '../hooks/useSeo'
 import { formatUsdc } from '../lib/format'
 import './Dashboard.css'
@@ -76,12 +79,15 @@ export default function Dashboard() {
 
   const { t } = useTranslation()
   const { address, connected, connect, isConnecting } = useWallet()
+  const { pinned, togglePin, isPinned, move } = usePinnedWidgets()
+  const reducedMotion = useReducedMotion()
   const [searchParams] = useSearchParams()
   const widgetParam = searchParams.get('widget')
   const totalBonded = activeBonds.reduce((total, bond) => total + bond.amountUsdc, 0)
   const [onboardingStep, setOnboardingStep] = useState(0)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(false)
+  const [widgetAnnouncement, setWidgetAnnouncement] = useState('')
 
   useEffect(() => {
     if (!connected) return
@@ -141,8 +147,150 @@ export default function Dashboard() {
     setOnboardingStep(previousStep)
   }
 
+  const renderWidgetControls = (slug: string, title: string) => {
+    const position = pinned.indexOf(slug)
+
+    const moveWidget = (delta: number) => {
+      if (position === -1) return
+
+      const newPosition = Math.max(0, Math.min(pinned.length - 1, position + delta))
+      if (newPosition === position) return
+
+      move(slug, delta)
+      setWidgetAnnouncement(`${title} moved to position ${newPosition + 1} of ${pinned.length}.`)
+    }
+
+    return (
+      <div className="dashboard__widgetControls" role="group" aria-label={`${title} widget controls`}>
+        <PinWidgetButton
+          slug={slug}
+          widgetTitle={title}
+          isPinned={isPinned(slug)}
+          onToggle={togglePin}
+        />
+        {position !== -1 && (
+          <>
+            <button
+              type="button"
+              className="dashboard__widgetOrderButton"
+              aria-label={`Move ${title} earlier`}
+              onClick={() => moveWidget(-1)}
+              disabled={position === 0}
+            >
+              Earlier
+            </button>
+            <button
+              type="button"
+              className="dashboard__widgetOrderButton"
+              aria-label={`Move ${title} later`}
+              onClick={() => moveWidget(1)}
+              disabled={position === pinned.length - 1}
+            >
+              Later
+            </button>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  const widgets = [
+    {
+      slug: 'trust-score',
+      title: 'Trust Score',
+      visible: showTrustScore,
+      content: (
+        <ActionCard title="Trust Score">
+          <div className="dashboard__cardHeader">
+            <div>
+              <p className="dashboard__metric">{TRUST_SCORE}</p>
+              <p className="dashboard__metricLabel">Current score</p>
+            </div>
+            <Badge variant={TRUST_TIER} label="Gold Tier" />
+          </div>
+          <TrustGauge
+            score={TRUST_SCORE}
+            tier={TRUST_TIER}
+            className="dashboard__trustGauge"
+            id="dashboard-trust-gauge"
+          />
+        </ActionCard>
+      ),
+    },
+    {
+      slug: 'active-bonds',
+      title: 'Active Bonds',
+      visible: showActiveBonds,
+      content: (
+        <ActionCard title="Active Bonds">
+          <div className="dashboard__cardHeader">
+            <div>
+              <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
+              <p className="dashboard__metricLabel">{activeBonds.length} active bonds</p>
+            </div>
+            <Badge variant="active" />
+          </div>
+          <ul className="dashboard__bondList" aria-label="Active bond summary">
+            {activeBonds.map((bond) => (
+              <li className="dashboard__bondRow" key={bond.id}>
+                <div>
+                  <p className="dashboard__bondAmount">{formatUsdc(bond.amountUsdc)}</p>
+                  <p className="dashboard__bondMeta">Unlocks {bond.unlockLabel}</p>
+                </div>
+                <Badge variant={bond.status} />
+              </li>
+            ))}
+          </ul>
+        </ActionCard>
+      ),
+    },
+    {
+      slug: 'recent-activity',
+      title: 'Recent Activity',
+      visible: showRecentActivity,
+      content: (
+        <ActionCard title="Recent Activity">
+          <ActivityTimeline compact />
+        </ActionCard>
+      ),
+    },
+    {
+      slug: 'shortcuts',
+      title: 'Shortcuts',
+      visible: showShortcuts,
+      content: (
+        <ActionCard title="Shortcuts">
+          <div className="dashboard__shortcutList">
+            {shortcuts.map((shortcut) => (
+              <Link className="dashboard__shortcut" key={shortcut.to} to={shortcut.to}>
+                <span className="dashboard__shortcutLabel">{shortcut.label}</span>
+                <span className="dashboard__shortcutDescription">{shortcut.description}</span>
+              </Link>
+            ))}
+          </div>
+          <Button type="button" variant="secondary" onClick={() => window.scrollTo({ top: 0 })}>
+            Back to summary
+          </Button>
+        </ActionCard>
+      ),
+    },
+  ]
+  const orderedWidgets = widgets
+    .map((widget, defaultPosition) => ({ ...widget, defaultPosition }))
+    .filter((widget) => widget.visible)
+    .sort((a, b) => {
+      const aPinnedPosition = pinned.indexOf(a.slug)
+      const bPinnedPosition = pinned.indexOf(b.slug)
+      if (aPinnedPosition !== -1 && bPinnedPosition !== -1) {
+        return aPinnedPosition - bPinnedPosition
+      }
+      if (aPinnedPosition !== -1) return -1
+      if (bPinnedPosition !== -1) return 1
+      return a.defaultPosition - b.defaultPosition
+    })
+
   return (
-    <div className="dashboard">
+    <div className={`dashboard${reducedMotion ? ' dashboard--reduced-motion' : ''}`}>
       <header className="dashboard__header">
         <div>
           <h1 className="dashboard__title">{t('dashboard.title')}</h1>
@@ -224,70 +372,15 @@ export default function Dashboard() {
           )}
 
           <div className="dashboard__grid">
-            {showTrustScore && (
-              <ActionCard title="Trust Score">
-                <div className="dashboard__cardHeader">
-                  <div>
-                    <p className="dashboard__metric">{TRUST_SCORE}</p>
-                    <p className="dashboard__metricLabel">Current score</p>
-                  </div>
-                  <Badge variant={TRUST_TIER} label="Gold Tier" />
-                </div>
-                <TrustGauge
-                  score={TRUST_SCORE}
-                  tier={TRUST_TIER}
-                  className="dashboard__trustGauge"
-                  id="dashboard-trust-gauge"
-                />
-              </ActionCard>
-            )}
-
-            {showActiveBonds && (
-              <ActionCard title="Active Bonds">
-                <div className="dashboard__cardHeader">
-                  <div>
-                    <p className="dashboard__metric">{formatUsdc(totalBonded)}</p>
-                    <p className="dashboard__metricLabel">{activeBonds.length} active bonds</p>
-                  </div>
-                  <Badge variant="active" />
-                </div>
-                <ul className="dashboard__bondList" aria-label="Active bond summary">
-                  {activeBonds.map((bond) => (
-                    <li className="dashboard__bondRow" key={bond.id}>
-                      <div>
-                        <p className="dashboard__bondAmount">{formatUsdc(bond.amountUsdc)}</p>
-                        <p className="dashboard__bondMeta">Unlocks {bond.unlockLabel}</p>
-                      </div>
-                      <Badge variant={bond.status} />
-                    </li>
-                  ))}
-                </ul>
-              </ActionCard>
-            )}
+            {orderedWidgets.map((widget) => (
+              <div className="dashboard__widget" key={widget.slug}>
+                {renderWidgetControls(widget.slug, widget.title)}
+                {widget.content}
+              </div>
+            ))}
           </div>
-
-          <div className="dashboard__grid dashboard__grid--activity">
-            {showRecentActivity && (
-              <ActionCard title="Recent Activity">
-                <ActivityTimeline compact />
-              </ActionCard>
-            )}
-
-            {showShortcuts && (
-              <ActionCard title="Shortcuts">
-                <div className="dashboard__shortcutList">
-                  {shortcuts.map((shortcut) => (
-                    <Link className="dashboard__shortcut" key={shortcut.to} to={shortcut.to}>
-                      <span className="dashboard__shortcutLabel">{shortcut.label}</span>
-                      <span className="dashboard__shortcutDescription">{shortcut.description}</span>
-                    </Link>
-                  ))}
-                </div>
-                <Button type="button" variant="secondary" onClick={() => window.scrollTo({ top: 0 })}>
-                  Back to summary
-                </Button>
-              </ActionCard>
-            )}
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {widgetAnnouncement}
           </div>
         </>
       )}

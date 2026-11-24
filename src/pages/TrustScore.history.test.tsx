@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { SettingsProvider } from '../context/SettingsContext'
 import ToastProvider from '../components/ToastProvider'
+import { truncateAddress } from '@/lib/stellar'
+import { RECENT_LOOKUPS_LEGACY_KEY, RECENT_LOOKUPS_V1_KEY } from '../lib/recentLookupsStorage'
 import TrustScore from './TrustScore'
 
 const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), connected: true }))
@@ -23,6 +25,7 @@ vi.mock('../hooks/useTrustHistory', () => ({
 
 const ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
 const SECOND_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+const ADDRESS_2 = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
 const score = {
   address: ADDRESS,
   score: 85,
@@ -212,5 +215,91 @@ describe('TrustScore recent lookup regressions', () => {
 
     expect(await screen.findByRole('region', { name: /^trust score result$/i })).toHaveTextContent('940')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  it('removes a single recent lookup, persists to storage, and moves focus to the next item', async () => {
+    localStorage.setItem(
+      RECENT_LOOKUPS_V1_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        items: [
+          { address: ADDRESS, timestamp: 200 },
+          { address: ADDRESS_2, timestamp: 100 },
+        ],
+      })
+    )
+
+    renderPage()
+
+    const removeFirst = screen.getByRole('button', {
+      name: `Remove ${truncateAddress(ADDRESS)} from recent lookups`,
+    })
+    fireEvent.click(removeFirst)
+
+    expect(
+      screen.queryByRole('button', { name: `Remove ${truncateAddress(ADDRESS)} from recent lookups` })
+    ).not.toBeInTheDocument()
+
+    const nextItemBtn = screen.getByRole('button', {
+      name: `Look up address ${truncateAddress(ADDRESS_2)}`,
+    })
+    expect(nextItemBtn).toBeInTheDocument()
+    await waitFor(() => expect(document.activeElement).toBe(nextItemBtn))
+
+    expect(JSON.parse(localStorage.getItem(RECENT_LOOKUPS_V1_KEY) ?? 'null')).toEqual({
+      schemaVersion: 1,
+      items: [{ address: ADDRESS_2, timestamp: 100 }],
+    })
+    expect(JSON.parse(localStorage.getItem(RECENT_LOOKUPS_LEGACY_KEY) ?? 'null')).toEqual([
+      { address: ADDRESS_2, timestamp: 100 },
+    ])
+  })
+
+  it('moves focus to the address input when removing the last remaining recent lookup', async () => {
+    localStorage.setItem(
+      RECENT_LOOKUPS_V1_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        items: [{ address: ADDRESS, timestamp: 200 }],
+      })
+    )
+
+    renderPage()
+
+    const removeOnly = screen.getByRole('button', {
+      name: `Remove ${truncateAddress(ADDRESS)} from recent lookups`,
+    })
+    fireEvent.click(removeOnly)
+
+    expect(screen.queryByTestId('recent-lookups')).not.toBeInTheDocument()
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox')))
+
+    expect(JSON.parse(localStorage.getItem(RECENT_LOOKUPS_V1_KEY) ?? 'null')).toEqual({
+      schemaVersion: 1,
+      items: [],
+    })
+    expect(JSON.parse(localStorage.getItem(RECENT_LOOKUPS_LEGACY_KEY) ?? 'null')).toEqual([])
+  })
+
+  it('keeps clear-all history behavior unchanged', () => {
+    localStorage.setItem(
+      RECENT_LOOKUPS_V1_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        items: [
+          { address: ADDRESS, timestamp: 200 },
+          { address: ADDRESS_2, timestamp: 100 },
+        ],
+      })
+    )
+
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: /clear lookup history/i }))
+
+    expect(screen.queryByTestId('recent-lookups')).not.toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem(RECENT_LOOKUPS_V1_KEY) ?? 'null')).toEqual({
+      schemaVersion: 1,
+      items: [],
+    })
+    expect(JSON.parse(localStorage.getItem(RECENT_LOOKUPS_LEGACY_KEY) ?? 'null')).toEqual([])
   })
 })

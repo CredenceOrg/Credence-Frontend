@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { RecentLookupItem } from '../lib/recentLookupsStorage'
-import { readRecentLookups, writeRecentLookups } from '../lib/recentLookupsStorage'
+import { readRecentLookups, removeRecentLookup, writeRecentLookups } from '../lib/recentLookupsStorage'
 
 /**
  * React wrapper around the versioned recent-lookups storage.
@@ -9,7 +9,11 @@ import { readRecentLookups, writeRecentLookups } from '../lib/recentLookupsStora
  * - legacy arrays are migrated forward deterministically
  * - writes are dual-written for rollback compatibility
  */
-export function useRecentLookups(): [RecentLookupItem[], (next: RecentLookupItem[]) => void] {
+export function useRecentLookups(): [
+  RecentLookupItem[],
+  (next: RecentLookupItem[]) => void,
+  (address: string) => void,
+] {
   const [items, setItems] = useState<RecentLookupItem[]>(() => readRecentLookups())
 
   const setAndPersist = useCallback((next: RecentLookupItem[]) => {
@@ -17,5 +21,14 @@ export function useRecentLookups(): [RecentLookupItem[], (next: RecentLookupItem
     writeRecentLookups(next)
   }, [])
 
-  return [items, setAndPersist]
+  const removeItem = useCallback(
+    (address: string) => {
+      const next = removeRecentLookup(items, address)
+      setItems(next)
+      writeRecentLookups(next)
+    },
+    [items]
+  )
+
+  return [items, setAndPersist, removeItem]
 }

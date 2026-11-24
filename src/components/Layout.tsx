@@ -24,6 +24,7 @@ import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
 import { useRouteFocus } from '../hooks/useRouteFocus'
+import { useUnlockReminders } from '../hooks/useUnlockReminders'
 import { DOM_EVENTS } from '../events'
 import './Layout.css'
 
@@ -32,6 +33,10 @@ export default function Layout() {
   const location = useLocation()
 
   useRouteFocus()
+
+  // Opt-in background reminders for bonds that unlock soon. Inert unless the
+  // user enabled them and granted the Notification permission.
+  useUnlockReminders()
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [launcherOpen, setLauncherOpen] = useState(false)

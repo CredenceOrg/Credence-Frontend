@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { useEffect, useRef, useState, useMemo } from '
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
@@ -29,6 +28,8 @@ import { useToast } from '../components/ToastProvider'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import { useRecentLookups } from '../hooks/useRecentLookups'
 import { addRecentLookup, sanitizeRecentLookups } from '../lib/recentLookupsStorage'
+import TrustHistoryChart from '../components/TrustHistoryChart'
+import { useTrustHistory } from '../hooks/useTrustHistory'
 
 export interface RecentLookupItem {
   address: string
@@ -93,6 +94,11 @@ export default function TrustScore() {
   const recordedResultRef = useRef<string | null>(null)
 
   const { data: rawData, isLoading, error, refetch } = useTrustScore(lookupAddress)
+  const {
+    data: historyPoints,
+    isLoading: isHistoryLoading,
+    error: historyError,
+  } = useTrustHistory(lookupAddress)
 
   // The API response is unvalidated at runtime. Normalise it once at the
   // render boundary so every downstream expression (hero badge, gauge,
@@ -153,13 +159,17 @@ export default function TrustScore() {
       return
     }
 
-    if (!isAddressValid || isLoading) {
+    if (!isAddressValid) {
+      return
+    }
+
+    const trimmed = address.trim()
+    if (isLoading && trimmed === lookupAddress) {
       return
     }
 
     setHasAttemptedLookup(true)
     pendingLookupRef.current = true
-    const trimmed = address.trim()
     setLookupAddress(trimmed)
     commitAddressParam(trimmed)
   }
@@ -211,8 +221,7 @@ export default function TrustScore() {
             onClick: () => setNetwork(walletNetwork === 'test' ? 'test' : 'public'),
           }}
         >
-          Credence is set to {networkMismatch.expected}, but
-          Freighter is on{' '}
+          Credence is set to {networkMismatch.expected}, but Freighter is on{' '}
           {networkMismatch.actual}
         </Banner>
       )}
@@ -273,11 +282,15 @@ export default function TrustScore() {
                 <span className="trustScore__heroFooterItem">
                   {formatAddress(data.address, addressDisplay, walletAddress)}
                 </span>
-                <span className="trustScore__heroFooterSep" aria-hidden="true">&middot;</span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">
+                  &middot;
+                </span>
                 <span className="trustScore__heroFooterItem">
                   {data.attestations} attestation{data.attestations !== 1 ? 's' : ''}
                 </span>
-                <span className="trustScore__heroFooterSep" aria-hidden="true">&middot;</span>
+                <span className="trustScore__heroFooterSep" aria-hidden="true">
+                  &middot;
+                </span>
                 <span className="trustScore__heroFooterItem">
                   Updated{' '}
                   {new Date(data.updatedAt).toLocaleDateString('en-US', {
@@ -288,6 +301,14 @@ export default function TrustScore() {
                 </span>
               </div>
             </div>
+          )}
+
+          {lookupAddress && (
+            <TrustHistoryChart
+              points={historyPoints}
+              isLoading={isHistoryLoading}
+              error={historyError?.message}
+            />
           )}
         </section>
       )}
@@ -384,12 +405,24 @@ export default function TrustScore() {
               </div>
             )}
             <Button
+              type="button"
+              onClick={handleLookup}
+              variant="primary"
+              fullWidth
+              disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
+              isLoading={isConnected && isLoading}
+              aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+              className="trustScore__buttonRow"
+            >
+              {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
+            </Button>
+          </div>
             type="button"
             onClick={handleLookup}
             variant="primary"
             fullWidth
             disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
-            isLoading={isConnected && isLoading}
+            isLoading={isConnected && isLoading && address.trim() === lookupAddress}
             aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
             className="trustScore__buttonRow"
           >
@@ -416,15 +449,11 @@ export default function TrustScore() {
         </Banner>
       )}
 
-      <Banner severity="info">
-        {t('trustScore.infoBanner')}
-      </Banner>
+      <Banner severity="info">{t('trustScore.infoBanner')}</Banner>
 
       <TierLadder defaultOpen={!hasAttemptedLookup} />
 
-      <Disclaimer
-        context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments."
-      />
+      <Disclaimer context="Trust scores are protocol metrics only and do not constitute creditworthiness assessments." />
     </div>
   )
 }

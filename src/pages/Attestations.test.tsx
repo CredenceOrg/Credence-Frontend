@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
 import Attestations from './Attestations'
 import { truncateAddress } from '../lib/stellar'
+import Attestations, { formatTimestamp } from './Attestations'
 import { clearApiQueryCache } from '../hooks/useApiQuery'
 import { resetIdempotentOperationStore } from '../lib/idempotentOperation'
 import { ApiError } from '../api/client'
@@ -297,5 +298,41 @@ describe('Attestations page', () => {
 
     expect(await screen.findByText('Service unavailable')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
+  })
+})
+
+describe('formatTimestamp', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  })
+
+  it('formats the current system time in UTC regardless of local timezone', () => {
+    vi.stubEnv('TZ', 'America/New_York')
+    const fixedDate = new Date('2026-06-15T23:45:00Z')
+    vi.useFakeTimers()
+    vi.setSystemTime(fixedDate)
+
+    const localeSpy = vi.spyOn(Date.prototype, 'toLocaleDateString')
+
+    const result = formatTimestamp()
+
+    expect(localeSpy).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ timeZone: 'UTC', hour12: false })
+    )
+    expect(result).toBe(
+      fixedDate.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'UTC',
+      }) + ' UTC'
+    )
+    expect(result).toContain('23:45')
+    expect(result.endsWith(' UTC')).toBe(true)
   })
 })

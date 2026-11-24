@@ -100,10 +100,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }) => {
       logoutGenRef.current += 1
       finishReauthPrompt(false)
-      const prevAddress = wallet.address
-      const prevNetwork = wallet.network
+      const currentWallet = latestWalletRef.current
+      const prevAddress = currentWallet.address
+      const prevNetwork = currentWallet.network
       advanceIdentityEpoch()
-      wallet.disconnect()
+      currentWallet.disconnect()
       // Clear app-local settings and cached data in every tab at a session boundary.
       clearAppLocalStorage()
       setShowWarning(false)
@@ -134,7 +135,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         addToast('warning', 'Logged out due to inactivity.')
       }
     },
-    [wallet, navigate, addToast, finishReauthPrompt]
+    [navigate, addToast, finishReauthPrompt]
   )
 
   const handleLogout = useCallback(() => {

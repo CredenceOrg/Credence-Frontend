@@ -7,9 +7,12 @@
  *
  * ## Usage
  *
- *   // Check a single flag
- *   const flags = getFeatureFlags()
+ *   // Parse an explicit search string (pure; no browser globals)
+ *   const flags = getFeatureFlags(location.search)
  *   if (flags.newDashboard) { ... }
+ *
+ *   // In components, prefer the shared context:
+ *   const newDashboard = useFeatureFlag('newDashboard')
  *
  *   // Enable flags via URL
  *   ?debug=1&newDashboard=1&betaChart=1
@@ -29,6 +32,8 @@ export interface FeatureFlags {
   readonly newTransactionList: boolean
 }
 
+export type FeatureFlagName = keyof FeatureFlags
+
 /** Default state — all flags off. */
 const DEFAULTS: FeatureFlags = {
   debug: false,
@@ -43,14 +48,14 @@ const DEFAULTS: FeatureFlags = {
  * Any flag whose URL param is `1` or `true` (case-insensitive) is active;
  * any other value (or absent param) leaves the flag at its default.
  *
- * Call this on every render you want to react to URL changes, or call it
- * once and cache the result when the app boots.
+ * Pass the current router `location.search`; `FeatureFlagProvider` does this
+ * once per search string so consumers stay in sync with client-side navigation.
  */
-export function getFeatureFlags(search: string = window.location.search): FeatureFlags {
+export function getFeatureFlags(search: string): FeatureFlags {
   const params = new URLSearchParams(search)
   const flags = { ...DEFAULTS }
 
-  for (const key of Object.keys(DEFAULTS) as Array<keyof FeatureFlags>) {
+  for (const key of Object.keys(DEFAULTS) as FeatureFlagName[]) {
     const raw = params.get(key)
     if (raw !== null) {
       flags[key] = raw === '1' || raw.toLowerCase() === 'true'
@@ -68,7 +73,7 @@ export function getFeatureFlags(search: string = window.location.search): Featur
 /**
  * Return a human-readable label for each flag (used in the debug overlay).
  */
-export const FEATURE_FLAG_LABELS: Record<keyof FeatureFlags, string> = {
+export const FEATURE_FLAG_LABELS: Record<FeatureFlagName, string> = {
   debug: 'Debug Overlay',
   newDashboard: 'New Dashboard Layout',
   betaChart: 'Beta Chart Components',

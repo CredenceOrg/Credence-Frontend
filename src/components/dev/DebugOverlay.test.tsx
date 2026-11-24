@@ -1,93 +1,62 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter, useNavigate } from 'react-router-dom'
+import { describe, expect, it } from 'vitest'
+import { FeatureFlagProvider } from '../../context/FeatureFlagContext'
 import DebugOverlay from './DebugOverlay'
 
-// Mock the feature flags module to control return values in tests.
-// We mock the module instead of relying on `window.location` because
-// jsdom's location is not easily reset between tests.
-const mockGetFeatureFlags = vi.fn()
+function renderOverlay(search = '') {
+  return render(
+    <MemoryRouter initialEntries={[`/${search}`]}>
+      <FeatureFlagProvider>
+        <DebugOverlay />
+      </FeatureFlagProvider>
+    </MemoryRouter>
+  )
+}
 
-vi.mock('../../config/featureFlags', () => ({
-  getFeatureFlags: (...args: unknown[]) => mockGetFeatureFlags(...args),
-  FEATURE_FLAG_LABELS: {
-    debug: 'Debug Overlay',
-    newDashboard: 'New Dashboard Layout',
-    betaChart: 'Beta Chart Components',
-    newTransactionList: 'New Transaction List',
-  },
-}))
+function NavigateControls() {
+  const navigate = useNavigate()
+
+  return (
+    <>
+      <button onClick={() => navigate('/?debug=1&newDashboard=1')}>enable new dashboard</button>
+      <button onClick={() => navigate('/?debug=1')}>disable new dashboard</button>
+    </>
+  )
+}
 
 describe('DebugOverlay', () => {
-  beforeEach(() => {
-    mockGetFeatureFlags.mockReset()
-  })
-
   it('renders nothing when debug mode is off', () => {
-    mockGetFeatureFlags.mockReturnValue({
-      debug: false,
-      newDashboard: false,
-      betaChart: false,
-      newTransactionList: false,
-    })
-    const { container } = render(<DebugOverlay />)
+    const { container } = renderOverlay()
     expect(container.innerHTML).toBe('')
   })
 
   it('renders the toggle button when debug mode is on', () => {
-    mockGetFeatureFlags.mockReturnValue({
-      debug: true,
-      newDashboard: false,
-      betaChart: false,
-      newTransactionList: false,
-    })
-    render(<DebugOverlay />)
+    renderOverlay('?debug=1')
     expect(screen.getByRole('button', { name: /open debug overlay/i })).toBeInTheDocument()
   })
 
   it('opens the panel when the toggle button is clicked', () => {
-    mockGetFeatureFlags.mockReturnValue({
-      debug: true,
-      newDashboard: false,
-      betaChart: false,
-      newTransactionList: false,
-    })
-    render(<DebugOverlay />)
+    renderOverlay('?debug=1')
 
-    const toggle = screen.getByRole('button', { name: /open debug overlay/i })
-    fireEvent.click(toggle)
+    fireEvent.click(screen.getByRole('button', { name: /open debug overlay/i }))
 
-    // The panel should now be visible
     expect(screen.getByRole('dialog', { name: /feature flags debug overlay/i })).toBeInTheDocument()
-    // The toggle button should now say "Close debug toggle"
     expect(screen.getByRole('button', { name: /close debug toggle/i })).toBeInTheDocument()
   })
 
   it('closes the panel when the close button is clicked', () => {
-    mockGetFeatureFlags.mockReturnValue({
-      debug: true,
-      newDashboard: false,
-      betaChart: false,
-      newTransactionList: false,
-    })
-    render(<DebugOverlay />)
+    renderOverlay('?debug=1')
 
-    // Open
     fireEvent.click(screen.getByRole('button', { name: /open debug overlay/i }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-    // Close using the panel's close button
     fireEvent.click(screen.getByRole('button', { name: 'Close debug overlay' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('shows ON badge for active flags', () => {
-    mockGetFeatureFlags.mockReturnValue({
-      debug: true,
-      newDashboard: true,
-      betaChart: false,
-      newTransactionList: true,
-    })
-    render(<DebugOverlay />)
+    renderOverlay('?debug=1&newDashboard=1&newTransactionList=1')
 
     fireEvent.click(screen.getByRole('button', { name: /open debug overlay/i }))
 
@@ -98,13 +67,7 @@ describe('DebugOverlay', () => {
   })
 
   it('shows all flags OFF when none are active', () => {
-    mockGetFeatureFlags.mockReturnValue({
-      debug: true,
-      newDashboard: false,
-      betaChart: false,
-      newTransactionList: false,
-    })
-    render(<DebugOverlay />)
+    renderOverlay('?debug=1')
 
     fireEvent.click(screen.getByRole('button', { name: /open debug overlay/i }))
 
@@ -115,16 +78,30 @@ describe('DebugOverlay', () => {
   })
 
   it('shows the hint text about URL params', () => {
-    mockGetFeatureFlags.mockReturnValue({
-      debug: true,
-      newDashboard: false,
-      betaChart: false,
-      newTransactionList: false,
-    })
-    render(<DebugOverlay />)
+    renderOverlay('?debug=1')
 
     fireEvent.click(screen.getByRole('button', { name: /open debug overlay/i }))
 
     expect(screen.getByText(/set flags via url/i)).toBeInTheDocument()
+  })
+
+  it('updates flag badges after client-side navigation', () => {
+    render(
+      <MemoryRouter initialEntries={['/?debug=1']}>
+        <FeatureFlagProvider>
+          <DebugOverlay />
+          <NavigateControls />
+        </FeatureFlagProvider>
+      </MemoryRouter>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /open debug overlay/i }))
+    expect(screen.getByTestId('flag-newDashboard')).toHaveTextContent('OFF')
+
+    fireEvent.click(screen.getByRole('button', { name: 'enable new dashboard' }))
+    expect(screen.getByTestId('flag-newDashboard')).toHaveTextContent('ON')
+
+    fireEvent.click(screen.getByRole('button', { name: 'disable new dashboard' }))
+    expect(screen.getByTestId('flag-newDashboard')).toHaveTextContent('OFF')
   })
 })

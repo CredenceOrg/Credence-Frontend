@@ -60,17 +60,18 @@ Vite opens at `http://localhost:5173` by default with HMR and the `/api` proxy a
 
 All scripts are defined in `package.json`. Run them from the repo root.
 
-| Script                  | Command                 | When to use                                           |
-| ----------------------- | ----------------------- | ----------------------------------------------------- |
-| `npm run dev`           | `vite`                  | Local development with HMR                            |
-| `npm run dev:reset`     | `node scripts/dev-reset.mjs` | Clear browser local storage (dev server must be running) |
-| `npm run build`         | `tsc -b && vite build`  | Production bundle; also type-checks the whole project |
-| `npm run preview`       | `vite preview`          | Serve the production build locally                    |
-| `npm run test`          | `vitest run`            | Run the full test suite once (CI mode)                |
-| `npm run test:coverage` | `vitest run --coverage` | Tests + per-file coverage report                      |
-| `npm run lint`          | `eslint .`              | Lint all source files                                 |
-| `npm run format`        | `prettier --write`      | Reformat source and docs in-place                     |
-| `npm run format:check`  | `prettier --check`      | Check formatting without modifying files (CI gate)    |
+| Script                  | Command                              | When to use                                              |
+| ----------------------- | ------------------------------------ | -------------------------------------------------------- |
+| `npm run dev`           | `vite`                               | Local development with HMR                               |
+| `npm run dev:reset`     | `node scripts/dev-reset.mjs`         | Clear browser local storage (dev server must be running) |
+| `npm run build`         | `tsc -b && vite build`               | Production bundle; also type-checks the whole project    |
+| `npm run preview`       | `vite preview`                       | Serve the production build locally                       |
+| `npm run test`          | `vitest run`                         | Run the full test suite once (CI mode)                   |
+| `npm run test:coverage` | `vitest run --coverage`              | Tests + per-file coverage report                         |
+| `npm run lint`          | `eslint .`                           | Lint all source files                                    |
+| `npm run check:bundle`  | `node scripts/check-bundle-size.mjs` | Verify gzipped chunk budgets against `dist/`             |
+| `npm run format`        | `prettier --write`                   | Reformat source and docs in-place                        |
+| `npm run format:check`  | `prettier --check`                   | Check formatting without modifying files (CI gate)       |
 
 Run type-checking on its own without bundling:
 

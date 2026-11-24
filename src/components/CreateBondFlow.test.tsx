@@ -9,11 +9,10 @@
  *   - Deterministic failure-boundary coverage for handleNext
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import CreateBondFlow from './CreateBondFlow'
-import { useReducedMotion } from '../hooks/useReducedMotion'
 
 vi.mock('../hooks/useReducedMotion', () => ({
   useReducedMotion: vi.fn(() => false),
@@ -314,7 +313,7 @@ describe('CreateBondFlow – step 3 review', () => {
     await reachStep3('1000', 30)
     const unlockDate = screen.getByTestId('review-unlock-date')
     // Should contain a year (not empty)
-    expect(unlockDate.textContent).toMatch(/\d/{4}/)
+    expect(unlockDate.textContent).toMatch(/\d{4}/)
   })
 
   it('shows the warning banner about early withdrawal', async () => {
@@ -553,7 +552,7 @@ describe('CreateBondFlow – handleNext failure boundaries', () => {
 
     // Back to step 1, then forward again without editing.
     fireEvent.click(screen.getByRole('button', { name: /back/i }))
-    fireEvent.click(screen.getByTole('button', { name: /back/i }))
+    fireEvent.click(screen.getByRole('button', { name: /back/i }))
     expect(screen.getByPlaceholderText('0')).toHaveValue('1234.56')
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     fireEvent.click(screen.getByRole('button', { name: /next/i }))

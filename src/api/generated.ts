@@ -12,6 +12,10 @@ export interface paths {
      */
     get: operations["getTrustScore"];
   };
+  "/trust-score/{address}/history": {
+    /** Retrieve trust score history for a Stellar address */
+    get: operations["getTrustScoreHistory"];
+  };
   "/transactions": {
     /**
      * List recent protocol transactions
@@ -87,6 +91,20 @@ export interface components {
        * @example 2026-06-29T10:00:00Z
        */
       updatedAt: string;
+    };
+    /** @description A historical trust-score observation. */
+    TrustScoreHistoryPoint: {
+      /** @description Numeric trust score at the observation time. */
+      score: number;
+      /** Format: date-time */
+      recordedAt: string;
+    };
+    /** @description Historical trust-score observations for a Stellar address. */
+    TrustScoreHistory: {
+      /** @description Stellar public key (G...) for this history. */
+      address: string;
+      /** @description Trust-score observations ordered oldest first. */
+      points: components["schemas"]["TrustScoreHistoryPoint"][];
     };
     /** @description A USDC bond registered in the Credence protocol. */
     Bond: {
@@ -226,6 +244,24 @@ export interface operations {
     parameters: {
       path: {
         address: components["parameters"]["StellarAddress"];
+      };
+    };
+    /** @description Retrieve trust score history for a Stellar address */
+    getTrustScoreHistory: {
+      parameters: {
+        path: {
+          address: components["parameters"]["StellarAddress"];
+        };
+      };
+      responses: {
+        /** @description Trust score history returned successfully. */
+        200: {
+          content: {
+            "application/json": components["schemas"]["TrustScoreHistory"];
+          };
+        };
+        400: components["responses"]["BadRequest"];
+        404: components["responses"]["NotFound"];
       };
     };
     responses: {

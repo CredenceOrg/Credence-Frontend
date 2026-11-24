@@ -20,11 +20,20 @@ export {
   ApiAmountError,
   ApiSessionConflictError,
   ApiBodyTooLargeError,
+  ApiResponseShapeError,
   MAX_REQUEST_BODY_BYTES,
   getIdentityEpoch,
   advanceIdentityEpoch,
 } from './client'
-export type { ApiFetchOptions, ApiAmountFields, ApiAmountErrorCode } from './client'
+export type {
+  ApiFetchOptions,
+  ApiAmountFields,
+  ApiAmountErrorCode,
+  ApiResponseShapeIssue,
+  ApiResponseValidator,
+} from './client'
+
+export { validateTrustScore, validateTransactionList } from './validators'
 
 export {
   AmountError,

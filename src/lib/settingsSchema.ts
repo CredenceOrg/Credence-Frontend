@@ -1,6 +1,14 @@
 import { QUIET_HOURS_TIME_PATTERN } from '../config/notifications'
+import {
+  ADDRESS_BOOK_MAX_ENTRIES,
+  coerceAddressBookEntries,
+  type AddressBookEntry,
+} from './addressBookStorage'
+import { isValidStellarAddress, sanitizeAddressInput } from './stellar'
+import { SUPPORTED_LOCALES, type SupportedLocale } from '../i18n/config'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+export type { SupportedLocale }
 
 export interface SettingsBlob {
   themeMode: ThemeMode
@@ -14,6 +22,12 @@ export interface SettingsBlob {
   quietHoursStart: string
   /** Inclusive `HH:mm` end of the quiet window. */
   quietHoursEnd: string
+  /** Optional wallet-scoped address book entries included in backup/restore. */
+  addressBook?: AddressBookEntry[]
+  /** When true, local browser notifications remind the user before a bond unlocks. */
+  unlockRemindersEnabled: boolean
+  /** UI display language. Defaults to `'en'`. */
+  locale: SupportedLocale
 }
 
 const VALID_THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system']
@@ -21,7 +35,7 @@ const VALID_NETWORKS = ['public', 'test'] as const
 const VALID_ADDRESS_DISPLAYS = ['full', 'short', 'friendly'] as const
 const VALID_AUTO_DISMISS = ['off', '3s', '5s', '8s'] as const
 
-const DEFAULT_SETTINGS: SettingsBlob = {
+export const DEFAULT_SETTINGS: Readonly<SettingsBlob> = {
   themeMode: 'system',
   network: 'public',
   addressDisplay: 'short',
@@ -30,6 +44,8 @@ const DEFAULT_SETTINGS: SettingsBlob = {
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
+  unlockRemindersEnabled: false,
+  locale: 'en',
 }
 
 export function defaultSettings(): SettingsBlob {
@@ -126,6 +142,39 @@ export function validateAndNormalize(raw: unknown): ValidationResult {
       result.quietHoursEnd = input.quietHoursEnd
     } else {
       errors.push('quietHoursEnd must match HH:mm (24-hour)')
+    }
+  }
+
+  // Address book is OPTIONAL on import so older exports keep working.
+  if (input.addressBook !== undefined) {
+    if (!Array.isArray(input.addressBook)) {
+      errors.push('addressBook must be an array')
+    } else if (input.addressBook.length > ADDRESS_BOOK_MAX_ENTRIES) {
+      errors.push(`addressBook cannot exceed ${ADDRESS_BOOK_MAX_ENTRIES} entries`)
+    } else {
+      const invalidIndex = input.addressBook.findIndex((item) => {
+        if (!item || typeof item !== 'object') return true
+        const rec = item as Record<string, unknown>
+        if (typeof rec.label !== 'string' || !rec.label.trim()) return true
+        if (typeof rec.address !== 'string') return true
+        const sanitized = sanitizeAddressInput(rec.address)
+        return !sanitized.ok || !isValidStellarAddress(sanitized.value)
+      })
+      if (invalidIndex !== -1) {
+        errors.push(`addressBook[${invalidIndex}] must have a non-empty label and valid Stellar address`)
+      } else {
+        result.addressBook = coerceAddressBookEntries(input.addressBook)
+      }
+    }
+  // Optional for the same backwards-compatibility reason as quiet hours.
+  if (input.unlockRemindersEnabled !== undefined) {
+    result.unlockRemindersEnabled = Boolean(input.unlockRemindersEnabled)
+  // locale is optional for backwards-compatibility with exports that predate this field.
+  if (input.locale !== undefined) {
+    if ((SUPPORTED_LOCALES as readonly string[]).includes(input.locale as string)) {
+      result.locale = input.locale as SupportedLocale
+    } else {
+      errors.push(`locale must be one of: ${SUPPORTED_LOCALES.join(', ')}`)
     }
   }
 

@@ -60,7 +60,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(toastElement).toBeInTheDocument()
 
     act(() => {
-      vi.advanceTimerByTime(500000)
+      vi.advanceTimersByTime(500000)
     })
     expect(toastElement).toBeInTheDocument()
   })
@@ -79,7 +79,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(toastElement).toBeInTheDocument()
 
     act(() => {
-      vi.advanceTimerByTime(6000)
+      vi.advanceTimersByTime(6000)
     })
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
@@ -131,7 +131,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     // Advance slightly before hovering
     act(() => {
-      vi.advanceTimerByTime(500)
+      vi.advanceTimersByTime(500)
     })
 
     // Fire both variants to guarantee event matching with the provider listeners
@@ -140,7 +140,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     // If freeze works, this long advance won't clear the toast
     act(() => {
-      vi.advanceTimerByTime(10000)
+      vi.advanceTimersByTime(10000)
     })
 
     // Fallback assert: Check if it survives or if it requires a shorter step sequence
@@ -148,7 +148,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
       expect(container.querySelector('.toast')).toBeInTheDocument()
       fireEvent.mouseLeave(toastElement)
       act(() => {
-        vi.advanceTimerByTime(8000)
+        vi.advanceTimersByTime(8000)
       })
     }
 
@@ -232,8 +232,8 @@ describe('ToastProvider Timing and Queue Logic', () => {
         <button
           aria-label="add-retry"
           onClick={() => {
-            addToast('error', 'retry-me')
-            addToast('error', 'retry-me')
+            addToast('danger', 'retry-me')
+            addToast('danger', 'retry-me')
           }}
         >
           Retry
@@ -262,7 +262,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
       </ToastProvider>
     )
 
-    fireEvent.click(screen.getButton('trigger-'))
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-' }))
     fireEvent.click(screen.getByLabelText('trigger-    '))
 
     expect(container.querySelectorAll('.toast').length).toBe(0)
@@ -300,7 +300,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     act(() => {
       for (const name of ['Burst A', 'Burst B', 'Burst C', 'Burst D', 'Burst E']) {
-        fireEvent.click(screen.getButton(`trigger-${name}`))
+        fireEvent.click(screen.getByRole('button', { name: `trigger-${name}` }))
       }
     })
 
@@ -339,7 +339,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     // A malformed value must not hang forever -- the severity default applies.
     act(() => {
-      vi.advanceTimerByTime(30000)
+      vi.advanceTimersByTime(30000)
     })
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
@@ -359,7 +359,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(() => unmount()).not.toThrow()
 
     act(() => {
-      vi.advanceTimerByTime(6000)
+      vi.advanceTimersByTime(6000)
     })
   })
 

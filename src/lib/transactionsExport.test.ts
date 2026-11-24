@@ -72,6 +72,47 @@ describe('transactionsToCsv', () => {
       status: 'pending',
       timestamp: '2026-01-17T09:00:00Z',
       hash: '=SUM(A1:A2)',
+  it('preserves the existing output for ordinary three-row exports', () => {
+    const transactions: Transaction[] = [
+      sample[0],
+      { ...sample[1], hash: 'GQUOTE' },
+      {
+        id: 'tx-3',
+        type: 'attestation',
+        amountUsdc: 12.5,
+        status: 'pending',
+        timestamp: '2026-01-17T09:45:00Z',
+        hash: 'b6d396a8',
+      },
+    ]
+
+    expect(transactionsToCsv(transactions)).toBe(normalThreeRowExport)
+  })
+
+  it.each([
+    ['=', '=1+1'],
+    ['+', '+1'],
+    ['-', '-1'],
+    ['@', '@x'],
+    ['\t', '\tx'],
+    ['\r', '\rx'],
+  ])('neutralizes an id starting with %j', (trigger, value) => {
+    const csv = transactionsToCsv([{ ...sample[0], id: value }])
+    const expectedCell = trigger === '\r' ? `"'\rx"` : `'${value}`
+
+    expect(csv.startsWith(`id,type,status,amountUSDC,timestamp,hash\r\n${expectedCell}`)).toBe(
+      true
+    )
+  })
+
+  it('neutralizes all text columns and preserves RFC 4180 escaping', () => {
+    const transaction: Transaction = {
+      id: '=H,"Click"',
+      type: '=type' as unknown as Transaction['type'],
+      status: '+status' as unknown as Transaction['status'],
+      amountUsdc: undefined,
+      timestamp: '@timestamp',
+      hash: '\t@SUM(1+1)',
     }
     const csv = transactionsToCsv([formulaTx])
     expect(csv).toContain("'=SUM(A1:A2)")

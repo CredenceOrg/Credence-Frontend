@@ -70,6 +70,38 @@ components:
           description: ISO 8601 timestamp of the last score update.
           example: "2026-06-29T10:00:00Z"
 
+    TrustScoreHistoryPoint:
+      type: object
+      description: A historical trust-score observation.
+      required: [score, recordedAt]
+      properties:
+          score:
+            type: integer
+            description: Numeric trust score at the observation time.
+            minimum: 0
+            maximum: 1000
+            example: 720
+          recordedAt:
+            type: string
+            format: date-time
+            description: ISO 8601 timestamp of the score observation.
+            example: "2026-06-29T10:00:00Z"
+
+    TrustScoreHistory:
+      type: object
+      description: Historical trust-score observations for a Stellar address.
+      required: [address, points]
+      properties:
+          address:
+            type: string
+            description: Stellar public key (G...) for this history.
+            example: GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+          points:
+            type: array
+            description: Trust-score observations ordered oldest first.
+            items:
+              $ref: "#/components/schemas/TrustScoreHistoryPoint"
+
     Bond:
       type: object
       description: A USDC bond registered in the Credence protocol.
@@ -286,6 +318,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TrustScore"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /trust-score/{address}/history:
+    get:
+      operationId: getTrustScoreHistory
+      summary: Retrieve trust score history for a Stellar address
+      description: >
+        Returns chronological trust-score observations for the given Stellar
+        public key. The list is oldest-first and may be empty.
+      tags: [Trust]
+      parameters:
+        - $ref: "#/components/parameters/StellarAddress"
+      responses:
+        "200":
+          description: Trust score history returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrustScoreHistory"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":

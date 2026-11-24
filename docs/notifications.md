@@ -147,6 +147,8 @@ Quiet hours live in the same `credence:settings` payload as the rest of the user
 
 Defaults: `false`, `'22:00'`, `'07:00'`. Legacy exports missing the three keys continue to import cleanly — `validateAndNormalize` fills them with defaults. Invalid `HH:mm` strings fail the import with a descriptive error.
 
+The unlock reminders toggle lives in the same payload as `unlockRemindersEnabled` (default `false`), so backups and imports round-trip it with the rest of the preferences.
+
 ### Where the logic lives
 
 - **Constants** — `src/config/notifications.ts` (`DEFAULT_QUIET_HOURS_START`, `DEFAULT_QUIET_HOURS_END`, `QUIET_HOURS_TIME_PATTERN`).
@@ -158,6 +160,35 @@ Defaults: `false`, `'22:00'`, `'07:00'`. Legacy exports missing the three keys c
 
 - Pure-function coverage lives in `src/lib/quietHours.test.ts` and exercises same-day, cross-midnight, degenerate (`start === end`), boundary equality, and malformed-input cases.
 - Integration coverage in `src/components/ToastProvider.test.tsx` (Quiet hours suite) confirms that non-danger toasts are suppressed during the active window, danger toasts still surface and announce assertively, and disabled quiet hours let every toast through.
+
+---
+
+## Unlock Reminders (local browser notifications)
+
+Bonds expose an unlock timestamp (`bond.maturesAt`). Users can opt into a local browser notification that fires one day before each unlock, so a maturing bond is never missed while the app is open.
+
+### Behaviour
+
+- **Opt-in.** Off by default. Enable it in Settings → Notifications → Unlock reminders.
+- **Lead time.** `DEFAULT_REMINDER_LEAD_MS` (24 hours) before the unlock instant. A reminder whose window was missed (app closed, or the setting was just enabled) is delivered on the next poll.
+- **Quiet hours are respected.** If a reminder falls inside the configured window it is deferred to the first moment after the window ends (see `deferUntilQuietHoursEnd`). `start === end` and malformed values behave as "no quiet hours", exactly like toast suppression.
+- **No duplicates.** Delivered reminders are de-duplicated by `${bondId}@${leadMinutes}m` in `localStorage` under `credence:unlock-reminders:notified`, so reloading, refetching or re-rendering never notifies twice for the same bond and threshold.
+- **Permission denial degrades to a no-op.** The scheduler stays inert unless `Notification.permission === 'granted'`. Settings shows explanatory copy for `denied` and `unsupported` states, and offers an "Allow browser notifications" button while the state is `default`.
+- **Nothing is sent to a server.** Reminders are local `Notification` objects with a per-bond `tag`.
+
+### Where the logic lives
+
+- **Pure scheduling** — `src/lib/unlockReminders.ts` (`computeNextReminder`, `selectDueReminders`, `nextReminderAt`, `reminderKey`, storage + permission helpers).
+- **Quiet hours deferral** — `deferUntilQuietHoursEnd` in `src/lib/quietHours.ts`.
+- **Runtime** — `src/hooks/useUnlockReminders.ts`, mounted once from `Layout`. It polls every 60 seconds while the tab is open, and is fully inert (no bonds query, no timer) until the setting is enabled.
+- **Settings** — `unlockRemindersEnabled` in `src/lib/settingsSchema.ts` and `SettingsContext`, rendered in `src/pages/Settings.tsx`. It is part of the settings backup/export payload.
+
+### Tests
+
+- `src/lib/unlockReminders.test.ts` — scheduling, lead time, quiet-hours deferral, de-duplication, persistence and permission helpers.
+- `src/lib/quietHours.test.ts` — `deferUntilQuietHoursEnd` (cross-midnight, same-day, boundary and malformed cases).
+- `src/hooks/useUnlockReminders.test.tsx` — delivery, single-shot de-duplication, permission gating and quiet-hours deferral with fake timers.
+- `src/pages/Settings.test.tsx` — permission states and backup/import round-trip.
 
 ---
 

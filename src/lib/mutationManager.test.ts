@@ -11,12 +11,10 @@
  * - Contention: High-concurrency scenarios with resource limits
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, test, expect, beforeEach, afterEach } from 'vitest'
 import {
   MutationManager,
   createIdempotencyKey,
-  DEFAULT_RETRY_CONFIG,
-  type IdempotencyKey,
 } from './mutationManager'
 
 describe('MutationManager', () => {
@@ -112,8 +110,8 @@ describe('MutationManager', () => {
       }
 
       const results = await Promise.all([
-        manager.mutate(mutation, { key: createIdempotencyKey('/a', 'POST') }),
-        manager.mutate(mutation, { key: createIdempotencyKey('/b', 'POST') }),
+        (manager as unknown as MutationManager<number>).mutate(mutation, { key: createIdempotencyKey('/a', 'POST') }),
+        (manager as unknown as MutationManager<number>).mutate(mutation, { key: createIdempotencyKey('/b', 'POST') }),
       ])
 
       expect(results[0].data).toBe(1)
@@ -273,8 +271,8 @@ describe('MutationManager', () => {
         return { id: 1, amount: 1000 }
       }
 
-      const result1 = await manager.mutate(mutation, { key })
-      const result2 = await manager.mutate(mutation, { key })
+      const result1 = await (manager as unknown as MutationManager<{ id: number; amount: number }>).mutate(mutation, { key })
+      const result2 = await (manager as unknown as MutationManager<{ id: number; amount: number }>).mutate(mutation, { key })
 
       expect(result1.data).toEqual(result2.data)
       expect(result1.idempotencyKey).toBe(result2.idempotencyKey)
@@ -296,8 +294,8 @@ describe('MutationManager', () => {
 
       // Concurrent calls should deduplicate
       const results = await Promise.all([
-        manager.mutate(mutation, { key }),
-        manager.mutate(mutation, { key }),
+        (manager as unknown as MutationManager<{ id: number; amount: number }>).mutate(mutation, { key }),
+        (manager as unknown as MutationManager<{ id: number; amount: number }>).mutate(mutation, { key }),
       ])
 
       expect(results[0].data).toEqual(results[1].data)
@@ -547,13 +545,13 @@ describe('MutationManager', () => {
     test('getLatestResult returns latest execution result', async () => {
       const key = createIdempotencyKey('/test', 'POST')
 
-      const result1 = await manager.mutate(async () => 'v1', { key })
+      await manager.mutate(async () => 'v1', { key })
 
       const latestBeforeSecond = manager.getLatestResult(key)
       expect(latestBeforeSecond?.data).toBe('v1')
       expect(latestBeforeSecond?.version).toBe(1)
 
-      const result2 = await manager.mutate(async () => 'v2', { key })
+      await manager.mutate(async () => 'v2', { key })
 
       const latestAfterSecond = manager.getLatestResult(key)
       expect(latestAfterSecond?.data).toBe('v2')

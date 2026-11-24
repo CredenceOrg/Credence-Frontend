@@ -130,6 +130,13 @@ function formatThreshold(tier: TierDefinition): string {
 interface TierLadderProps {
   className?: string
   defaultOpen?: boolean
+  tiers?: TierDefinition[]
+  isLoading?: boolean
+  error?: string | Error
+  onRetry?: () => void
+  isStale?: boolean
+  hasPermission?: boolean
+  permissionMessage?: string
 }
 
 export default function TierLadder({ className = '', defaultOpen = false }: TierLadderProps) {

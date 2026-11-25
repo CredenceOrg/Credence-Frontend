@@ -97,6 +97,27 @@ describe('AttestationDetailDrawer', () => {
     expect(screen.getByText(/Window \+90d/)).toBeInTheDocument()
   })
 
+  it('renders attached evidence metadata and a copyable SHA-256 hash', () => {
+    const item: ActivityItem = {
+      ...SAMPLE_TX,
+      evidenceHash: 'a'.repeat(64),
+      evidenceFile: {
+        name: 'proof.pdf',
+        size: 1024,
+        type: 'application/pdf',
+        lastModified: 1780000000000,
+      },
+    }
+
+    renderDrawer(<AttestationDetailDrawer open item={item} onClose={() => {}} labels={LABELS} />)
+
+    expect(screen.getByText('Evidence file')).toBeInTheDocument()
+    expect(screen.getByText(/proof\.pdf · 1024 bytes · application\/pdf/)).toBeInTheDocument()
+    expect(screen.getByText('Evidence SHA-256')).toBeInTheDocument()
+    expect(screen.getByText('a'.repeat(64))).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy hash' })).toBeInTheDocument()
+  })
+
   it('closes on Escape via the focus trap', async () => {
     const onClose = vi.fn()
     const user = userEvent.setup()

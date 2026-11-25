@@ -8,11 +8,7 @@ import {
   resetIdentityEpoch,
 } from '../api/client'
 import type { Transaction } from '../api/types'
-import {
-  scopedKey,
-  PENDING_TXS_LEGACY_KEY,
-  PENDING_TXS_V1_KEY,
-} from '../lib/pendingTransactionsStorage'
+import { scopedKey, PENDING_TXS_LEGACY_KEY, PENDING_TXS_V1_KEY } from '../lib/pendingTransactionsStorage'
 
 // Mock API client
 vi.mock('../api/client', async () => {

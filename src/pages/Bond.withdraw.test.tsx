@@ -1,30 +1,22 @@
-import React from 'react'
-import { MemoryRouter } from 'react-router-dom'
-import { vi, type Mock } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
-import Bond from './Bond'
-import ToastProvider from '../components/ToastProvider'
-import { SettingsProvider } from '../context/SettingsContext'
-import * as useBondMutationModule from '../hooks/useBondMutation'
-import * as useWalletModule from '../context/WalletContext'
-import * as useBondsModule from '../hooks/useBonds'
+import { vi } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import Bond from './Bond';
+import ToastProvider from '../components/ToastProvider';
+import { SettingsProvider } from '../context/SettingsContext';
+import * as useBondMutationModule from '../hooks/useBondMutation';
+import * as useWalletModule from '../hooks/useWallet';
 
 // Mock the bond mutation hook
 vi.mock('../hooks/useBondMutation', () => ({
   useBondMutation: vi.fn(),
-}))
+}));
 
 // Mock the wallet hook
-vi.mock('../context/WalletContext', () => ({
+vi.mock('../hooks/useWallet', () => ({
   useWallet: vi.fn(),
-}))
+}));
 
-// Mock the bonds list hook
-vi.mock('../hooks/useBonds', () => ({
-  useBonds: vi.fn(),
-}))
-
-const mockWithdrawBond = vi.fn()
+const mockWithdrawBond = vi.fn();
 
 function renderWithProviders(ui = <Bond />) {
   return render(
@@ -37,12 +29,12 @@ function renderWithProviders(ui = <Bond />) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  mockWithdrawBond.mockReset()
-  ;(useBondMutationModule.useBondMutation as Mock).mockReturnValue({
+  vi.clearAllMocks();
+  mockWithdrawBond.mockReset();
+  (useBondMutationModule.useBondMutation as ReturnType<typeof vi.fn>).mockReturnValue({
     withdrawBond: mockWithdrawBond,
-  })
-  ;(useWalletModule.useWallet as Mock).mockReturnValue({
+  });
+  (useWalletModule.useWallet as ReturnType<typeof vi.fn>).mockReturnValue({
     connected: true,
     isConnected: true,
     isConnecting: false,
@@ -79,11 +71,11 @@ beforeEach(() => {
 
 async function openWithdrawDialogForBond(bondIdLabel: string) {
   const card =
-    screen.getByText(new RegExp(bondIdLabel, 'i')).closest('li') ||
-    screen.getByText(new RegExp(bondIdLabel, 'i')).closest('div')
-  const btn = within(card!).getByRole('button', { name: /^withdraw$/i })
-  fireEvent.click(btn)
-  await screen.findByRole('dialog')
+    screen.getByText(new RegExp(bondIdLabel, 'i')).closest('[data-testid="bond-card"]') ||
+    screen.getByText(new RegExp(bondIdLabel, 'i')).closest('div');
+  const btn = within(card as HTMLElement).getByRole('button', { name: /^withdraw$/i });
+  fireEvent.click(btn);
+  await screen.findByRole('dialog');
 }
 
 describe('Bond withdraw flow', () => {
@@ -148,7 +140,7 @@ describe('Bond withdraw flow', () => {
       ok: false,
       code: 'unknown',
       retryable: true,
-    })
+    });
     mockWithdrawBond.mockResolvedValueOnce({
       ok: true,
       data: { bondId: '1', transactionHash: 'abc123' },

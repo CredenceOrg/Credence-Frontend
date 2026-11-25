@@ -1,7 +1,8 @@
 import { Component, StrictMode, useContext, useState, type ReactNode } from 'react'
 import { render, screen, act, fireEvent, within } from '@testing-library/react'
 import { vi } from 'vitest'
-import ToastProvider, { useToast, ToastContext, type ToastContextValue } from './ToastProvider'
+import ToastProvider, { useToast, ToastContext } from './ToastProvider'
+type ToastContextValue = NonNullable<React.ContextType<typeof ToastContext>>
 import type { ToastSeverity } from './Toast'
 import { TOAST_CONFIG } from '../config/toast'
 import * as SettingsContextModule from '../context/SettingsContext'
@@ -527,7 +528,6 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
 
     // Empty message should not produce a toast
     act(() => {
-      // @ts-expect-error -- deliberately invalid input to exercise rejection
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(window as any).__toastAddToast?.('info', '')
     })
@@ -547,7 +547,6 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
 
     // Attempt an invalid toast type; should not throw or corrupt state
     act(() => {
-      // @ts-expect-error -- deliberately invalid type
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(window as any).__toastAddToast?.('not-a-type', 'Bad')
     })
@@ -562,7 +561,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       ...baseMockSettings,
       autoDismiss: 'off',
-    } as ReturnType<typeof SettingsContextModule.useSettings>)
+    } as unknown as ReturnType<typeof SettingsContextModule.useSettings>)
 
     const { container } = render(
       <ToastProvider>
@@ -621,7 +620,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       ...baseMockSettings,
       toastsEnabled: false,
-    } as ReturnType<typeof SettingsContextModule.useSettings>)
+    } as unknown as ReturnType<typeof SettingsContextModule.useSettings>)
     rerender(
       <ToastProvider>
         <TestComponent />
@@ -634,7 +633,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       ...baseMockSettings,
       toastsEnabled: true,
-    } as ReturnType<typeof SettingsContextModule.useSettings>)
+    } as unknown as ReturnType<typeof SettingsContextModule.useSettings>)
     rerender(
       <ToastProvider>
         <TestComponent />
@@ -666,7 +665,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       ...baseMockSettings,
       autoDismiss: 'off',
-    } as ReturnType<typeof SettingsContextModule.useSettings>)
+    } as unknown as ReturnType<typeof SettingsContextModule.useSettings>)
 
     const { container } = render(
       <ToastProvider>
@@ -697,7 +696,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       ...baseMockSettings,
       autoDismiss: '1s',
-    } as ReturnType<typeof SettingsContextModule.useSettings>)
+    } as unknown as ReturnType<typeof SettingsContextModule.useSettings>)
 
     const { container } = render(
       <ToastProvider>
@@ -716,7 +715,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
       ...baseMockSettings,
       autoDismiss: 'not-a-duration',
-    } as ReturnType<typeof SettingsContextModule.useSettings>)
+    } as unknown as ReturnType<typeof SettingsContextModule.useSettings>)
 
     const { container } = render(
       <ToastProvider>

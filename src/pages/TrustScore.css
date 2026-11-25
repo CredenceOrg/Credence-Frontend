@@ -314,6 +314,30 @@
   outline-offset: 2px;
 }
 
+.trustScore__recentRemoveBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--credence-space-1);
+  border: none;
+  border-radius: var(--credence-radius-sm);
+  background: transparent;
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+}
+
+.trustScore__recentRemoveBtn:hover {
+  background-color: var(--credence-color-surface-hover);
+  color: var(--credence-color-danger, var(--credence-text-primary));
+}
+
+.trustScore__recentRemoveBtn:focus-visible {
+  outline: var(--credence-focus-ring);
+  outline-offset: 2px;
+}
+
 /* ─── Responsive ────────────────────────────────────────────────────────── */
 
 @media (max-width: 1024px) {

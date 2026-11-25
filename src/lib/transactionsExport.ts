@@ -159,3 +159,108 @@ export function downloadCsv(
   doc.body.removeChild(anchor)
   revokeURL(url)
 }
+
+export interface ExportAllPage {
+  items: Transaction[]
+  nextCursor?: string
+}
+
+export interface ExportAllProgress {
+  pagesFetched: number
+  rowsFetched: number
+}
+
+export interface ExportAllOptions {
+  /** Fetches one cursor page of transactions. */
+  fetchPage: (cursor: string | undefined, signal?: AbortSignal) => Promise<ExportAllPage>
+  /** Optional progress callback invoked after each page is fetched. */
+  onProgress?: (progress: ExportAllProgress) => void
+  /** Optional AbortSignal to cancel the multi-page walk promptly. */
+  signal?: AbortSignal
+  /** Hard ceiling on the number of pages to fetch (defaults to 1000). */
+  maxPages?: number
+}
+
+export interface ExportAllResult {
+  csv: string
+  rows: number
+  pagesFetched: number
+  truncated: boolean
+  stopReason: 'complete' | 'max_pages' | 'cursor_loop'
+}
+
+function createAbortError(): DOMException {
+  return new DOMException('The operation was aborted.', 'AbortError')
+}
+
+/**
+ * Walk every cursor page of transactions via `fetchPage`, detecting cursor
+ * loops, respecting `maxPages` and `signal` cancellation, reporting progress
+ * after each page, and serializing all rows with `transactionsToCsv` (which
+ * preserves RFC 4180 escaping and formula-injection neutralization).
+ */
+export async function exportAllTransactions({
+  fetchPage,
+  onProgress,
+  signal,
+  maxPages = 1000,
+}: ExportAllOptions): Promise<ExportAllResult> {
+  if (signal?.aborted) {
+    throw createAbortError()
+  }
+
+  const allRows: Transaction[] = []
+  const seenCursors = new Set<string>()
+  let cursor: string | undefined = undefined
+  let pagesFetched = 0
+  let stopReason: ExportAllResult['stopReason'] = 'complete'
+
+  while (pagesFetched < maxPages) {
+    if (signal?.aborted) {
+      throw createAbortError()
+    }
+
+    const page = await fetchPage(cursor, signal)
+
+    if (signal?.aborted) {
+      throw createAbortError()
+    }
+
+    pagesFetched += 1
+    if (Array.isArray(page.items) && page.items.length > 0) {
+      allRows.push(...page.items)
+    }
+
+    onProgress?.({
+      pagesFetched,
+      rowsFetched: allRows.length,
+    })
+
+    const nextCursor = page.nextCursor
+    if (!nextCursor) {
+      stopReason = 'complete'
+      break
+    }
+
+    if (seenCursors.has(nextCursor)) {
+      stopReason = 'cursor_loop'
+      break
+    }
+
+    if (pagesFetched >= maxPages) {
+      stopReason = 'max_pages'
+      break
+    }
+
+    seenCursors.add(nextCursor)
+    cursor = nextCursor
+  }
+
+  return {
+    csv: transactionsToCsv(allRows),
+    rows: allRows.length,
+    pagesFetched,
+    truncated: stopReason !== 'complete',
+    stopReason,
+  }
+}

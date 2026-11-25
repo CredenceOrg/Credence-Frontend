@@ -92,43 +92,29 @@ export const CHANGELOG_STORAGE_KEY = 'credence:last-seen-update-id'
 
 **Lifecycle:** These are permanent toggles that persist user state. They are not feature gates in the traditional sense but are included here because they represent a live code branch. Remove the associated code (and the `localStorage` read) when the feature it gates becomes the only behaviour.
 
-### 4. Feature Flag Module (to be adopted)
+### 4. Feature Flag Context (URL-param flags)
 
-> **Note:** The codebase does not yet have a dedicated feature-flag provider. The following section describes the **target pattern** for new feature flags.
+**Use for:** Runtime toggles that need shared evaluation across components and must react to client-side navigation.
 
-**Use for:** Flags that need gradual rollout, kill-switch semantics, or per-environment variation.
-
-**Target pattern — a `useFeatureFlag` hook + `FeatureFlagProvider`:**
+**Implementation:** `src/config/featureFlags.ts` is the central registry (`FeatureFlags`, defaults, and the pure `getFeatureFlags(search)` parser). `src/context/FeatureFlagContext.tsx` reads `useLocation().search`, memoises flags per search string, and exposes `useFeatureFlag(name)`. The provider is mounted inside `<BrowserRouter>` in `src/App.tsx`.
 
 ```tsx
-// src/config/featureFlags.ts — central registry
-export type FeatureFlag =
-  'enable-mobile-nav' | 'enable-redesigned-bond-form' | 'enable-activity-surface'
+import { useFeatureFlag } from '../context/FeatureFlagContext'
 
-export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlag, boolean> = {
-  'enable-mobile-nav': false,
-  'enable-redesigned-bond-form': false,
-  'enable-activity-surface': false,
+function DashboardSurface() {
+  const useNewLayout = useFeatureFlag('newDashboard')
+
+  return useNewLayout ? <NewDashboard /> : <StandardDashboard />
 }
 ```
 
-```tsx
-// Usage in a component
-import { useFeatureFlag } from '../hooks/useFeatureFlag'
-
-function Layout() {
-  const mobileNavEnabled = useFeatureFlag('enable-mobile-nav')
-
-  return mobileNavEnabled ? <MobileNav /> : <DesktopNav />
-}
-```
-
-**Why a central registry?**
+**Why a central registry and provider?**
 
 - All flags are discoverable in one file — no hunting through components.
 - Defaults are explicit and consistently `false` for opt-in features (see [Component API conventions](./COMPONENT_API.md#3-boolean-prop-rules)).
-- A single hook makes it trivial to log flag evaluations for monitoring.
-- The provider can read from environment variables, a backend config endpoint, or a local-storage override, giving the team flexibility.
+- One parsed flag set is shared by every consumer; no component re-parses `window.location`.
+- Flags update on navigation because the provider follows the router location.
+- Tests control flags with `MemoryRouter` plus `FeatureFlagProvider`, without mutating `window.location`.
 
 ---
 
@@ -147,30 +133,25 @@ Before writing any code, answer these questions:
 
 ### 2. Implementation
 
-1. **Add the flag to the central registry** (see [Flag Types & Mechanisms](#4-feature-flag-module-to-be-adopted)).
+1. **Add the flag to the central registry** (see [Flag Types & Mechanisms](#4-feature-flag-context-url-param-flags)).
 2. **Default to `false`** so the new behaviour is opt-in.
 3. **Gate the smallest possible scope.** Prefer gating a single component or hook rather than an entire route.
 4. **Write a test for both states** — enabled and disabled. Verify that the old path continues to work when the flag is off.
-5. **Add console logging** when the flag is evaluated (gated behind `import.meta.env.DEV`) so the team can confirm the flag is being exercised during development. In production, rely on error-rate monitoring and manual validation rather than flag-specific logs.
+5. **Inspect the flag in `DebugOverlay`** (`?debug=1`) during development so the team can confirm the flag is being exercised. In production, rely on error-rate monitoring and manual validation rather than flag-specific logs.
 
 ```tsx
-// src/hooks/useFeatureFlag.ts (target pattern)
-export function useFeatureFlag(name: FeatureFlag): boolean {
-  const enabled = computeFlag(name) // read from provider/env/localStorage
+const enabled = useFeatureFlag('newDashboard')
 
-  if (import.meta.env.DEV) {
-    console.debug(`[feature-flag] ${name} = ${enabled}`)
-  }
+if (enabled) return <NewDashboard />
 
-  return enabled
-}
+return <StandardDashboard />
 ```
 
 ### 3. Monitoring
 
 Once a flag is live:
 
-- **Verify the flag is being evaluated.** Check logs for the `[feature-flag]` messages or telemetry events.
+- **Verify the flag is being evaluated.** Open `DebugOverlay` with `?debug=1` (dev only) or check telemetry events if the consuming surface emits them.
 - **Track the exit criterion.** If the flag gates a new feature, monitor the metric that will tell you the feature is ready for full rollout (e.g., error rate, conversion rate, load time).
 - **Set a review reminder.** When the exit criterion is met (or the deadline passes), the owning engineer removes the flag. If no one is actively watching, the flag becomes tech debt.
 
@@ -187,21 +168,19 @@ Once a flag is live:
 
 Removing a flag is **not** optional — it is part of the lifecycle. A flag left in the codebase accumulates maintenance cost (branches to test, dead code to read around).
 
-**Current practice:** For existing mechanisms (build-time, env var, local-storage), retirement is a manual cleanup of the relevant code and configuration files.
-
-**Target practice (once the central flag registry is adopted):**
+**Practice for all mechanisms:**
 
 1. **Flip the default state** by removing the flag check and keeping the enabled (or disabled) code path. Delete the other branch.
-2. **Remove the flag from the central registry** (`src/config/featureFlags.ts`).
+2. **Remove the flag from the central registry** (`src/config/featureFlags.ts`) if it was URL-param based.
 3. **Delete any environment variables or local-storage keys** that were used to override the flag.
 4. **Remove associated tests** for the retired code path.
 5. **Update documentation** — the flag's existence will be mentioned in README, changelogs, or PR summaries. Remove those references.
 
 ```diff
-- const mobileNavEnabled = useFeatureFlag('enable-mobile-nav')
+- const useNewLayout = useFeatureFlag('newDashboard')
 -
-- return mobileNavEnabled ? <MobileNav /> : <DesktopNav />
-+ return <MobileNav />
+- return useNewLayout ? <NewDashboard /> : <StandardDashboard />
++ return <NewDashboard />
 ```
 
 ---
@@ -212,7 +191,7 @@ Use this checklist when adding, modifying, or removing a feature flag.
 
 ### Adding
 
-- [ ] Flag is registered in a central file (`src/config/featureFlags.ts`) — once the central flag registry is adopted (see [Flag Types & Mechanisms](#4-feature-flag-module-to-be-adopted)).
+- [ ] Flag is registered in a central file (`src/config/featureFlags.ts`) (see [Flag Types & Mechanisms](#4-feature-flag-context-url-param-flags)).
 - [ ] Flag defaults to `false`.
 - [ ] Exit criterion is documented in the PR description.
 - [ ] Owner is assigned (person responsible for retirement).
@@ -221,7 +200,7 @@ Use this checklist when adding, modifying, or removing a feature flag.
 
 ### Monitoring
 
-- [ ] Flag evaluations are logged (dev console or telemetry).
+- [ ] Flag state is visible in `DebugOverlay` (dev) or telemetry.
 - [ ] Exit criterion is being tracked.
 - [ ] Review reminder is set if non-trivial.
 

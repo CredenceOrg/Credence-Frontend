@@ -441,7 +441,7 @@ describe('KeyboardShortcutsDialog — open/close boundary transitions', () => {
     ;(returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = triggerEl
 
     const onClose = vi.fn()
-    const { rerender } = render(
+    render(
       <KeyboardShortcutsDialog open={true} onClose={onClose} returnFocusRef={returnFocusRef} />
     )
     rerender(
@@ -604,7 +604,7 @@ describe('KeyboardShortcutsDialog — invalid prop boundaries', () => {
   it('does not throw when returnFocusRef points to a detached element', () => {
     const detached = document.createElement('button')
     const returnFocusRef = createRef<HTMLButtonElement>()
-    ;(returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = detached
+      ; (returnFocusRef as React.MutableRefObject<HTMLButtonElement>).current = detached
 
     const onClose = vi.fn()
     const { rerender } = render(
@@ -924,4 +924,5 @@ describe('KeyboardShortcutsDialog — failure-boundary regressions', () => {
     const texts = Array.from(headings).map((h) => h.textContent)
     expect(new Set(texts).size).toBe(texts.length)
   })
+})
 })

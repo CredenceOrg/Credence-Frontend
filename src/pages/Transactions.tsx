@@ -1,4 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Input } from '../components/forms/Input'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import {
+  applyTransactionFilters,
+  parseTransactionFilters,
+  serializeTransactionFilters,
+  DEFAULT_TRANSACTION_FILTERS,
+  TRANSACTION_TYPES,
+  type TransactionFilters,
+  type StatusFilter,
+  type TypeFilter,
+} from '../lib/transactionFilters'
 import { useTranslation } from 'react-i18next'
 import './Transactions.css'
 import Badge from '../components/Badge'
@@ -8,12 +21,28 @@ import Button from '../components/Button'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { EmptyState, ErrorState, LoadingSkeleton } from '../components/states'
 import { TEST_IDS } from '../config/testIds'
+import { ApiRateLimitError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import { useSettings } from '../context/SettingsContext'
+import { useWallet } from '../context/WalletContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
-import { useTransactions } from '../hooks/useTransactions'
+import { fetchTransactionsPage, MAX_PAGES, useTransactions } from '../hooks/useTransactions'
 import { useToast } from '../components/ToastProvider'
-import { buildExportFilename, downloadCsv, transactionsToCsv } from '../lib/transactionsExport'
+import {
+  buildExportFilename,
+  downloadCsv,
+  exportAllTransactions,
+  transactionsToCsv,
+  type ExportAllProgress,
+} from '../lib/transactionsExport'
 import { explorerUrl } from '../lib/explorerUrl'
+import {
+  ariaSortFor,
+  nextTransactionSort,
+  sortTransactions,
+  type TransactionSortKey,
+  type TransactionSortState,
+} from '../lib/transactionSort'
+import { VIRTUALIZED_LIST_DEFAULT_THRESHOLD } from '../config/virtualizedList'
 
 import { truncateAddress } from '../lib/stellar'
 import { formatUsdc } from '../lib/format'
@@ -21,6 +50,10 @@ import type { Transaction } from '../api/types'
 import type { TransactionWithNetwork } from '../lib/pendingTransactionsStorage'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'failed'
+
+const TRANSACTIONS_VIRTUAL_ROW_HEIGHT = 64
+const TRANSACTIONS_VIRTUAL_OVERSCAN = 6
+const TRANSACTIONS_VIRTUAL_VIEWPORT_HEIGHT = 520
 
 const STATUS_BADGE_MAP: Record<Transaction['status'], string> = {
   pending: 'locked',
@@ -51,10 +84,31 @@ export default function Transactions() {
   }
 
   const { network: settingsNetwork } = useSettings()
+  const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage, pendingTimeouts } =
+  const { address: walletAddress, network: walletNetwork } = useWallet()
   const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage } =
     useTransactions()
   const { addToast } = useToast()
   const [filter, setFilter] = useState<StatusFilter>('all')
+  // Column sort is client-side and applies to the loaded page only. `null`
+  // keeps the API's newest-first order, which is the table default.
+  const [sort, setSort] = useState<TransactionSortState>(null)
+
+  // Pending transactions that exceeded the 10-minute Horizon reconciliation cap
+  const timeoutCount = pendingTimeouts.length
+  const [searchParams, setSearchParams] = useSearchParams()
+  const filters = useMemo(() => parseTransactionFilters(searchParams), [searchParams])
+  const debouncedQuery = useDebouncedValue(filters.q, 300)
+  const updateFilters = useCallback(
+    (patch: Partial<TransactionFilters>, replace = false) => {
+      setSearchParams(
+        (current) =>
+          serializeTransactionFilters({ ...parseTransactionFilters(current), ...patch }, current),
+        { replace }
+      )
+    },
+    [setSearchParams]
+  )
 
   // Helper to get the network for a transaction (use stored network for pending, settings for server)
   const getTxNetwork = useCallback(
@@ -84,11 +138,16 @@ export default function Transactions() {
 
   const filtered = useMemo(
     () =>
-      filter === 'all'
-        ? visibleTransactions
-        : visibleTransactions.filter((tx) => tx.status === filter),
-    [visibleTransactions, filter]
+      applyTransactionFilters(visibleTransactions, {
+        ...filters,
+        q: filters.q === '' ? '' : debouncedQuery,
+      }),
+    [visibleTransactions, filters, debouncedQuery]
   )
+
+  // Sorting is applied after filtering so the two controls compose, and the
+  // sorter is stable: equal keys keep the server's newest-first order.
+  const rows = useMemo(() => sortTransactions(filtered, sort), [filtered, sort])
 
   // Reset transient overlays when the underlying dataset changes (refetch
   // or unmount between fetches). Stale IDs would otherwise leak selection
@@ -175,8 +234,95 @@ export default function Transactions() {
   const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
 
   const orderedSelected = useMemo(
-    () => filtered.filter((tx) => selectedIds.has(tx.id)),
-    [filtered, selectedIds]
+    () => rows.filter((tx) => selectedIds.has(tx.id)),
+    [rows, selectedIds]
+  )
+
+  const shouldVirtualizeRows = filtered.length >= VIRTUALIZED_LIST_DEFAULT_THRESHOLD
+  const [rowsScrollTop, setRowsScrollTop] = useState(0)
+
+  useEffect(() => {
+    setRowsScrollTop(0)
+  }, [filter, filtered.length, shouldVirtualizeRows])
+
+  const visibleRowRange = useMemo(() => {
+    if (!shouldVirtualizeRows) {
+      return { start: 0, end: filtered.length }
+    }
+
+    const visibleCount = Math.max(
+      1,
+      Math.ceil(TRANSACTIONS_VIRTUAL_VIEWPORT_HEIGHT / TRANSACTIONS_VIRTUAL_ROW_HEIGHT) + 1
+    )
+    const start = Math.max(
+      0,
+      Math.floor(rowsScrollTop / TRANSACTIONS_VIRTUAL_ROW_HEIGHT) - TRANSACTIONS_VIRTUAL_OVERSCAN
+    )
+    const end = Math.min(
+      filtered.length,
+      start + visibleCount + TRANSACTIONS_VIRTUAL_OVERSCAN * 2
+    )
+
+    return { start, end }
+  }, [filtered.length, rowsScrollTop, shouldVirtualizeRows])
+
+  const visibleRows = useMemo(
+    () => filtered.slice(visibleRowRange.start, visibleRowRange.end),
+    [filtered, visibleRowRange.end, visibleRowRange.start]
+  )
+
+  const topSpacerHeight = shouldVirtualizeRows
+    ? visibleRowRange.start * TRANSACTIONS_VIRTUAL_ROW_HEIGHT
+    : 0
+  const bottomSpacerHeight = shouldVirtualizeRows
+    ? Math.max(0, (filtered.length - visibleRowRange.end) * TRANSACTIONS_VIRTUAL_ROW_HEIGHT)
+    : 0
+
+  const renderTransactionRow = useCallback(
+    (tx: Transaction) => {
+      const selected = isRowSelected(tx.id)
+      return (
+        <tr
+          key={tx.id}
+          data-selected={selected ? 'true' : undefined}
+          className={selected ? 'transactions__row--selected' : undefined}
+        >
+          <td data-label="Select" className="transactions__selectCell">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => toggleRow(tx.id)}
+              aria-label={t('transactions.bulk.selectLabel', { id: tx.id })}
+            />
+          </td>
+          <td data-label="Type" className="transactions__type">
+            {tx.type}
+          </td>
+          <td data-label="Amount">{tx.amountUsdc != null ? formatUsdc(tx.amountUsdc) : '—'}</td>
+          <td data-label="Status">
+            <Badge variant={STATUS_BADGE_MAP[tx.status]} label={tx.status} />
+          </td>
+          <td data-label="When">
+            <time dateTime={tx.timestamp}>{relativeTime(tx.timestamp)}</time>
+          </td>
+          <td data-label="Transaction">
+            <AddressDisplay address={tx.hash} className="transactions__hash" />{' '}
+            <a
+              href={explorerUrl(getTxNetwork(tx), tx.hash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transactions__explorerLink"
+              aria-label={t('transactions.table.viewOnExplorer', {
+                hash: truncateAddress(tx.hash),
+              })}
+            >
+              {t('transactions.table.viewLink')}
+            </a>
+          </td>
+        </tr>
+      )
+    },
+    [getTxNetwork, isRowSelected, relativeTime, t, toggleRow]
   )
 
   // ── Bulk action handlers ────────────────────────────────────────────
@@ -185,13 +331,105 @@ export default function Transactions() {
     if (count === 0) return
     const csv = transactionsToCsv(orderedSelected)
     downloadCsv(csv, buildExportFilename())
-    addToast(
-      'success',
-      count === 1
-        ? t('transactions.bulk.exportToast.successOne')
-        : t('transactions.bulk.exportToast.successOther', { count })
-    )
+    addToast('success', t('transactions.bulk.exportToast.success', { count }))
   }, [orderedSelected, addToast, t])
+
+  // ── Export all (full cursor-paginated history) ──────────────────────
+  const [isExportingAll, setIsExportingAll] = useState(false)
+  const [exportProgress, setExportProgress] = useState<ExportAllProgress | null>(null)
+  const exportAbortRef = useRef<AbortController | null>(null)
+  const exportCancelledByUserRef = useRef(false)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      exportAbortRef.current?.abort()
+      exportAbortRef.current = null
+    }
+  }, [])
+
+  // Abort any in-flight full export when the active wallet or network changes.
+  useEffect(() => {
+    if (exportAbortRef.current) {
+      exportCancelledByUserRef.current = false
+      exportAbortRef.current.abort()
+      exportAbortRef.current = null
+      setIsExportingAll(false)
+      setExportProgress(null)
+    }
+  }, [walletAddress, walletNetwork, settingsNetwork])
+
+  const handleCancelExportAll = useCallback(() => {
+    exportCancelledByUserRef.current = true
+    exportAbortRef.current?.abort()
+  }, [])
+
+  const handleExportAll = useCallback(async () => {
+    if (exportAbortRef.current) return
+
+    const controller = new AbortController()
+    exportAbortRef.current = controller
+    exportCancelledByUserRef.current = false
+    const identityEpoch = getIdentityEpoch()
+
+    setIsExportingAll(true)
+    setExportProgress(null)
+
+    try {
+      const result = await exportAllTransactions({
+        fetchPage: (cursor, signal) => fetchTransactionsPage(cursor, { signal, identityEpoch }),
+        onProgress: (progress) => {
+          if (mountedRef.current && exportAbortRef.current === controller) {
+            setExportProgress(progress)
+          }
+        },
+        signal: controller.signal,
+        maxPages: MAX_PAGES,
+      })
+
+      if (!mountedRef.current || exportAbortRef.current !== controller) return
+
+      downloadCsv(result.csv, buildExportFilename())
+      addToast(
+        'success',
+        result.rows === 1
+          ? t('transactions.bulk.exportToast.successOne')
+          : t('transactions.bulk.exportToast.successOther', { count: result.rows })
+      )
+    } catch (err) {
+      if (!mountedRef.current) return
+
+      if (err instanceof ApiSessionConflictError) {
+        return
+      }
+
+      if (
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        (err instanceof Error && err.name === 'AbortError')
+      ) {
+        if (exportCancelledByUserRef.current) {
+          addToast('info', t('transactions.exportAll.cancelled'))
+        }
+        return
+      }
+
+      if (err instanceof ApiRateLimitError) {
+        const seconds = Math.max(1, Math.ceil(err.retryAfterMs / 1000))
+        addToast('error', t('transactions.exportAll.rateLimited', { seconds }))
+        return
+      }
+
+      addToast('error', t('transactions.exportAll.error'))
+    } finally {
+      if (mountedRef.current && exportAbortRef.current === controller) {
+        exportAbortRef.current = null
+        setIsExportingAll(false)
+        setExportProgress(null)
+      }
+    }
+  }, [addToast, t])
 
   // ── Delete confirmation flow ───────────────────────────────────────
   const [isDeleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -222,22 +460,101 @@ export default function Transactions() {
       return next
     })
     setSelectedIds(new Set())
-    addToast(
-      'success',
-      count === 1
-        ? t('transactions.bulk.deleteConfirm.successOne')
-        : t('transactions.bulk.deleteConfirm.successOther', { count })
-    )
+    addToast('success', t('transactions.bulk.deleteConfirm.success', { count }))
     setIsDeleting(false)
     setDeleteDialogOpen(false)
   }, [orderedSelected, addToast, t])
+
+  // ── Sortable column headers ─────────────────────────────────────────
+  // The button lives inside the `<th>` so the column keeps its `aria-sort`
+  // state while the button carries the action-oriented accessible name.
+  // Clicking cycles ascending → descending → server order (no sort).
+  const renderSortHeader = (key: TransactionSortKey, label: string) => {
+    const direction = sort?.key === key ? sort.direction : null
+    const buttonLabel =
+      direction === 'asc'
+        ? t('transactions.table.sortAscending', { column: label })
+        : direction === 'desc'
+          ? t('transactions.table.sortDescending', { column: label })
+          : t('transactions.table.sortBy', { column: label })
+
+    return (
+      <th key={key} scope="col" aria-sort={ariaSortFor(sort, key)}>
+        <button
+          type="button"
+          className="transactions__sortButton"
+          onClick={() => setSort((current) => nextTransactionSort(current, key))}
+          aria-label={buttonLabel}
+        >
+          {label}
+          <span className="transactions__sortIcon" aria-hidden="true">
+            {direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : '⇅'}
+          </span>
+        </button>
+      </th>
+    )
+  }
 
   return (
     <div>
       <div className="transactions__header">
         <h1 className="transactions__title">{t('transactions.title')}</h1>
+        {hasData && visibleTransactions.length > 0 && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void handleExportAll()}
+            disabled={isExportingAll}
+            data-testid={TEST_IDS.TX_EXPORT_ALL_BUTTON}
+          >
+            {isExportingAll ? t('transactions.exportAll.exporting') : t('transactions.exportAll.button')}
+          </Button>
+        )}
       </div>
       <p className="transactions__description">{t('transactions.description')}</p>
+
+      {timeoutCount > 0 && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="pending-timeout-banner"
+          style={{
+            padding: '12px 16px',
+            borderRadius: 8,
+            border: '1px solid var(--warning, #d29922)',
+            background: 'rgba(210,153,34,0.12)',
+            marginBottom: 16,
+            fontSize: 14,
+          }}
+        >
+          {timeoutCount === 1
+            ? '1 pending transaction is taking longer than expected to confirm. It will keep retrying in the background — you can refresh the page or check it on a block explorer.'
+            : `${timeoutCount} pending transactions are taking longer than expected to confirm. They will keep retrying in the background — you can refresh the page or check them on a block explorer.`}
+      {isExportingAll && (
+        <div
+          className="transactions__exportStatus"
+          role="status"
+          aria-live="polite"
+          data-testid={TEST_IDS.TX_EXPORT_ALL_STATUS}
+        >
+          <p className="transactions__exportStatus-text">
+            {exportProgress
+              ? t('transactions.exportAll.progress', {
+                  pages: exportProgress.pagesFetched,
+                  rows: exportProgress.rowsFetched,
+                })
+              : t('transactions.exportAll.starting')}
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleCancelExportAll}
+            data-testid={TEST_IDS.TX_EXPORT_ALL_CANCEL_BUTTON}
+          >
+            {t('transactions.exportAll.cancel')}
+          </Button>
+        </div>
+      )}
 
       {isLoading && (
         <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading transactions">
@@ -254,6 +571,93 @@ export default function Transactions() {
           action={{ label: t('common.tryAgain'), onClick: refetch }}
           ariaLabel={t('transactions.unableToLoad')}
         />
+      )}
+
+      {hasData && (
+        <>
+          <div className="transactions__filterRow">
+            <div className="transactions__filterField">
+              <label htmlFor="tx-status-filter" className="transactions__filterLabel">
+                {t('transactions.filterLabel')}
+              </label>
+              <Select
+                id="tx-status-filter"
+                value={filters.status}
+                onChange={(value) => updateFilters({ status: value as StatusFilter })}
+                options={STATUS_OPTIONS}
+                ariaLabel={t('transactions.filterAriaLabel')}
+              />
+            </div>
+            <div className="transactions__filterField">
+              <label htmlFor="tx-type-filter" className="transactions__filterLabel">
+                {t('transactions.filters.type')}
+              </label>
+              <Select
+                id="tx-type-filter"
+                value={filters.type}
+                onChange={(value) => updateFilters({ type: value as TypeFilter })}
+                options={[
+                  { value: 'all', label: t('transactions.filters.allTypes') },
+                  ...TRANSACTION_TYPES.map((value) => ({
+                    value,
+                    label: t(`transactions.filters.types.${value}`),
+                  })),
+                ]}
+              />
+            </div>
+            <div className="transactions__filterField">
+              <label htmlFor="tx-from-filter" className="transactions__filterLabel">
+                {t('transactions.filters.from')}
+              </label>
+              <Input
+                id="tx-from-filter"
+                type="date"
+                value={filters.from}
+                max={filters.to || undefined}
+                onChange={(event) => updateFilters({ from: event.target.value })}
+              />
+            </div>
+            <div className="transactions__filterField">
+              <label htmlFor="tx-to-filter" className="transactions__filterLabel">
+                {t('transactions.filters.to')}
+              </label>
+              <Input
+                id="tx-to-filter"
+                type="date"
+                value={filters.to}
+                min={filters.from || undefined}
+                onChange={(event) => updateFilters({ to: event.target.value })}
+              />
+            </div>
+            <div className="transactions__filterField transactions__filterField--search">
+              <label htmlFor="tx-search-filter" className="transactions__filterLabel">
+                {t('transactions.filters.search')}
+              </label>
+              <Input
+                id="tx-search-filter"
+                type="search"
+                value={filters.q}
+                placeholder={t('transactions.filters.searchPlaceholder')}
+                onChange={(event) => updateFilters({ q: event.target.value }, true)}
+              />
+            </div>
+          </div>
+          <div className="transactions__filterSummary">
+            <p aria-live="polite" aria-atomic="true">
+              {t('transactions.filters.results', {
+                count: filtered.length,
+                total: visibleTransactions.length,
+              })}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => updateFilters(DEFAULT_TRANSACTION_FILTERS)}
+            >
+              {t('transactions.filters.clear')}
+            </Button>
+          </div>
+        </>
       )}
 
       {hasData && visibleTransactions.length === 0 && (
@@ -274,9 +678,7 @@ export default function Transactions() {
             data-testid={TEST_IDS.TX_BULK_ACTIONS_BAR}
           >
             <p className="transactions__bulkActions-count" aria-live="polite">
-              {selectedIds.size === 1
-                ? t('transactions.bulk.selectedOne', { count: 1 })
-                : t('transactions.bulk.selectedOther', { count: selectedIds.size })}
+              {t('transactions.bulk.selected', { count: selectedIds.size })}
             </p>
             <div className="transactions__bulkActions-buttons">
               <Button
@@ -308,21 +710,8 @@ export default function Transactions() {
             </div>
           </div>
 
-          <div className="transactions__filterRow">
-            <label htmlFor="tx-status-filter" className="transactions__filterLabel">
-              {t('transactions.filterLabel')}
-            </label>
-            <Select
-              id="tx-status-filter"
-              value={filter}
-              onChange={(v) => setFilter(v as StatusFilter)}
-              options={STATUS_OPTIONS}
-              ariaLabel={t('transactions.filterAriaLabel')}
-            />
-          </div>
-
           {filtered.length === 0 ? (
-            <p className="transactions__noResults">{t('transactions.noResults', { filter })}</p>
+            <p className="transactions__noResults">{t('transactions.filters.noResults')}</p>
           ) : (
             <table className="transactions__table" aria-label="Transaction history">
               <thead>
@@ -337,15 +726,15 @@ export default function Transactions() {
                       aria-label={t('transactions.bulk.selectAll')}
                     />
                   </th>
-                  <th scope="col">{t('transactions.table.type')}</th>
-                  <th scope="col">{t('transactions.table.amount')}</th>
-                  <th scope="col">{t('transactions.table.status')}</th>
-                  <th scope="col">{t('transactions.table.when')}</th>
+                  {renderSortHeader('type', t('transactions.table.type'))}
+                  {renderSortHeader('amount', t('transactions.table.amount'))}
+                  {renderSortHeader('status', t('transactions.table.status'))}
+                  {renderSortHeader('date', t('transactions.table.when'))}
                   <th scope="col">{t('transactions.table.transaction')}</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((tx) => {
+                {rows.map((tx) => {
                   const selected = isRowSelected(tx.id)
                   return (
                     <tr
@@ -387,11 +776,59 @@ export default function Transactions() {
                           {t('transactions.table.viewLink')}
                         </a>
                       </td>
+            <div
+              style={
+                shouldVirtualizeRows
+                  ? { maxHeight: `${TRANSACTIONS_VIRTUAL_VIEWPORT_HEIGHT}px`, overflowY: 'auto' }
+                  : undefined
+              }
+              onScroll={
+                shouldVirtualizeRows
+                  ? (event) => setRowsScrollTop(event.currentTarget.scrollTop)
+                  : undefined
+              }
+            >
+              <table className="transactions__table" aria-label="Transaction history">
+                <thead>
+                  <tr>
+                    <th scope="col" className="transactions__selectHeader">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        data-testid={TEST_IDS.TX_SELECT_ALL_CHECKBOX}
+                        checked={allFilteredSelected}
+                        onChange={toggleSelectAll}
+                        aria-label={t('transactions.bulk.selectAll')}
+                      />
+                    </th>
+                    <th scope="col">{t('transactions.table.type')}</th>
+                    <th scope="col">{t('transactions.table.amount')}</th>
+                    <th scope="col">{t('transactions.table.status')}</th>
+                    <th scope="col">{t('transactions.table.when')}</th>
+                    <th scope="col">{t('transactions.table.transaction')}</th>
+                  </tr>
+                </thead>
+                <tbody role="rowgroup">
+                  {topSpacerHeight > 0 && (
+                    <tr aria-hidden="true" role="presentation">
+                      <td
+                        colSpan={6}
+                        style={{ height: `${topSpacerHeight}px`, padding: 0, border: 0 }}
+                      />
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  )}
+                  {(shouldVirtualizeRows ? visibleRows : filtered).map(renderTransactionRow)}
+                  {bottomSpacerHeight > 0 && (
+                    <tr aria-hidden="true" role="presentation">
+                      <td
+                        colSpan={6}
+                        style={{ height: `${bottomSpacerHeight}px`, padding: 0, border: 0 }}
+                      />
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {hasData && visibleTransactions.length > 0 && totalPages > 1 && (
@@ -438,11 +875,9 @@ export default function Transactions() {
       <ConfirmDialog
         open={isDeleteDialogOpen}
         title={t('transactions.bulk.deleteConfirm.title')}
-        subtitle={
-          orderedSelected.length === 1
-            ? t('transactions.bulk.deleteConfirm.subtitle', { count: 1 })
-            : t('transactions.bulk.deleteConfirm.subtitle_other', { count: orderedSelected.length })
-        }
+        subtitle={t('transactions.bulk.deleteConfirm.subtitle', {
+          count: orderedSelected.length,
+        })}
         confirmPhrase={t('transactions.bulk.deleteConfirm.phrase')}
         confirmHint={t('transactions.bulk.deleteConfirm.hint')}
         confirmLabel={t('transactions.bulk.deleteConfirm.confirm')}

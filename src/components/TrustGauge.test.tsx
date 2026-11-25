@@ -548,3 +548,7 @@ describe('TrustGauge failure boundary states', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 })
+})
+})
+})
+

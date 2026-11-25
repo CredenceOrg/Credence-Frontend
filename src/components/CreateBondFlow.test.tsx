@@ -554,7 +554,7 @@ describe('CreateBondFlow – handleNext failure boundaries', () => {
     // Back to step 1, then forward again without editing.
     fireEvent.click(screen.getByRole('button', { name: /back/i }))
     fireEvent.click(screen.getByRole('button', { name: /back/i }))
-    expect(screen.getByPlaceholderText('0')).toHaveValue('1,234.56')
+    expect(screen.getByPlaceholderText('0')).toHaveValue('1234.56')
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
     fireEvent.click(screen.getByRole('button', { name: /next/i }))
 

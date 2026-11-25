@@ -12,7 +12,10 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest'
-import { MutationManager, createIdempotencyKey } from './mutationManager'
+import {
+  MutationManager,
+  createIdempotencyKey,
+} from './mutationManager'
 
 describe('MutationManager', () => {
   let manager: MutationManager<string>
@@ -106,8 +109,8 @@ describe('MutationManager', () => {
       }
 
       const results = await Promise.all([
-        manager.mutate(mutation, { key: createIdempotencyKey('/a', 'POST') }),
-        manager.mutate(mutation, { key: createIdempotencyKey('/b', 'POST') }),
+        (manager as unknown as MutationManager<number>).mutate(mutation, { key: createIdempotencyKey('/a', 'POST') }),
+        (manager as unknown as MutationManager<number>).mutate(mutation, { key: createIdempotencyKey('/b', 'POST') }),
       ])
 
       expect(results[0].data).toBe(1)
@@ -267,8 +270,8 @@ describe('MutationManager', () => {
         return { id: 1, amount: 1000 }
       }
 
-      const result1 = await manager.mutate(mutation, { key })
-      const result2 = await manager.mutate(mutation, { key })
+      const result1 = await (manager as unknown as MutationManager<{ id: number; amount: number }>).mutate(mutation, { key })
+      const result2 = await (manager as unknown as MutationManager<{ id: number; amount: number }>).mutate(mutation, { key })
 
       expect(result1.data).toEqual(result2.data)
       expect(result1.idempotencyKey).toBe(result2.idempotencyKey)
@@ -290,8 +293,8 @@ describe('MutationManager', () => {
 
       // Concurrent calls should deduplicate
       const results = await Promise.all([
-        manager.mutate(mutation, { key }),
-        manager.mutate(mutation, { key }),
+        (manager as unknown as MutationManager<{ id: number; amount: number }>).mutate(mutation, { key }),
+        (manager as unknown as MutationManager<{ id: number; amount: number }>).mutate(mutation, { key }),
       ])
 
       expect(results[0].data).toEqual(results[1].data)

@@ -124,7 +124,7 @@
   outline-offset: 2px;
 }
 
-/* Token-based SVG icons (replaced emoji per PR #936 standardisation) */
+/* Token-based SVG icons replace the previous emoji treatment. */
 .not-found-page__link-icon {
   display: inline-flex;
   align-items: center;

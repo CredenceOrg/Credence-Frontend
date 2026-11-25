@@ -1,4 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import type { ReactElement } from 'react'
+import { render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Profiler } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -28,6 +30,10 @@ vi.mock('../api/client', async (importOriginal) => {
   }
 })
 
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({ address: 'GTESTWALLET', network: 'public' }),
+}))
+
 const apiFetchMock = vi.mocked(apiFetch)
 
 vi.mock('../hooks/useDocumentTitle', () => ({
@@ -51,26 +57,31 @@ vi.mock('../lib/transactionsExport', async (importOriginal) => {
 })
 
 const TX_BASE = {
-  type: 'bond_create',
+  type: 'bond',
   amountUsdc: 1000,
   status: 'confirmed',
   timestamp: '2026-01-15T12:00:00Z',
+  hash: 'hash-1',
 } as const
 
-const TX1: Transaction = { id: 'tx-1', ...TX_BASE }
+const TX1: Transaction = { id: 'tx-1', hash: 'hash-tx-1', ...TX_BASE }
 const TX2: Transaction = {
   id: 'tx-2',
+  hash: 'hash-tx-2',
   type: 'withdraw',
-  amountUsdc: null,
+  amountUsdc: undefined,
   status: 'failed',
   timestamp: '2026-01-16T08:30:00Z',
+  hash: 'hash-2',
 }
 const TX3: Transaction = {
   id: 'tx-3',
-  type: 'attest',
+  hash: 'hash-tx-3',
+  type: 'attestation',
   amountUsdc: 250,
   status: 'pending',
   timestamp: '2026-01-17T09:45:00Z',
+  hash: 'hash-3',
 }
 
 describe('Transactions render loop regression (issue #1377)', () => {
@@ -188,3 +199,7 @@ describe('Transactions render loop regression (issue #1377)', () => {
     expect(reloadedBulkBar).toHaveAttribute('hidden')
   })
 })
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: MemoryRouter })
+}

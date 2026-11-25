@@ -42,6 +42,7 @@ function ControlledAmountInput({
   return (
     <AmountInput
       {...props}
+      balance={props.balance ?? 0}
       value={value}
       onChange={(next) => {
         setValue(next)

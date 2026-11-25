@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch, ApiError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import type { ApiResponse, operations, Transaction } from '../api/types'
+import { validateTransactionList } from '../api/validators'
+import { getTransaction } from '../lib/horizon'
 import { useWallet } from '../context/WalletContext'
 import { useSettings } from '../context/SettingsContext'
 import {
@@ -17,7 +19,7 @@ import {
  * never requests unbounded data. Changing this value changes the page the
  * server returns, so it must remain stable across cursor requests.
  */
-const PAGE_SIZE = 20
+export const PAGE_SIZE = 20
 /**
  * Hard ceiling on the number of distinct pages the hook will ever fetch.
  *
@@ -27,7 +29,7 @@ const PAGE_SIZE = 20
  * further. This keeps ordering/end-of-stream deterministic and prevents
  * unbounded network work on a single list.
  */
-const MAX_PAGES = 1000
+export const MAX_PAGES = 1000
 /**
  * Bound on the number of pages retained in the VDOM cache and cursor map.
  *
@@ -45,9 +47,41 @@ type TransactionsResponse = ApiResponse<operations['listTransactions']>
  * must echo back verbatim to fetch the next page. `nextCursor` is `undefined`
  * when the page is the last one available (end-of-stream).
  */
-interface FetchedPage {
+export interface FetchedPage {
   items: Transaction[]
   nextCursor?: string
+}
+
+interface InFlightPage {
+  controller: AbortController
+  promise: Promise<FetchedPage | null>
+/**
+ * Fetch a single cursor page of transactions using the shared `PAGE_SIZE`
+ * and active identity epoch. Reused by both `useTransactions` and full-history
+ * CSV export so pagination parameters and session-conflict checks stay in sync.
+ */
+export async function fetchTransactionsPage(
+  cursor?: string,
+  options: { signal?: AbortSignal; identityEpoch?: number } = {}
+): Promise<FetchedPage> {
+  const params = new URLSearchParams()
+  params.set('limit', String(PAGE_SIZE))
+  if (cursor) {
+    params.set('cursor', cursor)
+  }
+
+  const epoch = options.identityEpoch ?? getIdentityEpoch()
+
+  const result = await apiFetch<TransactionsResponse>(`/transactions?${params.toString()}`, {
+    signal: options.signal,
+    identityEpoch: epoch,
+  })
+
+  if (options.signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError')
+  }
+
+  return { items: result.items, nextCursor: result.nextCursor }
 }
 
 export interface UseTransactionsResult {
@@ -57,6 +91,8 @@ export interface UseTransactionsResult {
   refetch: () => void
   addPendingTransaction: (tx: Transaction) => void
   removePendingTransaction: (hash: string) => void
+  /** Hashes of pending transactions that exceeded the 10-minute reconciliation cap. */
+  pendingTimeouts: string[]
   /** Current page number (1-indexed). */
   page: number
   /**
@@ -105,6 +141,7 @@ export function useTransactions(): UseTransactionsResult {
   // Use wallet network if available, otherwise fall back to settings network
   const network = (walletNetwork || settingsNetwork) as 'public' | 'test'
 
+  // Filter URL changes must not look like a new dataset and reset bulk selection.
   const data = useMemo(() => [...pendingData, ...serverData], [pendingData, serverData])
 
   // Navigation-only abort controller / fetch id. Prefetches deliberately do
@@ -162,6 +199,7 @@ export function useTransactions(): UseTransactionsResult {
       const result = await apiFetch<TransactionsResponse>(`/transactions?${params.toString()}`, {
         signal,
         identityEpoch: epoch,
+        validate: validateTransactionList,
       })
 
       // A response that lands after abort (refetch / unmount / superseded
@@ -170,6 +208,7 @@ export function useTransactions(): UseTransactionsResult {
       if (signal?.aborted) {
         throw new DOMException('The operation was aborted.', 'AbortError')
       }
+      const result = await fetchTransactionsPage(cursor, { signal })
 
       // Advance the forward chain and cache the raw page. This is idempotent:
       // concurrent callers for the same page write the same values, so a stale
@@ -300,6 +339,95 @@ export function useTransactions(): UseTransactionsResult {
       }
     }
   }, [fetchPage, walletAddress, network])
+
+  // -------------------------------------------------------------------------
+  // Pending-transaction reconciliation loop (issue #1440)
+  //
+  // Polls Horizon for each pending hash until it resolves to confirmed or
+  // failed, or until the 10-minute cap. Backoff grows 2s → 4s → 8s (capped
+  // 15s). Polling pauses while document.hidden and never runs when
+  // disconnected. Unmount / wallet or network switch tears the loop down.
+  // -------------------------------------------------------------------------
+  const [pendingTimeouts, setPendingTimeouts] = useState<string[]>([])
+  const PENDING_POLL_CAP_MS = 10 * 60 * 1000
+  const PENDING_POLL_INITIAL_MS = 2_000
+  const PENDING_POLL_MAX_MS = 15_000
+
+  const pollEpochRef = useRef(0)
+
+  useEffect(() => {
+    if (!walletAddress) return
+    const epoch = ++pollEpochRef.current
+
+    let cancelled = false
+    let delay = PENDING_POLL_INITIAL_MS
+    const startedAt = Date.now()
+
+    const tick = async () => {
+      if (cancelled || epoch !== pollEpochRef.current) return
+      if (document.hidden) {
+        setTimeout(tick, delay)
+        return
+      }
+
+      const pending = readPendingTransactions(network, walletAddress)
+      if (pending.length === 0) {
+        setPendingTimeouts([])
+        setTimeout(tick, delay)
+        return
+      }
+
+      const stillPending: typeof pending = []
+      const resolved: string[] = []
+      const timeouts: string[] = []
+
+      for (const tx of pending) {
+        if (Date.now() - startedAt > PENDING_POLL_CAP_MS) {
+          timeouts.push(tx.hash)
+          continue
+        }
+        try {
+          const lookup = await getTransaction(tx.hash, network)
+          if (lookup.status === 'found') {
+            resolved.push(tx.hash)
+            if (lookup.successful) {
+              writePendingTransactions(network, walletAddress, pending.filter((p) => p.hash !== tx.hash))
+            } else {
+              // failed on-chain — drop from pending
+              writePendingTransactions(network, walletAddress, pending.filter((p) => p.hash !== tx.hash))
+            }
+          } else if (lookup.status === 'notFound') {
+            stillPending.push(tx)
+          }
+          // 'failed' (transport error) — keep it pending, backoff will retry
+          else {
+            stillPending.push(tx)
+          }
+        } catch {
+          stillPending.push(tx)
+        }
+      }
+
+      if (cancelled || epoch !== pollEpochRef.current) return
+
+      setPendingData(readPendingTransactions(network, walletAddress))
+      setPendingTimeouts(timeouts)
+
+      // Any resolution triggers a server-list refetch.
+      if (resolved.length > 0) {
+        fetchTransactions()
+      }
+
+      delay = Math.min(delay * 2, PENDING_POLL_MAX_MS)
+      setTimeout(tick, delay)
+    }
+
+    setTimeout(tick, delay)
+
+    return () => {
+      cancelled = true
+    }
+  }, [network, walletAddress, fetchTransactions])
 
   const goToPage = useCallback(
     async (pageNum: number) => {
@@ -487,6 +615,7 @@ export function useTransactions(): UseTransactionsResult {
     refetch,
     addPendingTransaction: addPending,
     removePendingTransaction: removePendingByHash,
+    pendingTimeouts,
     page,
     totalPages,
     hasNextPage,

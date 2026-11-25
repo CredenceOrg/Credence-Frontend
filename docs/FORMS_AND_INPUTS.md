@@ -60,7 +60,8 @@ Canonical input for Stellar public keys.
 
 - **Source**: `src/components/AddressInput.tsx`
 - **Story**: `Components/Forms/AddressInput`
-- **States**: Default, Error, Disabled, Loading. Surfacess "Recognized:" echo when valid.
+- **States**: Default, Error, Disabled, Loading. Surfaces "Recognized:" echo when valid.
+- **Address Book Picker**: When the active wallet/network has saved address book entries, an inline "Choose from address book" button opens a keyboard-accessible combobox (`ArrowUp`/`ArrowDown`/`Home`/`End`/`Enter`/`Escape`) to filter and select a saved counterparty. When no entries exist, the picker is hidden for backward compatibility.
 
 ### AmountInput
 

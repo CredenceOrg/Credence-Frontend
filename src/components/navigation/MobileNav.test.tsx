@@ -376,7 +376,7 @@ describe('MobileNav', () => {
         <MemoryRouter>
           <div data-testid="page-root">
             <ErrorBoundary
-              fallback={(error, reset) => (
+              fallback={(_error, reset) => (
                 <button
                   data-error-boundary="mobilenav"
                   aria-label="Navigation error — tap to retry"
@@ -408,11 +408,15 @@ describe('MobileNav', () => {
       renderNav()
 
       // Normal operation — boundary wrapper should be invisible
-      expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /open navigation menu/i })
+      ).toBeInTheDocument()
       expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
 
       // No error boundary fallback should be present
-      expect(screen.queryByRole('button', { name: /navigation error/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /navigation error/i })
+      ).not.toBeInTheDocument()
       expect(document.querySelector('[data-error-boundary="mobilenav"]')).toBeNull()
     })
   })
@@ -431,7 +435,9 @@ describe('MobileNav', () => {
 
       // Should render normally with drawer closed
       expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
-      expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /open navigation menu/i })
+      ).toBeInTheDocument()
 
       vi.restoreAllMocks()
     })

@@ -121,7 +121,6 @@ describe('ConnectWalletModal — Rendering & A11y', () => {
     renderModal({ open: null })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    // @ts-expect-error testing boundary input
     renderModal({ open: undefined })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
@@ -447,6 +446,74 @@ describe('ConnectWalletModal — Closing, Safe Cancellation & Auto-Close', () =>
     rerender(<ConnectWalletModal open={false} onClose={onClose} returnFocusRef={returnFocusRef} />)
 
     expect(document.activeElement).toBe(triggerEl)
+    document.body.removeChild(triggerEl)
+  })
+
+  it('initially focuses the Cancel button when opened', () => {
+    renderModal()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^cancel$/i }))
+  })
+
+  it('falls back to dialog container when opened while connecting (all buttons disabled)', () => {
+    mockIsConnecting = true
+    renderModal()
+    expect(document.activeElement).toBe(screen.getByRole('dialog'))
+  })
+
+  it('traps focus with Tab and Shift+Tab wrapping between first and last controls', () => {
+    renderModal()
+    const dialog = screen.getByRole('dialog')
+    const cancelBtn = screen.getByRole('button', { name: /^cancel$/i })
+    const connectBtn = screen.getByRole('button', { name: /^connect$/i })
+
+    // Shift+Tab from first focusable wraps to last
+    cancelBtn.focus()
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })
+    )
+    expect(document.activeElement).toBe(connectBtn)
+
+    // Tab from last focusable wraps to first
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    )
+    expect(document.activeElement).toBe(cancelBtn)
+  })
+
+  it('includes dynamic error controls (Install link & Retry) in the focus trap', () => {
+    mockError = { code: 'not_installed', message: 'Not installed' }
+    renderModal()
+    const dialog = screen.getByRole('dialog')
+    const installLink = screen.getByRole('link', { name: /install freighter/i })
+    const connectBtn = screen.getByRole('button', { name: /^connect$/i })
+
+    // Tab from Connect (last) wraps to Install Freighter (first focusable in DOM)
+    connectBtn.focus()
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    )
+    expect(document.activeElement).toBe(installLink)
+
+    // Shift+Tab from Install Freighter (first) wraps to Connect (last)
+    dialog.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })
+    )
+    expect(document.activeElement).toBe(connectBtn)
+  })
+
+  it('automatically restores focus to previously focused trigger when returnFocusRef is omitted', () => {
+    const triggerEl = document.createElement('button')
+    triggerEl.type = 'button'
+    document.body.appendChild(triggerEl)
+    triggerEl.focus()
+
+    const onClose = vi.fn()
+    const { rerender } = render(<ConnectWalletModal open={true} onClose={onClose} />)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^cancel$/i }))
+
+    rerender(<ConnectWalletModal open={false} onClose={onClose} />)
+    expect(document.activeElement).toBe(triggerEl)
+
     document.body.removeChild(triggerEl)
   })
 })

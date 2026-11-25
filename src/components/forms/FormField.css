@@ -71,5 +71,5 @@
 .form-field-retry-btn:hover,
 .form-field-retry-button-inline:hover {
   background: var(--credence-color-danger-border);
-  color: var(--credence-color-white, #fff);
+  color: var(--credence-color-white);
 }

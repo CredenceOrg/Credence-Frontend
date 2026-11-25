@@ -219,7 +219,10 @@ describe('useMutation', () => {
       const key = createIdempotencyKey('/test', 'POST', { id: 1 })
 
       await act(async () => {
-        await result.current.mutate(async () => 'result', { idempotencyKey: key })
+        await (result.current.mutate as (fn: () => Promise<string>, opts?: { idempotencyKey: string }) => Promise<unknown>)(
+          async () => 'result',
+          { idempotencyKey: key },
+        )
       })
 
       expect(result.current.idempotencyKey).toBe(key)
@@ -239,12 +242,21 @@ describe('useMutation', () => {
         return 'result'
       }
 
-      await act(async () => {
-        await Promise.all([
-          result1.current.mutate(mutation, { idempotencyKey: key }),
-          result2.current.mutate(mutation, { idempotencyKey: key }),
-        ])
-      })
+      const promise1 = act(async () =>
+        (result1.current.mutate as (fn: () => Promise<string>, opts?: { idempotencyKey: string }) => Promise<unknown>)(
+          mutation,
+          { idempotencyKey: key },
+        )
+      )
+
+      const promise2 = act(async () =>
+        (result2.current.mutate as (fn: () => Promise<string>, opts?: { idempotencyKey: string }) => Promise<unknown>)(
+          mutation,
+          { idempotencyKey: key },
+        )
+      )
+
+      await Promise.all([promise1, promise2])
 
       expect(executionCount).toBe(1)
       expect(result1.current.data).toBe('result')
@@ -309,7 +321,7 @@ describe('useMutation', () => {
       })
 
       expect(receivedSignal).not.toBeNull()
-      expect(receivedSignal?.aborted).toBe(false)
+      expect((receivedSignal as AbortSignal | null)?.aborted).toBe(false)
     })
   })
 

@@ -39,6 +39,8 @@ export const TOAST_CONFIG = {
   },
   /** Maximum number of toasts displayed simultaneously. */
   maxToasts: 3,
+  /** Maximum number of notification history items persisted per wallet. */
+  maxHistory: 50,
 } as const
 
 export type ToastConfig = typeof TOAST_CONFIG

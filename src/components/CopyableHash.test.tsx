@@ -34,7 +34,7 @@ describe('CopyableHash', () => {
       saveSettings: vi.fn(),
       cancelSettings: vi.fn(),
       hasUnsavedChanges: false,
-    })
+    } as unknown as SettingsContextModule.SettingsState)
 
     // Default to successful copy
     mockCopy.mockResolvedValue(true)
@@ -173,7 +173,7 @@ describe('CopyableHash', () => {
     it('falls back to public network for unknown network string', () => {
       vi.mocked(SettingsContextModule.useSettings).mockReturnValue({
         ...vi.mocked(SettingsContextModule.useSettings)(),
-        network: 'unknown-network',
+        network: 'unknown-network' as unknown as SettingsContextModule.SettingsState['network'],
       })
       render(<CopyableHash hash="abc" kind="tx" />)
       const link = screen.getByRole('link')

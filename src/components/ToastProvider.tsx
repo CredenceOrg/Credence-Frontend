@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import { isWithinQuietHours, nowMinutesSinceMidnight } from '../lib/quietHours'
+import { appendNotification } from '../lib/notificationHistory'
 import Toast, { type ToastData, type ToastSeverity, type ToastOptions } from './Toast'
 import { TOAST_CONFIG } from '../config/toast'
 import './Toast.css'
@@ -162,11 +163,22 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
       // We also skip the aria-live announcement to keep screen readers quiet
       // during the user's designated hours -- otherwise the visually-hidden
       // polite/assertive regions would still announce.
-      if (
+      const suppressedByQuietHours =
         quietHoursEnabled &&
         severity !== 'danger' &&
         isWithinQuietHours(quietHoursStart, quietHoursEnd, nowMinutesSinceMidnight())
-      ) {
+
+      // Persist every notification to the wallet-scoped history (including those
+      // suppressed by quiet hours) so users can review missed messages later.
+      appendNotification({
+        type: severity,
+        message,
+        suppressed: suppressedByQuietHours || undefined,
+        txHash: options?.txHash,
+        network: options?.network,
+      })
+
+      if (suppressedByQuietHours) {
         return
       }
 

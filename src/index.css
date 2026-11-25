@@ -145,12 +145,23 @@
   --credence-color-warning-surface: #fffbeb;
   --credence-color-warning-border: #b45309;
   --credence-color-warning-text: #92400e;
+  --credence-color-warning: #d97706;
+  --credence-color-warning-state: #e67e22;
   --credence-color-danger-surface: #fef2f2;
   --credence-color-danger-surface-strong: #fee2e2;
   --credence-color-danger-border: #ef4444;
   --credence-color-danger-action: #dc2626;
   --credence-color-danger-text: #991b1b;
   --credence-color-danger-text-muted: #7f1d1d;
+  --credence-color-danger: #ef4444;
+  --credence-color-danger-menu: #b91c1c;
+  --credence-color-danger-inline: #cc0000;
+  --credence-color-danger-state: #c0392b;
+  --credence-color-danger-toggle-border: #df2020;
+  --credence-color-danger-toggle-text: #b91c1c;
+  --credence-color-error-surface: var(--credence-color-danger-surface);
+  --credence-color-error-border: #f87171;
+  --credence-color-error-text: var(--credence-color-danger-text);
   --credence-color-incident-surface: #fef2f2;
   --credence-color-incident-border: #dc2626;
   --credence-color-incident-text: #991b1b;
@@ -188,6 +199,7 @@
   /* Surface aliases for current app styles */
   --credence-surface-page: var(--credence-color-slate-50);
   --credence-surface-card: var(--credence-color-white);
+  --credence-color-surface-hover: rgba(0, 0, 0, 0.05);
   --credence-text-primary: var(--credence-color-slate-900);
   --credence-text-secondary: var(--credence-color-slate-500);
   --credence-border-default: var(--credence-color-slate-200);
@@ -280,6 +292,7 @@
   --credence-shadow-toast: 0 4px 12px rgba(0, 0, 0, 0.5);
   --credence-surface-page: var(--credence-color-slate-900);
   --credence-surface-card: #1e293b;
+  --credence-color-surface-hover: rgba(255, 255, 255, 0.05);
   --credence-text-primary: var(--credence-color-slate-50);
   --credence-text-secondary: var(--credence-color-slate-400);
   --credence-border-default: var(--credence-color-slate-700);
@@ -288,6 +301,17 @@
   --credence-color-danger-surface-strong: rgba(239, 68, 68, 0.25);
   --credence-color-danger-action: #ef4444;
   --credence-color-danger-text-muted: #fca5a5;
+  --credence-color-danger: #fca5a5;
+  --credence-color-danger-menu: #fca5a5;
+  --credence-color-danger-inline: #fca5a5;
+  --credence-color-danger-state: #fca5a5;
+  --credence-color-danger-toggle-border: #ef4444;
+  --credence-color-danger-toggle-text: #fca5a5;
+  --credence-color-error-surface: var(--credence-color-danger-surface);
+  --credence-color-error-border: #f87171;
+  --credence-color-error-text: var(--credence-color-danger-text);
+  --credence-color-warning: #fcd34d;
+  --credence-color-warning-state: #fcd34d;
   --credence-skeleton-gradient: linear-gradient(
     90deg,
     rgba(51, 65, 85, 0.4) 25%,

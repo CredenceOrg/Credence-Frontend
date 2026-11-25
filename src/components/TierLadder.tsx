@@ -136,19 +136,12 @@ export function formatThreshold(tier?: Partial<TierDefinition> | null): string {
 export interface TierLadderProps {
   className?: string
   defaultOpen?: boolean
-  /** Custom or dynamically loaded tier definitions. Defaults to protocol TIER_LADDER */
   tiers?: TierDefinition[]
-  /** Indicates whether tier data is actively being fetched or synchronized */
   isLoading?: boolean
-  /** Error encountered while loading or synchronizing tier data */
-  error?: Error | string | null
-  /** Callback to retry loading tier data after an error */
-  onRetry?: () => void | Promise<void>
-  /** Indicates whether the currently displayed tier data is stale */
+  error?: string | Error
+  onRetry?: () => void
   isStale?: boolean
-  /** Indicates whether the current viewer has permission to view tier thresholds. Defaults to true */
   hasPermission?: boolean
-  /** Custom message to display when permission is denied */
   permissionMessage?: string
 }
 

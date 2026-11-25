@@ -643,6 +643,7 @@ describe('Banner', () => {
     it('action and dismiss button coexist without conflict', () => {
       const onDismiss = vi.fn()
       const onAction = vi.fn()
+    void onAction
       render(
         <Banner
           severity="warn"

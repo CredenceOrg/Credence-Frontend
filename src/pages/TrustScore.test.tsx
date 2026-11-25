@@ -28,8 +28,9 @@ let mockTrustScoreState: {
   error: null,
 }
 
-const mockSetSearchParams = vi.fn()
+const mockNavigate = vi.fn()
 let mockSearchParams = new URLSearchParams()
+let mockRouteAddress: string | undefined
 
 vi.mock('../components/ToastProvider', () => ({
   useToast: () => ({
@@ -84,11 +85,21 @@ vi.mock('../hooks/useTrustScore', () => ({
   }),
 }))
 
+vi.mock('../hooks/useTrustHistory', () => ({
+  useTrustHistory: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
+}))
+
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
   return {
     ...actual,
-    useSearchParams: () => [mockSearchParams, mockSetSearchParams],
+    useSearchParams: () => [mockSearchParams, vi.fn()],
+    useNavigate: () => mockNavigate,
+    useParams: () => (mockRouteAddress ? { address: mockRouteAddress } : {}),
   }
 })
 
@@ -99,7 +110,8 @@ describe('TrustScore', () => {
     mockConnect.mockClear()
     mockSetNetwork.mockClear()
     mockRefetch.mockClear()
-    mockSetSearchParams.mockClear()
+    mockNavigate.mockClear()
+    mockRouteAddress = undefined
     mockConnected = true
     mockAppNetwork = 'public'
     mockWalletNetwork = 'public'
@@ -297,7 +309,7 @@ describe('TrustScore URL sync', () => {
     expect(screen.getByRole('button', { name: /look up score/i })).toBeDisabled()
   })
 
-  it('commits the address to the URL with replace semantics on a successful lookup', async () => {
+  it('navigates to the profile URL with replace semantics on a successful lookup', async () => {
     mockConnected = true
     render(<TrustScore />)
 
@@ -309,46 +321,47 @@ describe('TrustScore URL sync', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /look up score/i }))
 
-    expect(mockSetSearchParams).toHaveBeenCalledOnce()
-    const [updater, options] = mockSetSearchParams.mock.calls[0] as [
-      (prev: URLSearchParams) => URLSearchParams,
-      { replace: boolean },
-    ]
-    const result = updater(new URLSearchParams())
-    expect(result.get('address')).toBe(VALID_ADDRESS)
-    expect(options).toEqual({ replace: true })
+    expect(mockNavigate).toHaveBeenCalledWith(`/trust/${VALID_ADDRESS}`, { replace: true })
   })
 
-  it('clears the ?address= param when the address input is cleared', () => {
+  it('returns to the trust lookup route when the address input is cleared', () => {
     mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
     render(<TrustScore />)
 
-    mockSetSearchParams.mockClear()
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
 
-    expect(mockSetSearchParams).toHaveBeenCalledOnce()
-    const [updater, options] = mockSetSearchParams.mock.calls[0] as [
-      (prev: URLSearchParams) => URLSearchParams,
-      { replace: boolean },
-    ]
-    const result = updater(new URLSearchParams({ address: VALID_ADDRESS }))
-    expect(result.has('address')).toBe(false)
-    expect(options).toEqual({ replace: true })
+    expect(mockNavigate).toHaveBeenCalledWith('/trust', { replace: true })
   })
 
-  it('does not write to the URL on partial keystrokes â€” only on clear or lookup', () => {
+  it('does not navigate on partial keystrokes â€” only on clear or lookup', () => {
     render(<TrustScore />)
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'GAAZI4' } })
 
-    expect(mockSetSearchParams).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  it('does not loop: seeding from URL does not call setSearchParams', () => {
+  it('does not navigate when seeding from the legacy address query parameter', () => {
     mockSearchParams = new URLSearchParams({ address: VALID_ADDRESS })
     render(<TrustScore />)
 
-    expect(mockSetSearchParams).not.toHaveBeenCalled()
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('automatically looks up a valid address from the profile route', async () => {
+    mockRouteAddress = VALID_ADDRESS
+    render(<TrustScore />)
+
+    expect(screen.getByRole('textbox')).toHaveValue(VALID_ADDRESS)
+    await waitFor(() => expect(mockRefetch).toHaveBeenCalledOnce())
+  })
+
+  it('shows an error and does not look up an invalid profile address', () => {
+    mockRouteAddress = 'not-a-valid-address'
+    render(<TrustScore />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/invalid stellar address/i)
+    expect(mockRefetch).not.toHaveBeenCalled()
   })
 
   describe('TrustScore Lookup History', () => {
@@ -527,14 +540,8 @@ describe('TrustScore URL sync', () => {
       // Should call refetch (since pendingLookupRef is set)
       expect(mockRefetch).toHaveBeenCalledOnce()
 
-      // Should sync address to search params
-      expect(mockSetSearchParams).toHaveBeenCalledOnce()
-      const [updater] = mockSetSearchParams.mock.calls[0] as [
-        (prev: URLSearchParams) => URLSearchParams,
-        unknown,
-      ]
-      const result = updater(new URLSearchParams())
-      expect(result.get('address')).toBe(ADDR1)
+      // Should sync the selected address to a shareable profile route.
+      expect(mockNavigate).toHaveBeenCalledWith(`/trust/${ADDR1}`, { replace: true })
     })
 
     it('respects addressDisplay settings', () => {

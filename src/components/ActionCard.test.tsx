@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ActionCard from './ActionCard'
 
@@ -108,7 +108,7 @@ describe('ActionCard', () => {
       <ActionCard
         title="Test Title"
         shareableLink="https://example.com/dashboard?widget=test"
-        onCopyError={onCopyError}
+        {...({ onCopyError } as Record<string, unknown>)}
       >
         Content
       </ActionCard>
@@ -131,7 +131,7 @@ describe('ActionCard', () => {
       <ActionCard
         title="Test Title"
         shareableLink="https://example.com/dashboard?widget=test"
-        onCopyError={onCopyError}
+        {...({ onCopyError } as Record<string, unknown>)}
       >
         Content
       </ActionCard>

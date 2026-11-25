@@ -19,14 +19,14 @@ function mockNetwork(network: unknown) {
 
 describe('NetworkIndicator — deterministic failure boundaries', () => {
   it('renders "Mainnet" pill for public network', () => {
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('public'))
+    mockNetwork('public')
     render(<NetworkIndicator />)
     expect(screen.getByText('Mainnet')).toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Mainnet')).toBeInTheDocument()
   })
 
   it('renders "Testnet" pill for test network', () => {
-    vi.mocked(useSettings).mockReturnValue(asSettingsState('test'))
+    mockNetwork('test')
     render(<NetworkIndicator />)
     expect(screen.getByText('Testnet')).toBeInTheDocument()
     expect(screen.getByLabelText('Active network: Testnet')).toBeInTheDocument()
@@ -49,7 +49,7 @@ describe('NetworkIndicator boundary coverage', () => {
     ['arbitrary unknown id', 'staking'],
     ['type-confused value', 42],
   ] as const)('degrades %s to the deterministic Unknown state', (_label, network) => {
-    vi.mocked(useSettings).mockReturnValue(asSettingsState(network as string))
+    mockNetwork(network)
     render(<NetworkIndicator />)
 
     // Label, badge text, and aria-label all agree on the fallback.

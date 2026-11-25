@@ -169,6 +169,18 @@ export default function AttestationDetailDrawer({
               <DetailRow label={labels.windowOrNote} value={item.meta} />
             )}
             <DetailRow label={labels.evidence} value={item.description} multiline />
+            {item.evidenceFile && (
+              <DetailRow
+                label="Evidence file"
+                value={`${item.evidenceFile.name} · ${item.evidenceFile.size} bytes · ${item.evidenceFile.type || 'unknown type'}`}
+              />
+            )}
+            {item.evidenceHash && (
+              <DetailRow
+                label="Evidence SHA-256"
+                valueNode={<CopyableHash hash={item.evidenceHash} truncate={false} showExplorerLink={false} />}
+              />
+            )}
             <DetailRow
               label={labels.timestamp}
               valueNode={

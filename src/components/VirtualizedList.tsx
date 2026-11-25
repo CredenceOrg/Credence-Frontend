@@ -6,10 +6,11 @@ import {
 } from '../config/virtualizedList'
 
 export interface VirtualizedListProps<T> {
-  items: T[]
+  items: readonly T[]
   itemHeight?: number
   overscan?: number
-  getKey: (item: T, index: number) => string | number
+  getKey?: (item: T, index: number) => string | number
+  getItemKey?: (item: T, index: number) => string | number
   renderItem: (item: T, index: number) => React.ReactNode
   className?: string
   containerClassName?: string
@@ -17,7 +18,10 @@ export interface VirtualizedListProps<T> {
   containerStyle?: React.CSSProperties
   emptyMessage?: React.ReactNode
   height?: number
+  containerHeight?: number
   virtualizeThreshold?: number
+  role?: string
+  ariaLabel?: string
 }
 
 export default function VirtualizedList<T>({
@@ -25,6 +29,7 @@ export default function VirtualizedList<T>({
   itemHeight = VIRTUALIZED_LIST_DEFAULT_ITEM_HEIGHT,
   overscan = VIRTUALIZED_LIST_DEFAULT_OVERSCAN,
   getKey,
+  getItemKey,
   renderItem,
   className,
   containerClassName,
@@ -32,17 +37,22 @@ export default function VirtualizedList<T>({
   containerStyle,
   emptyMessage,
   height = 320,
+  containerHeight,
   virtualizeThreshold = VIRTUALIZED_LIST_DEFAULT_THRESHOLD,
+  role,
+  ariaLabel,
 }: VirtualizedListProps<T>) {
   const [scrollTop, setScrollTop] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const resolvedHeight = containerHeight ?? height
+  const keyGetter = getKey ?? getItemKey ?? ((_item: T, index: number) => index)
 
   useEffect(() => {
     setScrollTop(0)
   }, [items.length])
 
   const shouldVirtualize = items.length >= virtualizeThreshold
-  const visibleCount = Math.max(1, Math.ceil(height / itemHeight))
+  const visibleCount = Math.max(1, Math.ceil(resolvedHeight / itemHeight) + 1)
   const totalHeight = items.length * itemHeight
   const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan)
   const endIndex = Math.min(items.length, startIndex + visibleCount + overscan * 2)
@@ -66,8 +76,10 @@ export default function VirtualizedList<T>({
     <div
       ref={containerRef}
       className={containerClassName}
+      role={role}
+      aria-label={ariaLabel}
       style={{
-        height,
+        height: resolvedHeight,
         overflowY: 'auto',
         position: 'relative',
         ...containerStyle,
@@ -80,7 +92,7 @@ export default function VirtualizedList<T>({
           className={className}
         >
           {visibleItems.map(({ item, index }) => (
-            <div key={getKey(item, index)} style={{ height: itemHeight }}>
+            <div key={keyGetter(item, index)} style={{ height: itemHeight }}>
               {renderItem(item, index)}
             </div>
           ))}

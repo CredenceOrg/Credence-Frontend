@@ -182,6 +182,21 @@ requires local file access (not reachable in the browser).
 
 ---
 
+## 5. External Links
+
+Links opened in a new tab must prevent reverse tabnabbing and referrer leakage.
+The source-scanning test in `src/test/externalLinks.test.ts` checks every
+production `.tsx` file for `target="_blank"` links and requires both `noopener`
+and `noreferrer` in the same element. Use `safeOpenExternal` for imperative
+external navigation; it adds both protections automatically.
+
+### Checklist
+
+- [ ] Every `target="_blank"` link has `rel="noopener noreferrer"`.
+- [ ] Imperative links opened through `window.open` use `safeOpenExternal`.
+
+---
+
 ## Review workflow
 
 Before requesting review, run:
@@ -192,5 +207,5 @@ npm run build
 npm test
 ```
 
-Then walk through the four sections above and check the boxes that apply to your
+Then walk through the five sections above and check the boxes that apply to your
 change. Leave unchecked boxes as **action items** for the reviewer to verify.

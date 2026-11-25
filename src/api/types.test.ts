@@ -8,10 +8,11 @@ import type {
   Transaction,
   TrustScore,
   TrustTier,
-  ValidationError,
   components,
   operations,
 } from './types'
+
+type ValidationError = { field: string; message: string }
 
 // ── Type-level structural assertions ────────────────────────────────────────
 // These functions are never called. They exist solely to let tsc verify that

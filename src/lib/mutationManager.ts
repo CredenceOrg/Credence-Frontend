@@ -236,6 +236,11 @@ export class MutationManager<T = unknown> {
     return () => this.eventListeners.delete(listener)
   }
 
+  /** Whether any mutation is currently executing or retrying. */
+  hasPendingMutations(): boolean {
+    return Array.from(this.requestMap.values()).some((state) => state.pendingPromises.size > 0)
+  }
+
   /** Emit an event to all listeners. */
   private emitEvent(event: MutationEvent<T>): void {
     this.eventListeners.forEach((listener) => listener(event))

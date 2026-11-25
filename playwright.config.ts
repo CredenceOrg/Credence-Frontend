@@ -25,6 +25,8 @@ export default defineConfig({
       // See tests/mocks/freighter-api.mock.ts — lets specs drive wallet-gated
       // flows without a real Freighter extension installed.
       E2E_MOCK_WALLET: 'true',
+      // Exercise the settings PATCH boundary; settings specs intercept the request.
+      VITE_SETTINGS_SYNC_ENABLED: 'true',
     },
   },
   projects: [

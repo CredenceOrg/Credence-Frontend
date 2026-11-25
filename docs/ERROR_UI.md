@@ -189,6 +189,13 @@ Use section or full-page error states when data failed to load completely or a c
 - Wrapped around route hierarchies via `ErrorBoundary` to prevent white-screen crashes.
 - All color tones come from design tokens (no hard-coded hex).
 
+### Support Diagnostics (`ErrorBoundary`)
+
+When `ErrorBoundary` catches a render error, its default fallback displays support diagnostics below the `ErrorState` panel:
+
+- **Correlation Error ID**: Generated once per caught error via `generateCorrelationId('err')` and stored in boundary state so it remains stable across re-renders until the user triggers reset (which clears the ID). Displayed in monospace with a copy button and accessible copied feedback.
+- **Collapsed Technical Details**: An optional collapsed `<details>` disclosure showing only `error.message` after PII and address-like substrings (emails, Stellar StrKey addresses, and `0x` hex addresses) are redacted via `scrubDiagnosticText` from `src/lib/piiScrub.ts`. Stack traces are never rendered in the UI.
+
 ### Severity Vocabulary
 
 The `severity` prop is independent of the `type` prop. Use it to dial down the alarm. Defaults are derived from `type`:

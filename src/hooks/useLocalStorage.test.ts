@@ -206,18 +206,9 @@ describe('useLocalStorage', () => {
   describe('boundary and recovery states', () => {
     it('populates error state when localStorage.setItem throws and recovers on retry', () => {
       let fail = true
-      const origSetItem = Storage.prototype.setItem
-      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
-        this: Storage,
-        k: string,
-        v: string
-      ) {
-        if (fail) {
-          const e = new Error('QuotaExceededError')
-          e.name = 'QuotaExceededError'
-          throw e
-        }
-        return origSetItem.call(this, k, v)
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation((_k, _v) => {
+        if (fail) { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; }
+
       })
       const { result } = renderHook(() => useLocalStorage(KEY, 'initial'))
 

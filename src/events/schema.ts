@@ -50,6 +50,13 @@ export interface AttestationPayload {
   subject: string
   type: AttestationType
   evidence: string
+  evidenceHash?: string
+  evidenceFile?: {
+    name: string
+    size: number
+    type: string
+    lastModified: number
+  }
 }
 
 /**
@@ -138,6 +145,8 @@ export interface ActivityEventPayload {
    *  user-facing filterable value (accepted / needs-update / in-review).
    *  Falls back to `toneToStatus(tone)` for legacy items. */
   status?: AttestationStatus
+  evidenceHash?: string
+  evidenceFile?: AttestationPayload['evidenceFile']
 }
 
 /** Alias for backward-compatibility with component prop definitions */

@@ -59,7 +59,21 @@ export function resolvePageLabel(
   const exact = registry[normalized]
   if (exact) return exact
 
-  // 2. Parameterised-route match: strip the last path segment and retry.
+  // 2. Match registered parameterised routes without exposing path values.
+  const pathSegments = normalized.split('/')
+  for (const [route, label] of Object.entries(registry)) {
+    const routeSegments = route.split('/')
+    if (
+      routeSegments.length === pathSegments.length &&
+      routeSegments.every(
+        (segment, index) => segment.startsWith(':') || segment === pathSegments[index]
+      )
+    ) {
+      return label
+    }
+  }
+
+  // 3. Parent-path fallback for routes without an explicit parameter label.
   const lastSlash = normalized.lastIndexOf('/')
   if (lastSlash > 0) {
     const parent = normalized.slice(0, lastSlash)
@@ -67,7 +81,7 @@ export function resolvePageLabel(
     if (parentLabel) return parentLabel
   }
 
-  // 3. Static fallback — never contains user input
+  // 4. Static fallback — never contains user input
   return UNKNOWN_ROUTE_LABEL
 }
 

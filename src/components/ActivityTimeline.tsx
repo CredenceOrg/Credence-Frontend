@@ -80,12 +80,12 @@ export default function ActivityTimeline({
   onSelect,
   nonce,
 }: ActivityTimelineProps): ReactElement {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
   const count = items.length
-  const summary = `${count} recent ${count === 1 ? 'event' : 'events'}`
+  const summary = t('activityTimeline.recentEvents', { count })
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))

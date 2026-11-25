@@ -52,7 +52,7 @@ describe('SessionTimeoutDialog', () => {
 
   describe('countdown', () => {
     beforeEach(() => {
-      vi.useFakeTimers()
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     })
 
     it('decrements the countdown by exactly one every second', () => {
@@ -200,6 +200,98 @@ describe('SessionTimeoutDialog', () => {
       await waitFor(() => expect(onStayLoggedIn).toHaveBeenCalledTimes(2))
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
       expect(input).toHaveValue('STAY')
+    })
+
+    it('renders a visible alert in the dialog body without unhandled rejections and keeps sign-out available', async () => {
+      const unhandledRejections: unknown[] = []
+      const onUnhandledRejection = (reason: unknown) => {
+        unhandledRejections.push(reason)
+      }
+      process.on('unhandledRejection', onUnhandledRejection)
+
+      try {
+        const user = userEvent.setup()
+        const onStayLoggedIn = vi.fn().mockRejectedValueOnce(new Error('provider 500'))
+        const onLogout = vi.fn()
+        renderModal({ onStayLoggedIn, onLogout })
+
+        await user.type(screen.getByRole('textbox', { name: /type.*stay/i }), 'STAY')
+        await user.click(screen.getByRole('button', { name: 'Stay logged in' }))
+
+        const dialogBody = screen.getByRole('dialog').querySelector('.confirm-dialog__body')
+        expect(dialogBody).not.toBeNull()
+
+        const alert = await screen.findByRole('alert')
+        expect(dialogBody).toContainElement(alert)
+        expect(alert).toHaveTextContent('Unable to extend your session. Please retry or sign out.')
+        expect(unhandledRejections).toEqual([])
+
+        const stayButton = screen.getByRole('button', { name: 'Stay logged in' })
+        const cancelButton = screen.getByRole('button', { name: 'Cancel' })
+        expect(stayButton).toBeEnabled()
+        expect(cancelButton).toBeEnabled()
+
+        await user.click(cancelButton)
+        expect(onLogout).toHaveBeenCalledTimes(1)
+      } finally {
+        process.off('unhandledRejection', onUnhandledRejection)
+      }
+    })
+
+    it('clears the error alert when retrying via the primary CTA or reopening the dialog', async () => {
+      let resolveRetry!: () => void
+      const onStayLoggedIn = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('timeout'))
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveRetry = resolve
+            })
+        )
+        .mockRejectedValueOnce(new Error('timeout again'))
+
+      const user = userEvent.setup()
+      const { rerender, onLogout } = renderModal({ onStayLoggedIn })
+
+      await user.type(screen.getByRole('textbox', { name: /type.*stay/i }), 'STAY')
+      await user.click(screen.getByRole('button', { name: 'Stay logged in' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Unable to extend your session. Please retry or sign out.'
+      )
+
+      // Next attempt clears the error immediately while in flight
+      await user.click(screen.getByRole('button', { name: 'Stay logged in' }))
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+      await act(async () => {
+        resolveRetry()
+      })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+      // Trigger another failure, then close and reopen
+      await user.click(screen.getByRole('button', { name: 'Stay logged in' }))
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+      rerender(
+        <SessionTimeoutDialog
+          open={false}
+          timeLeftSeconds={60}
+          onStayLoggedIn={onStayLoggedIn}
+          onLogout={onLogout}
+        />
+      )
+      rerender(
+        <SessionTimeoutDialog
+          open
+          timeLeftSeconds={60}
+          onStayLoggedIn={onStayLoggedIn}
+          onLogout={onLogout}
+        />
+      )
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
 
     it('shows loading and prevents concurrent session extension attempts', async () => {

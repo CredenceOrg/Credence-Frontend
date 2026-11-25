@@ -1,4 +1,6 @@
+import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
+import { expect, fn, userEvent, waitFor, within } from '@storybook/test'
 import AddressInput from './AddressInput'
 
 const meta: Meta<typeof AddressInput> = {
@@ -193,5 +195,114 @@ export const StaleValue: Story = {
   args: {
     value: 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
     error: 'This address is out of date. Please re-enter the current address.',
+  },
+}
+
+/*
+ * Play functions
+ *
+ * Visual stories cannot prove behaviour: clipboard sanitising, the character
+ * counter, and the invalid-state message are all invisible in a static frame.
+ * Each story below drives the control and asserts the outcome, so a regression
+ * fails the Interactions panel (and a portable-stories run) instead of shipping.
+ */
+
+const VALID_ADDRESS = 'GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H'
+
+/** Replaces `navigator.clipboard.readText` for one story's interaction. */
+function stubClipboard(readText: () => Promise<string>) {
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { readText: fn(readText) },
+  })
+}
+
+/** Controlled harness so the pasted/typed value is actually rendered back. */
+function ControlledAddressInput(args: ComponentProps<typeof AddressInput>) {
+  const [value, setValue] = useState(args.value)
+  return <AddressInput {...args} value={value} onChange={setValue} />
+}
+
+export const PlayPasteValidAddress: Story = {
+  name: 'Play – paste a valid address',
+  args: { value: '' },
+  render: (args) => <ControlledAddressInput {...args} />,
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    // `stellar:` prefix must be stripped by the shared sanitizer.
+    stubClipboard(async () => `stellar:${VALID_ADDRESS}`)
+
+    await step('activate the paste button', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: /paste address/i }))
+    })
+
+    await step('the address is accepted, marked valid and counted', async () => {
+      await waitFor(() => expect(canvas.getByRole('textbox')).toHaveValue(VALID_ADDRESS))
+      expect(canvas.getByText('Valid Stellar address')).toBeInTheDocument()
+      expect(canvas.getByText('56 / 56 characters')).toBeInTheDocument()
+    })
+  },
+}
+
+export const PlayPasteInvalidAddress: Story = {
+  name: 'Play – paste an invalid address',
+  args: { value: '' },
+  render: (args) => <ControlledAddressInput {...args} />,
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    stubClipboard(async () => 'not-a-stellar-address')
+
+    await step('paste the invalid value', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: /paste address/i }))
+    })
+
+    await step('the field is invalid and explains the format', async () => {
+      await waitFor(() => expect(canvas.getByRole('textbox')).toHaveValue('not-a-stellar-address'))
+      expect(canvas.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
+      expect(canvas.getByText(/56 characters starting with G/)).toBeInTheDocument()
+      expect(canvas.queryByText('Valid Stellar address')).not.toBeInTheDocument()
+    })
+  },
+}
+
+export const PlayCharacterCounter: Story = {
+  name: 'Play – character counter while typing',
+  args: { value: '' },
+  render: (args) => <ControlledAddressInput {...args} />,
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByRole('textbox')
+
+    await step('typing updates the live character count', async () => {
+      await userEvent.type(input, 'GBRP')
+      expect(input).toHaveValue('GBRP')
+      expect(canvas.getByText('4 / 56 characters')).toBeInTheDocument()
+    })
+
+    await step('an incomplete address is reported as invalid', async () => {
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(canvas.getByText(/56 characters starting with G/)).toBeInTheDocument()
+    })
+  },
+}
+
+export const PlayPastePermissionDenied: Story = {
+  name: 'Play – clipboard denied never destroys the value',
+  args: { value: VALID_ADDRESS },
+  render: (args) => <ControlledAddressInput {...args} />,
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    stubClipboard(async () => {
+      throw new DOMException('denied', 'NotAllowedError')
+    })
+
+    await step('a failing clipboard read surfaces a diagnostic', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: /paste address/i }))
+      await waitFor(() => expect(canvas.getByText(/Unable to read clipboard/)).toBeInTheDocument())
+    })
+
+    await step('the existing address is preserved', async () => {
+      expect(canvas.getByRole('textbox')).toHaveValue(VALID_ADDRESS)
+    })
   },
 }

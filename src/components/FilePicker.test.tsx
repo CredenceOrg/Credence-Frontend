@@ -274,6 +274,28 @@ describe('FilePicker', () => {
       selectInputFiles(input, [txt])
       expect(onChange).not.toHaveBeenCalled()
     })
+
+    it('reports the specific reason when a file exceeds the configured size', () => {
+      const onValidationError = vi.fn()
+      render(
+        <FilePicker
+          id="large-file"
+          label="Evidence"
+          accept=".pdf"
+          maxSizeBytes={500}
+          files={[]}
+          onChange={vi.fn()}
+          onValidationError={onValidationError}
+        />
+      )
+      const file = makeFile('large.pdf', 999, 'application/pdf')
+      const input = screen.getByTestId('file-picker-input') as HTMLInputElement
+      fireEvent.change(input, { target: { files: [file] } })
+
+      expect(onValidationError).toHaveBeenCalledWith(
+        'File exceeds the maximum size of 500 B.'
+      )
+    })
   })
 
   describe('drag and drop', () => {

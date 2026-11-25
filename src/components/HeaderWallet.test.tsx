@@ -79,9 +79,9 @@ function mockDisconnected() {
     network: null,
     connected: false,
     lastReauthTime: null,
-    reauth: vi.fn(async () => {}),
+    reauth: vi.fn(async () => true),
     isReauthRequired: vi.fn(() => false),
-  })
+  } as unknown as ReturnType<typeof WalletContextModule.useWallet>)
 }
 
 function mockConnecting() {
@@ -95,9 +95,9 @@ function mockConnecting() {
     network: null,
     connected: false,
     lastReauthTime: null,
-    reauth: vi.fn(async () => {}),
+    reauth: vi.fn(async () => true),
     isReauthRequired: vi.fn(() => false),
-  })
+  } as unknown as ReturnType<typeof WalletContextModule.useWallet>)
 }
 
 function mockConnected(address = TEST_ADDRESS) {
@@ -111,9 +111,9 @@ function mockConnected(address = TEST_ADDRESS) {
     network: 'public',
     connected: true,
     lastReauthTime: Date.now(),
-    reauth: vi.fn(async () => {}),
+    reauth: vi.fn(async () => true),
     isReauthRequired: vi.fn(() => false),
-  })
+  } as unknown as ReturnType<typeof WalletContextModule.useWallet>)
 }
 
 function mockSettingsPublic() {

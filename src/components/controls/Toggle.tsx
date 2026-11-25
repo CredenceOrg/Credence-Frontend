@@ -19,26 +19,13 @@ export interface ToggleProps {
    */
   disabledReason?: string
   isLoading?: boolean
-  /** Announced (screen-reader only) while `isLoading` is true. */
   loadingLabel?: string
-  /**
-   * Marks the rendered value as known-out-of-date (a revalidation is pending,
-   * or a newer server value exists locally). Stale is deliberately *not* the
-   * same as loading: a stale switch stays interactive so the user can correct
-   * it, and its currently rendered value is never silently replaced.
-   */
-  isStale?: boolean
-  /** Visible note rendered while `isStale` is true. */
-  staleMessage?: string
   error?: string
-  /**
-   * Renders a retry affordance, but only alongside `error`. Clicking it
-   * re-runs the caller's mutation and never changes the switch value, so a
-   * failed save can be retried without toggling the user's setting by mistake.
-   */
   onRetry?: () => void
-  /** Label for the retry affordance. */
   retryLabel?: string
+  isStale?: boolean
+  staleMessage?: string
+  disabledReason?: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean | 'true' | 'false'
   'aria-required'?: boolean | 'true' | 'false'

@@ -1,8 +1,9 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { useWallet } from '../context/WalletContext'
 import { useSettings } from '../context/SettingsContext'
 import { useUsdcBalance } from '../hooks/useUsdcBalance'
 import { formatUsdc } from '../lib/format'
+import { setActiveNotificationWallet } from '../lib/notificationHistory'
 import WalletConnect from './WalletConnect'
 import ConnectWalletDialog from './ConnectWalletDialog'
 
@@ -22,6 +23,10 @@ export default function HeaderWallet({ className }: { className?: string }) {
   const { balance, status: balanceStatus } = useUsdcBalance()
 
   const [connectOpen, setConnectOpen] = useState(false)
+
+  useEffect(() => {
+    setActiveNotificationWallet(isConnected && address ? address : null)
+  }, [isConnected, address])
 
   // The connect button rendered by WalletConnect is internal to that component.
   // We attach a ref to the wrapper element so focus can return to the trigger

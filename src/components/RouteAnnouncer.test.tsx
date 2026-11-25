@@ -77,8 +77,8 @@ describe('resolvePageLabel – pure helper', () => {
     expect(resolvePageLabel('/bond/abc123')).toBe(ROUTE_LABELS['/bond'])
   })
 
-  it('resolves /trust/:id via the parent /trust path', () => {
-    expect(resolvePageLabel('/trust/detail-99')).toBe(ROUTE_LABELS['/trust'])
+  it('resolves /trust/:address via its registered profile label', () => {
+    expect(resolvePageLabel('/trust/detail-99')).toBe(ROUTE_LABELS['/trust/:address'])
   })
 
   it('resolves /trust/summary as an exact match (not parent fallback)', () => {
@@ -306,10 +306,10 @@ describe('RouteAnnouncer – dynamic route segments', () => {
     expect(liveRegion()).toHaveTextContent(`${ROUTE_LABELS['/bond']} loaded`)
   })
 
-  it('announces the parent label for /trust/:id', () => {
+  it('announces the profile label for /trust/:address', () => {
     renderAnnouncer('/trust/detail-99')
     act(() => vi.advanceTimersByTime(ANNOUNCE_DELAY_MS))
-    expect(liveRegion()).toHaveTextContent(`${ROUTE_LABELS['/trust']} loaded`)
+    expect(liveRegion()).toHaveTextContent(`${ROUTE_LABELS['/trust/:address']} loaded`)
   })
 
   it('announces the exact label for /trust/summary (not the parent /trust)', () => {

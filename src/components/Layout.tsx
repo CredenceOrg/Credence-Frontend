@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink, useLocation, Link } from 'react-router-dom'
 import { PrefetchNavLink } from './PrefetchNavLink'
 import { PRELOADS_BY_PATH } from '../config/routes'
+import { NAV_LINKS } from '../config/navigation'
 import ErrorBoundary, { isChunkLoadError } from './ErrorBoundary'
 import ErrorState from './states/ErrorState'
 import { reloadPageGuarded, hasAttemptedChunkReload } from '../lib/lazyWithRetry'
 import { useTranslation } from 'react-i18next'
 import ThemeToggle from './ThemeToggle'
+import NotificationCenter from './NotificationCenter'
 import NetworkIndicator from './NetworkIndicator'
 import HeaderWallet from './HeaderWallet'
 import MobileNav from './navigation/MobileNav'
@@ -22,34 +24,36 @@ import FooterLink from './FooterLink'
 import LINKS from '../config/links'
 import { hasHandledInstallPrompt, markInstallPromptHandled } from '../config/installPrompt'
 import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut'
+import { useSettings } from '../context/SettingsContext'
+import { THEME_CHANNEL_EVENT, getCurrentTheme, getNextTheme } from '../lib/themeCycle'
+import { usePwaUpdate } from '../hooks/usePwaUpdate'
 import { useRouteFocus } from '../hooks/useRouteFocus'
+import { useUnlockReminders } from '../hooks/useUnlockReminders'
 import { DOM_EVENTS } from '../events'
 import './Layout.css'
 
 export default function Layout() {
   const { t } = useTranslation()
   const location = useLocation()
+  const { needRefresh, isUpdateDeferred, updateError, applyUpdate } = usePwaUpdate()
 
   useRouteFocus()
+
+  // Opt-in background reminders for bonds that unlock soon. Inert unless the
+  // user enabled them and granted the Notification permission.
+  useUnlockReminders()
 
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [launcherOpen, setLauncherOpen] = useState(false)
   const [whatsNewOpen, setWhatsNewOpen] = useState(false)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [installPromptDismissed, setInstallPromptDismissed] = useState(hasHandledInstallPrompt)
+  const [themeAnnouncement, setThemeAnnouncement] = useState('')
+  const { applyThemeMode } = useSettings()
 
   // Refs so focus returns to the triggering button after each dialog closes
   const shortcutsButtonRef = useRef<HTMLButtonElement>(null)
   const whatsNewButtonRef = useRef<HTMLButtonElement>(null)
-
-  const NAV_LINKS = [
-    { to: '/dashboard', label: t('nav.dashboard') },
-    { to: '/bond', label: t('nav.bond') },
-    { to: '/trust', label: t('nav.trustScore') },
-    { to: '/attestations', label: t('nav.attestations') },
-    { to: '/transactions', label: t('nav.transactions') },
-    { to: '/settings', label: t('nav.settings') },
-  ]
 
   const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
@@ -93,6 +97,22 @@ export default function Layout() {
   // Global keyboard shortcuts help dialog (Shift+?)
   useKeyboardShortcut(['Shift', '?'], () => setShortcutsOpen(true))
 
+  // Toggle light / dark theme (T). The hook already ignores typing contexts
+  // (inputs, textareas, selects, contenteditable) and Ctrl/Cmd/Alt combos.
+  const toggleTheme = useCallback(
+    (event: KeyboardEvent) => {
+      // Shift+T is not the documented shortcut; auto-repeat would flicker the theme.
+      if (event.shiftKey || event.repeat) return
+      const next = getNextTheme(getCurrentTheme())
+      applyThemeMode(next)
+      // Keep the header ThemeToggle's icon/label in sync.
+      window.dispatchEvent(new CustomEvent(THEME_CHANNEL_EVENT, { detail: { theme: next } }))
+      setThemeAnnouncement(`Switched to ${next} mode`)
+    },
+    [applyThemeMode]
+  )
+  useKeyboardShortcut('T', toggleTheme, { preventDefault: false })
+
   return (
     <div className="appShell">
       <a className="skip-link" href="#main-content">
@@ -101,6 +121,15 @@ export default function Layout() {
 
       {/* Screen reader SPA route transition updates manager */}
       <RouteAnnouncer />
+      <div
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="theme-announcer"
+      >
+        {themeAnnouncement}
+      </div>
 
       <header className="appHeader">
         <div className="container appHeader-inner">
@@ -113,7 +142,7 @@ export default function Layout() {
 
           {/* Desktop: inline nav (hidden <640px via CSS) */}
           <nav aria-label="Main navigation" className="appNav">
-            {NAV_LINKS.map(({ to, label }) => (
+            {NAV_LINKS.map(({ to, labelKey }) => (
               <PrefetchNavLink
                 key={to}
                 to={to}
@@ -123,12 +152,13 @@ export default function Layout() {
                   isActive ? 'appNav-link appNav-link--active' : 'appNav-link'
                 }
               >
-                {label}
+                {t(labelKey)}
               </PrefetchNavLink>
             ))}
           </nav>
 
           <HeaderWallet />
+          <NotificationCenter />
           <ThemeToggle />
           <NetworkIndicator />
 
@@ -156,6 +186,23 @@ export default function Layout() {
           >
             <p className="appInstallPrompt-copy">
               Install this app for a faster, more reliable experience on your device.
+            </p>
+          </Banner>
+        </div>
+      )}
+
+      {needRefresh && (
+        <div className="appInstallPrompt">
+          <Banner
+            severity="info"
+            title="Update available"
+            action={{ label: 'Reload', onClick: () => void applyUpdate() }}
+          >
+            <p>
+              {updateError ??
+                (isUpdateDeferred
+                  ? 'The update will reload when your current operation finishes.'
+                  : 'A new version is ready. Reload to use the latest version.')}
             </p>
           </Banner>
         </div>

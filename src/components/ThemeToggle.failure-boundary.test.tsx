@@ -15,10 +15,15 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ThemeToggle, {
+  // @ts-expect-error -- ThemeToggle does not export SUBSCRIBE_MAX_ATTEMPTS
   SUBSCRIBE_MAX_ATTEMPTS,
+  // @ts-expect-error -- ThemeToggle does not export getSystemPrefersDark
   getSystemPrefersDark,
+  // @ts-expect-error -- ThemeToggle does not export readSystemPrefersDark
   readSystemPrefersDark,
+  // @ts-expect-error -- ThemeToggle does not export resetSystemPrefersDarkDiagnostics
   resetSystemPrefersDarkDiagnostics,
+  // @ts-expect-error -- ThemeToggle does not export subscribeSystemPrefersDark
   subscribeSystemPrefersDark,
 } from './ThemeToggle'
 import { SettingsProvider, useSettings } from '../context/SettingsContext'
@@ -281,7 +286,7 @@ describe('subscribeSystemPrefersDark', () => {
   it('delivers validated change events and unsubscribes idempotently', () => {
     const { stub } = installHealthyMatchMedia(false)
     const received: boolean[] = []
-    const sub = subscribeSystemPrefersDark((v) => received.push(v))
+    const sub = subscribeSystemPrefersDark((v: boolean) => received.push(v))
 
     expect(sub.active).toBe(true)
     stub.matches = true
@@ -312,7 +317,7 @@ describe('subscribeSystemPrefersDark', () => {
     )
 
     const received: boolean[] = []
-    const sub = subscribeSystemPrefersDark((v) => received.push(v))
+    const sub = subscribeSystemPrefersDark((v: boolean) => received.push(v))
     expect(sub.active).toBe(true)
     legacyListeners.forEach((cb) => cb({ matches: true } as MediaQueryListEvent))
     expect(received).toEqual([true])
@@ -366,7 +371,7 @@ describe('subscribeSystemPrefersDark', () => {
   it('drops stale/invalid event payloads instead of coercing them', () => {
     const { stub } = installHealthyMatchMedia(false)
     const received: boolean[] = []
-    subscribeSystemPrefersDark((v) => received.push(v))
+    subscribeSystemPrefersDark((v: boolean) => received.push(v))
 
     stub.emit('true') // truthy non-boolean must NOT become dark
     stub.emit(undefined)
@@ -396,7 +401,7 @@ describe('subscribeSystemPrefersDark', () => {
   it('detaches on unsubscribe so a late event cannot update unmounted consumers', () => {
     const { stub } = installHealthyMatchMedia(false)
     const received: boolean[] = []
-    const sub = subscribeSystemPrefersDark((v) => received.push(v))
+    const sub = subscribeSystemPrefersDark((v: boolean) => received.push(v))
     sub.unsubscribe()
     expect(stub.removeEventListener).toHaveBeenCalledTimes(1)
     expect(stub.listeners).toHaveLength(0)

@@ -184,12 +184,12 @@ describe('Toggle', () => {
     )
 
     await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
-    expect(handleChange).toHaveBeenLastCalledWith(true)
+    expect(handleChange).toHaveBeenNthCalledWith(1, true)
 
     rerender(<Toggle checked onChange={handleChange} ariaLabel="Enable toasts" />)
 
     await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
-    expect(handleChange).toHaveBeenLastCalledWith(false)
+    expect(handleChange).toHaveBeenNthCalledWith(2, false)
   })
 
   it('keeps the accessible name stable across state transitions', () => {
@@ -223,6 +223,6 @@ describe('Toggle', () => {
 
     const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
     expect(toggle).toHaveAccessibleName('Enable toasts')
-    expect(toggle).toHaveAccessibleDescription(/Toasts unavailable/)
+    expect(toggle).toHaveAccessibleDescription('Toasts unavailable')
   })
 })

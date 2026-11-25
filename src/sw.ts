@@ -27,7 +27,14 @@ registerRoute(
 )
 
 export function registerHandlers(scope: ServiceWorkerGlobalScope) {
-  scope.addEventListener('activate', (event) => {
+  ;(
+    scope as ServiceWorkerGlobalScope & {
+      addEventListener: (
+        type: 'activate',
+        listener: (event: Event & { waitUntil: (f: Promise<unknown>) => void }) => void,
+      ) => void
+    }
+  ).addEventListener('activate', (event) => {
     event.waitUntil(
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.deleteDatabase('credence-offline-db')

@@ -61,6 +61,40 @@ export function DashboardActivity() {
 }
 ```
 
+## Pluralized Counts
+
+For copy whose grammar depends on a count, add a base key with `_one` and `_other` variants. Call `t` with the base key and a numeric `count`; i18next selects the plural category for the active locale.
+
+```json
+{
+  "transactions": {
+    "bulk": {
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected"
+    }
+  },
+  "activityTimeline": {
+    "recentEvents_one": "{{count}} recent event",
+    "recentEvents_other": "{{count}} recent events"
+  }
+}
+```
+
+```tsx
+{t('transactions.bulk.selected', { count: selectedIds.size })}
+{t('activityTimeline.recentEvents', { count: items.length })}
+```
+
+Do not concatenate counts with translated words or branch on `count === 1`; other locales can have different plural rules. Keep `{{count}}` in every variant, including `_one`, so number formatting and interpolation stay consistent. `_other` is required for English, and translations should add `_zero`, `_two`, `_few`, or `_many` when their locale uses those categories. Test counts of 0, 1, and more than 1.
+
+Current count keys include:
+
+- `transactions.bulk.selected`
+- `transactions.bulk.deleteConfirm.subtitle`
+- `transactions.bulk.deleteConfirm.success`
+- `transactions.bulk.exportToast.success`
+- `activityTimeline.recentEvents`
+
 ## Related Documentation
 
 - For guidelines on how to phrase user-facing copy, see the [Copy Tone Guide](./COPY_TONE.md).

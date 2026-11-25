@@ -7,6 +7,7 @@ export interface ProgressProps {
    * Omit (or pass `undefined`) for indeterminate mode.
    */
   value?: number
+  indeterminate?: boolean
   /** Minimum value for determinate mode. Defaults to 0. */
   min?: number
   /** Maximum value for determinate mode. Defaults to 100. */

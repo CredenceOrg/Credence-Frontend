@@ -226,8 +226,8 @@ describe('ToastProvider Timing and Queue Logic', () => {
         <button
           aria-label="add-retry"
           onClick={() => {
-            addToast('error', 'retry-me')
-            addToast('error', 'retry-me')
+            addToast('danger', 'retry-me')
+            addToast('danger', 'retry-me')
           }}
         >
           Retry
@@ -250,9 +250,8 @@ describe('ToastProvider Timing and Queue Logic', () => {
       </ToastProvider>
     )
 
-    for (const button of screen.getAllByRole('button')) {
-      fireEvent.click(button)
-    }
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-' }))
+    fireEvent.click(screen.getByLabelText('trigger-    '))
 
     expect(container.querySelectorAll('.toast').length).toBe(0)
   })

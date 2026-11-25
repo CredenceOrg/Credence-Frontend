@@ -1,5 +1,8 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './TrustScore.css'
 import Banner from '../components/Banner'
@@ -28,6 +31,9 @@ import { useToast } from '../components/ToastProvider'
 import { isValidStellarAddress, truncateAddress } from '@/lib/stellar'
 import { useRecentLookups } from '../hooks/useRecentLookups'
 import { addRecentLookup, sanitizeRecentLookups } from '../lib/recentLookupsStorage'
+import TrustHistoryChart from '../components/TrustHistoryChart'
+import { useTrustHistory } from '../hooks/useTrustHistory'
+import { addRecentLookup, removeRecentLookup, sanitizeRecentLookups } from '../lib/recentLookupsStorage'
 
 export interface RecentLookupItem {
   address: string
@@ -62,10 +68,22 @@ function trustScoreErrorType(error: ApiError): 'network' | 'backend' | 'validati
 }
 
 export default function TrustScore() {
+  const { address: routeAddress } = useParams<{ address: string }>()
+  const normalizedRouteAddress = routeAddress?.trim() ?? ''
+  const isRouteAddressValid = isValidStellarAddress(normalizedRouteAddress)
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const queryAddress = searchParams.get('address')?.trim() ?? ''
+  const initialAddress =
+    normalizedRouteAddress || (isValidStellarAddress(queryAddress) ? queryAddress : '')
+
   useSeo({
-    title: 'Trust Score',
-    description:
-      'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
+    title: isRouteAddressValid
+      ? `Trust Score for ${truncateAddress(normalizedRouteAddress)}`
+      : 'Trust Score',
+    description: isRouteAddressValid
+      ? `View the Credence trust score, tier, and attestations for Stellar address ${truncateAddress(normalizedRouteAddress)}.`
+      : 'Look up on-chain Credence trust scores for any Stellar address. View tier, bond history, and attestation evidence.',
   })
   const { t } = useTranslation()
   const isMobile = useIsMobile()
@@ -74,29 +92,48 @@ export default function TrustScore() {
   const { copy, copied } = useCopyToClipboard()
   const { addToast } = useToast()
   const networkMismatch = useNetworkMismatch()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [address, setAddress] = useState<string>(() => {
-    const param = searchParams.get('address')?.trim() ?? ''
-    return isValidStellarAddress(param) ? param : ''
-  })
-  const [isAddressValid, setIsAddressValid] = useState(() => {
-    const param = searchParams.get('address')?.trim() ?? ''
-    return isValidStellarAddress(param)
-  })
-  const [hasAttemptedLookup, setHasAttemptedLookup] = useState(false)
+  const [address, setAddress] = useState<string>(initialAddress)
+  const [isAddressValid, setIsAddressValid] = useState(() => isValidStellarAddress(initialAddress))
+  const [hasAttemptedLookup, setHasAttemptedLookup] = useState(Boolean(routeAddress))
   const [lookupAddress, setLookupAddress] = useState('')
   const pendingLookupRef = useRef(false)
 
-  const [history, setHistory] = useRecentLookups()
-  const safeHistory = sanitizeRecentLookups(history)
+  const [history, setHistory, removeHistoryItem] = useRecentLookups()
+  const safeHistory = useMemo(() => sanitizeRecentLookups(history), [history])
   const recordedResultRef = useRef<string | null>(null)
+  const recentItemRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  const pendingFocusRef = useRef<{ type: 'item'; address: string } | { type: 'input' } | null>(null)
 
   const { data: rawData, isLoading, error, refetch } = useTrustScore(lookupAddress)
+  const {
+    data: historyPoints,
+    isLoading: isHistoryLoading,
+    error: historyError,
+  } = useTrustHistory(lookupAddress)
 
   // The API response is unvalidated at runtime. Normalise it once at the
   // render boundary so every downstream expression (hero badge, gauge,
   // history) sees a valid tier and a clamped score.
   const data = useMemo(() => normalizeTrustScore(rawData), [rawData])
+
+  useEffect(() => {
+    if (!routeAddress) return
+
+    setAddress(normalizedRouteAddress)
+    setHasAttemptedLookup(true)
+    setIsAddressValid(isRouteAddressValid)
+
+    if (!isRouteAddressValid) {
+      pendingLookupRef.current = false
+      setLookupAddress('')
+      return
+    }
+
+    if (lookupAddress.toLowerCase() === normalizedRouteAddress.toLowerCase()) return
+
+    pendingLookupRef.current = true
+    setLookupAddress(normalizedRouteAddress)
+  }, [routeAddress, normalizedRouteAddress, isRouteAddressValid, lookupAddress])
 
   useEffect(() => {
     if (!pendingLookupRef.current || !lookupAddress) {
@@ -124,25 +161,10 @@ export default function TrustScore() {
     setHistory(addRecentLookup(history, lookupAddress))
   }, [isLoading, error, data, lookupAddress, history, setHistory])
 
-  const commitAddressParam = (value: string) => {
-    setSearchParams(
-      (prev: URLSearchParams) => {
-        const next = new URLSearchParams(prev)
-        if (value) {
-          next.set('address', value)
-        } else {
-          next.delete('address')
-        }
-        return next
-      },
-      { replace: true }
-    )
-  }
-
   const handleAddressChange = (value: string) => {
     setAddress(value)
     if (!value) {
-      commitAddressParam('')
+      navigate('/trust', { replace: true })
     }
   }
 
@@ -152,15 +174,19 @@ export default function TrustScore() {
       return
     }
 
-    if (!isAddressValid || isLoading) {
+    if (!isAddressValid) {
+      return
+    }
+
+    const trimmed = address.trim()
+    if (isLoading && trimmed === lookupAddress) {
       return
     }
 
     setHasAttemptedLookup(true)
     pendingLookupRef.current = true
-    const trimmed = address.trim()
     setLookupAddress(trimmed)
-    commitAddressParam(trimmed)
+    navigate(`/trust/${encodeURIComponent(trimmed)}`, { replace: true })
   }
 
   const handleSelectRecent = (item: RecentLookupItem) => {
@@ -170,11 +196,41 @@ export default function TrustScore() {
     setHasAttemptedLookup(true)
     pendingLookupRef.current = true
     setLookupAddress(item.address)
-    commitAddressParam(item.address)
+    navigate(`/trust/${encodeURIComponent(item.address)}`, { replace: true })
 
     // Move to top of history immediately
     setHistory(addRecentLookup(history, item.address))
     if (isCurrentLookup) refetch()
+  }
+
+  useEffect(() => {
+    const pending = pendingFocusRef.current
+    if (!pending) return
+    pendingFocusRef.current = null
+
+    if (pending.type === 'item') {
+      const nextButton = recentItemRefs.current.get(pending.address)
+      if (nextButton) {
+        nextButton.focus()
+        return
+      }
+    }
+
+    const input = document.getElementById('wallet-address')
+    if (input instanceof HTMLElement) {
+      input.focus()
+    }
+  }, [safeHistory])
+
+  const handleRemoveRecent = (targetAddress: string, index: number) => {
+    const nextHistory = removeRecentLookup(safeHistory, targetAddress)
+    if (nextHistory.length > 0) {
+      const nextIndex = Math.min(index, nextHistory.length - 1)
+      pendingFocusRef.current = { type: 'item', address: nextHistory[nextIndex].address }
+    } else {
+      pendingFocusRef.current = { type: 'input' }
+    }
+    removeHistoryItem(targetAddress)
   }
 
   const handleClearHistory = () => {
@@ -221,14 +277,18 @@ export default function TrustScore() {
             Trust Score Results
           </h2>
 
-          {isLoading && !data && (
+          {!isAddressValid && routeAddress && (
+            <p role="alert">Invalid Stellar address. Check the address and try again.</p>
+          )}
+
+          {isAddressValid && isLoading && !data && (
             <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading trust score">
               <p className="sr-only">Loading trust score</p>
               <LoadingSkeleton variant="trust-score" />
             </div>
           )}
 
-          {!isLoading && error && !data && (
+          {isAddressValid && !isLoading && error && !data && (
             <div role="alert">
               <ErrorState
                 type={trustScoreErrorType(error)}
@@ -288,8 +348,31 @@ export default function TrustScore() {
                     day: 'numeric',
                   })}
                 </span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    const success = await copy(window.location.href)
+                    if (success) {
+                      addToast('success', 'Trust profile link copied to clipboard')
+                    } else {
+                      addToast('danger', 'Could not copy link. Please copy it manually.')
+                    }
+                  }}
+                >
+                  {copied ? 'Link copied' : 'Copy link'}
+                </Button>
               </div>
             </div>
+          )}
+
+          {lookupAddress && (
+            <TrustHistoryChart
+              points={historyPoints}
+              isLoading={isHistoryLoading}
+              error={historyError?.message}
+            />
           )}
         </section>
       )}
@@ -327,11 +410,19 @@ export default function TrustScore() {
                   </button>
                 </div>
                 <ul className="trustScore__recentList" aria-labelledby="recent-lookups-heading">
-                  {safeHistory.map((item: RecentLookupItem) => {
+                  {safeHistory.map((item: RecentLookupItem, index: number) => {
                     const displayLabel = formatAddress(item.address, addressDisplay, walletAddress)
+                    const truncatedAddress = truncateAddress(item.address)
                     return (
                       <li key={item.address} className="trustScore__recentListItem">
                         <button
+                          ref={(el) => {
+                            if (el) {
+                              recentItemRefs.current.set(item.address, el)
+                            } else {
+                              recentItemRefs.current.delete(item.address)
+                            }
+                          }}
                           type="button"
                           className="trustScore__recentItemBtn"
                           onClick={() => handleSelectRecent(item)}
@@ -379,6 +470,26 @@ export default function TrustScore() {
                             </svg>
                           )}
                         </button>
+                        <button
+                          type="button"
+                          className="trustScore__recentRemoveBtn"
+                          onClick={() => handleRemoveRecent(item.address, index)}
+                          aria-label={`Remove ${truncatedAddress} from recent lookups`}
+                          disabled={!isConnected}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            aria-hidden="true"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
                       </li>
                     )
                   })}
@@ -398,6 +509,18 @@ export default function TrustScore() {
               {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
             </Button>
           </div>
+            type="button"
+            onClick={handleLookup}
+            variant="primary"
+            fullWidth
+            disabled={networkMismatch.mismatch || (isConnected ? !isAddressValid : false)}
+            isLoading={isConnected && isLoading && address.trim() === lookupAddress}
+            aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
+            className="trustScore__buttonRow"
+          >
+            {isConnected ? t('trustScore.lookup') : t('trustScore.connectToContinue')}
+          </Button>
+        </div>
         </ConnectGate>
 
         <div className="trustScore__card">

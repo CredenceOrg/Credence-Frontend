@@ -17,10 +17,12 @@ import { initiateMutation } from './mutationRecovery'
 import {
   type MutationOperationId,
   getMutationOperation,
+  getMutationOperations,
   updateMutationOperation,
 } from './mutationStorage'
 import { mutationRecoveryEngine } from './mutationRecovery'
 import { logInfo, logWarn } from './log'
+import { QUERY_CACHE_TTLS } from '../config/queryCache'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Trust Score Mutation Types
@@ -77,7 +79,7 @@ export async function lookupTrustScore(
 
   // Check for existing successful operation unless forced refresh
   if (!forceRefresh) {
-    const existingResult = await checkExistingTrustScoreOperation(address)
+    const existingResult = checkExistingTrustScoreOperation(address)
     if (existingResult) {
       return existingResult
     }
@@ -101,14 +103,70 @@ export async function lookupTrustScore(
 }
 
 /**
- * Checks for existing successful trust score operation for the given address.
+ * Normalise a Stellar address for cache lookup. Stellar public keys are
+ * case-sensitive on chain, but we match loosely here so a caller passing
+ * mixed case does not miss a cached entry it just produced. The stored
+ * `requestMetadata.address` is whatever the caller originally supplied.
  */
-async function checkExistingTrustScoreOperation(
-  _address: string
-): Promise<TrustScoreLookupResult | null> {
-  // This would query the storage for recent successful lookups
-  // For now, return null to always perform fresh lookups
-  // TODO: Implement caching strategy based on trust score freshness requirements
+function normaliseAddressKey(address: string): string {
+  return address.trim().toLowerCase()
+}
+
+/**
+ * Checks for a recent successful trust score lookup for `address` and
+ * returns it as a cache hit when the stored entry is within the freshness
+ * window (`QUERY_CACHE_TTLS.TRUST_SCORE_FRESHNESS_MS`). Failed, pending
+ * or cancelled operations are ignored; stale successful entries trigger
+ * a fresh lookup.
+ */
+export function checkExistingTrustScoreOperation(
+  address: string
+): TrustScoreLookupResult | null {
+  const target = normaliseAddressKey(address)
+  const freshnessMs = QUERY_CACHE_TTLS.TRUST_SCORE_FRESHNESS_MS
+  const now = Date.now()
+
+  // `getMutationOperations` returns the matching list sorted newest-first
+  // by `updatedAt`, which is the right order for picking the most recent
+  // successful lookup.
+  const candidates = getMutationOperations('trust_score_lookup', 'success')
+
+  for (const op of candidates) {
+    const storedAddress = (op.requestMetadata?.address as string | undefined) ?? ''
+    if (!storedAddress || normaliseAddressKey(storedAddress) !== target) {
+      continue
+    }
+
+    const completedAt = op.completedAt ?? op.updatedAt
+    const completedMs = Date.parse(completedAt)
+    if (!Number.isFinite(completedMs)) {
+      continue
+    }
+    if (now - completedMs > freshnessMs) {
+      // Newest matching entry is already stale; older ones can only be
+      // older still, so stop looking.
+      return null
+    }
+
+    const data = op.finalResponse as TrustScore | undefined
+    if (!data) {
+      continue
+    }
+
+    logInfo('trust_score_lookup_cache_hit', {
+      operationId: op.operationId,
+      address,
+      ageMs: now - completedMs,
+    })
+
+    return {
+      operationId: op.operationId,
+      isNewOperation: false,
+      data,
+      fromCache: true,
+    }
+  }
+
   return null
 }
 

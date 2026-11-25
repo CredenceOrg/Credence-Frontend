@@ -290,6 +290,13 @@ const results = await Promise.all(promises)
 - ✓ Update trust score with idempotency
 - ✓ Concurrent updates
 - ✓ Event emission verification
+- ✓ Freshness cache: repeated `lookupTrustScore(address)` calls within
+  `QUERY_CACHE_TTLS.TRUST_SCORE_FRESHNESS_MS` (default 5 min, overridable
+  via `VITE_QUERY_CACHE_TRUST_SCORE_FRESHNESS_MS`) reuse the last
+  successful result (`fromCache: true`). Failed, pending or stale
+  entries always trigger a fresh lookup; address matching is
+  case-insensitive. See `src/lib/trustScoreMutations.ts` →
+  `checkExistingTrustScoreOperation`.
 
 ### Error Recovery
 - ✓ Transient error auto-retry

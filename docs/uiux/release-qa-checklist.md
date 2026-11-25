@@ -3,9 +3,10 @@
 This checklist is meant to be run through before any major release to ensure that UI/UX standards, responsive breakpoints, accessibility basics, and critical user flows are maintained and regression-free.
 
 ## 1. Responsive Breakpoints
+
 Ensure the application renders correctly across all supported screen sizes.
 
-- [ ] **Mobile (320px - 480px)**: 
+- [ ] **Mobile (320px - 480px)**:
   - Navigation collapses to a hamburger menu.
   - Touch targets are at least 44x44px.
   - Content fits within the viewport without horizontal scrolling.
@@ -21,6 +22,7 @@ Ensure the application renders correctly across all supported screen sizes.
   - Max-widths are applied to containers to maintain readability.
 
 ## 2. Accessibility Basics (a11y)
+
 Verify that the application is accessible to all users.
 
 - [ ] **Keyboard Navigation**:
@@ -40,6 +42,7 @@ Verify that the application is accessible to all users.
   - Error messages are clear and linked to their respective inputs (`aria-errormessage`).
 
 ## 3. Critical Flows
+
 Perform a manual walkthrough of the following primary paths.
 
 - [ ] **Wallet Connection / Authentication**:
@@ -56,6 +59,7 @@ Perform a manual walkthrough of the following primary paths.
   - Success/Failure toasts or notifications appear promptly after a transaction.
 
 ## 4. General UX & Polish
+
 - [ ] **Animations & Transitions**: Smooth, without jank, and respect `prefers-reduced-motion`.
 - [ ] **Typography**: Font sizes and weights establish clear visual hierarchy.
 - [ ] **Iconography**: Icons are consistent in weight and size.

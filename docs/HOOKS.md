@@ -1077,6 +1077,7 @@ preserves both the start (first 12 characters) and the end (last 8 characters), 
 empty input returns `""`.
 
 `formatAddressForDisplay` renders an address in one of three modes:
+
 - `'full'` — the complete address unchanged
 - `'short'` — middle-truncated via `truncateAddress` (first 12 + `...` + last 8)
 - `'friendly'` — a compact form (first 6 + `…` + last 4)

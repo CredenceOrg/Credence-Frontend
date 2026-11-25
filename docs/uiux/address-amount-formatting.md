@@ -28,11 +28,11 @@ token — if a component needs monospace text, reference
 Truncation rules live in `src/lib/stellar.ts` and are shared by every
 component — don't hand-roll `slice()` truncation in a component.
 
-| Mode | Rule | Example |
-|---|---|---|
-| `full` | Untruncated, 56 chars | `GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H` |
-| `short` (default) | First 12 + `...` + last 8 | `GBRPYHIL2CI3...X2H` |
-| `friendly` | First 6 + `…` + last 4 | `GBRPYH…X2H` |
+| Mode              | Rule                      | Example                                                    |
+| ----------------- | ------------------------- | ---------------------------------------------------------- |
+| `full`            | Untruncated, 56 chars     | `GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H` |
+| `short` (default) | First 12 + `...` + last 8 | `GBRPYHIL2CI3...X2H`                                       |
+| `friendly`        | First 6 + `…` + last 4    | `GBRPYH…X2H`                                               |
 
 - `truncateAddress(address)` — the `short` rule; leaves addresses ≤ 20 chars
   unchanged.
@@ -75,12 +75,12 @@ shared `useCopyToClipboard` hook:
 
 ## Components
 
-| Component | Use for | Truncation | Copy |
-|---|---|---|---|
-| `AddressDisplay` | A Stellar address as the primary content of a row/card | `short`, reveals full address on hover/focus | Yes |
-| `CopyableHash` | A tx hash or address alongside an explorer link | `short` (address) or head/tail-6/4 (tx) | Yes |
-| `AmountDisplay` | A USDC amount that a user may want to copy (e.g. exact value for an invoice or dispute) | N/A — full formatted amount always shown | Yes |
-| `formatUsdc()` | Inline amount text with no copy affordance (summaries, table cells, labels) | N/A | No |
+| Component        | Use for                                                                                 | Truncation                                   | Copy |
+| ---------------- | --------------------------------------------------------------------------------------- | -------------------------------------------- | ---- |
+| `AddressDisplay` | A Stellar address as the primary content of a row/card                                  | `short`, reveals full address on hover/focus | Yes  |
+| `CopyableHash`   | A tx hash or address alongside an explorer link                                         | `short` (address) or head/tail-6/4 (tx)      | Yes  |
+| `AmountDisplay`  | A USDC amount that a user may want to copy (e.g. exact value for an invoice or dispute) | N/A — full formatted amount always shown     | Yes  |
+| `formatUsdc()`   | Inline amount text with no copy affordance (summaries, table cells, labels)             | N/A                                          | No   |
 
 Use `AmountDisplay` when the amount is a standalone, copyable value (mirrors
 `AddressDisplay`). Keep using bare `formatUsdc()` for amounts embedded in

@@ -5,12 +5,14 @@ This document specifies the formal guarantees provided by the mutation system an
 ## Executive Summary
 
 The mutation system provides **deterministic, reviewable, concurrent-safe mutation execution** with automatic retry and deduplication. All guarantees are verified through:
+
 - **31 unit tests** of MutationManager (core engine)
 - **12 integration tests** of realistic Bond/TrustScore scenarios
 - **Formal property specifications** below
 - **Proof under failure conditions**: network errors, transient failures, concurrent requests
 
-**TL;DR**: 
+**TL;DR**:
+
 - Same mutation concurrent? **Execute once, all await result**
 - Transient error? **Retry with backoff, up to 3 times**
 - Component unmount? **Cancel, no state updates, no leaks**
@@ -29,39 +31,42 @@ The mutation system provides **deterministic, reviewable, concurrent-safe mutati
 ```
 
 **Implementation**:
+
 ```typescript
 // src/lib/mutationManager.ts
 private requestStates = new Map<IdempotencyKey, RequestState<T>>()
 
 async mutate(fn, { key }): Promise<MutationResult<T>> {
   let state = this.requestStates.get(key)
-  
+
   if (!state) {
     // First request: create new state and execute
     state = { version: 0, pendingPromises: new Set(), ... }
     this.requestStates.set(key, state)
     state.version++
-    
+
     const promise = fn()
       .then(data => ({ data, error: null, ... }))
       .catch(error => ({ data: null, error, ... }))
-    
+
     state.pendingPromises.add(promise)
   } else if (state.pendingPromises.size > 0) {
     // Request already in-flight: reuse promise
     promise = state.pendingPromises.values().next().value
   }
-  
+
   return promise
 }
 ```
 
 **Verified By**:
+
 - ✓ Test: 50 concurrent identical mutations → 1 execution
 - ✓ Test: Concurrent A, B, A, B (keys X, Y, X, Y) → 2 executions (A and B independent)
 - ✓ Test: 3 concurrent identical fail, then 2 retry → 2 executions total (new attempt after failure)
 
 **Failure Modes Handled**:
+
 - ✓ First request slow to start → second arrives → reuse promise
 - ✓ First request fails → second arrives → both receive error
 - ✓ First request succeeds → result cached in latest → subsequent requests get same result
@@ -87,6 +92,7 @@ async mutate(fn, { key }): Promise<MutationResult<T>> {
 3. Never create duplicate side effects
 
 **Implementation**:
+
 ```typescript
 // Client generates deterministic key
 function createIdempotencyKey(path: string, method: string, body?: unknown): IdempotencyKey {
@@ -105,18 +111,19 @@ await fetch('/api/bonds', {
 ```
 
 **Server Implementation** (example - responsibility of backend):
+
 ```typescript
 // Backend caches idempotency key results
 const idempotencyCache = new Map<IdempotencyKey, Result>()
 
 app.post('/api/bonds', (req, res) => {
   const key = req.headers['x-idempotency-key']
-  
+
   // Return cached result if already processed
   if (idempotencyCache.has(key)) {
     return res.json(idempotencyCache.get(key))
   }
-  
+
   // Process new request
   const bond = Bond.create(req.body.amount)
   idempotencyCache.set(key, bond)
@@ -125,11 +132,13 @@ app.post('/api/bonds', (req, res) => {
 ```
 
 **Verified By**:
+
 - ✓ Test: Sequential A, A, A (same key) → versions 1, 2, 3 (independent executions)
 - ✓ Test: Sequential A, B, A → all execute independently
 - ✓ Test: Idempotency key determinism → same params always same key
 
 **Critical Requirement**: Server must implement idempotency checking. Client deduplication (Invariant 1) prevents redundant executions in the same process, but:
+
 - Different browser tabs/windows execute independently
 - Server replay attacks prevented only by server-side key checking
 - Production systems MUST validate idempotency keys on backend
@@ -149,6 +158,7 @@ app.post('/api/bonds', (req, res) => {
 ```
 
 **Implementation**:
+
 ```typescript
 interface RequestState<T> {
   version: number            // Incremented on each new execution
@@ -157,35 +167,38 @@ interface RequestState<T> {
 
 async mutate(fn, { key }): Promise<MutationResult<T>> {
   const state = this.requestStates.get(key)
-  
+
   // Sequential executions increment version
   const currentVersion = ++state.version
-  
+
   const result = await executeWithRetry(fn)
-  
+
   // Store with timestamp and version
   state.latestResult = {
     ...result,
     version: currentVersion,
     timestamp: Date.now(),
   }
-  
+
   return result
 }
 ```
 
 **Verification Strategy**:
+
 - Timestamps recorded at mutation completion
 - Version numbers monotonically increase
 - Latest result always has highest version
 - Stale result detection ready for future blocking (not currently used)
 
 **Verified By**:
+
 - ✓ Test: Sequential mutations record increasing versions (1 → 2 → 3)
 - ✓ Test: Concurrent mutations share version (both report same version from same state)
 - ✓ Test: All results include timestamp for ordering
 
 **Future Enhancement**: Can implement version-based result blocking if needed:
+
 ```typescript
 // Future: Block stale results
 if (newResult.version < state.latestResult.version) {
@@ -209,12 +222,15 @@ if (newResult.version < state.latestResult.version) {
 ```
 
 **Transient Error Categories**:
+
 ```typescript
 function isTransientError(error: Error): boolean {
   const message = error.message || ''
-  return /network|econnrefused/i.test(message) ||  // Network errors
-         /rate|throttle|quota/i.test(message) ||   // Rate limit
-         /5\d\d/.test(message)                      // HTTP 5xx
+  return (
+    /network|econnrefused/i.test(message) || // Network errors
+    /rate|throttle|quota/i.test(message) || // Rate limit
+    /5\d\d/.test(message)
+  ) // HTTP 5xx
 }
 
 // HTTP status code checking
@@ -227,6 +243,7 @@ if (response.status >= 500 && response.status < 600) {
 ```
 
 **Backoff Calculation**:
+
 ```typescript
 function calculateBackoffMs(attempt: number, config: RetryConfig): number {
   const baseDelay = config.initialDelayMs * Math.pow(2, attempt)
@@ -243,12 +260,14 @@ Max: ~10000ms
 ```
 
 **Verified By**:
+
 - ✓ Test: Transient error retries exactly maxRetries times
 - ✓ Test: Exponential backoff delays honored (500 → 1000 → 2000)
 - ✓ Test: Non-transient errors fail immediately (1 attempt)
 - ✓ Test: Event emitted on each retry with nextRetryDelayMs
 
 **Example Scenario**:
+
 ```
 Mutation: createBond(amount=1000)
 Attempt 1: Network error → transient → wait 500ms
@@ -272,26 +291,29 @@ Result: attempts=4, isRetry=true, data={bond}
 ```
 
 **Error Classification**:
+
 ```typescript
 function categorizeError(error: Error): ErrorCategory {
   const message = error.message || ''
-  
+
   if (/network|econnrefused/i.test(message)) return 'network'
   if (/rate|throttle|quota/i.test(message)) return 'rateLimit'
   if (/401|403|unauthorized|forbidden/i.test(message)) return 'authorization'
   if (/400|422|validation/.test(message)) return 'validation'
   if (/5\d\d|server error/i.test(message)) return 'server'
-  
+
   return 'unknown'
 }
 ```
 
 **Verified By**:
+
 - ✓ Test: Validation error (400) fails on attempt 1, no retry
 - ✓ Test: Authorization error (401) fails immediately
 - ✓ Test: Malformed request fails once
 
 **Example Scenario**:
+
 ```
 Mutation: createBond(amount="invalid")
 Attempt 1: Validation error "Amount must be number" → not transient → fail immediately
@@ -314,6 +336,7 @@ Result: attempts=1, isRetry=false, error={message: "Amount must be number"}, err
 ```
 
 **Implementation**:
+
 ```typescript
 // Hook cleanup on unmount
 useEffect(() => {
@@ -327,12 +350,12 @@ useEffect(() => {
 async mutate(asyncFn, { key, signal }): Promise<MutationResult<T>> {
   // Create combined signal (user + internal)
   const combinedSignal = CombinedAbortSignal.from([signal])
-  
+
   // Check before execution
   if (combinedSignal.aborted) {
     throw new DOMException('Aborted', 'AbortError')
   }
-  
+
   try {
     return await asyncFn(combinedSignal)
   } catch (error) {
@@ -352,17 +375,20 @@ async mutate(asyncFn, { key, signal }): Promise<MutationResult<T>> {
 ```
 
 **Verified By**:
+
 - ✓ Test: Abort signal cancels in-flight execution
 - ✓ Test: cancel(key) propagates to AbortController
 - ✓ Test: No state updates after component unmount
 
 **Critical Safety Checks**:
+
 1. ✓ isMountedRef prevents setState after unmount
 2. ✓ AbortError caught and handled
 3. ✓ No exceptions thrown during cancellation
 4. ✓ Event listeners can be cleaned up
 
 **Example Scenario**:
+
 ```
 User opens dialog with mutation in progress
 → Dialog closes
@@ -392,6 +418,7 @@ User opens dialog with mutation in progress
 ```
 
 **Event Types**:
+
 ```typescript
 type MutationEvent<T> =
   | { type: 'started'; key; version; timestamp }
@@ -401,12 +428,14 @@ type MutationEvent<T> =
 ```
 
 **Verified By**:
+
 - ✓ Test: Success sequence: started → succeeded
 - ✓ Test: Retry sequence: started → retrying(1) → retrying(2) → succeeded
 - ✓ Test: Failure sequence: started → failed
 - ✓ Test: Events in correct order with proper fields
 
 **Example Sequence**:
+
 ```
 Mutation: createBond(amount=1000) [transient error on attempt 1]
 
@@ -422,14 +451,15 @@ Event 3: { type: 'succeeded', key: '...', version: 1, result: {bondId: '123'}, t
 
 **High-Concurrency Test Results** (verified passing):
 
-| Scenario | Concurrent | Total Requests | Executions | Result |
-|----------|-----------|-----------------|-----------|--------|
-| Identical 50x | A, A, A, ... (50×) | 50 | 1 | ✓ All await same promise |
-| Different keys 10x | A, B, C, ..., J | 10 | 10 | ✓ All independent |
-| Mixed | A(25×), B(15×), C(10×) | 50 | 3 | ✓ A dedup→1, B dedup→1, C dedup→1 |
-| Interleaved fail+retry | A fails, B succeeds, A retries | 3 | 2 | ✓ A and B independent, A auto-retries |
+| Scenario               | Concurrent                     | Total Requests | Executions | Result                                |
+| ---------------------- | ------------------------------ | -------------- | ---------- | ------------------------------------- |
+| Identical 50x          | A, A, A, ... (50×)             | 50             | 1          | ✓ All await same promise              |
+| Different keys 10x     | A, B, C, ..., J                | 10             | 10         | ✓ All independent                     |
+| Mixed                  | A(25×), B(15×), C(10×)         | 50             | 3          | ✓ A dedup→1, B dedup→1, C dedup→1     |
+| Interleaved fail+retry | A fails, B succeeds, A retries | 3              | 2          | ✓ A and B independent, A auto-retries |
 
 **Proof Test**:
+
 ```typescript
 // Test case: 50 concurrent identical mutations
 const bondKey = createIdempotencyKey('/bonds', 'POST', { amount: 1000 })
@@ -440,16 +470,16 @@ const mockCreateBond = async () => {
   return { id: 'bond-123', amount: 1000 }
 }
 
-const promises = Array(50).fill(null).map(() =>
-  manager.mutate(() => mockCreateBond(), { key: bondKey })
-)
+const promises = Array(50)
+  .fill(null)
+  .map(() => manager.mutate(() => mockCreateBond(), { key: bondKey }))
 
 const results = await Promise.all(promises)
 
 // Assertions
-expect(executionCount).toBe(1)  // Only one execution
-expect(results).toHaveLength(50)  // All 50 got result
-expect(results.every(r => r.data?.id === 'bond-123')).toBe(true)  // All same result
+expect(executionCount).toBe(1) // Only one execution
+expect(results).toHaveLength(50) // All 50 got result
+expect(results.every((r) => r.data?.id === 'bond-123')).toBe(true) // All same result
 ```
 
 **Result**: ✓ PASS - Confirms serialization guarantee
@@ -459,6 +489,7 @@ expect(results.every(r => r.data?.id === 'bond-123')).toBe(true)  // All same re
 ## Failure Scenarios: All Handled Correctly
 
 ### Scenario 1: Network Failure
+
 ```
 User on mobile, network drops mid-request
 → Network error caught
@@ -472,6 +503,7 @@ Guarantee Met: ✓ Automatic recovery
 ```
 
 ### Scenario 2: Server 500 Error
+
 ```
 Server temporarily unavailable
 → HTTP 500 received
@@ -484,6 +516,7 @@ Guarantee Met: ✓ Automatic recovery with bounded retries
 ```
 
 ### Scenario 3: Validation Error (4xx)
+
 ```
 User submits bond with invalid amount
 → HTTP 400 received
@@ -495,6 +528,7 @@ Guarantee Met: ✓ Fail fast for non-transient errors
 ```
 
 ### Scenario 4: Concurrent Identical Mutations
+
 ```
 User clicks "Create Bond" button 50× rapidly
 → Request 1 starts execution
@@ -506,6 +540,7 @@ Guarantee Met: ✓ Deduplication prevents redundant executions
 ```
 
 ### Scenario 5: Component Unmount During Operation
+
 ```
 User navigates away while bond creation in progress
 → Component unmounts
@@ -519,6 +554,7 @@ Guarantee Met: ✓ Clean lifecycle management
 ```
 
 ### Scenario 6: Network Restores After Timeout
+
 ```
 User on slow network, mutation times out
 → [User can retry via button]
@@ -548,12 +584,14 @@ Guarantee Met: ✓ Idempotent on server side (requires server implementation)
 ## How to Verify These Guarantees
 
 ### Run Core Tests (Unit + Integration)
+
 ```bash
 npm test -- src/lib/mutationManager.test.ts src/__tests__/mutations.integration.test.ts
 # Expected: 43 tests passing (31 + 12)
 ```
 
 ### Test Individual Guarantees
+
 ```bash
 # Deduplication
 npm test -- src/lib/mutationManager.test.ts -t "deduplication"
@@ -569,6 +607,7 @@ npm test -- src/__tests__/mutations.integration.test.ts -t "high concurrency"
 ```
 
 ### Enable Debug Logging
+
 ```typescript
 import { getGlobalMutationManager } from '@/lib/mutationManager'
 
@@ -583,4 +622,4 @@ manager.onEvent((event) => console.log('EVENT', event))
 - [MUTATION_SYSTEM.md](MUTATION_SYSTEM.md) - Complete API reference and usage guide
 - [src/lib/mutationManager.ts](../src/lib/mutationManager.ts) - Core engine implementation
 - [src/hooks/useMutation.ts](../src/hooks/useMutation.ts) - React hook implementation
-- [src/__tests__/mutations.integration.test.ts](../src/__tests__/mutations.integration.test.ts) - Integration test suite
+- [src/**tests**/mutations.integration.test.ts](../src/__tests__/mutations.integration.test.ts) - Integration test suite

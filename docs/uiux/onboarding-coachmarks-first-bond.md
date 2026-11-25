@@ -265,10 +265,7 @@ Do not store wallet addresses, balances, transaction data, or free-form input in
 
 ```ts
 type FirstBondCoachMarkId =
-  | 'first-bond-start'
-  | 'first-bond-amount'
-  | 'first-bond-lock'
-  | 'first-bond-review'
+  'first-bond-start' | 'first-bond-amount' | 'first-bond-lock' | 'first-bond-review'
 ```
 
 - Suggested eligibility input:

@@ -15,15 +15,15 @@ import { createIdempotencyKey } from '@/lib/mutationManager'
 
 ```typescript
 function BondCreateComponent() {
-  const { 
-    mutate,        // Async function to call
-    isLoading,     // Loading state
-    error,         // Error object or null
+  const {
+    mutate, // Async function to call
+    isLoading, // Loading state
+    error, // Error object or null
     errorCategory, // 'network' | 'rateLimit' | 'validation' | 'authorization' | 'server' | 'unknown'
-    attempts,      // Number of attempts (including retries)
-    isRetry,       // Whether this is a retry result
-    data,          // Result data (Bond | null)
-    reset,         // Reset to initial state
+    attempts, // Number of attempts (including retries)
+    isRetry, // Whether this is a retry result
+    data, // Result data (Bond | null)
+    reset, // Reset to initial state
   } = useMutation<Bond>({
     onStart: () => {
       console.log('Mutation started')
@@ -51,11 +51,7 @@ function BondCreateComponent() {
 const handleCreateBond = async (amount: number, address: string) => {
   // Generate deterministic idempotency key
   // Same params = same key = safe to retry
-  const idempotencyKey = createIdempotencyKey(
-    '/api/bonds',
-    'POST',
-    { amount, address }
-  )
+  const idempotencyKey = createIdempotencyKey('/api/bonds', 'POST', { amount, address })
 
   try {
     const bond = await mutate(
@@ -97,9 +93,9 @@ const handleCreateBond = async (amount: number, address: string) => {
 return (
   <div className="bond-create">
     <BondForm onSubmit={handleCreateBond} disabled={isLoading} />
-    
+
     {isLoading && <LoadingSpinner />}
-    
+
     {error && (
       <ErrorDisplay
         error={error}
@@ -109,7 +105,7 @@ return (
         onRetry={() => handleCreateBond(lastAmount, lastAddress)}
       />
     )}
-    
+
     {data && <BondSuccessCard bond={data} />}
   </div>
 )
@@ -188,7 +184,7 @@ const { error, errorCategory, mutate } = useMutation<Bond>({
     if (category === 'server') {
       // Server error - show error but allow retry
       return (
-        <ServerErrorCard 
+        <ServerErrorCard
           error={error}
           onRetry={handleRetry}
         />
@@ -472,9 +468,7 @@ describe('useMutation', () => {
   })
 
   it('handles validation errors immediately', async () => {
-    const mockFn = vi.fn().mockRejectedValue(
-      new Error('Amount must be positive')
-    )
+    const mockFn = vi.fn().mockRejectedValue(new Error('Amount must be positive'))
 
     const { result } = renderHook(() => useMutation<{ id: string }>())
 
@@ -505,7 +499,7 @@ function BondBulkCreateComponent() {
     // These mutations have different idempotency keys
     // They will execute concurrently (independent)
     const amounts = [100, 200, 300]
-    
+
     const promises = amounts.map((amount) =>
       mutate(async () => {
         const key = createIdempotencyKey(
@@ -513,7 +507,7 @@ function BondBulkCreateComponent() {
           'POST',
           { amount }
         )
-        
+
         const response = await fetch('/api/bonds', {
           method: 'POST',
           headers: { 'X-Idempotency-Key': key },
@@ -542,7 +536,7 @@ function BondCreateButton() {
   const handleCreateBond = async (amount: number) => {
     // Generate key
     const key = createIdempotencyKey('/api/bonds', 'POST', { amount })
-    
+
     // If same request already in flight, mutation will deduplicate
     // Both calls await the same promise
     if (key === lastKey && isLoading) {
@@ -563,7 +557,7 @@ function BondCreateButton() {
         },
         { idempotencyKey: key }
       )
-      
+
       console.log('Bond created:', bond)
     } finally {
       setLastKey(null)
@@ -598,7 +592,7 @@ const handleCreateBond = async (amount: number) => {
       lastError = error
       if (attempt < 3) {
         const delay = 500 * Math.pow(2, attempt)
-        await new Promise(r => setTimeout(r, delay))
+        await new Promise((r) => setTimeout(r, delay))
       }
     }
   }
@@ -612,19 +606,18 @@ const handleCreateBond = async (amount: number) => {
 const { mutate } = useMutation<Bond>()
 
 const handleCreateBond = async (amount: number) => {
-  return await mutate(
-    async () => {
-      const response = await fetch('/api/bonds', {
-        method: 'POST',
-        body: JSON.stringify({ amount }),
-      })
-      return response.json()
-    }
-  )
+  return await mutate(async () => {
+    const response = await fetch('/api/bonds', {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    })
+    return response.json()
+  })
 }
 ```
 
 **Benefits:**
+
 - ✓ Retry logic centralized
 - ✓ Automatic error categorization
 - ✓ Deduplication for free
@@ -647,7 +640,7 @@ const redis = new Redis()
 
 router.post('/api/bonds', async (req, res) => {
   const idempotencyKey = req.headers['x-idempotency-key']
-  
+
   if (!idempotencyKey) {
     return res.status(400).json({
       error: 'Missing X-Idempotency-Key header',
@@ -664,14 +657,10 @@ router.post('/api/bonds', async (req, res) => {
   // Process new request
   try {
     const bond = await Bond.create(req.body)
-    
+
     // Cache result with TTL (24 hours)
-    await redis.setex(
-      `idempotency:${idempotencyKey}`,
-      86400,
-      JSON.stringify(bond)
-    )
-    
+    await redis.setex(`idempotency:${idempotencyKey}`, 86400, JSON.stringify(bond))
+
     res.json(bond)
   } catch (error) {
     res.status(error.statusCode || 500).json({
@@ -696,21 +685,21 @@ manager.onEvent((event) => {
   console.group(`[Mutation] ${event.type}`)
   console.log('Key:', event.key)
   console.log('Timestamp:', new Date(event.timestamp))
-  
+
   if (event.type === 'retrying') {
     console.log('Attempt:', event.attempt)
     console.log('Next retry in:', event.nextRetryDelayMs, 'ms')
   }
-  
+
   if (event.type === 'succeeded') {
     console.log('Result:', event.result)
   }
-  
+
   if (event.type === 'failed') {
     console.log('Error:', event.error)
     console.log('Is transient:', event.isTransient)
   }
-  
+
   console.groupEnd()
 })
 ```
@@ -726,7 +715,7 @@ manager.onEvent((event) => {
       isRetry: event.attempt > 1,
     })
   }
-  
+
   if (event.type === 'failed') {
     analytics.track('mutation_failed', {
       key: event.key,
@@ -744,6 +733,7 @@ manager.onEvent((event) => {
 ### "Cannot read properties of null (reading 'mutate')"
 
 This occurs when the global mutation manager is not initialized. Usually indicates:
+
 - Hook rendered in isolation without proper setup
 - Test suite cleanup not working correctly
 
@@ -760,6 +750,7 @@ beforeEach(() => {
 ### Mutation executes multiple times for same parameters
 
 This could happen if:
+
 - Idempotency key is not deterministic (includes random data)
 - Different components using different keys for same request
 

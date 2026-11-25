@@ -18,6 +18,7 @@ After any wallet operation — connect, disconnect, reconnect, or session expiry
 Every call to `connect()` increments a React ref counter (`connectGenRef.current++`). After each async boundary (Freighter RPC calls), the function checks whether its generation matches the current ref value. If not, a newer connect (or disconnect) has started, and the stale operation bails out without committing.
 
 This prevents:
+
 - Two concurrent connects both committing address/network (the "race" problem).
 - A disconnect finishing after a connect has already started but before it commits (the "disconnect-during-connect" problem).
 
@@ -28,6 +29,7 @@ This prevents:
 ### Watcher Cleanup on Disconnect
 
 When disconnecting, the `freighterConnectionWatcher` unsubscribe function is captured and called during the async chain — before address/error are cleared. This prevents:
+
 - A stale watcher event (from the old connection) being delivered after disconnect.
 - The watcher continuing to fire events after the user has disconnected.
 
@@ -39,13 +41,13 @@ When a session reauth timer fires, it checks a `reauthGenRef` against the curren
 
 Each error path in `connect()` explicitly sets the three state variables (`address`, `error`, `isConnected`) to appropriate terminal values:
 
-| Failure point | `address` | `error` | `isConnected` |
-|---|---|---|---|
-| Freighter not installed | `''` | `'not_installed'` | `false` |
-| User rejected | `''` | `'rejected'` | `false` |
-| Network mismatch | `''` | `'network_mismatch'` | `false` |
-| Unknown error | `''` | `'unknown'` | `false` |
-| Watcher failed to start | `''` (rolled back) | `''` | `false` |
+| Failure point           | `address`          | `error`              | `isConnected` |
+| ----------------------- | ------------------ | -------------------- | ------------- |
+| Freighter not installed | `''`               | `'not_installed'`    | `false`       |
+| User rejected           | `''`               | `'rejected'`         | `false`       |
+| Network mismatch        | `''`               | `'network_mismatch'` | `false`       |
+| Unknown error           | `''`               | `'unknown'`          | `false`       |
+| Watcher failed to start | `''` (rolled back) | `''`                 | `false`       |
 
 ### Logout Ordering
 
@@ -53,15 +55,15 @@ Each error path in `connect()` explicitly sets the three state variables (`addre
 
 ## Failure Behavior
 
-| Scenario | Before #1056 | After #1056 |
-|---|---|---|
-| Two concurrent connects | Both could commit; last writer wins unpredictably | Only the latest commits; earlier one bails out via generation guard |
-| Disconnect during connect | Disconnect clears state, then connect overwrites with stale address | Connect detects stale generation and discards its result |
-| Connect fails mid-chain | Partial state may remain (address set but error not) | All error paths set complete terminal state |
-| Reauth after disconnect | Reauth commits state even though user disconnected | Reauth detects generation mismatch and discards |
-| Watcher event after disconnect | Stale event could set address after disconnect | Watcher is unsubscribed before state is cleared |
-| Rapid repeated connects | Race conditions between async chains | Generation guard ensures only the latest attempt's result is committed |
-| Session expiry during connect | Expiry clears session, connect overwrites with stale wallet state | Generation guard prevents stale commits after expiry |
+| Scenario                       | Before #1056                                                        | After #1056                                                            |
+| ------------------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Two concurrent connects        | Both could commit; last writer wins unpredictably                   | Only the latest commits; earlier one bails out via generation guard    |
+| Disconnect during connect      | Disconnect clears state, then connect overwrites with stale address | Connect detects stale generation and discards its result               |
+| Connect fails mid-chain        | Partial state may remain (address set but error not)                | All error paths set complete terminal state                            |
+| Reauth after disconnect        | Reauth commits state even though user disconnected                  | Reauth detects generation mismatch and discards                        |
+| Watcher event after disconnect | Stale event could set address after disconnect                      | Watcher is unsubscribed before state is cleared                        |
+| Rapid repeated connects        | Race conditions between async chains                                | Generation guard ensures only the latest attempt's result is committed |
+| Session expiry during connect  | Expiry clears session, connect overwrites with stale wallet state   | Generation guard prevents stale commits after expiry                   |
 
 ## Compatibility
 
@@ -73,6 +75,7 @@ Each error path in `connect()` explicitly sets the three state variables (`addre
 ## Rollback / Migration Considerations
 
 This is a client-side-only change. There are:
+
 - No database migrations required.
 - No contract/ABI changes.
 - No queue or event system modifications.

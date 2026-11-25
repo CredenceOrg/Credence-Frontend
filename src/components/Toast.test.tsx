@@ -280,7 +280,7 @@ describe('Toast', () => {
       try {
         const { onDismiss } = renderToast('info', 'Blur toast', 5000)
         const toast = screen.getByRole('status')
-        
+
         fireEvent.focus(toast)
         vi.advanceTimersByTime(10000)
         expect(onDismiss).not.toHaveBeenCalled()
@@ -300,7 +300,7 @@ describe('Toast', () => {
         const { onDismiss } = renderToast('info', 'Blur internal toast', 5000)
         const toast = screen.getByRole('status')
         const dismissBtn = screen.getByRole('button', { name: 'Dismiss info notification' })
-        
+
         fireEvent.focus(toast)
         vi.advanceTimersByTime(2000)
 

@@ -42,28 +42,27 @@ Specifically, the Attestations page must:
 
 ## 2. Status vocabulary
 
-| Filter value (`status`) | Tone (existing) | Badge variant | Human label |
-| --- | --- | --- | --- |
-| `accepted` | `success` | `active` | "Accepted" |
-| `needs-update` | `warning` | `grace-period` | "Needs update" |
-| `in-review` | `info` | `locked` | "In review" |
-| `all` | — | — | "All statuses" |
+| Filter value (`status`) | Tone (existing) | Badge variant  | Human label    |
+| ----------------------- | --------------- | -------------- | -------------- |
+| `accepted`              | `success`       | `active`       | "Accepted"     |
+| `needs-update`          | `warning`       | `grace-period` | "Needs update" |
+| `in-review`             | `info`          | `locked`       | "In review"    |
+| `all`                   | —               | —              | "All statuses" |
 
 The tone vocabulary (`success` / `warning` / `info`) remains the canonical
 **rendering** token — the page filters by the user-facing **`status``**
-*value*, and the timeline maps it 1:1 to a tone for nodes, badges, and copy.
+_value_, and the timeline maps it 1:1 to a tone for nodes, badges, and copy.
 
 A new constant `ATTESTATION_STATUSES` lives in `src/events/schema.ts` and
 is the single source of truth:
 
 ```ts
 export const ATTESTATION_STATUSES = {
-  ACCEPTED:    'accepted',
-  NEEDS_UPDATE:'needs-update',
-  IN_REVIEW:   'in-review',
+  ACCEPTED: 'accepted',
+  NEEDS_UPDATE: 'needs-update',
+  IN_REVIEW: 'in-review',
 } as const
-export type AttestationStatus =
-  (typeof ATTESTATION_STATUSES)[keyof typeof ATTESTATION_STATUSES]
+export type AttestationStatus = (typeof ATTESTATION_STATUSES)[keyof typeof ATTESTATION_STATUSES]
 ```
 
 `statusToTone()` is the canonical mapper exported alongside it; helpers
@@ -138,7 +137,7 @@ A real `<fieldset>` of `<input type="radio">` styled as pills.
   <legend className="attestationFilter__legend">Filter by status</legend>
   <div className="attestationFilter__options" role="presentation">
     <label className="attestationFilter__pill">
-      <input type="radio" name="status" value="all" checked={...} onChange={...} />
+      <input type="radio" name="status" value="all" checked="{...}" onChange="{...}" />
       <span>All statuses</span>
     </label>
     <!-- … -->
@@ -248,14 +247,14 @@ interface AttestationDetailDrawerProps {
 
 ### 4.4 Content sections (in order)
 
-| Section | Source field | Renderer |
-| --- | --- | --- |
-| Header | `item.title` + `item.statusLabel` | `<h2>` + `<Badge>` |
-| Validator | `item.actor` | text + small "Validator" label |
-| Transaction | `item.meta` (if `^Tx 0x`) | `<CopyableHash kind="tx">` |
-| Evidence | `item.description` | paragraph |
-| Other meta | `item.meta` (otherwise) | labeled value |
-| Timestamp | `item.timestamp` | `<time>` element |
+| Section     | Source field                      | Renderer                       |
+| ----------- | --------------------------------- | ------------------------------ |
+| Header      | `item.title` + `item.statusLabel` | `<h2>` + `<Badge>`             |
+| Validator   | `item.actor`                      | text + small "Validator" label |
+| Transaction | `item.meta` (if `^Tx 0x`)         | `<CopyableHash kind="tx">`     |
+| Evidence    | `item.description`                | paragraph                      |
+| Other meta  | `item.meta` (otherwise)           | labeled value                  |
+| Timestamp   | `item.timestamp`                  | `<time>` element               |
 
 If `item.meta` matches the `Tx 0x` pattern (already needed by
 `ActivityTimeline.isTxHash`), we render the full hash via
@@ -284,14 +283,14 @@ The `<EmptyState>` `illustration="attestation"` icon (already defined in
 
 ### 5.1 No data at all
 
-| State | Title | Description | Action |
-| --- | --- | --- | --- |
-| Initial visit, 0 items | "No attestations yet" | "Your attestations will appear here once you finish your first attestation submission." | none |
+| State                  | Title                 | Description                                                                             | Action |
+| ---------------------- | --------------------- | --------------------------------------------------------------------------------------- | ------ |
+| Initial visit, 0 items | "No attestations yet" | "Your attestations will appear here once you finish your first attestation submission." | none   |
 
 ### 5.2 Filter narrows results to zero
 
-| State | Title | Description | Action |
-| --- | --- | --- | --- |
+| State                     | Title                               | Description                                            | Action                                                                                  |
+| ------------------------- | ----------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------- |
 | Filter ≠ "all" and 0 rows | "No attestations match this status" | "Try viewing all attestations to see recent activity." | `action.label: "View all attestations"`, `action.onClick: () => setFilterStatus('all')` |
 
 The action button uses `variant="secondary"` so it doesn't compete with
@@ -310,28 +309,28 @@ the primary "Submit Attestation" CTA in the form column.
 
 ## 6. Decisions explicit (and why)
 
-| Decision | Rationale |
-| --- | --- |
-| Radio group, not a `<select>` | "Filters are real form controls"; a `<select>` is opaque to assistive tech and prevents arrow-key cycling. `<fieldset>` + radios match the W3C pattern and pair naturally with `<legend>`. |
+| Decision                                            | Rationale                                                                                                                                                                                       |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Radio group, not a `<select>`                       | "Filters are real form controls"; a `<select>` is opaque to assistive tech and prevents arrow-key cycling. `<fieldset>` + radios match the W3C pattern and pair naturally with `<legend>`.      |
 | Replace inline disclosure on the page (not augment) | Two disclosure UXes for the same content increases cognitive load. The inline path remains intact for the embedded Trust Score surface (via the `compact` prop) so existing tests keep working. |
-| No in-drawer arrow paging | Focus-trapped overlays should be strictly modal; in-overlay paging violates that contract. Users see the focus return to the row on close and move through the timeline naturally. |
-| Result count uses `aria-live="polite"` | Improves on the Transactions filter-which does not announce- by giving SR users an unambiguous result tally on each keystroke. Quiet enough not to fight focus. |
-| Reuse `actor` field as Validator | Adds no new schema field and keeps the event payload surface stable. The drawer labels it "Validator" so the user sees the right concept without renaming the model. |
-| `illustration="attestation"` for both empty cases | A single icon keeps the visual language consistent; the copy + action disambiguate. |
+| No in-drawer arrow paging                           | Focus-trapped overlays should be strictly modal; in-overlay paging violates that contract. Users see the focus return to the row on close and move through the timeline naturally.              |
+| Result count uses `aria-live="polite"`              | Improves on the Transactions filter-which does not announce- by giving SR users an unambiguous result tally on each keystroke. Quiet enough not to fight focus.                                 |
+| Reuse `actor` field as Validator                    | Adds no new schema field and keeps the event payload surface stable. The drawer labels it "Validator" so the user sees the right concept without renaming the model.                            |
+| `illustration="attestation"` for both empty cases   | A single icon keeps the visual language consistent; the copy + action disambiguate.                                                                                                             |
 
 ---
 
 ## 7. Files touched
 
-| Layer | Path | Change |
-| --- | --- | --- |
-| schema | `src/events/schema.ts` | Add `ATTESTATION_STATUSES` + `AttestationStatus` + mappers |
-| data | `src/data/activity.ts` | Each item carries explicit `status`; sample size grows from 3 to 5 to exercise density |
-| component | `src/components/ActivityTimeline.tsx` + `.css` | Optional `onSelect`, summary `aria-live`, row hover/affordance |
-| component | `src/components/AttestationDetailDrawer.tsx` + `.css` | New drawer (slide-in / bottom-sheet) |
-| page | `src/pages/Attestations.tsx` + new `src/pages/Attestations.css` | Filter radios, drawer wiring, empty-state wiring |
-| i18n | `src/i18n/locales/en.json` | Filter radios, drawer aria, empty-state copy |
-| tests | `src/pages/Attestations.test.tsx`, `src/components/ActivityTimeline.test.tsx`, new `src/components/AttestationDetailDrawer.test.tsx` | Update selectors, add focus-trap + action tests |
+| Layer     | Path                                                                                                                                 | Change                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| schema    | `src/events/schema.ts`                                                                                                               | Add `ATTESTATION_STATUSES` + `AttestationStatus` + mappers                             |
+| data      | `src/data/activity.ts`                                                                                                               | Each item carries explicit `status`; sample size grows from 3 to 5 to exercise density |
+| component | `src/components/ActivityTimeline.tsx` + `.css`                                                                                       | Optional `onSelect`, summary `aria-live`, row hover/affordance                         |
+| component | `src/components/AttestationDetailDrawer.tsx` + `.css`                                                                                | New drawer (slide-in / bottom-sheet)                                                   |
+| page      | `src/pages/Attestations.tsx` + new `src/pages/Attestations.css`                                                                      | Filter radios, drawer wiring, empty-state wiring                                       |
+| i18n      | `src/i18n/locales/en.json`                                                                                                           | Filter radios, drawer aria, empty-state copy                                           |
+| tests     | `src/pages/Attestations.test.tsx`, `src/components/ActivityTimeline.test.tsx`, new `src/components/AttestationDetailDrawer.test.tsx` | Update selectors, add focus-trap + action tests                                        |
 
 ---
 

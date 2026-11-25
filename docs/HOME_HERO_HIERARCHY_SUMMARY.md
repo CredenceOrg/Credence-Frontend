@@ -7,14 +7,16 @@
 
 ### `src/pages/Home.css` - Responsive CTA Layout
 
-**Problem**: 
+**Problem**:
+
 - CTA buttons were `inline-flex` with `flex-wrap: wrap`, cramping on mobile
-- No clear primary vs secondary hierarchy on 375px devices  
+- No clear primary vs secondary hierarchy on 375px devices
 - Secondary button competed equally for attention as primary
 - Inconsistent touch target sizing across breakpoints
 
 **Solution**:
-- **Mobile-first (375px)**: 
+
+- **Mobile-first (375px)**:
   - Both buttons stack vertically (flex-column)
   - Primary button: full-width, `order: -1` (renders first)
   - Button sizing: `min-height: 48px`, `width: 100%` (accessible touch targets)
@@ -34,13 +36,13 @@
 
 ## Visual Hierarchy Improvements
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Mobile layout | Cramped inline buttons | Full-width primary, secondary below |
-| Button order | Unspecified (depends on HTML order) | Primary always renders first via `order: -1` |
-| Touch targets | Small (hard to tap) | Min 48px height (accessible) |
-| Visual weight | Secondary equally prominent | Primary emphasized with larger font and width |
-| Responsive | No mobile adjustments | Optimized at 375px, 768px, 1280px |
+| Aspect        | Before                              | After                                         |
+| ------------- | ----------------------------------- | --------------------------------------------- |
+| Mobile layout | Cramped inline buttons              | Full-width primary, secondary below           |
+| Button order  | Unspecified (depends on HTML order) | Primary always renders first via `order: -1`  |
+| Touch targets | Small (hard to tap)                 | Min 48px height (accessible)                  |
+| Visual weight | Secondary equally prominent         | Primary emphasized with larger font and width |
+| Responsive    | No mobile adjustments               | Optimized at 375px, 768px, 1280px             |
 
 ## Testing Checklist
 

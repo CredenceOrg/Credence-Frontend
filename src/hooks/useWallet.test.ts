@@ -294,7 +294,9 @@ describe('useWallet', () => {
     await waitFor(() => {
       expect(result.current.address).toBe(TEST_ADDRESS)
     })
-    expect(JSON.parse(window.localStorage.getItem('credence:wallet-session') ?? 'null')).toMatchObject({
+    expect(
+      JSON.parse(window.localStorage.getItem('credence:wallet-session') ?? 'null')
+    ).toMatchObject({
       address: TEST_ADDRESS,
       network: 'public',
     })
@@ -318,7 +320,10 @@ describe('useWallet', () => {
 
     let resolveAccess!: (value: { ok: true; address: string }) => void
     mocks.mockRequestFreighterAccess.mockImplementation(
-      () => new Promise((resolve) => { resolveAccess = resolve })
+      () =>
+        new Promise((resolve) => {
+          resolveAccess = resolve
+        })
     )
 
     const { result } = renderHook(() => useWallet('public'))

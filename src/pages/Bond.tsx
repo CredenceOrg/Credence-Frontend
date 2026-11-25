@@ -19,6 +19,7 @@ import { useWallet } from '../context/WalletContext'
 import { useSeo } from '../hooks/useSeo'
 import { useNetworkMismatch } from '../hooks/useNetworkMismatch'
 import { useBonds } from '../hooks/useBonds'
+import { useBondMutation } from '../hooks/useBondMutation'
 import { formatUsdc } from '../lib/format'
 import { getPenaltyRate, computeWithdrawBreakdown, type MockBond } from '../lib/bondPenalty'
 import type { Bond } from '../api/types'
@@ -28,6 +29,7 @@ const ConfirmDialog = lazy(() => import('../components/ConfirmDialog'))
 interface BondItem extends MockBond {
   id: string
   apiStatus: Bond['status']
+  maturesAt?: string
 }
 
 function toBondItem(bond: Bond): BondItem {
@@ -40,6 +42,7 @@ function toBondItem(bond: Bond): BondItem {
         ? 'locked'
         : 'active',
     apiStatus: bond.status,
+    maturesAt: bond.maturesAt,
   }
 }
 
@@ -66,27 +69,48 @@ const MIN_BOND_AMOUNT = 10
 interface BondRowProps {
   bond: BondItem
   isConnected: boolean
+  onNavigate: (bondId: string) => void
   onWithdraw: (bond: BondItem, event: React.MouseEvent<HTMLButtonElement>) => void
   onConnect: (event: React.MouseEvent<HTMLButtonElement>) => void
 }
 
-function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
+function BondRow({ bond, isConnected, onNavigate, onWithdraw, onConnect }: BondRowProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const panelId = `slash-detail-${bond.id}`
   const penaltyRate = getPenaltyRate(bond.status)
   const hasPenalty = penaltyRate > 0
   const breakdown = useMemo(() => computeWithdrawBreakdown(bond), [bond])
+  const daysRemaining = useMemo(() => {
+    if (!bond.maturesAt) return null
+    const diffMs = Date.parse(bond.maturesAt) - Date.now()
+    if (!Number.isFinite(diffMs) || diffMs <= 0) return null
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  }, [bond.maturesAt])
+
+  const handleRowKeyDown = (event: React.KeyboardEvent<HTMLLIElement>) => {
+    if (event.target !== event.currentTarget) return
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onNavigate(bond.id)
+    }
+  }
 
   return (
-    <li className="bond__row">
+    <li
+      className="bond__row"
+      role="link"
+      tabIndex={0}
+      onClick={() => onNavigate(bond.id)}
+      onKeyDown={handleRowKeyDown}
+    >
       <div className="bond__rowHeader">
         <div className="bond__amountColumn">
           <span className="bond__amount">{formatUsdc(bond.amountUsdc)}</span>
-          <Badge
-            variant={getBadgeVariant(bond.apiStatus)}
-            label={getStatusLabel(bond.apiStatus)}
-          />
+          <Badge variant={getBadgeVariant(bond.apiStatus)} label={getStatusLabel(bond.apiStatus)} />
+          {daysRemaining !== null && (
+            <span className="bond__timeRemaining">{daysRemaining} days remaining</span>
+          )}
         </div>
         <div className="bond__actionRow">
           {hasPenalty && (
@@ -94,7 +118,10 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
               type="button"
               aria-expanded={open}
               aria-controls={panelId}
-              onClick={() => setOpen((v) => !v)}
+              onClick={(event) => {
+                event.stopPropagation()
+                setOpen((v) => !v)
+              }}
               className="bond__penaltyToggle"
             >
               {open ? t('bond.hidePenalty') : t('bond.showPenalty')}
@@ -103,10 +130,19 @@ function BondRow({ bond, isConnected, onWithdraw, onConnect }: BondRowProps) {
           <Button
             type="button"
             variant={hasPenalty ? 'danger' : 'secondary'}
-            onClick={isConnected ? (event) => onWithdraw(bond, event) : onConnect}
+            onClick={(event) => {
+              event.stopPropagation()
+              if (isConnected) {
+                onWithdraw(bond, event)
+              } else {
+                onConnect(event)
+              }
+            }}
             aria-haspopup="dialog"
           >
-            {isConnected ? t('bond.withdraw') : t('bond.connectToWithdraw')}
+            {isConnected
+              ? t('bond.withdraw', 'Withdraw')
+              : t('bond.connectToWithdraw', 'Connect to withdraw')}
           </Button>
         </div>
       </div>
@@ -156,7 +192,12 @@ export default function Bond() {
   const { setNetwork } = useSettings()
   const networkMismatch = useNetworkMismatch()
   const { data: bondData, isLoading: isLoadingBonds, error: bondsError, refetch } = useBonds()
+  const { withdrawBond } = useBondMutation()
   const [withdrawTarget, setWithdrawTarget] = useState<BondItem | null>(null)
+  const [withdrawError, setWithdrawError] = useState<{
+    message: string
+    retryable: boolean
+  } | null>(null)
   const withdrawTriggerRef = useRef<HTMLElement | null>(null)
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const connectTriggerRef = useRef<HTMLElement | null>(null)
@@ -199,12 +240,14 @@ export default function Bond() {
   const requestWithdraw = useCallback(
     (bond: BondItem, event: React.MouseEvent<HTMLButtonElement>) => {
       withdrawTriggerRef.current = event.currentTarget
+      setWithdrawError(null)
       setWithdrawTarget(bond)
     },
     []
   )
 
   const cancelWithdraw = useCallback(() => {
+    setWithdrawError(null)
     setWithdrawTarget(null)
   }, [])
 
@@ -213,22 +256,45 @@ export default function Bond() {
     if (isPendingWithdraw) return
 
     setIsPendingWithdraw(true)
+    setWithdrawError(null)
     setTxStatus('Submitting transaction…')
 
-    const { penaltyUsdc } = withdrawBreakdown
-    if (penaltyUsdc > 0) {
-      addToast(
-        'warning',
-        `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
-        { txHash: 'b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3', network: walletNetwork ?? 'public' }
-      )
-    } else {
-      addToast('success', 'Bond withdrawn successfully.', {
-        txHash: 'c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
-        network: walletNetwork ?? 'public',
-      })
+    try {
+      const result = await withdrawBond({ bondId: withdrawTarget.id })
+      setTxStatus('')
+      if (!result.ok) {
+        const message =
+          result.code === 'rejected'
+            ? 'Request rejected in Freighter.'
+            : result.message || 'Withdrawal failed. Please try again.'
+        setWithdrawError({ message, retryable: Boolean(result.retryable) })
+        return
+      }
+
+      const txHash = result.data.transactionHash
+      const { penaltyUsdc } = withdrawBreakdown
+      setWithdrawTarget(null)
+      setWithdrawError(null)
+      if (penaltyUsdc > 0) {
+        addToast(
+          'warning',
+          `Bond withdrawn. ${formatUsdc(penaltyUsdc)} was slashed per early withdrawal policy.`,
+          {
+            txHash,
+            network: walletNetwork ?? 'public',
+          }
+        )
+      } else {
+        addToast('success', 'Bond withdrawn successfully.', {
+          txHash,
+          network: walletNetwork ?? 'public',
+        })
+      }
+      withdrawTriggerRef.current?.focus()
+    } finally {
+      setIsPendingWithdraw(false)
     }
-  }, [withdrawTarget, withdrawBreakdown, addToast, isPendingWithdraw, walletNetwork])
+  }, [withdrawTarget, withdrawBreakdown, withdrawBond, addToast, isPendingWithdraw, walletNetwork])
 
   const slashExposureBond = useMemo(() => bonds.find((b) => getPenaltyRate(b.status) > 0), [bonds])
 
@@ -322,11 +388,7 @@ export default function Bond() {
               type="button"
               onClick={handleCreateBond}
               fullWidth
-              disabled={
-                !isConnected ||
-                networkMismatch.mismatch ||
-                (isConnected ? isPendingCreate : isConnecting)
-              }
+              disabled={networkMismatch.mismatch || (isConnected ? isPendingCreate : isConnecting)}
               isLoading={isConnected ? isPendingCreate : isConnecting}
               aria-describedby={networkMismatch.mismatch ? mismatchBannerId : undefined}
               aria-haspopup={!isConnected ? 'dialog' : undefined}
@@ -367,6 +429,7 @@ export default function Bond() {
                     key={bond.id}
                     bond={bond}
                     isConnected={isConnected}
+                    onNavigate={(bondId) => navigate(`/bond/${bondId}`)}
                     onWithdraw={requestWithdraw}
                     onConnect={() => setConnectModalOpen(true)}
                   />
@@ -391,7 +454,18 @@ export default function Bond() {
             onCancel={cancelWithdraw}
             returnFocusRef={withdrawTriggerRef}
             isSubmitting={isPendingWithdraw}
-          />
+          >
+            {withdrawError && (
+              <div role="alert" className="bond__withdrawError">
+                <p>{withdrawError.message}</p>
+                {withdrawError.retryable && (
+                  <Button type="button" variant="secondary" onClick={confirmWithdraw}>
+                    Retry
+                  </Button>
+                )}
+              </div>
+            )}
+          </ConfirmDialog>
         </Suspense>
       )}
 

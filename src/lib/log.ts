@@ -52,7 +52,14 @@ const emit = (level: LogLevel, event: string, fields: LogFields): void => {
     ...safeFields.map(([k, v]) => `${k}=${v}`),
   ]
   const line = parts.join(' ')
-  const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : level === 'debug' ? console.debug : console.info
+  const sink =
+    level === 'error'
+      ? console.error
+      : level === 'warn'
+        ? console.warn
+        : level === 'debug'
+          ? console.debug
+          : console.info
   try {
     sink(line)
   } catch {

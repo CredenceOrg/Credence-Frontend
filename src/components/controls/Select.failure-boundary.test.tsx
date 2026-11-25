@@ -35,9 +35,19 @@ const networkOptions = [
 function renderSelect(props: Partial<React.ComponentProps<typeof Select>> = {}) {
   const onChange = vi.fn()
   const result = render(
-    <Select value="testnet" onChange={onChange} options={networkOptions} ariaLabel="Network" {...props} />
+    <Select
+      value="testnet"
+      onChange={onChange}
+      options={networkOptions}
+      ariaLabel="Network"
+      {...props}
+    />
   )
-  return { ...result, onChange, select: screen.getByRole('combobox', { name: 'Network' }) as HTMLSelectElement }
+  return {
+    ...result,
+    onChange,
+    select: screen.getByRole('combobox', { name: 'Network' }) as HTMLSelectElement,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -267,7 +277,10 @@ describe('Select – disabled and loading gating', () => {
     // Behavior under test: the spinner is decorative and must be aria-hidden.
     const { container } = renderSelect({ isLoading: true })
 
-    expect(container.querySelector('.control-select-spinner')).toHaveAttribute('aria-hidden', 'true')
+    expect(container.querySelector('.control-select-spinner')).toHaveAttribute(
+      'aria-hidden',
+      'true'
+    )
   })
 
   it('renders no spinner or loading class when not loading', () => {
@@ -307,12 +320,7 @@ describe('Select – disabled and loading gating', () => {
     render(
       <>
         <input data-testid="before" />
-        <Select
-          value="testnet"
-          onChange={vi.fn()}
-          options={networkOptions}
-          ariaLabel="Network"
-        />
+        <Select value="testnet" onChange={vi.fn()} options={networkOptions} ariaLabel="Network" />
         <input data-testid="after" />
       </>
     )
@@ -420,7 +428,10 @@ describe('Select – error and ARIA wiring', () => {
       </FormField>
     )
 
-    expect(screen.getByRole('combobox', { name: 'Preferred network' })).toHaveAttribute('id', 'network')
+    expect(screen.getByRole('combobox', { name: 'Preferred network' })).toHaveAttribute(
+      'id',
+      'network'
+    )
   })
 
   it('combines FormField hint and error ids into aria-describedby', () => {
@@ -488,9 +499,7 @@ describe('Select – failure isolation', () => {
         throw new Error('transient')
       })
       .mockImplementation(() => undefined)
-    render(
-      <Select value="testnet" onChange={flaky} options={networkOptions} ariaLabel="Network" />
-    )
+    render(<Select value="testnet" onChange={flaky} options={networkOptions} ariaLabel="Network" />)
 
     const select = screen.getByRole('combobox', { name: 'Network' })
     withSuppressedHandlerError(() => {

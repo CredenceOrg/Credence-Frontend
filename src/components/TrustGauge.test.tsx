@@ -49,9 +49,8 @@ describe('pointsToNextTier', () => {
     expect(pointsToNextTier(300, 'bronze')).toBe(0)
   })
 
-  it('handles negative score defensively (treats as below-zero offset)', () => {
-    // score is below zero: points = silver.min (250) - (-50) = 300
-    expect(pointsToNextTier(-50, 'bronze')).toBe(300)
+  it('handles negative score defensively by clamping to 0', () => {
+    expect(pointsToNextTier(-50, 'bronze')).toBe(250)
   })
 
   it('handles tier mismatch where score already exceeds next-tier threshold', () => {
@@ -133,9 +132,10 @@ describe('getProgressPercentage', () => {
       expect(getProgressPercentage(Infinity)).toBe(0)
       expect(getProgressPercentage(-50)).toBe(0)
     })
-  it('returns a negative value for negative score (no lower clamp)', () => {
-    // getProgressPercentage only clamps at 100; callers must supply score >= 0
-    expect(getProgressPercentage(-100)).toBeCloseTo(-10)
+  })
+
+  it('clamps negative scores to 0', () => {
+    expect(getProgressPercentage(-100)).toBe(0)
   })
 })
 
@@ -449,6 +449,9 @@ describe('TrustGauge failure boundaries', () => {
     expect(results[0]).toBe(results[3]) // NaN twice
     expect(results[1]).toBe(results[4]) // -100 twice
     expect(results[2]).toBe(results[5]) // Infinity twice
+  })
+})
+
 // --- Deterministic failure-boundary coverage ---
 //
 // The following tests pin down the exact behavior of `pointsToNextTier` at
@@ -503,7 +506,6 @@ describe('pointsToNextTier - failure boundaries', () => {
   })
 })
 
-
 describe('TrustGauge failure boundary states', () => {
   it('renders loading skeleton and aria-busy when isLoading is true', () => {
     const { container } = render(<TrustGauge score={500} tier="gold" isLoading={true} />)
@@ -546,4 +548,3 @@ describe('TrustGauge failure boundary states', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 })
-

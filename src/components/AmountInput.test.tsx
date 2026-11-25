@@ -92,11 +92,11 @@ describe('AmountInput', () => {
         const onMaxRequest = vi.fn().mockResolvedValue(400.123)
         const { onChange } = renderInput({ balance: 0, onMaxRequest })
         const btn = screen.getByRole('button', { name: /set max amount/i })
-        
+
         fireEvent.click(btn)
         expect(btn).toHaveTextContent('Loading...')
         expect(btn).toBeDisabled()
-        
+
         // Wait for state update
         await screen.findByText('Max')
         expect(onChange).toHaveBeenCalledWith('400.12')
@@ -106,7 +106,7 @@ describe('AmountInput', () => {
         const onMaxRequest = vi.fn().mockRejectedValue(new Error('Network error'))
         renderInput({ balance: 100, onMaxRequest })
         fireEvent.click(screen.getByRole('button', { name: /set max amount/i }))
-        
+
         const errorAlert = await screen.findByRole('alert', { name: '' })
         expect(errorAlert).toHaveTextContent('Failed to get max amount.')
       })
@@ -115,7 +115,7 @@ describe('AmountInput', () => {
         const onMaxRequest = vi.fn().mockRejectedValue(new Error('Permission denied'))
         renderInput({ balance: 100, onMaxRequest })
         fireEvent.click(screen.getByRole('button', { name: /set max amount/i }))
-        
+
         const errorAlert = await screen.findByRole('alert', { name: '' })
         expect(errorAlert).toHaveTextContent('Permission denied getting max amount.')
       })
@@ -126,7 +126,7 @@ describe('AmountInput', () => {
         const onMaxRequest = vi.fn().mockRejectedValue(err)
         renderInput({ balance: 100, onMaxRequest })
         fireEvent.click(screen.getByRole('button', { name: /set max amount/i }))
-        
+
         const errorAlert = await screen.findByRole('alert', { name: '' })
         expect(errorAlert).toHaveTextContent('Max amount data is stale.')
       })
@@ -140,31 +140,35 @@ describe('AmountInput', () => {
         })
         const { onChange } = renderInput({ balance: 100, onMaxRequest })
         fireEvent.click(screen.getByRole('button', { name: /set max amount/i }))
-        
+
         await screen.findByText('Failed to get max amount.')
         const retryBtn = screen.getByRole('button', { name: /retry getting max amount/i })
-        
+
         fireEvent.click(retryBtn)
         await screen.findByText('Max')
         expect(onChange).toHaveBeenCalledWith('500.00')
       })
-      
+
       it('prevents concurrent execution and uses latest result', async () => {
         let resolve1!: (v: number) => void
         let resolve2!: (v: number) => void
-        const p1 = new Promise<number>(r => { resolve1 = r })
-        const p2 = new Promise<number>(r => { resolve2 = r })
-        
+        const p1 = new Promise<number>((r) => {
+          resolve1 = r
+        })
+        const p2 = new Promise<number>((r) => {
+          resolve2 = r
+        })
+
         let calls = 0
         const onMaxRequest = vi.fn().mockImplementation(() => {
           calls++
           if (calls === 1) return p1
           return p2
         })
-        
+
         const { onChange } = renderInput({ balance: 100, onMaxRequest })
         const maxBtn = screen.getByRole('button', { name: /set max amount/i })
-        
+
         // The first click starts a request and blocks the button.
         fireEvent.click(maxBtn)
         expect(maxBtn).toBeDisabled()
@@ -179,8 +183,12 @@ describe('AmountInput', () => {
 
         // The newest request settles first; the superseded one arrives late and
         // must be discarded rather than overwriting it.
-        await act(async () => { resolve2(200) })
-        await act(async () => { resolve1(100) })
+        await act(async () => {
+          resolve2(200)
+        })
+        await act(async () => {
+          resolve1(100)
+        })
 
         await screen.findByText('Max')
         expect(onChange).toHaveBeenCalledTimes(1)
@@ -457,9 +465,9 @@ describe('loading state (isLoading)', () => {
     expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Loading...')
   })
 
-  it('shows empty input value when isLoading is true', () => {
+  it('preserves input value when isLoading is true', () => {
     renderInput({ isLoading: true, value: '500.00' })
-    expect(screen.getByRole('textbox')).toHaveValue('')
+    expect(screen.getByRole('textbox')).toHaveValue('500.00')
   })
 })
 
@@ -467,8 +475,12 @@ describe('onMaxRequest boundary cases', () => {
   it('ignores stale result when a second request supersedes the first', async () => {
     let resolveFirst!: (v: number) => void
     let resolveSecond!: (v: number) => void
-    const p1 = new Promise<number>((r) => { resolveFirst = r })
-    const p2 = new Promise<number>((r) => { resolveSecond = r })
+    const p1 = new Promise<number>((r) => {
+      resolveFirst = r
+    })
+    const p2 = new Promise<number>((r) => {
+      resolveSecond = r
+    })
 
     let call = 0
     const onMaxRequest = vi.fn().mockImplementation(() => {
@@ -503,7 +515,7 @@ describe('onMaxRequest boundary cases', () => {
     fireEvent.click(screen.getByRole('button', { name: /set max amount/i }))
     await screen.findByText('Failed to get max amount.')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }))
     await screen.findByText('Max')
 
     expect(screen.queryByText('Failed to get max amount.')).not.toBeInTheDocument()

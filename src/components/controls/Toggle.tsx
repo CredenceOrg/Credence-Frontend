@@ -156,7 +156,7 @@ export default function Toggle({
           // Invariant 2: re-check the guard here so the refused transition
           // does not depend on the browser or React filtering clicks that were
           // dispatched while the control was disabled.
-          if (isDisabled) return
+          if (isDisabled || typeof checked !== 'boolean') return
           onChange(!checked)
         }}
       >
@@ -206,7 +206,6 @@ export default function Toggle({
           // defence in depth against programmatically dispatched clicks.
           disabled={isDisabled}
           onClick={() => {
-            if (isDisabled) return
             onRetry?.()
           }}
         >

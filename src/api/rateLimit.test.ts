@@ -236,9 +236,7 @@ describe('retryAfterMsFromResponse', () => {
 
   it('falls back to the default window for a missing or malformed header', () => {
     expect(retryAfterMsFromResponse(withHeader())).toBe(DEFAULT_API_RATE_LIMIT.windowMs)
-    expect(retryAfterMsFromResponse(withHeader('not-a-date'))).toBe(
-      DEFAULT_API_RATE_LIMIT.windowMs
-    )
+    expect(retryAfterMsFromResponse(withHeader('not-a-date'))).toBe(DEFAULT_API_RATE_LIMIT.windowMs)
   })
 })
 

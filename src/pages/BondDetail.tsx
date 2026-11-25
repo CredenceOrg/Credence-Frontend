@@ -11,7 +11,13 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { formatUsdc } from '../lib/format'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ConnectWalletDialog from '../components/ConnectWalletDialog'
-import { computeWithdrawBreakdown, calcUnlockDate, calcTimeRemaining, calcLockStartDate, type MockBond } from '../lib/bondPenalty'
+import {
+  computeWithdrawBreakdown,
+  calcUnlockDate,
+  calcTimeRemaining,
+  calcLockStartDate,
+  type MockBond,
+} from '../lib/bondPenalty'
 import './BondDetail.css'
 
 const mockBonds: MockBond[] = [
@@ -168,16 +174,16 @@ export default function BondDetail() {
 
           <div className="bond-detail__actions">
             <div className="bond-detail__action-section">
-              <span className="bond-detail__action-label">{t('bond.detail.extendLockDuration')}</span>
+              <span className="bond-detail__action-label">
+                {t('bond.detail.extendLockDuration')}
+              </span>
               <div className="bond-detail__btn-group">
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={() => extendLock(30)}
                   disabled={!isConnected}
-                  title={
-                    !isConnected ? t('bond.detail.extendTooltip') : undefined
-                  }
+                  title={!isConnected ? t('bond.detail.extendTooltip') : undefined}
                   aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   {t('bond.detail.plus30Days')}
@@ -187,9 +193,7 @@ export default function BondDetail() {
                   variant="secondary"
                   onClick={() => extendLock(90)}
                   disabled={!isConnected}
-                  title={
-                    !isConnected ? t('bond.detail.extendTooltip') : undefined
-                  }
+                  title={!isConnected ? t('bond.detail.extendTooltip') : undefined}
                   aria-describedby={!isConnected ? connectBannerId : undefined}
                 >
                   {t('bond.detail.plus90Days')}
@@ -203,9 +207,7 @@ export default function BondDetail() {
                 type="button"
                 variant="secondary"
                 disabled={!isConnected}
-                title={
-                  !isConnected ? t('bond.detail.topUpTooltip') : undefined
-                }
+                title={!isConnected ? t('bond.detail.topUpTooltip') : undefined}
                 aria-describedby={!isConnected ? connectBannerId : undefined}
               >
                 {t('bond.detail.addUsdc')}
@@ -250,9 +252,7 @@ export default function BondDetail() {
               <span className="bond-detail__resulting">{breakdown.resultingBalance}</span>
             </div>
           </div>
-          <p className="bond-detail__slash-disclaimer">
-            {t('bond.detail.slashDisclaimer')}
-          </p>
+          <p className="bond-detail__slash-disclaimer">{t('bond.detail.slashDisclaimer')}</p>
         </section>
       </div>
 

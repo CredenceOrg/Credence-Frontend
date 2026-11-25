@@ -235,9 +235,7 @@ function MobileNavInner() {
  */
 export default function MobileNav() {
   return (
-    <ErrorBoundary
-      fallback={(error, reset) => <MobileNavFallback error={error} reset={reset} />}
-    >
+    <ErrorBoundary fallback={(error, reset) => <MobileNavFallback error={error} reset={reset} />}>
       <MobileNavInner />
     </ErrorBoundary>
   )

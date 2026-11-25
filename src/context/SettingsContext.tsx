@@ -49,6 +49,9 @@ export interface SettingsState {
   resetToDefaults: () => void
   cancelSettings: () => void
   hasUnsavedChanges: boolean
+  canPersist: boolean
+  lastError: Error | null
+  retryPersist: () => Promise<void>
 }
 
 type PersistedSettings = {
@@ -92,6 +95,9 @@ const defaultState: SettingsState = {
   resetToDefaults: () => {},
   cancelSettings: () => {},
   hasUnsavedChanges: false,
+  canPersist: true,
+  lastError: null,
+  retryPersist: async () => {},
 }
 
 const SettingsContext = createContext<SettingsState>(defaultState)
@@ -142,10 +148,24 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useMigrateLegacyTheme()
 
   // Single localStorage read — replaces five individual JSON.parse calls on every mount.
-  const [persistedSettingsRaw, setPersistedSettings] = useLocalStorage<PersistedSettings>(
-    STORAGE_KEY,
-    defaultPersistedSettings
-  )
+  const [initialReadError, setInitialReadError] = useState<Error | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY)
+      if (raw !== null) {
+        JSON.parse(raw)
+      }
+      return null
+    } catch (err) {
+      return err instanceof Error ? err : new Error(String(err))
+    }
+  })
+
+  const [persistedSettingsRaw, setPersistedSettings, storageMeta] =
+    useLocalStorage<PersistedSettings>(STORAGE_KEY, defaultPersistedSettings)
+
+  const lastError = storageMeta.error ?? initialReadError
+  const canPersist = lastError === null
 
   // Validation helpers for persisted values
   const VALID_NETWORKS: NetworkOption[] = ['public', 'test']
@@ -277,10 +297,28 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursStart(payload.quietHoursStart)
     setQuietHoursEnd(payload.quietHoursEnd)
     setPersistedSettings(payload)
+    setInitialReadError(null)
     setOriginalSettings(payload)
     if (typeof window !== 'undefined') {
       window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, payload))
     }
+  }
+
+  const retryPersist = async () => {
+    setInitialReadError(null)
+    storageMeta.retry()
+    const payload: SettingsPayload = {
+      themeMode,
+      network,
+      addressDisplay,
+      toastsEnabled,
+      autoDismiss,
+      quietHoursEnabled,
+      quietHoursStart,
+      quietHoursEnd,
+    }
+    setPersistedSettings(payload)
+    setOriginalSettings(payload)
   }
 
   const resetToDefaults = () => {
@@ -329,7 +367,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const apply = () => {
       if (themeMode === 'system') {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        let isDark = false
+        try {
+          if (typeof window.matchMedia === 'function') {
+            isDark = window.matchMedia('(prefers-color-scheme: dark)')?.matches === true
+          }
+        } catch {
+          isDark = false
+        }
         root.setAttribute('data-theme', isDark ? 'dark' : 'light')
       } else {
         root.setAttribute('data-theme', themeMode)
@@ -340,10 +385,28 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     if (themeMode !== 'system') return
 
-    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    let mql: MediaQueryList | undefined
+    try {
+      if (typeof window.matchMedia === 'function') {
+        mql = window.matchMedia('(prefers-color-scheme: dark)')
+      }
+    } catch {
+      return
+    }
+    if (!mql || typeof mql !== 'object') return
     const handler = () => apply()
-    mql.addEventListener?.('change', handler)
-    return () => mql.removeEventListener?.('change', handler)
+    try {
+      mql.addEventListener?.('change', handler)
+    } catch {
+      return
+    }
+    return () => {
+      try {
+        mql?.removeEventListener?.('change', handler)
+      } catch {
+        // Ignore cleanup errors on broken MediaQueryList implementations
+      }
+    }
   }, [themeMode])
 
   const value: SettingsState = {
@@ -367,7 +430,18 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     resetToDefaults,
     cancelSettings,
     hasUnsavedChanges,
+    canPersist,
+    lastError,
+    retryPersist,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>
+}
+
+export function SettingsErrorBoundary({ children }: { children: React.ReactNode }) {
+  const { lastError } = useSettings()
+  if (lastError) {
+    return <div>Settings could not be saved.</div>
+  }
+  return <>{children}</>
 }

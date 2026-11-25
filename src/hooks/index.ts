@@ -18,4 +18,3 @@ export {
   MAX_MUTATION_PAGES,
   MAX_CACHED_MUTATION_PAGES,
 } from './useMutationPagination'
-

@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useTransactions } from './useTransactions'
 import { apiFetch, ApiError } from '../api/client'
 import type { Transaction } from '../api/types'
+import {
+  readPendingTransactions,
+  scopedKey,
+  writePendingTransactions,
+} from '../lib/pendingTransactionsStorage'
 
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>()
@@ -11,6 +16,13 @@ vi.mock('../api/client', async (importOriginal) => {
     apiFetch: vi.fn(),
   }
 })
+
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({
+    address: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7',
+    network: 'test',
+  }),
+}))
 
 const apiFetchMock = vi.mocked(apiFetch)
 
@@ -369,7 +381,8 @@ describe('useTransactions cursor pagination', () => {
 })
 
 describe('useTransactions pending transactions and boundaries', () => {
-  const PENDING_KEY = 'credence:pendingTransactions'
+  const TEST_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
+  const PENDING_KEY = scopedKey('test', TEST_ADDRESS)!
 
   beforeEach(() => {
     localStorage.clear()
@@ -384,7 +397,7 @@ describe('useTransactions pending transactions and boundaries', () => {
   it('prepends pending transactions from storage ahead of server data', async () => {
     const pending = makeTx()
     const server = makeTx()
-    localStorage.setItem(PENDING_KEY, JSON.stringify([pending]))
+    writePendingTransactions('test', TEST_ADDRESS, [{ ...pending, _network: 'test' }])
     apiFetchMock.mockResolvedValue({ items: [server] })
 
     const { result } = renderHook(() => useTransactions())
@@ -395,7 +408,7 @@ describe('useTransactions pending transactions and boundaries', () => {
 
   it('reconciles a mined pending transaction out of state and storage', async () => {
     const mined = makeTx()
-    localStorage.setItem(PENDING_KEY, JSON.stringify([mined]))
+    writePendingTransactions('test', TEST_ADDRESS, [{ ...mined, _network: 'test' }])
     // The server now reports the same hash as a confirmed record.
     apiFetchMock.mockResolvedValue({ items: [{ ...mined, status: 'confirmed' }] })
 
@@ -403,7 +416,7 @@ describe('useTransactions pending transactions and boundaries', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.data.map((t) => t.hash)).toEqual([mined.hash])
-    expect(JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]')).toEqual([])
+    expect(readPendingTransactions('test', TEST_ADDRESS)).toEqual([])
   })
 
   it('adds pending transactions newest-first to state and storage', async () => {
@@ -419,14 +432,17 @@ describe('useTransactions pending transactions and boundaries', () => {
     })
 
     expect(result.current.data.map((t) => t.id)).toEqual([b.id, a.id])
-    const stored = JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]')
+    const stored = readPendingTransactions('test', TEST_ADDRESS)
     expect(stored.map((t: Transaction) => t.id)).toEqual([b.id, a.id])
   })
 
   it('removes a pending transaction by hash from state and storage', async () => {
     const removed = makeTx()
     const kept = makeTx()
-    localStorage.setItem(PENDING_KEY, JSON.stringify([removed, kept]))
+    writePendingTransactions('test', TEST_ADDRESS, [
+      { ...removed, _network: 'test' },
+      { ...kept, _network: 'test' },
+    ])
     apiFetchMock.mockResolvedValue({ items: [] })
 
     const { result } = renderHook(() => useTransactions())
@@ -437,7 +453,7 @@ describe('useTransactions pending transactions and boundaries', () => {
     })
 
     expect(result.current.data.map((t) => t.id)).toEqual([kept.id])
-    const stored = JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]')
+    const stored = readPendingTransactions('test', TEST_ADDRESS)
     expect(stored.map((t: Transaction) => t.hash)).toEqual([kept.hash])
   })
 

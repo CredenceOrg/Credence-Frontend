@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { Component, ReactNode, useState } from 'react'
 import MobileNav from './MobileNav'
 import ErrorBoundary from '../ErrorBoundary'
 
@@ -9,7 +8,7 @@ vi.mock('../../config/routes', () => ({
   PRELOADS_BY_PATH: {
     '/': vi.fn().mockResolvedValue({}),
     '/settings': vi.fn().mockResolvedValue({}),
-  }
+  },
 }))
 
 function renderNav(initialPath = '/') {
@@ -355,7 +354,7 @@ describe('MobileNav', () => {
 
       // The fallback should show with the error message
       const retryButton = screen.getByRole('button', { name: /navigation error/i })
-      expect(retryButton).toBeInDocument()
+      expect(retryButton).toBeInTheDocument()
       expect(retryButton).toHaveAttribute('data-error-boundary', 'mobilenav')
       expect(retryButton.textContent).toContain('Simulated MobileNav render crash')
 
@@ -364,7 +363,7 @@ describe('MobileNav', () => {
       fireEvent.click(retryButton)
 
       // After reset, the component should recover
-      expect(screen.getByTestId('recovered')).toBeInDocument()
+      expect(screen.getByTestId('recovered')).toBeInTheDocument()
 
       consoleSpy.mockRestore()
     })
@@ -395,11 +394,11 @@ describe('MobileNav', () => {
       )
 
       // The page root and main content should still be rendered
-      expect(screen.getByTestId('page-root')).toBeInDocument()
-      expect(screen.getByTestId('main-content')).toBeInDocument()
+      expect(screen.getByTestId('page-root')).toBeInTheDocument()
+      expect(screen.getByTestId('main-content')).toBeInTheDocument()
 
       // The fallback should be shown instead of the crashed component
-      expect(screen.getByRole('button', { name: /navigation error/i })).toBeInDocument()
+      expect(screen.getByRole('button', { name: /navigation error/i })).toBeInTheDocument()
 
       throwOnRender = false
       consoleSpy.mockRestore()
@@ -409,15 +408,11 @@ describe('MobileNav', () => {
       renderNav()
 
       // Normal operation — boundary wrapper should be invisible
-      expect(
-        screen.getByRole('button', { name: /open navigation menu/i })
-      ).toBeInDocument()
+      expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInTheDocument()
       expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
 
       // No error boundary fallback should be present
-      expect(
-        screen.queryByRole('button', { name: /navigation error/i })
-      ).not.toBeInDocument()
+      expect(screen.queryByRole('button', { name: /navigation error/i })).not.toBeInTheDocument()
       expect(document.querySelector('[data-error-boundary="mobilenav"]')).toBeNull()
     })
   })
@@ -436,9 +431,7 @@ describe('MobileNav', () => {
 
       // Should render normally with drawer closed
       expect(getDrawer()).toHaveAttribute('aria-hidden', 'true')
-      expect(
-        screen.getByRole('button', { name: /open navigation menu/i })
-      ).toBeInDocument()
+      expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeInTheDocument()
 
       vi.restoreAllMocks()
     })

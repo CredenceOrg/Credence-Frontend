@@ -909,7 +909,11 @@ describe('Button – a11y regression on primary CTA', () => {
   })
 
   it('is focusable programmatically even with tabIndex={-1}', () => {
-    render(<Button variant="primary" tabIndex={-1}>Focused CTA</Button>)
+    render(
+      <Button variant="primary" tabIndex={-1}>
+        Focused CTA
+      </Button>
+    )
     const btn = screen.getByRole('button', { name: /focused cta/i })
     btn.focus()
     expect(btn).toHaveFocus()

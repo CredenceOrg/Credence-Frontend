@@ -104,20 +104,18 @@ describe('Badge – boundary variant strings', () => {
 // 3. Label boundary — empty, whitespace, XSS, very long
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Badge – label prop boundary values', () => {
-  it('renders empty string label when explicitly provided', () => {
+  it('falls back to default label when empty string label is provided', () => {
     render(<Badge variant="gold" label="" />)
-    // Empty label should override default — badge still renders
     const badge = document.querySelector('.badge--gold')
     expect(badge).not.toBeNull()
-    // The default "Gold" label should NOT appear
-    expect(screen.queryByText('Gold')).toBeNull()
+    expect(screen.getByText('Gold')).toBeInTheDocument()
   })
 
-  it('renders whitespace-only label as-is', () => {
+  it('falls back to default label when whitespace-only label is provided', () => {
     render(<Badge variant="gold" label="   " />)
     const badge = document.querySelector('.badge--gold')
     expect(badge).not.toBeNull()
-    expect(screen.queryByText('Gold')).toBeNull()
+    expect(screen.getByText('Gold')).toBeInTheDocument()
   })
 
   it('renders HTML entities in label as escaped text (no injection)', () => {
@@ -177,11 +175,11 @@ describe('Badge – srPrefix prop boundary values', () => {
     expect(document.querySelector('.sr-only')).toBeNull()
   })
 
-  it('renders sr-only span with whitespace srPrefix', () => {
+  it('omits sr-only span when whitespace-only srPrefix is provided', () => {
     render(<Badge variant="gold" srPrefix="   " />)
-    // Non-empty string (spaces) is truthy, so sr-only span SHOULD render
+    // Whitespace-only srPrefix sanitizes to empty string, so no sr-only span renders
     const srSpan = document.querySelector('.sr-only')
-    expect(srSpan).not.toBeNull()
+    expect(srSpan).toBeNull()
   })
 
   it('does not render XSS through srPrefix', () => {
@@ -198,11 +196,10 @@ describe('Badge – srPrefix prop boundary values', () => {
 // 6. ariaLabel boundary
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Badge – ariaLabel prop boundary values', () => {
-  it('empty ariaLabel overrides default to empty string', () => {
+  it('empty ariaLabel falls back to display label', () => {
     render(<Badge variant="gold" ariaLabel="" />)
     const badge = document.querySelector('.badge')
-    // ariaLabel="" -> accessibleLabel = ""
-    expect(badge?.getAttribute('aria-label')).toBe('')
+    expect(badge?.getAttribute('aria-label')).toBe('Gold')
   })
 
   it('ariaLabel with special characters is set correctly', () => {
@@ -383,11 +380,10 @@ describe('Badge – compound prop interactions', () => {
 // 10. Regression — title attribute behavior for unknown variants
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Badge – title attribute regression', () => {
-  it('known variant "unknown" (literal) has no title (delegated to TooltipOnOverflow)', () => {
+  it('known variant "unknown" (literal) sets title to display label', () => {
     render(<Badge variant="unknown" />)
     const badge = document.querySelector('.badge')
-    // Title is handled by TooltipOnOverflow, not the badge span
-    expect(badge).not.toHaveAttribute('title')
+    expect(badge).toHaveAttribute('title', 'Unknown')
   })
 
   it('unrecognized variant string has no title on badge span', () => {

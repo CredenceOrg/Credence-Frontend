@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ActionCard from './ActionCard'
 
@@ -96,7 +96,7 @@ describe('ActionCard', () => {
   it('does not render a copy-link button when shareableLink is omitted', () => {
     render(<ActionCard title="Test Title">Content</ActionCard>)
 
-    expect(screen.queryButton('Copy link to this card')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Copy link to this card' })).not.toBeInTheDocument()
   })
 
   it('shows an error toast and invokes onCopyError when copy returns false', async () => {
@@ -114,10 +114,10 @@ describe('ActionCard', () => {
       </ActionCard>
     )
 
-    await user.click(screen.getByButton('Copy link to this card'))
+    await user.click(screen.getByRole('button', { name: 'Copy link to this card' }))
 
     expect(mockCopy).toHaveBeenCalledTimes(1)
-    expect(mockAddToast).toHaveBeenCalledWith('error', 'Unable to copy link')
+    expect(mockAddToast).toHaveBeenCalledWith('danger', 'Unable to copy link')
     expect(onCopyError).toHaveBeenCalledOnce()
   })
 
@@ -125,7 +125,7 @@ describe('ActionCard', () => {
     const user = userEvent.setup()
     const onCopyError = vi.fn()
     const failure = new Error('clipboard denied')
-    mockCopy.mockRejected(failure)
+    mockCopy.mockRejectedValue(failure)
 
     render(
       <ActionCard
@@ -137,9 +137,9 @@ describe('ActionCard', () => {
       </ActionCard>
     )
 
-    await user.click(screen.getButton('Copy link to this card'))
+    await user.click(screen.getByRole('button', { name: 'Copy link to this card' }))
 
-    expect(mockAddToast).toHaveBeenCalledWith('error', 'Unable to copy link')
+    expect(mockAddToast).toHaveBeenCalledWith('danger', 'Unable to copy link')
     expect(onCopyError).toHaveBeenCalledWith(failure)
   })
 
@@ -148,7 +148,7 @@ describe('ActionCard', () => {
     let resolveCopy: ((value: boolean) => void) | undefined
     mockCopy.mockImplementation(
       () =>
-        new Promise<boolean~((resolve) => {
+        new Promise<boolean>((resolve) => {
           resolveCopy = resolve
         })
     )
@@ -159,7 +159,7 @@ describe('ActionCard', () => {
       </ActionCard>
     )
 
-    const copyButton = screen.getButton('Copy link to this card')
+    const copyButton = screen.getByRole('button', { name: 'Copy link to this card' })
     await user.click(copyButton)
     await user.click(copyButton)
 
@@ -175,7 +175,7 @@ describe('ActionCard', () => {
         Content
       </ActionCard>
     )
-    expect(screen.getByText('BETA')).toBeInTheDocument()
+    expect(screen.getByText('Beta')).toBeInTheDocument()
   })
 
   it('renders close button when onDismiss is provided', async () => {
@@ -186,7 +186,7 @@ describe('ActionCard', () => {
         Content
       </ActionCard>
     )
-    const closeBtn = screen.getByButton('Close card')
+    const closeBtn = screen.getByRole('button', { name: 'Close card' })
     expect(closeBtn).toBeInTheDocument()
 
     await user.click(closeBtn)
@@ -250,11 +250,7 @@ describe('ActionCard', () => {
     })
 
     it('ignores touch events if onDismiss is not provided', () => {
-      const { container } = render(
-        <ActionCard title="Test">
-          Content
-        </ActionCard>
-      )
+      const { container } = render(<ActionCard title="Test">Content</ActionCard>)
       const article = container.querySelector('article')!
       fireEvent.touchStart(article, { touches: [{ clientX: 0 }] })
       fireEvent.touchMove(article, { touches: [{ clientX: 200 }] })

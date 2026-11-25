@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, NavLink, useLocation, Link } from 'react-router-dom'
 import { PrefetchNavLink } from './PrefetchNavLink'
@@ -190,11 +189,7 @@ export default function Layout() {
                     onClick: isChunk && isReloadAttempted ? reloadPageGuarded : reset,
                   }}
                 />
-                <Link
-                  to="/dashboard"
-                  className="error-fallback-secondary-link"
-                  onClick={reset}
-                >
+                <Link to="/dashboard" className="error-fallback-secondary-link" onClick={reset}>
                   Go to dashboard
                 </Link>
               </div>

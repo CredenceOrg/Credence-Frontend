@@ -161,6 +161,14 @@ describe('FilePicker', () => {
   })
 
   describe('file selection via input', () => {
+    function selectInputFiles(input: HTMLInputElement, files: File[]) {
+      Object.defineProperty(input, 'files', {
+        value: files,
+        configurable: true,
+      })
+      fireEvent.change(input)
+    }
+
     it('calls onChange with a single file when multiple=false', () => {
       const onChange = vi.fn()
       const files: File[] = []
@@ -170,11 +178,7 @@ describe('FilePicker', () => {
       const fileA = makeFile('a.pdf', 500, 'application/pdf')
       const fileB = makeFile('b.pdf', 600, 'application/pdf')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(fileA)
-      dataTransfer.items.add(fileB)
-      input.files = dataTransfer.files
-      fireEvent.change(input)
+      selectInputFiles(input, [fileA, fileB])
       expect(onChange).toHaveBeenCalledTimes(1)
       expect(onChange.mock.calls[0][0]).toHaveLength(1)
       expect(onChange.mock.calls[0][0][0].name).toBe('a.pdf')
@@ -188,10 +192,7 @@ describe('FilePicker', () => {
       )
       const newFile = makeFile('next.pdf', 200, 'application/pdf')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(newFile)
-      input.files = dataTransfer.files
-      fireEvent.change(input)
+      selectInputFiles(input, [newFile])
       expect(onChange).toHaveBeenCalledTimes(1)
       const result = onChange.mock.calls[0][0] as File[]
       expect(result).toHaveLength(2)
@@ -207,10 +208,7 @@ describe('FilePicker', () => {
       )
       const dupFile = makeFile('dup.pdf', 999, 'application/pdf')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(dupFile)
-      input.files = dataTransfer.files
-      fireEvent.change(input)
+      selectInputFiles(input, [dupFile])
       expect(onChange).toHaveBeenCalledWith(existing)
     })
 
@@ -229,11 +227,7 @@ describe('FilePicker', () => {
       const pdf = makeFile('ok.pdf', 100, 'application/pdf')
       const txt = makeFile('bad.txt', 100, 'text/plain')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(pdf)
-      dataTransfer.items.add(txt)
-      input.files = dataTransfer.files
-      fireEvent.change(input)
+      selectInputFiles(input, [pdf, txt])
       const result = onChange.mock.calls[0][0] as File[]
       expect(result).toHaveLength(1)
       expect(result[0].name).toBe('ok.pdf')
@@ -254,11 +248,7 @@ describe('FilePicker', () => {
       const png = makeFile('ok.png', 100, 'image/png')
       const pdf = makeFile('bad.pdf', 100, 'application/pdf')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(png)
-      dataTransfer.items.add(pdf)
-      input.files = dataTransfer.files
-      fireEvent.change(input)
+      selectInputFiles(input, [png, pdf])
       const result = onChange.mock.calls[0][0] as File[]
       expect(result).toHaveLength(1)
       expect(result[0].name).toBe('ok.png')
@@ -270,11 +260,7 @@ describe('FilePicker', () => {
       const small = makeFile('small.pdf', 100, 'application/pdf')
       const big = makeFile('big.pdf', 9999, 'application/pdf')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(small)
-      dataTransfer.items.add(big)
-      input.files = dataTransfer.files
-      fireEvent.change(input)
+      selectInputFiles(input, [small, big])
       const result = onChange.mock.calls[0][0] as File[]
       expect(result).toHaveLength(1)
       expect(result[0].name).toBe('small.pdf')
@@ -285,10 +271,7 @@ describe('FilePicker', () => {
       render(<FilePicker id="nf" label="No" accept=".pdf" files={[]} onChange={onChange} />)
       const txt = makeFile('bad.txt', 100, 'text/plain')
       const input = screen.getByTestId('file-picker-input') as HTMLInputElement
-      const dataTransfer = new DataTransfer()
-      dataTransfer.items.add(txt)
-      input.files = dataTransfer.files
-      fireEvent.change(input)
+      selectInputFiles(input, [txt])
       expect(onChange).not.toHaveBeenCalled()
     })
   })

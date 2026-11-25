@@ -60,9 +60,10 @@ const TX_BASE = {
   timestamp: '2026-01-15T12:00:00Z',
 }
 
-const TX1 = { id: 'tx-1', ...TX_BASE } as const
+const TX1 = { id: 'tx-1', hash: 'hash-tx-1', ...TX_BASE } as const
 const TX2 = {
   id: 'tx-2',
+  hash: 'hash-tx-2',
   type: 'withdraw',
   amountUsdc: null,
   status: 'failed',
@@ -70,6 +71,7 @@ const TX2 = {
 } as const
 const TX3 = {
   id: 'tx-3',
+  hash: 'hash-tx-3',
   type: 'attest',
   amountUsdc: 250,
   status: 'pending',

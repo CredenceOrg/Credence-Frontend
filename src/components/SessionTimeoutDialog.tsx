@@ -21,9 +21,7 @@ export default function SessionTimeoutDialog({
   onLogout,
   timeLeftSeconds,
 }: SessionTimeoutDialogProps) {
-  const [internalTimeLeft, setInternalTimeLeft] = useState(() =>
-    normalizeTimeLeft(timeLeftSeconds)
-  )
+  const [internalTimeLeft, setInternalTimeLeft] = useState(() => normalizeTimeLeft(timeLeftSeconds))
   const [isSubmitting, setIsSubmitting] = useState(false)
   // Lock before awaiting so repeated clicks cannot overlap session extensions.
   const submissionInFlight = useRef(false)

@@ -352,9 +352,7 @@ describe('echo display respects addressDisplay setting', () => {
   it('shows friendly address when addressDisplay is "friendly"', async () => {
     const text = await renderAndTriggerEcho('friendly')
     // formatAddressForDisplay falls back to truncated form until on-chain names exist
-    expect(text).toBe(
-      `${VALID_KEY.substring(0, 6)}…${VALID_KEY.substring(VALID_KEY.length - 4)}`
-    )
+    expect(text).toBe(`${VALID_KEY.substring(0, 6)}…${VALID_KEY.substring(VALID_KEY.length - 4)}`)
   })
 
   it('re-renders echo when addressDisplay setting changes', async () => {
@@ -444,7 +442,9 @@ describe('boundary and recovery', () => {
     const onPasteError = vi.fn()
     clipboardReadTextMock.mockResolvedValue('   \n  ')
 
-    render(<AddressInput id="addr" value={VALID_KEY} onChange={onChange} onPasteError={onPasteError} />)
+    render(
+      <AddressInput id="addr" value={VALID_KEY} onChange={onChange} onPasteError={onPasteError} />
+    )
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /paste address from clipboard/i }))
@@ -478,9 +478,7 @@ describe('boundary and recovery', () => {
   })
 
   it('renders an empty echo for a zero-length value without throwing', () => {
-    expect(() =>
-      render(<AddressInput id="addr" value="" onChange={vi.fn()} />)
-    ).not.toThrow()
+    expect(() => render(<AddressInput id="addr" value="" onChange={vi.fn()} />)).not.toThrow()
     expect(screen.queryByText('Recognized:')).toBeNull()
   })
 

@@ -14,6 +14,17 @@ export interface TierDefinition {
   benefits: string[]
 }
 
+export const TIER_LADDER: TierDefinition[] = TIER_ORDER.map((id) => {
+  const t = TIERS[id]
+  return {
+    id: t.id,
+    label: t.label,
+    scoreMin: t.min,
+    scoreMax: t.max,
+    benefits: t.benefits,
+  }
+})
+
 /**
  * Runtime validation error types for tier data.
  * `code` is stable for deterministic handling in tests and UI.

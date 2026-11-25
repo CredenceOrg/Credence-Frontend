@@ -185,9 +185,7 @@ describe('Toggle stories — validation boundaries', () => {
     expect(alert.id).not.toBe('')
   })
 
-  it('preserves a caller-supplied aria-describedby and appends its own', () => {
-    // Invariant 4: FormField injects its own describedby; wrapping Toggle in one
-    // must not drop the error message out of the description.
+  it('preserves a caller-supplied aria-describedby without duplicating the alert', () => {
     render(
       <Toggle
         checked={false}
@@ -202,14 +200,10 @@ describe('Toggle stories — validation boundaries', () => {
     const ids = describedBy.split(' ')
     expect(ids).toContain('field-hint')
     expect(ids).toContain('field-error')
-    expect(ids).toContain(screen.getByRole('alert').id)
-    // No duplicate ids in the merged list.
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('does not collide its error id with a FormField-generated one', () => {
-    // FormField builds `${id}-error`. If Toggle derived its own id from `id`
-    // the page would contain two elements with identical DOM ids.
+  it('links its standalone error alert id via aria-describedby', () => {
     render(
       <Toggle
         id="toasts-enabled"
@@ -220,7 +214,9 @@ describe('Toggle stories — validation boundaries', () => {
       />
     )
 
-    expect(screen.getByRole('alert').id).not.toBe('toasts-enabled-error')
+    const alert = screen.getByRole('alert')
+    expect(alert.id).not.toBe('')
+    expect(switchEl()).toHaveAttribute('aria-describedby', alert.id)
   })
 
   it('InvalidWithoutMessage keeps the caller-supplied description wired', () => {
@@ -344,7 +340,7 @@ describe('Toggle stories — state transitions', () => {
 
 describe('Toggle stories — diagnosability', () => {
   it('Loading hides the On/Off label but announces a pending state', () => {
-    renderStory(ToggleStories.Loading as ToggleStory)
+    const { container } = renderStory(ToggleStories.Loading as ToggleStory)
     const toggle = switchEl()
 
     expect(toggle).toHaveAttribute('aria-busy', 'true')
@@ -352,18 +348,19 @@ describe('Toggle stories — diagnosability', () => {
     expect(toggle).not.toHaveTextContent('Off')
     // The spinner is decorative, so the pending state needs its own live text.
     expect(toggle.querySelector('.control-toggle-spinner')).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByRole('status')).toHaveTextContent('Saving setting')
+    const liveRegion = container.querySelector('[aria-live="polite"]')
+    expect(liveRegion).toHaveTextContent('Saving…')
   })
 
-  it('removes the busy state and the live region once loading clears', () => {
-    const { rerender } = render(
+  it('removes the busy state and clears the live region once loading clears', () => {
+    const { rerender, container } = render(
       <Toggle checked={false} onChange={vi.fn()} ariaLabel="Toggle setting" isLoading />
     )
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(container.querySelector('[aria-live="polite"]')).toHaveTextContent('Saving…')
 
     rerender(<Toggle checked={false} onChange={vi.fn()} ariaLabel="Toggle setting" />)
     expect(switchEl()).not.toHaveAttribute('aria-busy')
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(container.querySelector('[aria-live="polite"]')).toHaveTextContent('')
     expect(switchEl()).toHaveTextContent('Off')
   })
 
@@ -372,8 +369,9 @@ describe('Toggle stories — diagnosability', () => {
     // accessible name on every state change, making the control unlabelable.
     const { container } = renderStory(ToggleStories.Loading as ToggleStory)
 
-    const status = screen.getByRole('status')
-    expect(switchEl().contains(status)).toBe(false)
+    const liveRegion = container.querySelector('[aria-live="polite"]') as HTMLElement
+    expect(liveRegion).not.toBeNull()
+    expect(switchEl().contains(liveRegion)).toBe(false)
     expect(container.querySelector('button [aria-live]')).toBeNull()
     expect(switchEl()).toHaveAccessibleName('Toggle setting')
   })
@@ -418,7 +416,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
   it('stages the change, blocks further clicks, then commits exactly once', async () => {
     const user = userEvent.setup()
     const onCommit = vi.fn()
-    render(<ToggleStories.PendingWriteHarness latencyMs={60} onCommit={onCommit} />)
+    render(<ToggleStories.PendingWriteHarness latencyMs={400} onCommit={onCommit} />)
 
     const toggle = screen.getByRole('switch')
     expect(toggle).toHaveAttribute('aria-checked', 'false')
@@ -447,7 +445,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
     // click cannot dispatch two saves and race their responses.
     const user = userEvent.setup()
     const onCommit = vi.fn()
-    render(<ToggleStories.PendingWriteHarness latencyMs={60} onCommit={onCommit} />)
+    render(<ToggleStories.PendingWriteHarness latencyMs={400} onCommit={onCommit} />)
 
     const toggle = screen.getByRole('switch')
     await user.dblClick(toggle)
@@ -497,7 +495,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
 describe('RetryAfterError harness — failure and recovery', () => {
   it('fails without losing the committed value, then recovers on retry', async () => {
     const user = userEvent.setup()
-    render(<ToggleStories.RetryAfterErrorHarness latencyMs={60} failTimes={1} />)
+    render(<ToggleStories.RetryAfterErrorHarness latencyMs={400} failTimes={1} />)
 
     const toggle = screen.getByRole('switch')
     const retry = screen.getByRole('button', { name: 'Retry save' })

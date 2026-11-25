@@ -5,8 +5,8 @@ import TrustSummary from '../pages/TrustSummary'
 
 // Mock hooks and components used in TrustSummary
 vi.mock('../hooks/useTrustScore', () => ({
-  useTrustScore: vi.fn(() => ({
-    data: { score: 500, tier: 'gold' },
+  useTrustScore: vi.fn((address: string) => ({
+    data: address ? { address, score: 500, tier: 'gold' } : null,
     isLoading: false,
     error: null,
     refetch: vi.fn(),

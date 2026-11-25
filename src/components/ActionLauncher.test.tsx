@@ -36,7 +36,7 @@ describe('ActionLauncher', () => {
 
   it('renders search input and action list when open', () => {
     renderLauncher()
-    expect(screen.getByRole('textbox', { name: /search actions/i })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: /search actions/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /actions/i })).toBeInTheDocument()
   })
 
@@ -44,7 +44,7 @@ describe('ActionLauncher', () => {
     const user = userEvent.setup()
     renderLauncher()
 
-    const input = screen.getByRole('textbox', { name: /search actions/i })
+    const input = screen.getByRole('searchbox', { name: /search actions/i })
     await user.type(input, 'dash')
 
     expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument()
@@ -55,7 +55,7 @@ describe('ActionLauncher', () => {
     const user = userEvent.setup()
     renderLauncher()
 
-    const input = screen.getByRole('textbox', { name: /search actions/i })
+    const input = screen.getByRole('searchbox', { name: /search actions/i })
     await user.type(input, 'zzzz')
 
     expect(screen.getByText(/no matching actions/i)).toBeInTheDocument()

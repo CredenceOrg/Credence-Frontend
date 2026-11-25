@@ -7,8 +7,7 @@ import { MemoryRouter } from 'react-router-dom'
 // flow through ActivityTimeline + the filter logic. The empty branch is
 // what makes the attestation-illustration wiring testable on its own.
 vi.mock('../data/activity', async () => {
-  const actual =
-    await vi.importActual<typeof import('../data/activity')>('../data/activity')
+  const actual = await vi.importActual<typeof import('../data/activity')>('../data/activity')
   return {
     ...actual,
     ACTIVITY_ITEMS: [
@@ -38,8 +37,7 @@ vi.mock('../components/ToastProvider', () => ({
 // Import after mocks so the page sees the reduced data set.
 import Attestations from './Attestations'
 
-const renderInRouter = (ui: React.ReactElement) =>
-  render(<MemoryRouter>{ui}</MemoryRouter>)
+const renderInRouter = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>)
 
 describe('Attestations Page — empty-state wiring', () => {
   afterEach(cleanup)
@@ -50,8 +48,8 @@ describe('Attestations Page — empty-state wiring', () => {
     // Mock contains only an Accepted item.
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
 
-    // Choose "Needs update" — no matches in the mock
-    await user.click(screen.getByRole('radio', { name: 'Needs update' }))
+    // Choose "warning" — no matches in the mock
+    await user.selectOptions(screen.getByRole('combobox'), 'warning')
 
     // The empty-state copy for filtered-to-zero is rendered.
     expect(
@@ -72,7 +70,7 @@ describe('Attestations Page — empty-state wiring', () => {
     // Action: clicking "View all attestations" resets the filter.
     const clearBtn = screen.getByRole('button', { name: /view all attestations/i })
     await user.click(clearBtn)
-    expect(screen.getByText(/showing 1 of 1 attestation/i)).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
   })
 
   it('renders a no-data attestation empty-state when there are zero items', () => {
@@ -85,8 +83,6 @@ describe('Attestations Page — empty-state wiring', () => {
     // We assert here that with a single-item mock the page-level empty
     // state does NOT render (it only renders when filtered-to-zero).
     renderInRouter(<Attestations />)
-    expect(
-      screen.queryByRole('heading', { name: /no attestations yet/i })
-    ).toBeNull()
+    expect(screen.queryByRole('heading', { name: /no attestations yet/i })).toBeNull()
   })
 })

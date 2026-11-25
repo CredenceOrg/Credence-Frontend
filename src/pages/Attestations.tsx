@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AttestationForm from '../components/AttestationForm'
 import ActivityTimeline from '../components/ActivityTimeline'
+import { EmptyState } from '../components/states'
 import { ACTIVITY_ITEMS } from '../data/activity'
 import Select from '../components/controls/Select'
 import { ATTESTATION_EVENTS, type AttestationPayload, type ActivityItem } from '../events'
@@ -100,7 +101,32 @@ export default function Attestations() {
               />
             </div>
           </div>
-          <ActivityTimeline items={filteredItems} />
+          {filterTone !== 'all' && filteredItems.length === 0 ? (
+            <EmptyState
+              icon={
+                <svg
+                  aria-hidden="true"
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M9 12l2 2 4-4" />
+                </svg>
+              }
+              title="No attestations match this status"
+              description="Try viewing all attestations to see recent activity."
+              action={{
+                label: 'View all attestations',
+                onClick: () => setFilterTone('all'),
+              }}
+            />
+          ) : (
+            <ActivityTimeline items={filteredItems} />
+          )}
         </section>
       </div>
     </div>

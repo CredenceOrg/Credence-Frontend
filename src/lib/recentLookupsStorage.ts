@@ -39,7 +39,12 @@ export function sanitizeRecentLookups(raw: unknown): RecentLookupItem[] {
     if (!item || typeof item !== 'object') return false
     const addr = (item as { address?: unknown }).address
     const ts = (item as { timestamp?: unknown }).timestamp
-    return typeof addr === 'string' && typeof ts === 'number' && Number.isFinite(ts) && isValidStellarAddress(addr)
+    return (
+      typeof addr === 'string' &&
+      typeof ts === 'number' &&
+      Number.isFinite(ts) &&
+      isValidStellarAddress(addr)
+    )
   })
 }
 

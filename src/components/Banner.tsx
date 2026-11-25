@@ -79,7 +79,11 @@ export default function Banner({
     const target = returnFocusRef?.current ?? document.body
     onDismiss?.()
     // Defer so the banner unmounts first
-    requestAnimationFrame(() => target.focus())
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => target.focus())
+    } else {
+      target.focus()
+    }
   }, [onDismiss, returnFocusRef])
 
   const handleKeyDown = useCallback(

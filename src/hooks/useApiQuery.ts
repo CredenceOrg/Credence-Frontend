@@ -69,11 +69,7 @@ export function useApiQuery<T>(
   path: string,
   options: UseApiQueryOptions = {}
 ): UseApiQueryResult<T> {
-  const {
-    enabled = true,
-    staleTimeMs = WIDGET_CACHE_DEFAULTS.STALE_TIME_MS,
-    identityKey,
-  } = options
+  const { enabled = true, staleTimeMs = WIDGET_CACHE_DEFAULTS.STALE_TIME_MS, identityKey } = options
   const queryKey = makeCacheKey(path, identityKey)
 
   const [dataState, setDataState] = useState<{ key: string; value: T } | undefined>(() => {
@@ -136,8 +132,7 @@ export function useApiQuery<T>(
       const currentRunId = ++runIdRef.current
       setLoadingState({ key: currentQueryKey, value: true })
       setErrorState(undefined)
-      const identityEpoch =
-        identityKeyRef.current === undefined ? undefined : getIdentityEpoch()
+      const identityEpoch = identityKeyRef.current === undefined ? undefined : getIdentityEpoch()
 
       try {
         const result = await apiFetch<T>(currentPath, {

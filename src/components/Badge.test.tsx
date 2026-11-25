@@ -367,9 +367,9 @@ describe('Badge', () => {
 
       it('removes control characters from label', () => {
         // First verify the string actually contains control characters
-        const testLabel = "Test\x00\x01\x1FLabel"
+        const testLabel = 'Test\x00\x01\x1FLabel'
         expect(testLabel.charCodeAt(4)).toBe(0) // \x00 at position 4
-        
+
         render(<Badge variant="gold" label={testLabel} />)
         const badge = document.querySelector('.badge')
         // Control characters should be stripped, leaving only "TestLabel"
@@ -377,7 +377,10 @@ describe('Badge', () => {
         // Debug: log the actual character codes
         if (actual !== 'TestLabel') {
           console.log('Actual text:', actual)
-          console.log('Char codes:', Array.from(actual).map(c => c.charCodeAt(0)))
+          console.log(
+            'Char codes:',
+            Array.from(actual).map((c) => c.charCodeAt(0))
+          )
         }
         expect(actual).toBe('TestLabel')
       })
@@ -454,17 +457,17 @@ describe('Badge', () => {
 
     describe('null and undefined handling', () => {
       it('handles null variant gracefully', () => {
-        render(<Badge variant={null as any} />)
+        render(<Badge variant={null as unknown as BadgeVariant} />)
         expect(document.querySelector('.badge--unknown')).not.toBeNull()
       })
 
       it('handles undefined variant gracefully', () => {
-        render(<Badge variant={undefined as any} />)
+        render(<Badge variant={undefined as unknown as BadgeVariant} />)
         expect(document.querySelector('.badge--unknown')).not.toBeNull()
       })
 
       it('handles null label gracefully', () => {
-        render(<Badge variant="gold" label={null as any} />)
+        render(<Badge variant="gold" label={null as unknown as string} />)
         expect(screen.getByText('Gold')).toBeInTheDocument()
       })
 
@@ -474,19 +477,19 @@ describe('Badge', () => {
       })
 
       it('handles null className gracefully', () => {
-        render(<Badge variant="gold" className={null as any} />)
+        render(<Badge variant="gold" className={null as unknown as string} />)
         const badge = document.querySelector('.badge')
         expect(badge).toHaveClass('badge')
         expect(badge).toHaveClass('badge--gold')
       })
 
       it('handles null srPrefix gracefully', () => {
-        render(<Badge variant="gold" srPrefix={null as any} />)
+        render(<Badge variant="gold" srPrefix={null as unknown as string} />)
         expect(document.querySelector('.sr-only')).toBeNull()
       })
 
       it('handles null ariaLabel gracefully', () => {
-        render(<Badge variant="gold" ariaLabel={null as any} />)
+        render(<Badge variant="gold" ariaLabel={null as unknown as string} />)
         const badge = document.querySelector('.badge')
         expect(badge?.getAttribute('aria-label')).toBe('Gold')
       })
@@ -494,12 +497,12 @@ describe('Badge', () => {
 
     describe('type coercion and boundary cases', () => {
       it('coerces number variant to unknown', () => {
-        render(<Badge variant={123 as any} />)
+        render(<Badge variant={123 as unknown as BadgeVariant} />)
         expect(document.querySelector('.badge--unknown')).not.toBeNull()
       })
 
       it('coerces object variant to unknown', () => {
-        render(<Badge variant={{} as any} />)
+        render(<Badge variant={{} as unknown as BadgeVariant} />)
         expect(document.querySelector('.badge--unknown')).not.toBeNull()
       })
 

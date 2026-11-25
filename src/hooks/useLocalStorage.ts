@@ -36,7 +36,7 @@ export const safeStorage = {
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err : new Error(String(err)) }
     }
-  }
+  },
 }
 
 /**
@@ -75,7 +75,10 @@ export type LocalStorageMeta = {
  * never replaced by `initialValue`.
  */
 
-export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T) => void, LocalStorageMeta] {
+export function useLocalStorage<T>(
+  key: string,
+  initialValue: T
+): [T, (value: T) => void, LocalStorageMeta] {
   const [storedValue, setStoredValue] = useState<T>(() => resolveStoredValue(key, initialValue))
   const [error, setError] = useState<Error | null>(null)
   const [permissionGranted, setPermissionGranted] = useState(true)
@@ -103,7 +106,7 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T)
         if (err instanceof Error) {
           setError(err)
           if (err.name === 'SecurityError') {
-             setPermissionGranted(false)
+            setPermissionGranted(false)
           }
         } else {
           setError(new Error(String(err)))
@@ -128,7 +131,6 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T)
       stale: false,
       permissionGranted,
       retry,
-    }
+    },
   ]
 }
-

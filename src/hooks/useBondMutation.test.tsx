@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useBondMutation } from './useBondMutation'
 import { useWallet } from '../context/WalletContext'
 import { useUsdcBalance } from './useUsdcBalance'
@@ -43,7 +43,7 @@ describe('useBondMutation', () => {
       disconnect: vi.fn(),
       isConnecting: false,
       network: 'public',
-    } as any)
+    } as unknown as ReturnType<typeof useWallet>)
 
     vi.mocked(useUsdcBalance).mockReturnValue({
       balance: 5000,
@@ -88,7 +88,7 @@ describe('useBondMutation', () => {
         disconnect: vi.fn(),
         isConnecting: false,
         network: null,
-      } as any)
+      } as unknown as ReturnType<typeof useWallet>)
 
       const { result } = renderHook(() => useBondMutation())
 
@@ -199,19 +199,12 @@ describe('useBondMutation', () => {
 
       expect(result.current.isCreating).toBe(false)
 
-      const promise = act(async () => {
-        return result.current.createBond({
+      await act(async () => {
+        await result.current.createBond({
           amountUsdc: 1000,
           durationDays: 90,
         })
       })
-
-      // Should be creating during operation
-      await waitFor(() => {
-        // State updates happen asynchronously
-      })
-
-      await promise
 
       expect(result.current.isCreating).toBe(false)
     })
@@ -229,26 +222,21 @@ describe('useBondMutation', () => {
 
       const { result } = renderHook(() => useBondMutation())
 
-      // Start first operation
-      const promise1 = act(() =>
-        result.current.createBond({
+      let results: Awaited<ReturnType<typeof result.current.createBond>>[] = []
+      await act(async () => {
+        const promise1 = result.current.createBond({
           amountUsdc: 1000,
           durationDays: 90,
         })
-      )
-
-      // Start second operation immediately (should be deduplicated)
-      const promise2 = act(() =>
-        result.current.createBond({
+        const promise2 = result.current.createBond({
           amountUsdc: 2000,
           durationDays: 180,
         })
-      )
+        resolveFirst!()
+        results = await Promise.all([promise1, promise2])
+      })
 
-      // Resolve first operation
-      resolveFirst!()
-
-      const [result1, result2] = await Promise.all([promise1, promise2])
+      const [result1, result2] = results
 
       // Both should succeed with the same result (deduplication)
       expect(result1.ok).toBe(true)
@@ -342,7 +330,7 @@ describe('useBondMutation', () => {
         disconnect: vi.fn(),
         isConnecting: false,
         network: null,
-      } as any)
+      } as unknown as ReturnType<typeof useWallet>)
 
       const { result } = renderHook(() => useBondMutation())
 
@@ -410,23 +398,19 @@ describe('useBondMutation', () => {
 
       const { result } = renderHook(() => useBondMutation())
 
-      // Start first withdrawal
-      const promise1 = act(() =>
-        result.current.withdrawBond({
+      let results: Awaited<ReturnType<typeof result.current.withdrawBond>>[] = []
+      await act(async () => {
+        const promise1 = result.current.withdrawBond({
           bondId: 'bond-123',
         })
-      )
-
-      // Start second withdrawal of same bond (should be deduplicated)
-      const promise2 = act(() =>
-        result.current.withdrawBond({
+        const promise2 = result.current.withdrawBond({
           bondId: 'bond-123',
         })
-      )
+        resolveFirst!()
+        results = await Promise.all([promise1, promise2])
+      })
 
-      resolveFirst!()
-
-      const [result1, result2] = await Promise.all([promise1, promise2])
+      const [result1, result2] = results
 
       expect(result1.ok).toBe(true)
       expect(result2.ok).toBe(true)
@@ -438,10 +422,14 @@ describe('useBondMutation', () => {
     it('allows concurrent withdrawals of different bonds', async () => {
       const { result } = renderHook(() => useBondMutation())
 
-      const [result1, result2] = await Promise.all([
-        act(() => result.current.withdrawBond({ bondId: 'bond-123' })),
-        act(() => result.current.withdrawBond({ bondId: 'bond-456' })),
-      ])
+      let results: Awaited<ReturnType<typeof result.current.withdrawBond>>[] = []
+      await act(async () => {
+        results = await Promise.all([
+          result.current.withdrawBond({ bondId: 'bond-123' }),
+          result.current.withdrawBond({ bondId: 'bond-456' }),
+        ])
+      })
+      const [result1, result2] = results
 
       expect(result1.ok).toBe(true)
       expect(result2.ok).toBe(true)

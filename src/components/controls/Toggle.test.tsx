@@ -9,7 +9,7 @@ describe('Toggle', () => {
     // Behavior under test: checked Settings booleans render as an active switch.
     render(<Toggle checked onChange={vi.fn()} ariaLabel="Enable toasts" />)
 
-    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toBdChecked()
+    expect(screen.getByRole('switch', { name: 'Enable toasts' })).toBeChecked()
   })
 
   it('reflects the unchecked state from checked=false', () => {
@@ -36,7 +36,7 @@ describe('Toggle', () => {
     // Behavior under test: standalone Toggles expose the provided accessible name.
     render(<Toggle checked={false} onChange={vi.fn()} ariaLabel="Auto dismiss" />)
 
-    expect(screen.getByRole('switch', { name: 'Auto dismiss' })).toBeInDocument()
+    expect(screen.getByRole('switch', { name: 'Auto dismiss' })).toBeInTheDocument()
   })
 
   it('toggles with keyboard activation', async () => {
@@ -112,9 +112,7 @@ describe('Toggle', () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
 
-    render(
-      <Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" disabled />
-    )
+    render(<Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" disabled />)
 
     const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
     expect(toggle).toBeDisabled()
@@ -158,8 +156,19 @@ describe('Toggle', () => {
 
     const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
 
-    await expect(user.click(toggle)).rejects.toThrow('persistence failed')
+    let caughtError: Error | null = null
+    const onWindowError = (event: ErrorEvent) => {
+      event.preventDefault()
+      caughtError = event.error as Error
+    }
+    window.addEventListener('error', onWindowError)
+    try {
+      await user.click(toggle)
+    } finally {
+      window.removeEventListener('error', onWindowError)
+    }
 
+    expect(caughtError?.message).toBe('persistence failed')
     expect(handleChange).toHaveBeenCalledTimes(1)
     expect(toggle).not.toBeChecked()
   })
@@ -175,14 +184,12 @@ describe('Toggle', () => {
     )
 
     await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
-    expect(handleChange).toHaveBeenNewestCalledWith(true)
+    expect(handleChange).toHaveBeenLastCalledWith(true)
 
-    rerender(
-      <Toggle checked onChange={handleChange} ariaLabel="Enable toasts" />
-    )
+    rerender(<Toggle checked onChange={handleChange} ariaLabel="Enable toasts" />)
 
     await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
-    expect(handleChange).toHaveBeenNewestCalledWith(false)
+    expect(handleChange).toHaveBeenLastCalledWith(false)
   })
 
   it('keeps the accessible name stable across state transitions', () => {
@@ -215,7 +222,7 @@ describe('Toggle', () => {
     )
 
     const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
-    expect(toggle).accessibleName().toBe('Enable toasts')
-    expect(toggle).toHaveAccessibleDescription('Toasts unavailable')
+    expect(toggle).toHaveAccessibleName('Enable toasts')
+    expect(toggle).toHaveAccessibleDescription(/Toasts unavailable/)
   })
 })

@@ -27,8 +27,7 @@ type Settings = components['schemas']['Settings']
 type ApiMessageResponse = components['schemas']['ApiMessageResponse']
 type Tenant = components['schemas']['Tenant']
 
-const VALID_G_ADDRESS =
-  'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+const VALID_G_ADDRESS = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 
 const BOND_STATUSES: readonly BondStatus[] = [
   'active',
@@ -38,30 +37,15 @@ const BOND_STATUSES: readonly BondStatus[] = [
   'cancelled',
 ] as const
 
-const TRUST_TIERS: readonly TrustTier[] = [
-  'bronze',
-  'silver',
-  'gold',
-  'platinum',
-] as const
+const TRUST_TIERS: readonly TrustTier[] = ['bronze', 'silver', 'gold', 'platinum'] as const
 
-const TX_TYPES: readonly TransactionType[] = [
-  'bond',
-  'withdraw',
-  'attestation',
-] as const
+const TX_TYPES: readonly TransactionType[] = ['bond', 'withdraw', 'attestation'] as const
 
-const TX_STATUSES: readonly TransactionStatus[] = [
-  'pending',
-  'confirmed',
-  'failed',
-] as const
+const TX_STATUSES: readonly TransactionStatus[] = ['pending', 'confirmed', 'failed'] as const
 
 // ── Runtime validators (pure; no shared mutable state) ──────────────────────
 
-type ValidateResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; error: string }
+type ValidateResult<T> = { ok: true; value: T } | { ok: false; error: string }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -155,7 +139,10 @@ function validateTransaction(input: unknown): ValidateResult<Transaction> {
   if (typeof hash !== 'string' || hash.length === 0) {
     return { ok: false, error: 'hash must be a non-empty string' }
   }
-  if (amountUsdc !== undefined && (typeof amountUsdc !== 'number' || !Number.isFinite(amountUsdc))) {
+  if (
+    amountUsdc !== undefined &&
+    (typeof amountUsdc !== 'number' || !Number.isFinite(amountUsdc))
+  ) {
     return { ok: false, error: 'amountUsdc must be a finite number when present' }
   }
   const tx: Transaction = {
@@ -387,13 +374,7 @@ describe('generated schemas — success', () => {
 
 describe('generated enums — complete surface', () => {
   it('BondStatus has exactly five lifecycle values', () => {
-    expect(BOND_STATUSES).toEqual([
-      'active',
-      'pending',
-      'settled',
-      'slashed',
-      'cancelled',
-    ])
+    expect(BOND_STATUSES).toEqual(['active', 'pending', 'settled', 'slashed', 'cancelled'])
   })
 
   it('TrustTier has exactly four values', () => {

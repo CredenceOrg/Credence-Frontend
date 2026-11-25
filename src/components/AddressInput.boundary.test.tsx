@@ -372,7 +372,7 @@ describe('AddressInput – error precedence and recovery', () => {
     await user.click(input)
     await user.tab()
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Invalid address checksum')
+    expect(screen.getByRole('alert')).toHaveTextContent('Stellar public key checksum is invalid.')
   })
 })
 

@@ -25,7 +25,6 @@ import { useUsdcBalance } from '../hooks/useUsdcBalance'
 import { useToast } from './ToastProvider'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { BOND_FLOW_STEP_COUNT } from '../lib/createBondFlowSteps'
-import { handleBack } from './CreateBondFlow'
 
 // ---------------------------------------------------------------------------
 // Mocks — no providers required
@@ -51,7 +50,6 @@ vi.mock('../hooks/useReducedMotion', () => ({
   useReducedMotion: vi.fn(() => false),
 }))
 
-
 /** Wallet address used by the mocked context; asserted against log leakage. */
 const TEST_ADDRESS = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 
@@ -62,7 +60,6 @@ const TEST_ADDRESS = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 function renderFlow(props: Parameters<typeof CreateBondFlow>[0] = {}) {
   return render(<CreateBondFlow {...props} />)
 }
-
 
 /** Current step as reported by the progress indicator (aria-label). */
 function currentStepLabel(): string {
@@ -106,7 +103,6 @@ async function goToStep(step: number, { amount = '1000', days = 30 } = {}) {
   return user
 }
 
-
 beforeEach(() => {
   vi.mocked(useWallet).mockReturnValue({
     address: TEST_ADDRESS,
@@ -138,7 +134,6 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-
 // ---------------------------------------------------------------------------
 // Success path
 // ---------------------------------------------------------------------------
@@ -148,7 +143,6 @@ describe('handleBack – success path', () => {
     renderFlow()
     await goToStep(2)
     expectOnStep(2)
-
 
     await userEvent.setup().click(backButton())
 
@@ -160,7 +154,6 @@ describe('handleBack – success path', () => {
     renderFlow()
     await goToStep(3)
 
-
     await userEvent.setup().click(backButton())
 
     expectOnStep(2)
@@ -170,7 +163,6 @@ describe('handleBack – success path', () => {
   it('moves exactly one step back from step 4 to step 3', async () => {
     renderFlow()
     await goToStep(4)
-
 
     await userEvent.setup().click(backButton())
 
@@ -188,7 +180,6 @@ describe('handleBack – success path', () => {
     await user.click(nextButton())
     await user.click(nextButton()) // no duration chosen → error
     expect(screen.getByText(/select a lock duration/i)).toBeInTheDocument()
-
 
     await user.click(backButton())
 
@@ -221,7 +212,6 @@ describe('handleBack – preserves entered data', () => {
     renderFlow()
     await goToStep(4, { amount: '742.50', days: 90 })
 
-
     await userEvent.setup().click(backButton())
 
     expectOnStep(3)
@@ -234,7 +224,6 @@ describe('handleBack – preserves entered data', () => {
     const user = userEvent.setup()
     renderFlow()
     await goToStep(3, { days: 180 })
-
 
     await user.click(backButton())
 
@@ -254,14 +243,12 @@ describe('handleBack – rejection is a no-op', () => {
     renderFlow()
     expectOnStep(1)
     expect(screen.queryByRole('button', { name: /^back$/i })).not.toBeInTheDocument()
-
   })
 
   it('keeps the wizard on step 1 and logs a diagnostic when Back is forced at the boundary', async () => {
     renderFlow()
     await goToStep(2)
     expectOnStep(2)
-
 
     // Two Back presses in one batch: the first moves to step 1, the second is
     // refused at the lower boundary.
@@ -281,7 +268,6 @@ describe('handleBack – rejection is a no-op', () => {
     await user.type(input, '500')
     await user.click(nextButton())
     expectOnStep(2)
-
 
     // Two Back presses in one batch: 2 → 1, then refused at the boundary.
     burstBack(2)
@@ -304,7 +290,6 @@ describe('handleBack – rejection is a no-op', () => {
     await user.type(input, '500')
     await user.click(nextButton())
 
-
     burstBack(2)
 
     const [tag, payload] = vi.mocked(console.warn).mock.calls[0]
@@ -325,7 +310,6 @@ describe('handleBack – concurrent invocations', () => {
     await goToStep(4)
     expectOnStep(4)
 
-
     burstBack(2)
 
     // Reading `step` from the last committed render (the pre-fix behaviour)
@@ -336,7 +320,6 @@ describe('handleBack – concurrent invocations', () => {
   it('stops at the first step under a burst that overshoots the range', async () => {
     renderFlow()
     await goToStep(4)
-
 
     burstBack(5)
 
@@ -349,7 +332,6 @@ describe('handleBack – concurrent invocations', () => {
     renderFlow()
     await goToStep(4)
 
-
     burstBack(9)
 
     expect(currentStepLabel()).toMatch(/^Step [1-4] of 4$/)
@@ -359,7 +341,6 @@ describe('handleBack – concurrent invocations', () => {
     renderFlow()
     await goToStep(3)
     expectOnStep(3)
-
 
     const back = backButton()
     const next = nextButton()
@@ -384,7 +365,6 @@ describe('handleBack – invalidates stale consent', () => {
     renderFlow()
     await goToStep(4)
 
-
     await user.click(screen.getByRole('checkbox'))
     expect(confirmButton()).toBeEnabled()
 
@@ -403,7 +383,6 @@ describe('handleBack – invalidates stale consent', () => {
     renderFlow()
     await goToStep(4)
     await user.click(screen.getByRole('checkbox'))
-
 
     // Go all the way back to step 1 without leaving a consent-bearing step
     // behind, then forward again and re-acknowledge.
@@ -433,7 +412,6 @@ describe('handleBack – regression coverage', () => {
     renderFlow()
     await goToStep(3)
 
-
     await user.click(backButton())
 
     const heading = await screen.findByRole('heading', { name: /Step 2: Choose Lock Duration/i })
@@ -445,7 +423,6 @@ describe('handleBack – regression coverage', () => {
     await goToStep(4)
     burstBack(3)
 
-
     expect(currentStepLabel()).toBe('Step 1 of 4')
     expect(screen.getByLabelText(/Step 1 of 4/i).querySelectorAll('div')).toHaveLength(
       BOND_FLOW_STEP_COUNT
@@ -456,7 +433,6 @@ describe('handleBack – regression coverage', () => {
     const onCancel = vi.fn()
     renderFlow({ onCancel })
     await goToStep(3)
-
 
     await userEvent.setup().click(cancelButton())
 
@@ -470,7 +446,6 @@ describe('handleBack – regression coverage', () => {
     await goToStep(4)
     await user.click(screen.getByRole('checkbox'))
 
-
     await user.click(backButton())
 
     expect(onComplete).not.toHaveBeenCalled()
@@ -483,11 +458,9 @@ describe('handleBack – regression coverage', () => {
     renderFlow()
     await goToStep(3)
 
-
     await user.click(cancelButton())
 
     expectOnStep(1)
     expect(screen.getByPlaceholderText('0')).toHaveValue('')
   })
 })
-

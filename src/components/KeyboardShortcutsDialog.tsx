@@ -169,30 +169,35 @@ export default function KeyboardShortcutsDialog({
         </header>
 
         <div id={descId} className="shortcuts-dialog__body">
-          {hasShortcuts ? Array.from(grouped.entries()).map(([group, shortcuts]) => (
-            <section key={group} className="shortcuts-dialog__group">
-              <h3 className="shortcuts-dialog__group-heading">{group}</h3>
-              <ul className="shortcuts-dialog__list" role="list">
-                {shortcuts.map((shortcut) => (
-                  <li key={shortcut.label} className="shortcuts-dialog__item">
-                    <span className="shortcuts-dialog__label">{shortcut.label}</span>
-                    <span className="shortcuts-dialog__keys" aria-label={shortcut.keys.join(' + ')}>
-                      {shortcut.keys.map((key, index) => (
-                        <span key={key} className="shortcuts-dialog__key-group">
-                          {index > 0 && (
-                            <span className="shortcuts-dialog__key-plus" aria-hidden="true">
-                              +
-                            </span>
-                          )}
-                          <Kbd className="shortcuts-dialog__kbd">{formatModifierKey(key)}</Kbd>
-                        </span>
-                      ))}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )) : (
+          {hasShortcuts ? (
+            Array.from(grouped.entries()).map(([group, shortcuts]) => (
+              <section key={group} className="shortcuts-dialog__group">
+                <h3 className="shortcuts-dialog__group-heading">{group}</h3>
+                <ul className="shortcuts-dialog__list" role="list">
+                  {shortcuts.map((shortcut) => (
+                    <li key={shortcut.label} className="shortcuts-dialog__item">
+                      <span className="shortcuts-dialog__label">{shortcut.label}</span>
+                      <span
+                        className="shortcuts-dialog__keys"
+                        aria-label={shortcut.keys.join(' + ')}
+                      >
+                        {shortcut.keys.map((key, index) => (
+                          <span key={key} className="shortcuts-dialog__key-group">
+                            {index > 0 && (
+                              <span className="shortcuts-dialog__key-plus" aria-hidden="true">
+                                +
+                              </span>
+                            )}
+                            <Kbd className="shortcuts-dialog__kbd">{formatModifierKey(key)}</Kbd>
+                          </span>
+                        ))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))
+          ) : (
             <p className="shortcuts-dialog__empty" role="status">
               No keyboard shortcuts are available.
             </p>

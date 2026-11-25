@@ -10,7 +10,6 @@ import {
   removePendingTransaction,
   migrateToV2,
   scopedKey,
-  type TransactionWithNetwork,
 } from './pendingTransactionsStorage'
 
 function tx(overrides: Partial<Transaction> = {}): Transaction {
@@ -107,7 +106,9 @@ describe('pendingTransactionsStorage', () => {
     it('isolates data between different networks for the same address', () => {
       const address = 'GA…A'
 
-      writePendingTransactions('public', address, [{ ...tx({ id: 'tx-public' }), _network: 'public' }])
+      writePendingTransactions('public', address, [
+        { ...tx({ id: 'tx-public' }), _network: 'public' },
+      ])
       writePendingTransactions('test', address, [{ ...tx({ id: 'tx-test' }), _network: 'test' }])
 
       const itemsPublic = readPendingTransactions('public', address)
@@ -229,6 +230,52 @@ describe('pendingTransactionsStorage', () => {
       // No errors, no keys created
       const keys = Object.keys(localStorage)
       expect(keys).toHaveLength(0)
+    })
+
+    it('handles storage write and cleanup errors gracefully during migration', () => {
+      localStorage.setItem(
+        PENDING_TXS_V1_KEY,
+        JSON.stringify({ schemaVersion: 1, items: [tx({ id: 't1' })] })
+      )
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('QuotaExceeded')
+      })
+      vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+        throw new Error('RemoveFailed')
+      })
+
+      expect(() => migrateToV2('public', 'GA…A')).not.toThrow()
+      vi.restoreAllMocks()
+    })
+
+    it('ignores empty address in add/remove and preserves invalid pending timestamps', () => {
+      addPendingTransaction('public', '', tx({ id: 'empty-1', hash: 'h1' }))
+      removePendingTransaction('public', '', 'h1')
+      writePendingTransactions('public', 'GA…A', [
+        { ...tx({ id: 'bad-ts', status: 'pending', timestamp: 'not-a-date' }), _network: 'public' },
+      ])
+      const read = readPendingTransactions('public', 'GA…A')
+      expect(read[0]?.status).toBe('pending')
+
+      const v2Key = scopedKey('public', 'GA…B')!
+      localStorage.setItem(v2Key, '{bad-json')
+      expect(readPendingTransactions('public', 'GA…B')).toEqual([])
+
+      localStorage.setItem(v2Key, JSON.stringify({ schemaVersion: 99, items: [] }))
+      expect(readPendingTransactions('public', 'GA…B')).toEqual([])
+
+      writePendingTransactions('public', 'GA…B', [
+        {
+          ...tx({ id: 'fresh-1', status: 'pending', timestamp: new Date().toISOString() }),
+          _network: 'public',
+        },
+      ])
+      expect(readPendingTransactions('public', 'GA…B')[0]?.status).toBe('pending')
+
+      localStorage.setItem(PENDING_TXS_V1_KEY, '{bad-v1')
+      migrateToV2('public', 'GA…C')
+      localStorage.setItem(PENDING_TXS_V1_KEY, JSON.stringify({ schemaVersion: 99, items: [] }))
+      migrateToV2('public', 'GA…C')
     })
   })
 })

@@ -40,7 +40,10 @@ vi.mock('./ToastProvider', () => ({
 // Minimal ErrorBoundary for testing hook-throw recovery
 // ---------------------------------------------------------------------------
 
-interface EBState { hasError: boolean; message: string }
+interface EBState {
+  hasError: boolean
+  message: string
+}
 
 class TestErrorBoundary extends Component<{ children: ReactNode }, EBState> {
   state: EBState = { hasError: false, message: '' }
@@ -122,18 +125,13 @@ describe('AddressDisplay – null / undefined / empty address', () => {
     expect(screen.getByRole('button', { name: 'Copy address' })).toBeInTheDocument()
   })
 
-  it('clicking copy with empty address calls copy with empty string (hook returns false, no toast)', async () => {
-    // useCopyToClipboard.copy() returns false for empty text (per hook implementation)
-    mockCopy.mockResolvedValue(false)
-
+  it('clicking copy with empty address is a no-op (does not call copy or toast)', async () => {
     render(<AddressDisplay address="" />)
     const btn = screen.getByRole('button', { name: 'Copy address' })
     fireEvent.click(btn)
 
-    await waitFor(() => {
-      expect(mockCopy).toHaveBeenCalledWith('')
-    })
-    // No toast should fire when copy returns false
+    await new Promise((r) => setTimeout(r, 0))
+    expect(mockCopy).not.toHaveBeenCalled()
     expect(mockAddToast).not.toHaveBeenCalled()
   })
 
@@ -206,13 +204,16 @@ describe('AddressDisplay – very long address (>1000 chars)', () => {
 // ===========================================================================
 
 describe('AddressDisplay – XSS / injection payloads rendered as inert text', () => {
-  it.each(XSS_PAYLOADS)('payload %s is never executed as HTML (no script/img injected)', (payload) => {
-    const { container } = render(<AddressDisplay address={payload} />)
+  it.each(XSS_PAYLOADS)(
+    'payload %s is never executed as HTML (no script/img injected)',
+    (payload) => {
+      const { container } = render(<AddressDisplay address={payload} />)
 
-    // Verify no <script> or executable <img> tags were injected into the DOM
-    expect(container.querySelector('script')).not.toBeInTheDocument()
-    expect(container.querySelector('img[onerror]')).not.toBeInTheDocument()
-  })
+      // Verify no <script> or executable <img> tags were injected into the DOM
+      expect(container.querySelector('script')).not.toBeInTheDocument()
+      expect(container.querySelector('img[onerror]')).not.toBeInTheDocument()
+    }
+  )
 
   it('XSS payload passed to copy is the raw string value, not sanitised away', async () => {
     const xss = XSS_PAYLOADS[0]
@@ -283,19 +284,19 @@ describe('AddressDisplay – copy failure recovery', () => {
     fireEvent.click(btn)
 
     await waitFor(() => expect(mockCopy).toHaveBeenCalledOnce())
-    expect(mockAddToast).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(mockAddToast).toHaveBeenCalledWith(
+        'warning',
+        'Could not copy address — please copy it manually'
+      )
+    )
+    expect(mockAddToast).not.toHaveBeenCalledWith('success', expect.any(String))
   })
 
   it('does not crash when copy() throws synchronously', async () => {
-    // handleCopy is an `async` function: even if copy() throws synchronously,
-    // the async wrapper converts it into a rejected Promise — fireEvent.click
-    // itself does not throw synchronously. The rejection becomes an "unhandled"
-    // promise rejection because handleCopy has no .catch() at the call site.
-    //
-    // We use mockResolvedValue(false) here (the safe/deterministic path) to
-    // assert the core invariant: the component stays mounted and no toast fires.
-    // A separate note documents the unhandled-rejection gap as a known code smell.
-    mockCopy.mockResolvedValue(false)
+    mockCopy.mockImplementation(() => {
+      throw new Error('sync clipboard failure')
+    })
 
     render(<AddressDisplay address={VALID_ADDR} />)
     const btn = screen.getByRole('button', { name: 'Copy address' })
@@ -305,15 +306,14 @@ describe('AddressDisplay – copy failure recovery', () => {
 
     await waitFor(() => expect(mockCopy).toHaveBeenCalledWith(VALID_ADDR))
 
-    // Component is still mounted
+    // Component is still mounted and shows danger toast
     expect(btn).toBeInTheDocument()
-    // No toast – copy() returned false
-    expect(mockAddToast).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(mockAddToast).toHaveBeenCalledWith('danger', 'Failed to copy address')
+    )
   })
 
-  it('does not call addToast when copy() returns false (clipboard permission denied)', async () => {
-    // This is the production-equivalent of a copy failure (API returns false).
-    // It is the deterministic, unhandled-rejection–free path for failure testing.
+  it('shows warning toast and not success toast when copy() returns false (clipboard permission denied)', async () => {
     mockCopy.mockResolvedValue(false)
 
     render(<AddressDisplay address={VALID_ADDR} />)
@@ -324,13 +324,16 @@ describe('AddressDisplay – copy failure recovery', () => {
 
     // The component remains usable
     expect(btn).toBeInTheDocument()
-    // No toast on failure
-    expect(mockAddToast).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(mockAddToast).toHaveBeenCalledWith(
+        'warning',
+        'Could not copy address — please copy it manually'
+      )
+    )
+    expect(mockAddToast).not.toHaveBeenCalledWith('success', expect.any(String))
   })
 
   it('component wrapped in ErrorBoundary stays mounted when copy() fails', async () => {
-    // copy() returning false is the safe way to simulate a clipboard failure.
-    // ErrorBoundary only catches render-phase errors, not promise rejections.
     mockCopy.mockResolvedValue(false)
 
     render(
@@ -348,7 +351,7 @@ describe('AddressDisplay – copy failure recovery', () => {
     expect(screen.getByRole('button')).toBeInTheDocument()
     expect(screen.queryByTestId('error-fallback')).not.toBeInTheDocument()
     // No success toast when copy returns false
-    expect(mockAddToast).not.toHaveBeenCalled()
+    expect(mockAddToast).not.toHaveBeenCalledWith('success', expect.any(String))
   })
 })
 
@@ -357,8 +360,7 @@ describe('AddressDisplay – copy failure recovery', () => {
 // ===========================================================================
 
 describe('AddressDisplay – rapid and concurrent copy clicks', () => {
-  it('calls copy once per click even under rapid successive clicks', async () => {
-    // Simulate 5 rapid clicks
+  it('coalesces rapid in-flight clicks to a single copy call', async () => {
     render(<AddressDisplay address={VALID_ADDR} />)
     const btn = screen.getByRole('button', { name: 'Copy address' })
 
@@ -366,43 +368,43 @@ describe('AddressDisplay – rapid and concurrent copy clicks', () => {
       fireEvent.click(btn)
     }
 
-    await waitFor(() => expect(mockCopy).toHaveBeenCalledTimes(5))
+    await waitFor(() => expect(mockCopy).toHaveBeenCalledTimes(1))
   })
 
-  it('calls addToast once per successful copy regardless of click speed', async () => {
+  it('calls addToast once per completed copy across sequential clicks', async () => {
     mockCopy.mockResolvedValue(true)
 
     render(<AddressDisplay address={VALID_ADDR} />)
     const btn = screen.getByRole('button', { name: 'Copy address' })
 
     fireEvent.click(btn)
-    fireEvent.click(btn)
-    fireEvent.click(btn)
+    await waitFor(() => expect(mockAddToast).toHaveBeenCalledTimes(1))
 
+    fireEvent.click(btn)
+    await waitFor(() => expect(mockAddToast).toHaveBeenCalledTimes(2))
+
+    fireEvent.click(btn)
     await waitFor(() => expect(mockAddToast).toHaveBeenCalledTimes(3))
-    // Each call uses the correct toast parameters
     expect(mockAddToast).toHaveBeenCalledWith('success', 'Address copied to clipboard')
   })
 
-  it('does not call addToast for a failed copy even when interleaved with successes', async () => {
-    // First click succeeds, second fails, third succeeds
-    mockCopy
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true)
+  it('does not call success toast for a failed copy even when interleaved with successes', async () => {
+    mockCopy.mockResolvedValueOnce(true).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
 
     render(<AddressDisplay address={VALID_ADDR} />)
     const btn = screen.getByRole('button', { name: 'Copy address' })
 
     fireEvent.click(btn)
-    fireEvent.click(btn)
-    fireEvent.click(btn)
+    await waitFor(() => expect(mockCopy).toHaveBeenCalledTimes(1))
 
+    fireEvent.click(btn)
+    await waitFor(() => expect(mockCopy).toHaveBeenCalledTimes(2))
+
+    fireEvent.click(btn)
     await waitFor(() => expect(mockCopy).toHaveBeenCalledTimes(3))
 
-    // Toast only fires for the two successes
-    expect(mockAddToast).toHaveBeenCalledTimes(2)
-    expect(mockAddToast).toHaveBeenCalledWith('success', 'Address copied to clipboard')
+    const successCalls = mockAddToast.mock.calls.filter(([severity]) => severity === 'success')
+    expect(successCalls).toHaveLength(2)
   })
 
   it('concurrent copy clicks with userEvent do not leave the button in an inconsistent ARIA state', async () => {

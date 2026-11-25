@@ -82,11 +82,10 @@ describe('states/index.ts — module interface', () => {
 // ---------------------------------------------------------------------------
 
 describe('LoadingSkeleton — loading state boundaries', () => {
-  it('rows=0: renders no shimmer children for text variant', () => {
+  it('rows=0: falls back to default 3 shimmer children for text variant', () => {
     const { container } = render(<LoadingSkeleton variant="text" rows={0} />)
-    // Zero rows → zero child divs inside the status wrapper
     const root = container.firstElementChild as HTMLElement
-    expect(root.children).toHaveLength(0)
+    expect(root.children).toHaveLength(3)
   })
 
   it('rows=0: root element still has role="status" (accessible even with empty content)', () => {
@@ -99,23 +98,22 @@ describe('LoadingSkeleton — loading state boundaries', () => {
     expect(container.querySelector('[aria-label="Loading"]')).not.toBeNull()
   })
 
-  it('rows=0: table variant renders only the header row (0 data rows)', () => {
+  it('rows=0: table variant renders header row plus default 3 data rows', () => {
     const { container } = render(<LoadingSkeleton variant="table" rows={0} />)
     const root = container.firstElementChild as HTMLElement
-    // The table variant always renders a header block; zero data rows means 1 child total.
-    expect(root.children).toHaveLength(1)
+    expect(root.children).toHaveLength(4)
   })
 
-  it('rows=0: form variant renders no field groups', () => {
+  it('rows=0: form variant falls back to default 3 field groups', () => {
     const { container } = render(<LoadingSkeleton variant="form" rows={0} />)
     const root = container.firstElementChild as HTMLElement
-    expect(root.children).toHaveLength(0)
+    expect(root.children).toHaveLength(3)
   })
 
-  it('rows=0: dashboard variant renders no tile cells', () => {
+  it('rows=0: dashboard variant falls back to default 3 tile cells', () => {
     const { container } = render(<LoadingSkeleton variant="dashboard" rows={0} />)
     const root = container.firstElementChild as HTMLElement
-    expect(root.children).toHaveLength(0)
+    expect(root.children).toHaveLength(3)
   })
 
   it('loading→content transition: replacing skeleton with content is safe (no stale DOM)', () => {
@@ -139,7 +137,9 @@ describe('LoadingSkeleton — loading state boundaries', () => {
     vi.mocked(useReducedMotion).mockReturnValue(true)
     const { container } = render(<LoadingSkeleton variant="stat-widget" />)
     const shimmerEls = Array.from(
-      container.querySelectorAll('.skeleton--stat-label, .skeleton--stat-value, .skeleton--stat-sub')
+      container.querySelectorAll(
+        '.skeleton--stat-label, .skeleton--stat-value, .skeleton--stat-sub'
+      )
     ) as HTMLElement[]
     expect(shimmerEls.length).toBeGreaterThan(0)
     shimmerEls.forEach((el) => {
@@ -164,11 +164,7 @@ describe('LoadingSkeleton — loading state boundaries', () => {
 describe('ErrorState — retry-loop guard & concurrent safety', () => {
   it('retry-loop guard: onClick is NOT called when isLoading=true (button disabled)', () => {
     const onClick = vi.fn()
-    render(
-      <ErrorState
-        action={{ label: 'Retry', onClick, isLoading: true }}
-      />
-    )
+    render(<ErrorState action={{ label: 'Retry', onClick, isLoading: true }} />)
     const btn = screen.getByRole('button', { name: /retrying/i })
     // Attempt to fire click while already loading
     fireEvent.click(btn)
@@ -482,10 +478,7 @@ describe('ErrorState — error → retry → success / failure integration', () 
     })
 
     const { rerender } = render(
-      <ErrorState
-        type="network"
-        action={{ label: 'Try again', onClick: onRetry, isLoading }}
-      />
+      <ErrorState type="network" action={{ label: 'Try again', onClick: onRetry, isLoading }} />
     )
 
     // Phase 1: error displayed, button enabled
@@ -524,12 +517,18 @@ describe('ErrorState — error → retry → success / failure integration', () 
 
     // In-flight
     rerender(
-      <ErrorState type="network" action={{ label: 'Try again', onClick: onRetry, isLoading: true }} />
+      <ErrorState
+        type="network"
+        action={{ label: 'Try again', onClick: onRetry, isLoading: true }}
+      />
     )
 
     // Retry fails — error state remains, isLoading drops back to false
     rerender(
-      <ErrorState type="network" action={{ label: 'Try again', onClick: onRetry, isLoading: false }} />
+      <ErrorState
+        type="network"
+        action={{ label: 'Try again', onClick: onRetry, isLoading: false }}
+      />
     )
 
     // Error panel still visible
@@ -614,10 +613,7 @@ describe('EmptyState — action boundary cases', () => {
 
   it('action isLoading=true: shows "Connecting…" and is disabled with aria-busy', () => {
     render(
-      <EmptyState
-        {...baseProps}
-        action={{ label: 'Connect', onClick: vi.fn(), isLoading: true }}
-      />
+      <EmptyState {...baseProps} action={{ label: 'Connect', onClick: vi.fn(), isLoading: true }} />
     )
     const btn = screen.getByRole('button', { name: /connecting/i })
     expect(btn).toBeDisabled()
@@ -626,21 +622,14 @@ describe('EmptyState — action boundary cases', () => {
 
   it('action isLoading=true: onClick is NOT called when button is disabled', () => {
     const onClick = vi.fn()
-    render(
-      <EmptyState
-        {...baseProps}
-        action={{ label: 'Connect', onClick, isLoading: true }}
-      />
-    )
+    render(<EmptyState {...baseProps} action={{ label: 'Connect', onClick, isLoading: true }} />)
     fireEvent.click(screen.getByRole('button', { name: /connecting/i }))
     expect(onClick).not.toHaveBeenCalled()
   })
 
   it('action isLoading=false: clicking calls onClick exactly once', () => {
     const onClick = vi.fn()
-    render(
-      <EmptyState {...baseProps} action={{ label: 'Connect', onClick, isLoading: false }} />
-    )
+    render(<EmptyState {...baseProps} action={{ label: 'Connect', onClick, isLoading: false }} />)
     fireEvent.click(screen.getByRole('button', { name: /connect/i }))
     expect(onClick).toHaveBeenCalledTimes(1)
   })
@@ -648,10 +637,7 @@ describe('EmptyState — action boundary cases', () => {
   it('variant="secondary" button: fires onClick and has secondary class', () => {
     const onClick = vi.fn()
     const { container } = render(
-      <EmptyState
-        {...baseProps}
-        action={{ label: 'Dismiss', onClick, variant: 'secondary' }}
-      />
+      <EmptyState {...baseProps} action={{ label: 'Dismiss', onClick, variant: 'secondary' }} />
     )
     const btn = screen.getByRole('button', { name: /dismiss/i })
     expect(btn.className).toContain('empty-state__action--secondary')
@@ -690,16 +676,15 @@ describe('Accessibility invariants — composed state patterns', () => {
 
   it('error state: aria-label is never empty regardless of heading suppression config', () => {
     // Empty aria-label breaks screen reader navigation
-    const configs = [
-      { hideHeading: true },
-      { title: '' },
-      { hideHeading: true, title: '' },
-    ]
+    const configs = [{ hideHeading: true }, { title: '' }, { hideHeading: true, title: '' }]
     configs.forEach((props) => {
       const { unmount } = render(<ErrorState {...props} />)
       const panel = screen.getByRole('alert')
       const label = panel.getAttribute('aria-label')
-      expect(label, `aria-label must not be null/empty for props: ${JSON.stringify(props)}`).toBeTruthy()
+      expect(
+        label,
+        `aria-label must not be null/empty for props: ${JSON.stringify(props)}`
+      ).toBeTruthy()
       expect(label!.length).toBeGreaterThan(0)
       unmount()
     })
@@ -723,12 +708,24 @@ describe('Accessibility invariants — composed state patterns', () => {
 
   it('custom icon prop: custom content is rendered inside the icon container', () => {
     render(
-      <ErrorState icon={<span data-testid="lock-icon" aria-hidden="true">🔒</span>} />
+      <ErrorState
+        icon={
+          <span data-testid="lock-icon" aria-hidden="true">
+            🔒
+          </span>
+        }
+      />
     )
     expect(screen.getByTestId('lock-icon')).toBeInTheDocument()
     // Default SVG must NOT be rendered when a custom icon is provided
     const { container } = render(
-      <ErrorState icon={<span data-testid="lock-icon-2" aria-hidden="true">🔒</span>} />
+      <ErrorState
+        icon={
+          <span data-testid="lock-icon-2" aria-hidden="true">
+            🔒
+          </span>
+        }
+      />
     )
     expect(container.querySelector('svg')).toBeNull()
   })
@@ -770,9 +767,7 @@ describe('State transition invariants — no data loss / stale DOM residue', () 
   })
 
   it('action transition: removing an action mid-render removes the button cleanly', () => {
-    const { rerender } = render(
-      <ErrorState action={{ label: 'Retry', onClick: vi.fn() }} />
-    )
+    const { rerender } = render(<ErrorState action={{ label: 'Retry', onClick: vi.fn() }} />)
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
 
     rerender(<ErrorState />)
@@ -780,9 +775,7 @@ describe('State transition invariants — no data loss / stale DOM residue', () 
   })
 
   it('EmptyState title update propagates correctly (no stale heading text)', () => {
-    const { rerender } = render(
-      <EmptyState title="First title" description="Description." />
-    )
+    const { rerender } = render(<EmptyState title="First title" description="Description." />)
     expect(screen.getByRole('heading', { name: /first title/i })).toBeInTheDocument()
 
     rerender(<EmptyState title="Updated title" description="Description." />)

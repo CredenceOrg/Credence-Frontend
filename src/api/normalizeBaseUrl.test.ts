@@ -145,8 +145,14 @@ describe('§3 valid absolute http(s) bases', () => {
     ['http://127.0.0.1:3000', 'http://127.0.0.1:3000'],
     ['http://192.168.1.1/api', 'http://192.168.1.1/api'],
     // multi-segment sub-path
-    ['https://api.example.com/services/credence/v3', 'https://api.example.com/services/credence/v3'],
-    ['https://api.example.com/services/credence/v3/', 'https://api.example.com/services/credence/v3'],
+    [
+      'https://api.example.com/services/credence/v3',
+      'https://api.example.com/services/credence/v3',
+    ],
+    [
+      'https://api.example.com/services/credence/v3/',
+      'https://api.example.com/services/credence/v3',
+    ],
     // whitespace around absolute URL trimmed
     ['  https://api.credence.example  ', 'https://api.credence.example'],
   ])('normalizes %j to %j without a warning', (value, expected) => {
@@ -426,7 +432,7 @@ describe('§11 credential embedding in absolute URLs', () => {
 
   it('trailing-slash is stripped even when credentials are present', () => {
     expect(normalizeBaseUrl('https://user:pass@api.credence.example/')).toBe(
-      'https://user:pass@api.credence.example',
+      'https://user:pass@api.credence.example'
     )
   })
 
@@ -450,16 +456,14 @@ describe('§12 Unicode hosts and percent-encoded sequences', () => {
   it('accepts a valid https URL with a punycode/ACE-encoded IDN host', () => {
     // Punycode is a plain ASCII label — new URL() parses it without issue.
     const warn = captureWarnings()
-    expect(normalizeBaseUrl('https://xn--p1ai.example.com')).toBe(
-      'https://xn--p1ai.example.com',
-    )
+    expect(normalizeBaseUrl('https://xn--p1ai.example.com')).toBe('https://xn--p1ai.example.com')
     expect(warn).not.toHaveBeenCalled()
   })
 
   it('accepts a valid https URL with a percent-encoded path segment', () => {
     const warn = captureWarnings()
     expect(normalizeBaseUrl('https://api.example.com/v1%2Fbeta')).toBe(
-      'https://api.example.com/v1%2Fbeta',
+      'https://api.example.com/v1%2Fbeta'
     )
     expect(warn).not.toHaveBeenCalled()
   })
@@ -536,9 +540,7 @@ describe('§14 concurrency — no cross-contamination', () => {
     ]
 
     const sequential = inputs.map((v) => normalizeBaseUrl(v))
-    const concurrent = await Promise.all(
-      inputs.map((v) => Promise.resolve(normalizeBaseUrl(v))),
-    )
+    const concurrent = await Promise.all(inputs.map((v) => Promise.resolve(normalizeBaseUrl(v))))
 
     expect(concurrent).toEqual(sequential)
   })

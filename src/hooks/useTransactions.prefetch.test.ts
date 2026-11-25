@@ -12,6 +12,13 @@ vi.mock('../api/client', async (importOriginal) => {
   }
 })
 
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({
+    address: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7',
+    network: 'test',
+  }),
+}))
+
 const apiFetchMock = vi.mocked(apiFetch)
 
 type Page = { items: Transaction[]; nextCursor?: string }
@@ -48,7 +55,8 @@ function pageParams(path: string): URLSearchParams {
 }
 
 function callsForCursor(cursor: string): number {
-  return apiFetchMock.mock.calls.filter(([path]) => pageParams(path).get('cursor') === cursor).length
+  return apiFetchMock.mock.calls.filter(([path]) => pageParams(path).get('cursor') === cursor)
+    .length
 }
 
 /** First page resolves from every cursor-less call; page 2 is deferred. */

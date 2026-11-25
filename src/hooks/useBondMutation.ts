@@ -363,7 +363,7 @@ function validateCreateParams(
     }
   }
 
-  if (!VALID_DURATIONS.includes(durationDays as any)) {
+  if (!(VALID_DURATIONS as readonly number[]).includes(durationDays)) {
     return {
       ok: false,
       code: 'validation',

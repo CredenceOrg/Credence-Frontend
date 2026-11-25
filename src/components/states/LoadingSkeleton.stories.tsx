@@ -109,47 +109,137 @@ export const AllVariants: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '640px' }}>
       <section>
-        <h3 style={{ marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Text</h3>
+        <h3
+          style={{
+            marginBottom: '0.5rem',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            opacity: 0.6,
+          }}
+        >
+          Text
+        </h3>
         <LoadingSkeleton variant="text" rows={3} width="100%" />
       </section>
 
       <section>
-        <h3 style={{ marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Card</h3>
+        <h3
+          style={{
+            marginBottom: '0.5rem',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            opacity: 0.6,
+          }}
+        >
+          Card
+        </h3>
         <LoadingSkeleton variant="card" width="100%" />
       </section>
 
       <section>
-        <h3 style={{ marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Form</h3>
+        <h3
+          style={{
+            marginBottom: '0.5rem',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            opacity: 0.6,
+          }}
+        >
+          Form
+        </h3>
         <LoadingSkeleton variant="form" rows={3} width="100%" />
       </section>
 
       <section>
-        <h3 style={{ marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Table</h3>
+        <h3
+          style={{
+            marginBottom: '0.5rem',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            opacity: 0.6,
+          }}
+        >
+          Table
+        </h3>
         <LoadingSkeleton variant="table" rows={4} width="100%" />
       </section>
 
       <section>
-        <h3 style={{ marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Dashboard</h3>
+        <h3
+          style={{
+            marginBottom: '0.5rem',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            opacity: 0.6,
+          }}
+        >
+          Dashboard
+        </h3>
         <LoadingSkeleton variant="dashboard" rows={3} width="100%" />
       </section>
 
       <section>
-        <h3 style={{ marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Stat Widget</h3>
+        <h3
+          style={{
+            marginBottom: '0.5rem',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            opacity: 0.6,
+          }}
+        >
+          Stat Widget
+        </h3>
         <LoadingSkeleton variant="stat-widget" width="220px" />
       </section>
 
       <section>
-        <h3 style={{ marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>List Row</h3>
+        <h3
+          style={{
+            marginBottom: '0.5rem',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            opacity: 0.6,
+          }}
+        >
+          List Row
+        </h3>
         <LoadingSkeleton variant="list-row" rows={3} width="100%" />
       </section>
 
       <section>
-        <h3 style={{ marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Bond Row</h3>
+        <h3
+          style={{
+            marginBottom: '0.5rem',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            opacity: 0.6,
+          }}
+        >
+          Bond Row
+        </h3>
         <LoadingSkeleton variant="bond-row" rows={3} width="100%" />
       </section>
 
       <section>
-        <h3 style={{ marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Trust Score</h3>
+        <h3
+          style={{
+            marginBottom: '0.5rem',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            opacity: 0.6,
+          }}
+        >
+          Trust Score
+        </h3>
         <LoadingSkeleton variant="trust-score" rows={3} width="100%" />
       </section>
     </div>

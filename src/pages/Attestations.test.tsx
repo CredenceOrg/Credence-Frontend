@@ -57,13 +57,9 @@ describe('Attestations page', () => {
   it('renders the header, form, timeline, and status filter', () => {
     renderInRouter(<Attestations />)
 
-    expect(
-      screen.getByRole('heading', { name: /^attestations$/i, level: 1 })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^attestations$/i, level: 1 })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /submit attestation/i })).toBeInTheDocument()
-    expect(
-      screen.getByRole('list', { name: /recent timeline events/i })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: /recent timeline events/i })).toBeInTheDocument()
 
     const filter = screen.getByRole('combobox', { name: /filter attestations/i })
     expect(filter).toBeInTheDocument()
@@ -119,9 +115,7 @@ describe('Attestations page', () => {
 
     const time = screen.getAllByRole('listitem')[0]!.querySelector('time')
     expect(time).not.toBeNull()
-    expect(time?.getAttribute('dateTime')).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-    )
+    expect(time?.getAttribute('dateTime')).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
     expect(time?.textContent).not.toContain('T')
   })
 })

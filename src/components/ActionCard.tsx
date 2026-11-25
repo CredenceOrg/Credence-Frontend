@@ -24,6 +24,10 @@ export interface ActionCardProps {
    */
   shareableLink?: string
   /**
+   * Optional callback invoked when copying the shareable link fails or rejects.
+   */
+  onCopyError?: (error?: unknown) => void
+  /**
    * Indicates if this is an early-access feature. Will display a beta ribbon if true.
    */
   isEarlyAccess?: boolean
@@ -39,6 +43,7 @@ export default function ActionCard({
   padding = 'comfortable',
   elevated,
   shareableLink,
+  onCopyError,
   isEarlyAccess,
   onDismiss,
   children,
@@ -50,6 +55,7 @@ export default function ActionCard({
   const [offset, setOffset] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  const isCopyingRef = useRef(false)
 
   const handleTouchStart = (e: TouchEvent<HTMLElement>) => {
     if (!onDismiss) return
@@ -88,12 +94,23 @@ export default function ActionCard({
   const style = onDismiss && isSwiping ? { transform: `translateX(${offset}px)` } : undefined
 
   const handleCopyLink = useCallback(async () => {
-    if (!shareableLink) return
-    const success = await copy(shareableLink)
-    if (success) {
-      addToast('success', t('dashboard.linkCopied'))
+    if (!shareableLink || isCopyingRef.current) return
+    isCopyingRef.current = true
+    try {
+      const success = await copy(shareableLink)
+      if (success) {
+        addToast('success', t('dashboard.linkCopied'))
+      } else {
+        addToast('danger', t('dashboard.linkCopyFailed'))
+        onCopyError?.()
+      }
+    } catch (error) {
+      addToast('danger', t('dashboard.linkCopyFailed'))
+      onCopyError?.(error)
+    } finally {
+      isCopyingRef.current = false
     }
-  }, [shareableLink, copy, addToast, t])
+  }, [shareableLink, copy, addToast, t, onCopyError])
 
   return (
     <article

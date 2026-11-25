@@ -366,9 +366,7 @@ describe('Authorization boundaries & tenant identity invariants (QE-2026-08)', (
     })
 
     it('produces a stable message for a rejected apiFetch authorization failure', async () => {
-      fetchMock.mockResolvedValueOnce(
-        jsonResponse({ message: 'Access denied' }, { status: 403 })
-      )
+      fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'Access denied' }, { status: 403 }))
       vi.stubGlobal('fetch', fetchMock)
 
       const epoch = getIdentityEpoch()
@@ -394,11 +392,22 @@ describe('Authorization boundaries & tenant identity invariants (QE-2026-08)', (
 
     it('does not throw for adversarial inputs (regression guard)', () => {
       const adversarial: unknown[] = [
-        { toString: () => { throw new Error('boom') } },
+        {
+          toString: () => {
+            throw new Error('boom')
+          },
+        },
         Object.create(null),
         [],
         () => undefined,
-        new Proxy({}, { get: () => { throw new Error('trap') } }),
+        new Proxy(
+          {},
+          {
+            get: () => {
+              throw new Error('trap')
+            },
+          }
+        ),
       ]
 
       adversarial.forEach((input) => {

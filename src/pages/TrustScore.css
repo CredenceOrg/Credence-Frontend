@@ -349,7 +349,11 @@
   .trustScore__hero {
     padding: var(--credence-space-6);
     gap: var(--credence-space-4);
-    background: linear-gradient(135deg, var(--credence-surface-card) 0%, rgba(7, 89, 133, 0.02) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--credence-surface-card) 0%,
+      rgba(7, 89, 133, 0.02) 100%
+    );
   }
 
   .trustScore__heroScore {

@@ -207,9 +207,33 @@ describe('TrustScore boundaries', () => {
         typeof v.updatedAt === 'string'
       )
     }
-    expect(isTrustScore({ address: VALID_ADDRESS, score: -1, tier: 'bronze', attestations: 0, updatedAt: 'x' })).toBe(false)
-    expect(isTrustScore({ address: VALID_ADDRESS, score: 1001, tier: 'platinum', attestations: 0, updatedAt: 'x' })).toBe(false)
-    expect(isTrustScore({ address: VALID_ADDRESS, score: 500, tier: 'gold', attestations: 1, updatedAt: 'x' })).toBe(true)
+    expect(
+      isTrustScore({
+        address: VALID_ADDRESS,
+        score: -1,
+        tier: 'bronze',
+        attestations: 0,
+        updatedAt: 'x',
+      })
+    ).toBe(false)
+    expect(
+      isTrustScore({
+        address: VALID_ADDRESS,
+        score: 1001,
+        tier: 'platinum',
+        attestations: 0,
+        updatedAt: 'x',
+      })
+    ).toBe(false)
+    expect(
+      isTrustScore({
+        address: VALID_ADDRESS,
+        score: 500,
+        tier: 'gold',
+        attestations: 1,
+        updatedAt: 'x',
+      })
+    ).toBe(true)
   })
 })
 
@@ -312,7 +336,10 @@ describe('retry and concurrency invariants', () => {
       status: 'confirmed',
       hash: 'h',
     }
-    await Promise.all([Promise.resolve().then(() => upsert(tx)), Promise.resolve().then(() => upsert(tx))])
+    await Promise.all([
+      Promise.resolve().then(() => upsert(tx)),
+      Promise.resolve().then(() => upsert(tx)),
+    ])
     expect(store.size).toBe(1)
     expect(store.get('tx-concurrent')).toEqual(tx)
   })

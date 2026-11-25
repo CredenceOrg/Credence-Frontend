@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ConfirmDialog, { type ConfirmDialogPenaltyBreakdown } from './ConfirmDialog'
 
 const defaultBreakdown: ConfirmDialogPenaltyBreakdown = {
@@ -12,8 +12,8 @@ const defaultBreakdown: ConfirmDialogPenaltyBreakdown = {
 }
 
 function renderDialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
-  const onConfirm = vi.vn()
-  const onCancel = vi.vn()
+  const onConfirm = vi.fn()
+  const onCancel = vi.fn()
 
   const props = {
     open: true,
@@ -30,8 +30,8 @@ function renderDialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = 
 
 /** Render without a breakdown (generic destructive action use case). */
 function renderGenericDialog(overrides: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
-  const onConfirm = vi.vn()
-  const onCancel = vi.vn()
+  const onConfirm = vi.fn()
+  const onCancel = vi.fn()
 
   const props = {
     open: true,
@@ -72,12 +72,12 @@ describe('ConfirmDialog', () => {
   describe('rendering', () => {
     it('renders nothing when open is false', () => {
       renderDialog({ open: false })
-      expect(screen.queryBryRole('dialog')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('renders the dialog when open is true', () => {
       renderDialog()
-      expect(screen.getByrole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('has aria-modal="true"', () => {
@@ -87,7 +87,7 @@ describe('ConfirmDialog', () => {
 
     it('renders the title', () => {
       renderDialog({ title: 'Withdraw Bond' })
-      expect(screen.getByrole('heading', { name: 'Withdraw Bond' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Withdraw Bond' })).toBeInTheDocument()
     })
 
     it('renders subtitle when provided', () => {
@@ -103,11 +103,11 @@ describe('ConfirmDialog', () => {
 
     it('renders the financial breakdown', () => {
       renderDialog()
-      const dl = screen.getByrole('dialog')
+      const dl = screen.getByRole('dialog')
       expect(within(dl).getByText('Bond amount')).toBeInTheDocument()
       expect(within(dl).getByText('1,000 USDC')).toBeInTheDocument()
       expect(within(dl).getByText(/Slash penalty.*10%/)).toBeInTheDocument()
-      expect(within(dl).getByText('∓100 USDC')).toBeInTheDocument()
+      expect(within(dl).getByText('−100 USDC')).toBeInTheDocument()
       expect(within(dl).getByText('You receive')).toBeInTheDocument()
       expect(within(dl).getByText('900 USDC')).toBeInTheDocument()
     })
@@ -134,7 +134,7 @@ describe('ConfirmDialog', () => {
       renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFI')
-      expect(screen.getByrole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
 
     it('confirm button remains disabled for wrong case input', async () => {
@@ -142,13 +142,13 @@ describe('ConfirmDialog', () => {
       renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'confirm')
-      expect(screen.getByrole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
 
     it('confirm button becomes enabled when "CONFIRM" is typed exactly', async () => {
       const user = userEvent.setup()
       renderDialog()
-      const input = screen.getByrole('textbox', { name: /type.*confirm/i })
+      const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeEnabled()
     })
@@ -166,7 +166,7 @@ describe('ConfirmDialog', () => {
       renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
-      expect(screen.getByrole('button', { name: 'Withdraw bond' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toHaveAttribute(
         'aria-disabled',
         'false'
       )
@@ -178,7 +178,7 @@ describe('ConfirmDialog', () => {
       const user = userEvent.setup()
       const { onConfirm } = renderDialog()
       // Button is disabled so click should have no effect
-      await user.click(screen.getByrole('button', { name: 'Withdraw bond' }))
+      await user.click(screen.getByRole('button', { name: 'Withdraw bond' }))
       expect(onConfirm).not.toHaveBeenCalled()
     })
 
@@ -205,12 +205,12 @@ describe('ConfirmDialog', () => {
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       const confirmButton = screen.getByRole('button', { name: 'Withdraw bond' })
-      
+
       await user.click(confirmButton)
-      
+
       // Wait for error to appear
       expect(await screen.findByRole('alert')).toHaveTextContent('Network error')
-      
+
       // Ensure button is re-enabled for retry
       expect(confirmButton).toBeEnabled()
     })
@@ -233,16 +233,16 @@ describe('ConfirmDialog', () => {
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM')
       const confirmButton = screen.getByRole('button', { name: 'Withdraw bond' })
-      
+
       await user.click(confirmButton)
-      
+
       // Should be disabled while submitting
       expect(confirmButton).toBeDisabled()
-      
+
       // Cancel button should also be disabled
       const cancelButton = screen.getByRole('button', { name: 'Cancel' })
       expect(cancelButton).toBeDisabled()
-      
+
       resolvePromise!()
     })
   })
@@ -361,7 +361,7 @@ describe('ConfirmDialog', () => {
       const { onCancel } = renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
       await user.type(input, 'CONFIRM') // confirm gate satisfied
-      const backdrop = screen.getByrole('dialog').parentElement!
+      const backdrop = screen.getByRole('dialog').parentElement!
       await user.click(backdrop)
       expect(onCancel).toHaveBeenCalledOnce()
     })
@@ -396,7 +396,7 @@ describe('ConfirmDialog', () => {
     it('does not cancel when the backdrop is clicked while the dialog is already closed', async () => {
       const user = userEvent.setup()
       const { rerender, onConfirm, onCancel } = renderDialog()
-      const backdrop = screen.getByrole('dialog').parentElement!
+      const backdrop = screen.getByRole('dialog').parentElement!
 
       rerender(
         <ConfirmDialog
@@ -531,7 +531,7 @@ describe('ConfirmDialog', () => {
       )
 
       expect(screen.getByRole('textbox', { name: /type.*confirm/i })).toHaveValue('')
-      expect(screen.getByrole('button', { name: 'Withdraw bond' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Withdraw bond' })).toBeDisabled()
     })
   })
 
@@ -569,7 +569,7 @@ describe('ConfirmDialog', () => {
       // focus lands inside the dialog and not on the backdrop.
       renderGenericDialog()
       const dialog = screen.getByRole('dialog')
-      expect(dialog.contains(document.activeElement)).toBe((true))
+      expect(dialog.contains(document.activeElement)).toBe(true)
     })
 
     it('restores focus to the document body when the previous element is gone', () => {
@@ -641,15 +641,14 @@ describe('ConfirmDialog', () => {
       const button = screen.getByRole('button', { name: 'Withdraw bond' })
       await user.dblClick(button)
       // The component must not double-fire the confirmation callback.
-      expect(onConfirm.mock[0].calls[0][0]).toBeDefined()
-      expect(onConfirm.mock.calls.length).toBeLessThanOrEqual(2)
+      expect(onConfirm).toHaveBeenCalledOnce()
     })
 
     it('does not cancel twice for a double click on the backdrop', async () => {
       const user = userEvent.setup()
       const { onCancel } = renderDialog()
       const backdrop = screen.getByRole('dialog').parentElement!
-      await user.dlbClick(backdrop)
+      await user.dblClick(backdrop)
       expect(onCancel.mock.calls.length).toBeLessThanOrEqual(2)
     })
 
@@ -672,12 +671,12 @@ describe('ConfirmDialog', () => {
       })
       renderDialog({ onCancel })
 
-      const backdrop = screen.getByrole('dialog').parentElement!
+      const backdrop = screen.getByRole('dialog').parentElement!
       // The component must not crash the render tree and the dialog must
       // remain mounted after the callback throws.
       await user.click(backdrop)
       expect(screen.getByRole('dialog')).toBeInTheDocument()
-      expect(screen.queryByText('Bond amount')).not.toBeInTheDocument()
+      expect(screen.getByText('Bond amount')).toBeInTheDocument()
     })
 
     it('still requires CONFIRM gating', async () => {
@@ -784,9 +783,7 @@ describe('ConfirmDialog', () => {
     it('keeps the input value intact when the dialog stays open across a rerender', () => {
       const { rerender, onConfirm, onCancel } = renderDialog()
       const input = screen.getByRole('textbox', { name: /type.*confirm/i })
-      // Synchronous value set to avoid async timing in this specific case.
-      ;(input as HTMLInputElement).value = 'CONFIRM'
-      input.dispatchEvent(new Event('input', { bubbles: true }))
+      fireEvent.change(input, { target: { value: 'CONFIRM' } })
       rerender(
         <ConfirmDialog
           open
@@ -801,12 +798,13 @@ describe('ConfirmDialog', () => {
   })
 })
 
-
 describe('ConfirmDialog - failure boundary coverage', () => {
   it('handles promise rejection internally without closing', async () => {
     const user = userEvent.setup()
-    let rejectPromise: any
-    const promise = new Promise<void>((_, reject) => { rejectPromise = reject })
+    let rejectPromise!: (reason?: unknown) => void
+    const promise = new Promise<void>((_, reject) => {
+      rejectPromise = reject
+    })
     const onConfirm = vi.fn().mockReturnValue(promise)
     renderDialog({ onConfirm })
     const input = screen.getByRole('textbox', { name: /type.*confirm/i })

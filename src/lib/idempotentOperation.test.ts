@@ -173,4 +173,39 @@ describe('runIdempotentOperation', () => {
     await expect(original).resolves.toEqual({ txHash: 'tx-1' })
     expect(execute).toHaveBeenCalledTimes(1)
   })
+
+  it('clears corrupted persisted commit entries and executes cleanly', async () => {
+    localStorage.setItem(
+      'credence:idempotent-operation:bond:withdraw:corrupt-key',
+      '{not-valid-json'
+    )
+    const execute = vi.fn().mockResolvedValue({ txHash: 'tx-clean' })
+
+    const res = await runIdempotentOperation({
+      namespace: 'bond:withdraw',
+      requestKey: 'corrupt-key',
+      fingerprint: 'bond=9',
+      execute,
+    })
+
+    expect(res).toEqual({ txHash: 'tx-clean' })
+    expect(execute).toHaveBeenCalledTimes(1)
+  })
+
+  it('operates cleanly when localStorage is unavailable', async () => {
+    vi.stubGlobal('localStorage', undefined)
+    try {
+      const execute = vi.fn().mockResolvedValue({ txHash: 'tx-no-storage' })
+      const res = await runIdempotentOperation({
+        namespace: 'bond:withdraw',
+        requestKey: 'no-storage-key',
+        fingerprint: 'bond=10',
+        execute,
+      })
+      expect(res).toEqual({ txHash: 'tx-no-storage' })
+      resetIdempotentOperationStore()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })

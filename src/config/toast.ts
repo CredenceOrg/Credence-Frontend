@@ -33,7 +33,8 @@ export const TOAST_CONFIG = {
   timeouts: {
     info: parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT) ?? DEFAULT_TIMEOUTS.info,
     success: parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT) ?? DEFAULT_TIMEOUTS.success,
-    warning: parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT_WARNING) ?? DEFAULT_TIMEOUTS.warning,
+    warning:
+      parseEnvTimeout(import.meta.env.VITE_TOAST_TIMEOUT_WARNING) ?? DEFAULT_TIMEOUTS.warning,
     danger: DEFAULT_TIMEOUTS.danger,
   },
   /** Maximum number of toasts displayed simultaneously. */

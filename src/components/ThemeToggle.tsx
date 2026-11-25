@@ -4,9 +4,6 @@ import { useSettings } from '../context/SettingsContext'
 import { logWarn } from '../lib/log'
 
 const THEME_STORAGE_KEY = 'theme'
-const THEME_CHANNEL_EVENT = 'theme-change'
-
-const DARK_QUERY = '(prefers-color-scheme: dark)'
 
 export type Theme = 'light' | 'dark'
 
@@ -46,19 +43,6 @@ export function persistTheme(theme: Theme): void {
   }
 }
 
-function readOSPreference(): Theme {
-  if (typeof window === 'undefined') return 'light'
-  try {
-    if (typeof window.matchMedia !== 'function') return 'light'
-    return window.matchMedia(DARK_QUERY).matches ? 'dark' : 'light'
-  } catch {
-    return 'light'
-  }
-}
-
-function resolveTheme(): Theme {
-  return readPersistedTheme() ?? readOSPreference()
-}
 function SunIcon() {
   return (
     <svg

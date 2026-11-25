@@ -1,14 +1,14 @@
 import { renderHook, act, render, screen } from '@testing-library/react'
 import React from 'react'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { SettingsProvider, useSettings, SettingsErrorBoundary } from './SettingsContext'
-import { safeStorage } from '../hooks/useLocalStorage'
 
 const STORAGE_KEY = 'credence:settings'
 
 describe('SettingsContext Failure Boundary', () => {
   beforeEach(() => {
     localStorage.clear()
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('normal load/save flow', () => {
@@ -19,7 +19,7 @@ describe('SettingsContext Failure Boundary', () => {
     act(() => {
       result.current.setThemeMode('dark')
     })
-    
+
     act(() => {
       result.current.saveSettings()
     })
@@ -32,22 +32,22 @@ describe('SettingsContext Failure Boundary', () => {
   it('corrupted JSON in storage -> fallback to defaults, lastError set', () => {
     localStorage.setItem(STORAGE_KEY, '{ invalid json')
     const { result } = renderHook(() => useSettings(), { wrapper: SettingsProvider })
-    
+
     expect(result.current.themeMode).toBe('system') // default
     expect(result.current.lastError).toBeTruthy()
   })
 
   it('write quota error -> canPersist false, lastError set, retryPersist succeeds after quota cleared', async () => {
-    const mockSetItem = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    const mockSetItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('QuotaExceededError')
     })
 
     const { result } = renderHook(() => useSettings(), { wrapper: SettingsProvider })
-    
+
     act(() => {
       result.current.setThemeMode('dark')
     })
-    
+
     act(() => {
       result.current.saveSettings()
     })

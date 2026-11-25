@@ -64,6 +64,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     pool: 'forks',
+    testTimeout: 15000,
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/**'],
     setupFiles: ['./src/test-setup.ts'],
     alias: {
       '@stellar/freighter-api': path.resolve(

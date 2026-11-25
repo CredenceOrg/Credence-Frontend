@@ -56,25 +56,31 @@ vi.mock('../hooks/useTrustScore', () => ({
   }),
 }))
 
-vi.mock('../api/client', () => ({
-  apiFetch: mocks.mockApiFetch,
-  ApiError: class ApiError extends Error {
-    status: number
-    constructor(status: number, message: string) {
-      super(message)
-      this.name = 'ApiError'
-      this.status = status
-    }
-  },
-}))
+vi.mock('../api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/client')>()
+  return {
+    ...actual,
+    apiFetch: mocks.mockApiFetch,
+    ApiError: class ApiError extends Error {
+      status: number
+      constructor(status: number, message: string) {
+        super(message)
+        this.name = 'ApiError'
+        this.status = status
+      }
+    },
+  }
+})
 
 // Mock @/lib/stellar so we don't need valid 56-char Stellar addresses
 vi.mock('@/lib/stellar', () => ({
   isValidStellarAddress: (addr: string) => typeof addr === 'string' && addr.length > 0,
   formatAddressForDisplay: (addr: string, mode: string) => {
     if (!addr) return ''
-    if (mode === 'friendly') return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr
-    if (mode === 'short') return addr.length > 20 ? `${addr.slice(0, 12)}...${addr.slice(-8)}` : addr
+    if (mode === 'friendly')
+      return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr
+    if (mode === 'short')
+      return addr.length > 20 ? `${addr.slice(0, 12)}...${addr.slice(-8)}` : addr
     return addr
   },
 }))

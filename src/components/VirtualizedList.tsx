@@ -42,7 +42,7 @@ export default function VirtualizedList<T>({
   }, [items.length])
 
   const shouldVirtualize = items.length >= virtualizeThreshold
-  const visibleCount = Math.max(1, Math.ceil(height / itemHeight) + 1)
+  const visibleCount = Math.max(1, Math.ceil(height / itemHeight))
   const totalHeight = items.length * itemHeight
   const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan)
   const endIndex = Math.min(items.length, startIndex + visibleCount + overscan * 2)

@@ -1,7 +1,7 @@
 import { ComponentType } from 'react'
 import { lazyWithRetry } from '../lib/lazyWithRetry'
 
-export type PreloadFn = () => Promise<{ default: ComponentType<any> }>
+export type PreloadFn = () => Promise<{ default: ComponentType<never> }>
 
 export const Home = lazyWithRetry(() => import('../pages/Home'))
 export const Dashboard = lazyWithRetry(() => import('../pages/Dashboard'))

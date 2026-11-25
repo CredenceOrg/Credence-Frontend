@@ -89,11 +89,20 @@ export default function ConfirmDialog({
   const [prevConfirmEnabled, setPrevConfirmEnabled] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
+  const [isPending, setIsPending] = useState(false)
   const isSubmittingRef = useRef(isSubmitting)
+  const isPendingRef = useRef(false)
+  const hasConfirmedRef = useRef(false)
   const isMountedRef = useRef(true)
 
+  const effectiveSubmitting = isSubmitting || isPending
+
   const handleCancel = useCallback(() => {
-    onCancel()
+    try {
+      onCancel()
+    } catch {
+      // Keep dialog interactive if parent cancel handler throws
+    }
   }, [onCancel])
 
   useScrollPreserver({ isActive: open })
@@ -124,6 +133,9 @@ export default function ConfirmDialog({
       setPrevConfirmEnabled(false)
       setSubmitError(null)
       setIsRetrying(false)
+      setIsPending(false)
+      isPendingRef.current = false
+      hasConfirmedRef.current = false
       return
     }
 
@@ -137,12 +149,8 @@ export default function ConfirmDialog({
     if (isConfirmEnabled !== prevConfirmEnabled) {
       if (isConfirmEnabled) {
         setAnnouncement(t('confirmDialog.announcements.actionEnabled', { phrase: confirmPhrase }))
-        requestAnimationFrame(() => {
-          confirmRef.current?.focus()
-        })
       } else {
         setAnnouncement(t('confirmDialog.announcements.actionDisabled', { phrase: confirmPhrase }))
-        requestAnimationFrame(() => cancelRef.current?.focus())
       }
       setPrevConfirmEnabled(isConfirmEnabled)
     }
@@ -158,36 +166,50 @@ export default function ConfirmDialog({
 
   const handleConfirm = () => {
     if (!isConfirmEnabled) return
-    if (isSubmitting) return
-    if (isSubmittingRef.current) return
+    if (isSubmitting || isSubmittingRef.current) return
+    if (isPendingRef.current || hasConfirmedRef.current) return
+    hasConfirmedRef.current = true
     setSubmitError(null)
     try {
       const result = onConfirm() as unknown
       if (result && typeof (result as Promise<unknown>).then === 'function') {
-        ;(result as Promise<unknown>).catch((err: unknown) => {
-          if (!isMountedRef.current) return
-          const message =
-            err instanceof Error && err.message
-              ? err.message
-              : t('confirmDialog.errors.submitFailed')
-          setSubmitError(message)
-          setAnnouncement(t('confirmDialog.announcements.submitFailed'))
-        })
+        isPendingRef.current = true
+        setIsPending(true)
+        ;(result as Promise<unknown>)
+          .then(() => {
+            isPendingRef.current = false
+            if (isMountedRef.current) {
+              setIsPending(false)
+              setIsRetrying(false)
+            }
+          })
+          .catch((err: unknown) => {
+            isPendingRef.current = false
+            hasConfirmedRef.current = false
+            if (!isMountedRef.current) return
+            setIsPending(false)
+            setIsRetrying(false)
+            const message =
+              err instanceof Error && err.message
+                ? err.message
+                : t('confirmDialog.errors.submitFailed')
+            setSubmitError(message)
+            setAnnouncement(t('confirmDialog.announcements.submitFailed'))
+          })
       }
     } catch (err) {
+      hasConfirmedRef.current = false
       if (!isMountedRef.current) return
       const message =
-        err instanceof Error && err.message
-          ? err.message
-          : t('confirmDialog.errors.submitFailed')
+        err instanceof Error && err.message ? err.message : t('confirmDialog.errors.submitFailed')
       setSubmitError(message)
       setAnnouncement(t('confirmDialog.announcements.submitFailed'))
     }
   }
 
   const handleRetry = () => {
-    if (isSubmitting) return
-    if (isSubmittingRef.current) return
+    if (isSubmitting || isSubmittingRef.current || isPendingRef.current) return
+    hasConfirmedRef.current = false
     setIsRetrying(true)
     setSubmitError(null)
     setAnnouncement(t('confirmDialog.announcements.retrying'))
@@ -200,7 +222,7 @@ export default function ConfirmDialog({
     // prevents drag-release, multi-touch, and synthetic events from closing
     // the dialog while a submission is in flight or when the click originated
     // inside the dialog content.
-    if (isSubmittingRef.current || isSubmitting) return
+    if (isSubmittingRef.current || isSubmitting || isPendingRef.current) return
     if (event.button !== 0) return
     if (event.defaultPrevented) return
     if (event.target !== event.currentTarget) return
@@ -233,8 +255,13 @@ export default function ConfirmDialog({
         {submitError && (
           <div role="alert" className="confirm-dialog__error">
             <p>{submitError}</p>
-            <Button type="button" variant="secondary" onClick={handleRetry} disabled={isSubmitting}>
-              {t('confirmDialog.retry')}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleRetry}
+              disabled={effectiveSubmitting}
+            >
+              {t('confirmDialog.retry', { defaultValue: 'Retry' })}
             </Button>
           </div>
         )}
@@ -304,7 +331,7 @@ export default function ConfirmDialog({
             type="button"
             variant="secondary"
             onClick={handleCancel}
-            disabled={isSubmitting}
+            disabled={effectiveSubmitting}
           >
             Cancel
           </Button>
@@ -312,10 +339,10 @@ export default function ConfirmDialog({
             ref={confirmRef}
             type="button"
             variant={variant === 'danger' ? 'danger' : 'primary'}
-            disabled={!isConfirmEnabled || isSubmitting}
-            isLoading={isSubmitting || isRetrying}
+            disabled={!isConfirmEnabled || effectiveSubmitting}
+            isLoading={effectiveSubmitting || isRetrying}
             onClick={handleConfirm}
-            aria-disabled={!isConfirmEnabled || isSubmitting}
+            aria-disabled={!isConfirmEnabled || effectiveSubmitting}
           >
             {confirmLabel}
           </Button>

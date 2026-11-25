@@ -1,6 +1,6 @@
-import React from 'react';
-import type { Meta, StoryObj } from '@storybook/react';
-import AmountInput from './AmountInput';
+import React from 'react'
+import type { Meta, StoryObj } from '@storybook/react'
+import AmountInput from './AmountInput'
 
 const meta: Meta<typeof AmountInput> = {
   title: 'Components/Forms/AmountInput',
@@ -127,28 +127,28 @@ function MaxFailureHarness({
   value,
   balance,
 }: {
-  outcome: 'error' | 'permission' | 'stale';
-  failures: number;
-  value: string;
-  balance: number;
+  outcome: 'error' | 'permission' | 'stale'
+  failures: number
+  value: string
+  balance: number
 }) {
-  const [amount, setAmount] = React.useState(value);
-  const attempts = React.useRef(0);
+  const [amount, setAmount] = React.useState(value)
+  const attempts = React.useRef(0)
 
   const onMaxRequest = React.useCallback(async () => {
-    attempts.current += 1;
-    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    attempts.current += 1
+    await new Promise((resolve) => window.setTimeout(resolve, 500))
     if (attempts.current <= failures) {
       if (outcome === 'permission') {
-        throw Object.assign(new Error('wallet scope revoked'), { name: 'PermissionError' });
+        throw Object.assign(new Error('wallet scope revoked'), { name: 'PermissionError' })
       }
       if (outcome === 'stale') {
-        throw Object.assign(new Error('balance snapshot expired'), { name: 'StaleDataError' });
+        throw Object.assign(new Error('balance snapshot expired'), { name: 'StaleDataError' })
       }
-      throw new TypeError('Failed to fetch');
+      throw new TypeError('Failed to fetch')
     }
-    return balance;
-  }, [balance, failures, outcome]);
+    return balance
+  }, [balance, failures, outcome])
 
   return (
     <AmountInput
@@ -158,28 +158,28 @@ function MaxFailureHarness({
       onMaxRequest={onMaxRequest}
       presets={[100, 500]}
     />
-  );
+  )
 }
 
-const maxFailureArgs = { value: '250.00', balance: 1000, args: {} };
+const maxFailureArgs = { value: '250.00', balance: 1000, args: {} }
 
 export const MaxNetworkError: Story = {
   ...maxFailureArgs,
   name: 'Max failed (network, retryable)',
   render: () => <MaxFailureHarness outcome="error" failures={1} {...maxFailureArgs} />,
-};
+}
 
 export const MaxPermissionDenied: Story = {
   ...maxFailureArgs,
   name: 'Max failed (permission)',
   render: () => <MaxFailureHarness outcome="permission" failures={1} {...maxFailureArgs} />,
-};
+}
 
 export const MaxStale: Story = {
   ...maxFailureArgs,
   name: 'Max failed (stale data)',
   render: () => <MaxFailureHarness outcome="stale" failures={1} {...maxFailureArgs} />,
-};
+}
 
 /**
  * Fail once, then succeed. Click Max, then Retry: the control re-enters
@@ -190,7 +190,7 @@ export const MaxRetryAfterError: Story = {
   ...maxFailureArgs,
   name: 'Retry after error recovers',
   render: () => <MaxFailureHarness outcome="error" failures={1} {...maxFailureArgs} />,
-};
+}
 
 export const BelowMin: Story = {
   name: 'Below minimum',
@@ -200,10 +200,10 @@ export const BelowMin: Story = {
     min: 10,
   },
   render: function BelowMinInteractive(args) {
-    const [value, setValue] = React.useState(args.value);
-    return <AmountInput {...args} value={value} onChange={setValue} />;
+    const [value, setValue] = React.useState(args.value)
+    return <AmountInput {...args} value={value} onChange={setValue} />
   },
-};
+}
 
 /**
  * Boundary and recovery coverage for the amount state machine.
@@ -272,14 +272,7 @@ export const RetryAfterFailure: Story = {
       return 750
     }, [])
 
-    return (
-      <AmountInput
-        {...args}
-        value={value}
-        onChange={setValue}
-        onMaxRequest={onMaxRequest}
-      />
-    )
+    return <AmountInput {...args} value={value} onChange={setValue} onMaxRequest={onMaxRequest} />
   },
   args: {
     value: '',

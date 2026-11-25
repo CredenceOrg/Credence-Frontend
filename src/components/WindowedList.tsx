@@ -41,7 +41,10 @@ export default function WindowedList<T>({
     }
 
     const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan)
-    const endIndex = Math.min(items.length, Math.ceil((scrollTop + viewportHeight) / itemHeight) + overscan)
+    const endIndex = Math.min(
+      items.length,
+      Math.ceil((scrollTop + viewportHeight) / itemHeight) + overscan
+    )
 
     return { start: startIndex, end: endIndex }
   }, [isLongList, itemHeight, items.length, overscan, scrollTop, viewportHeight])
@@ -100,12 +103,18 @@ export default function WindowedList<T>({
       className={className}
       role={role}
       aria-label={ariaLabel}
-      style={{ height: '100%', overflowY: 'auto' }}
+      style={{ height: `${containerHeight}px`, overflowY: 'auto' }}
     >
       <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
         <div style={{ transform: `translateY(${offsetY}px)` }}>
           {visibleItems.map((item, index) => (
-            <div key={getItemKey ? getItemKey(item, visibleRange.start + index) : visibleRange.start + index}>
+            <div
+              key={
+                getItemKey
+                  ? getItemKey(item, visibleRange.start + index)
+                  : visibleRange.start + index
+              }
+            >
               {renderItem(item, visibleRange.start + index)}
             </div>
           ))}

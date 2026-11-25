@@ -276,7 +276,12 @@ describe('mutationQueue', () => {
     it('allows retry after first mutation completes', async () => {
       const mutationFn = vi
         .fn()
-        .mockResolvedValueOnce({ ok: false, code: 'network', message: 'Network error', retryable: true })
+        .mockResolvedValueOnce({
+          ok: false,
+          code: 'network',
+          message: 'Network error',
+          retryable: true,
+        })
         .mockResolvedValueOnce({ ok: true, data: { txHash: 'tx-retry' } })
 
       const result1 = await executeMutation('create:GA...', mutationFn)
@@ -285,6 +290,28 @@ describe('mutationQueue', () => {
       const result2 = await executeMutation('create:GA...', mutationFn)
       expect(result2.ok && result2.data.txHash).toBe('tx-retry')
       expect(mutationFn).toHaveBeenCalledTimes(2)
+    })
+
+    it('returns cancelled immediately when signal aborts right before execution', async () => {
+      const mutationFn = vi.fn()
+      let reads = 0
+      const signal = {
+        get aborted() {
+          reads++
+          return reads > 1
+        },
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      } as unknown as AbortSignal
+
+      const result = await executeMutation('create:abort-gap', mutationFn, signal)
+      expect(result).toEqual({
+        ok: false,
+        code: 'cancelled',
+        message: 'Operation was cancelled.',
+        retryable: false,
+      })
+      expect(mutationFn).not.toHaveBeenCalled()
     })
 
     it('handles non-Error exceptions gracefully', async () => {

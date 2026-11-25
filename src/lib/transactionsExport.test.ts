@@ -26,13 +26,6 @@ const sample: Transaction[] = [
   },
 ]
 
-const normalThreeRowExport = [
-  'id,type,status,amountUSDC,timestamp,hash',
-  'tx-1,bond,confirmed,1000,2026-01-15T12:00:00Z,ABC123',
-  'tx-2,withdraw,failed,,2026-01-16T08:30:00Z,GQUOTE',
-  'tx-3,attestation,pending,12.5,2026-01-17T09:45:00Z,b6d396a8',
-].join('\r\n') + '\r\n'
-
 describe('transactionsToCsv', () => {
   it('renders a header row even when no transactions are provided', () => {
     expect(transactionsToCsv([])).toBe(EXPORT_COLUMNS.map((c) => c.header).join(',') + '\r\n')

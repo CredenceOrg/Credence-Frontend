@@ -10,8 +10,8 @@
  * - Race condition prevention
  */
 
-import { describe, test, expect, beforeEach, vi } from 'vitest'
-import { MutationManager, createIdempotencyKey, type MutationResult } from '../lib/mutationManager'
+import { describe, test, expect, beforeEach } from 'vitest'
+import { MutationManager, createIdempotencyKey } from '../lib/mutationManager'
 
 /** Mock API response for Bond creation. */
 interface Bond {
@@ -39,7 +39,7 @@ describe('Mutation Integration - Bond and Trust Score Operations', () => {
     mockApiFailureCount = 0
   }
 
-  const mockCreateBond = async (amount: number, duration: number): Promise<Bond> => {
+  const mockCreateBond = async (amount: number, _duration: number): Promise<Bond> => {
     // Simulate network latency
     await new Promise((r) => setTimeout(r, mockApiDelay))
 
@@ -57,7 +57,10 @@ describe('Mutation Integration - Bond and Trust Score Operations', () => {
     }
   }
 
-  const mockUpdateTrustScore = async (address: string, increase: number): Promise<TrustScoreUpdate> => {
+  const mockUpdateTrustScore = async (
+    address: string,
+    increase: number
+  ): Promise<TrustScoreUpdate> => {
     await new Promise((r) => setTimeout(r, mockApiDelay))
 
     if (mockApiFailureCount > 0) {
@@ -121,15 +124,13 @@ describe('Mutation Integration - Bond and Trust Score Operations', () => {
     test('handles sequential bond mutations independently', async () => {
       const key = createIdempotencyKey('/bonds', 'POST', { amount: 1000, duration: 30 })
 
-      const result1 = await bondMutationManager.mutate(
-        async () => mockCreateBond(1000, 30),
-        { key }
-      )
+      const result1 = await bondMutationManager.mutate(async () => mockCreateBond(1000, 30), {
+        key,
+      })
 
-      const result2 = await bondMutationManager.mutate(
-        async () => mockCreateBond(1000, 30),
-        { key }
-      )
+      const result2 = await bondMutationManager.mutate(async () => mockCreateBond(1000, 30), {
+        key,
+      })
 
       // Both succeed
       expect(result1.data).not.toBeNull()
@@ -233,14 +234,12 @@ describe('Mutation Integration - Bond and Trust Score Operations', () => {
     })
 
     test('ensures idempotency across identical retried requests', async () => {
-      let callCount = 0
       const createdIds = new Set<string>()
       const address = 'GABCD1234567890'
       const key = createIdempotencyKey(`/trust-score/${address}`, 'PUT')
 
       const result1 = await trustScoreMutationManager.mutate(
         async () => {
-          callCount++
           const update = await mockUpdateTrustScore(address, 10)
           createdIds.add(update.address)
           return update
@@ -251,7 +250,6 @@ describe('Mutation Integration - Bond and Trust Score Operations', () => {
       // Retry with same key - should not create duplicate
       const result2 = await trustScoreMutationManager.mutate(
         async () => {
-          callCount++
           const update = await mockUpdateTrustScore(address, 10)
           createdIds.add(update.address)
           return update
@@ -371,7 +369,10 @@ describe('Mutation Integration - Bond and Trust Score Operations', () => {
         async () => {
           throw new Error('Invalid amount')
         },
-        { key, retryConfig: { maxRetries: 0, initialDelayMs: 10, maxDelayMs: 100, jitterFactor: 0 } }
+        {
+          key,
+          retryConfig: { maxRetries: 0, initialDelayMs: 10, maxDelayMs: 100, jitterFactor: 0 },
+        }
       )
 
       expect(result.data).toBeNull()

@@ -44,8 +44,7 @@ export const ATTESTATION_EVENTS = {
 } as const
 
 export type AttestationType =
-  | (typeof ATTESTATION_EVENTS.TYPES)[keyof typeof ATTESTATION_EVENTS.TYPES]
-  | string
+  (typeof ATTESTATION_EVENTS.TYPES)[keyof typeof ATTESTATION_EVENTS.TYPES] | string
 
 export interface AttestationPayload {
   subject: string
@@ -88,8 +87,7 @@ export const ATTESTATION_STATUSES = {
   IN_REVIEW: 'in-review',
 } as const
 
-export type AttestationStatus =
-  (typeof ATTESTATION_STATUSES)[keyof typeof ATTESTATION_STATUSES]
+export type AttestationStatus = (typeof ATTESTATION_STATUSES)[keyof typeof ATTESTATION_STATUSES]
 
 /** Status that means "no filter applied" — kept as a separate string
  *  so it cannot collide with a real attestation status value. */

@@ -313,7 +313,6 @@ describe('Banner', () => {
       // This is the security-critical path: a javascript: action href must never
       // result in a new browsing context or relaxed referrer policy.
       render(
-        // eslint-disable-next-line no-script-url
         <Banner severity="info" action={{ label: 'XSS', href: 'javascript:alert(1)' }}>
           Message
         </Banner>
@@ -607,9 +606,7 @@ describe('Banner', () => {
           Message
         </Banner>
       )
-      expect(() =>
-        fireEvent.click(screen.getByRole('button', { name: /no-op/i }))
-      ).not.toThrow()
+      expect(() => fireEvent.click(screen.getByRole('button', { name: /no-op/i }))).not.toThrow()
     })
 
     it('renders action link with the correct href attribute', () => {
@@ -701,7 +698,6 @@ describe('Banner', () => {
   describe('full prop combination smoke tests', () => {
     it('renders a fully-loaded incident banner without errors', () => {
       const onDismiss = vi.fn()
-      const onAction = vi.fn()
       const ref = React.createRef<HTMLButtonElement>()
 
       expect(() =>
@@ -738,7 +734,11 @@ describe('Banner', () => {
     it('renders a warn banner with title and action button (no href)', () => {
       const onClick = vi.fn()
       render(
-        <Banner severity="warn" title="Deprecation notice" action={{ label: 'Migrate now', onClick }}>
+        <Banner
+          severity="warn"
+          title="Deprecation notice"
+          action={{ label: 'Migrate now', onClick }}
+        >
           This feature will be removed in v2.
         </Banner>
       )
@@ -1039,10 +1039,21 @@ describe('Banner', () => {
         </>
       )
 
-      // The throw must propagate out of the click handler
-      expect(() =>
+      // Capture the uncaught error dispatched by React's event system in jsdom
+      let capturedError: Error | null = null
+      const handleWindowError = (event: ErrorEvent) => {
+        capturedError = event.error as Error
+        event.preventDefault()
+      }
+      window.addEventListener('error', handleWindowError)
+      try {
         fireEvent.click(screen.getByRole('button', { name: 'Dismiss banner' }))
-      ).toThrow('dismiss failed')
+      } finally {
+        window.removeEventListener('error', handleWindowError)
+      }
+
+      expect(capturedError).toBeInstanceOf(Error)
+      expect((capturedError as unknown as Error).message).toBe('dismiss failed')
 
       // onDismiss was called (it threw)
       expect(throwingDismiss).toHaveBeenCalledOnce()

@@ -77,7 +77,8 @@ export function classifyWalletError(err: unknown): ErrorClassification {
       return {
         state: 'error',
         kind: 'not_installed',
-        message: 'Freighter is not installed. Add the Freighter extension to your browser and try again.',
+        message:
+          'Freighter is not installed. Add the Freighter extension to your browser and try again.',
       }
     }
 
@@ -110,7 +111,8 @@ export function classifyWalletError(err: unknown): ErrorClassification {
       return {
         state: 'stale',
         kind: 'stale',
-        message: 'Wallet session is stale or network configuration changed. Please reconnect to synchronize.',
+        message:
+          'Wallet session is stale or network configuration changed. Please reconnect to synchronize.',
       }
     }
 
@@ -218,6 +220,8 @@ export default function ConnectWalletModal({
       setModalState('loading')
       setErrorMessage(null)
       setErrorKind(null)
+    } else if (!walletIsConnecting && !onConnectRequest && isOpen) {
+      setModalState((prev) => (prev === 'loading' ? 'idle' : prev))
     }
   }, [walletIsConnecting, onConnectRequest, isOpen])
 
@@ -231,18 +235,18 @@ export default function ConnectWalletModal({
     }
   }, [isOpen])
 
+  const isConnectingOrLoading = modalState === 'loading' || walletIsConnecting
+
   // Auto-close when wallet connects successfully
   useEffect(() => {
-    if (isConnected && isOpen) {
+    if (isConnected && isOpen && !isConnectingOrLoading) {
       if (typeof onClose === 'function') {
         onClose()
       }
     }
-  }, [isConnected, isOpen, onClose])
+  }, [isConnected, isOpen, isConnectingOrLoading, onClose])
 
   useScrollPreserver({ isActive: isOpen })
-
-  const isConnectingOrLoading = modalState === 'loading' || walletIsConnecting
 
   const handleClose = useCallback(() => {
     // Invariant: Do not allow closing mid-flight while connecting to avoid inconsistent state

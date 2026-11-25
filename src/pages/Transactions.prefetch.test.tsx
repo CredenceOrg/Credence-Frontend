@@ -7,6 +7,19 @@ import { SettingsProvider } from '../context/SettingsContext'
 import { apiFetch } from '../api/client'
 import type { Transaction } from '../api/types'
 
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({
+    connected: true,
+    isConnected: true,
+    isConnecting: false,
+    address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    error: null,
+    network: 'public',
+  }),
+}))
+
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>()
   return {
@@ -81,7 +94,8 @@ function pageParams(path: string): URLSearchParams {
 }
 
 function callsForCursor(cursor: string): number {
-  return apiFetchMock.mock.calls.filter(([path]) => pageParams(path).get('cursor') === cursor).length
+  return apiFetchMock.mock.calls.filter(([path]) => pageParams(path).get('cursor') === cursor)
+    .length
 }
 
 function renderPage() {

@@ -19,7 +19,7 @@
  *  - regression: onComplete result plumbed through; no sensitive data leaked
  */
 
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import CreateBondFlow, { type BondAuditRecord } from './CreateBondFlow'
@@ -209,8 +209,8 @@ describe('handleConfirm – success path', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument()
 
     // Re-acknowledge (the checkbox was preserved)
-    const checkbox = screen.getByRole('checkbox')
-    if (!checkbox.hasAttribute('checked')) await user.click(checkbox)
+    const checkbox = screen.getByRole('checkbox') as HTMLInputElement
+    if (!checkbox.checked) await user.click(checkbox)
 
     // Second attempt → success
     await user.click(confirmButton())
@@ -241,7 +241,9 @@ describe('handleConfirm – rejection: acknowledgement gate', () => {
     // Confirm button is disabled until acknowledged — forcibly click it anyway
     // to verify the guard holds even if the UI gate is bypassed
     await act(async () => {
-      confirmButton().dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      const btn = confirmButton()
+      btn.removeAttribute('disabled')
+      btn.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
     // onComplete must not have been called
@@ -250,7 +252,7 @@ describe('handleConfirm – rejection: acknowledgement gate', () => {
     expectOnStep(4)
   })
 
-  it('records BOND_CREATE_REJECTED with ACKNOWLEDGEMENT_REQUIRED in the audit log', async () => {
+  it('blocks submission via disabled confirm button and records no requested/committed audit events when unacknowledged', async () => {
     const auditSink: BondAuditRecord[] = []
     renderFlow({ onAudit: (r) => auditSink.push(r) })
     const user = userEvent.setup()
@@ -263,12 +265,13 @@ describe('handleConfirm – rejection: acknowledgement gate', () => {
     await user.click(screen.getByRole('button', { name: /^next$/i }))
     await user.click(screen.getByRole('button', { name: /^next$/i }))
 
+    expect(confirmButton()).toBeDisabled()
     await act(async () => {
       confirmButton().dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    const rejected = auditSink.find((r) => r.event === 'BOND_CREATE_REJECTED')
-    expect(rejected?.payload.error).toBe('ACKNOWLEDGEMENT_REQUIRED')
+    expect(auditSink.some((r) => r.event === 'BOND_CREATE_REQUESTED')).toBe(false)
+    expect(auditSink.some((r) => r.event === 'BOND_CREATE_COMMITTED')).toBe(false)
   })
 })
 
@@ -444,7 +447,7 @@ describe('handleConfirm – failure: onComplete throws', () => {
 
     await user.click(confirmButton())
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Ledger refused the transaction')
+    expect(screen.getByRole('alert')).toHaveTextContent('Bond creation failed. Please try again.')
     expectOnStep(4)
   })
 
@@ -457,7 +460,7 @@ describe('handleConfirm – failure: onComplete throws', () => {
 
     await user.click(confirmButton())
 
-    expect(addToast).toHaveBeenCalledWith('danger', 'Ledger refused the transaction')
+    expect(addToast).toHaveBeenCalledWith('danger', 'Bond creation failed. Please try again.')
   })
 
   it('preserves the amount and duration after a failure', async () => {
@@ -534,7 +537,10 @@ describe('handleConfirm – concurrent submission prevention', () => {
   it('does not call onComplete twice for rapid double-clicks', async () => {
     let resolveFirst!: () => void
     const onComplete = vi.fn(
-      () => new Promise<void>((resolve) => { resolveFirst = resolve })
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFirst = resolve
+        })
     )
     renderFlow({ onComplete })
     const user = await goToConfirmReady()
@@ -550,7 +556,9 @@ describe('handleConfirm – concurrent submission prevention', () => {
     })
 
     // Resolve the in-flight promise
-    act(() => { resolveFirst() })
+    act(() => {
+      resolveFirst()
+    })
     await firstClick
 
     expect(onComplete).toHaveBeenCalledTimes(1)
@@ -559,18 +567,26 @@ describe('handleConfirm – concurrent submission prevention', () => {
   it('disables the confirm button while submitting', async () => {
     let resolveFirst!: () => void
     const onComplete = vi.fn(
-      () => new Promise<void>((resolve) => { resolveFirst = resolve })
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFirst = resolve
+        })
     )
     renderFlow({ onComplete })
     const user = await goToConfirmReady()
 
     // Start submission without awaiting
-    const clickPromise = user.click(confirmButton())
+    const btn = confirmButton()
+    const clickPromise = user.click(btn)
 
     // Confirm button should become disabled
-    expect(confirmButton()).toBeDisabled()
+    await waitFor(() => {
+      expect(btn).toBeDisabled()
+    })
 
-    act(() => { resolveFirst() })
+    act(() => {
+      resolveFirst()
+    })
     await clickPromise
   })
 
@@ -611,7 +627,7 @@ describe('handleConfirm – retry path', () => {
 
     // First attempt — should fail
     await user.click(confirmButton())
-    expect(screen.getByRole('alert')).toHaveTextContent('First attempt failed')
+    expect(screen.getByRole('alert')).toHaveTextContent('Bond creation failed. Please try again.')
     expectOnStep(4)
 
     // Second attempt — should succeed
@@ -653,19 +669,26 @@ describe('handleConfirm – concurrent disconnect mid-flight', () => {
   it('discards the result and shows an error if wallet disconnects during submission', async () => {
     let resolveOnComplete!: (result: { bondId: string }) => void
     const onComplete = vi.fn(
-      () => new Promise<{ bondId: string }>((resolve) => { resolveOnComplete = resolve })
+      () =>
+        new Promise<{ bondId: string }>((resolve) => {
+          resolveOnComplete = resolve
+        })
     )
-    renderFlow({ onComplete })
+    const { rerender } = renderFlow({ onComplete })
     const user = await goToConfirmReady()
 
     // Start the submission — do not await yet
     const clickPromise = user.click(confirmButton())
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1))
 
     // Mid-flight: wallet disconnects
     mockWallet({ isConnected: false, connected: false })
+    rerender(<CreateBondFlow onComplete={onComplete} />)
 
     // Resolve the onComplete promise (would normally be a "success")
-    act(() => { resolveOnComplete({ bondId: 'bond-1' }) })
+    act(() => {
+      resolveOnComplete({ bondId: 'bond-1' })
+    })
     await clickPromise
 
     // The result must be discarded — no success toast, still on step 4
@@ -678,19 +701,28 @@ describe('handleConfirm – concurrent disconnect mid-flight', () => {
     const auditSink: BondAuditRecord[] = []
     let resolveOnComplete!: () => void
     const onComplete = vi.fn(
-      () => new Promise<void>((resolve) => { resolveOnComplete = resolve })
+      () =>
+        new Promise<void>((resolve) => {
+          resolveOnComplete = resolve
+        })
     )
-    renderFlow({ onComplete, onAudit: (r) => auditSink.push(r) })
+    const onAudit = (r: BondAuditRecord) => auditSink.push(r)
+    const { rerender } = renderFlow({ onComplete, onAudit })
     const user = await goToConfirmReady()
 
     const clickPromise = user.click(confirmButton())
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1))
     mockWallet({ isConnected: false, connected: false })
-    act(() => { resolveOnComplete() })
+    rerender(<CreateBondFlow onComplete={onComplete} onAudit={onAudit} />)
+    act(() => {
+      resolveOnComplete()
+    })
     await clickPromise
 
     const failed = auditSink.find(
-      (r) => r.event === 'BOND_CREATE_FAILED' &&
-             r.payload.error === 'WALLET_DISCONNECTED_DURING_SUBMISSION'
+      (r) =>
+        r.event === 'BOND_CREATE_FAILED' &&
+        r.payload.error === 'WALLET_DISCONNECTED_DURING_SUBMISSION'
     )
     expect(failed).toBeDefined()
   })

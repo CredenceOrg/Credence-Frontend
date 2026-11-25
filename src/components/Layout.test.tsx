@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, beforeAll, afterEach, vi } from 'vite
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import Layout from './Layout'
-import ErrorBoundary from './ErrorBoundary'
-import { INSTALL_PROMPT_SESSION_KEY } from '../config/installPrompt'
 
 // Mock matchMedia for JSDOM
 beforeAll(() => {
@@ -61,7 +59,7 @@ describe('Layout Integration', () => {
 
   it('renders theme toggle button', () => {
     renderLayout()
-    expect(screen.getByRole('button', { name: /switch to .* mode/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument()
   })
 
   it('renders desktop navigation links', () => {

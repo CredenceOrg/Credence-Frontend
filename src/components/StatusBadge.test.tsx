@@ -213,12 +213,20 @@ describe('StatusBadge', () => {
       return resolveCssValue(resolvedValue, declarations)
     }
 
-    function parseColor(value: string | [number, number, number] | [number, number, number, number]) {
+    function parseColor(
+      value: string | [number, number, number] | [number, number, number, number]
+    ) {
       if (Array.isArray(value)) return value
       const trimmedValue = value.trim()
       if (trimmedValue.startsWith('#')) {
         const hex = trimmedValue.replace('#', '')
-        const normalizedHex = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
+        const normalizedHex =
+          hex.length === 3
+            ? hex
+                .split('')
+                .map((c) => c + c)
+                .join('')
+            : hex
         return [
           Number.parseInt(normalizedHex.slice(0, 2), 16) / 255,
           Number.parseInt(normalizedHex.slice(2, 4), 16) / 255,
@@ -226,13 +234,17 @@ describe('StatusBadge', () => {
         ]
       }
       if (trimmedValue.startsWith('rgb(')) {
-        const [r, g, b] = trimmedValue.slice(4, -1).split(',').map((p) => Number.parseFloat(p.trim()) / 255)
+        const [r, g, b] = trimmedValue
+          .slice(4, -1)
+          .split(',')
+          .map((p) => Number.parseFloat(p.trim()) / 255)
         return [r, g, b]
       }
       if (trimmedValue.startsWith('rgba(')) {
-        const [r, g, b, a] = trimmedValue.slice(5, -1).split(',').map((p, i) =>
-          i < 3 ? Number.parseFloat(p.trim()) / 255 : Number.parseFloat(p.trim())
-        )
+        const [r, g, b, a] = trimmedValue
+          .slice(5, -1)
+          .split(',')
+          .map((p, i) => (i < 3 ? Number.parseFloat(p.trim()) / 255 : Number.parseFloat(p.trim())))
         return [r, g, b, a]
       }
       throw new Error(`Unsupported CSS color value: ${trimmedValue}`)
@@ -241,12 +253,24 @@ describe('StatusBadge', () => {
     function getRelativeLuminance(color: [number, number, number]) {
       const normalize = (channel: number) =>
         channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
-      return 0.2126 * normalize(color[0]) + 0.7152 * normalize(color[1]) + 0.0722 * normalize(color[2])
+      return (
+        0.2126 * normalize(color[0]) + 0.7152 * normalize(color[1]) + 0.0722 * normalize(color[2])
+      )
     }
 
-    function getContrastRatio(foreground: string, background: string) {
-      const fg = parseColor(foreground).slice(0, 3) as [number, number, number]
-      const bg = parseColor(background).slice(0, 3) as [number, number, number]
+    function compositeOver(fg: number[], bg: [number, number, number]): [number, number, number] {
+      const a = fg.length === 4 ? fg[3] : 1
+      return [fg[0] * a + bg[0] * (1 - a), fg[1] * a + bg[1] * (1 - a), fg[2] * a + bg[2] * (1 - a)]
+    }
+
+    function getContrastRatio(
+      foreground: string,
+      background: string,
+      pageBackdrop: string = '#ffffff'
+    ) {
+      const backdrop = parseColor(pageBackdrop).slice(0, 3) as [number, number, number]
+      const bg = compositeOver(parseColor(background), backdrop)
+      const fg = compositeOver(parseColor(foreground), bg)
       const lighter = Math.max(getRelativeLuminance(fg), getRelativeLuminance(bg))
       const darker = Math.min(getRelativeLuminance(fg), getRelativeLuminance(bg))
       return (lighter + 0.05) / (darker + 0.05)
@@ -259,33 +283,89 @@ describe('StatusBadge', () => {
         declarations.set(name, value)
       }
       return {
-        warningSurface: resolveCssValue(declarations.get('--credence-color-warning-surface') ?? '#fffbeb', declarations),
-        warningText: resolveCssValue(declarations.get('--credence-color-warning-text') ?? '#92400e', declarations),
-        warningBorder: resolveCssValue(declarations.get('--credence-color-warning-border') ?? '#f59e0b', declarations),
-        successSurface: resolveCssValue(declarations.get('--credence-color-success-surface') ?? '#f0fdf4', declarations),
-        successText: resolveCssValue(declarations.get('--credence-color-success-text') ?? '#166534', declarations),
-        successBorder: resolveCssValue(declarations.get('--credence-color-success-border') ?? '#15803d', declarations),
-        infoSurface: resolveCssValue(declarations.get('--credence-color-info-surface') ?? '#eff6ff', declarations),
-        infoText: resolveCssValue(declarations.get('--credence-color-info-text') ?? '#1e40af', declarations),
-        infoBorder: resolveCssValue(declarations.get('--credence-color-info-border') ?? '#3b82f6', declarations),
-        dangerSurface: resolveCssValue(declarations.get('--credence-color-danger-surface') ?? '#fef2f2', declarations),
-        dangerText: resolveCssValue(declarations.get('--credence-color-danger-text') ?? '#991b1b', declarations),
-        dangerBorder: resolveCssValue(declarations.get('--credence-color-danger-border') ?? '#ef4444', declarations),
+        pageSurface: resolveCssValue(
+          declarations.get('--credence-surface-page') ?? '#ffffff',
+          declarations
+        ),
+        warningSurface: resolveCssValue(
+          declarations.get('--credence-color-warning-surface') ?? '#fffbeb',
+          declarations
+        ),
+        warningText: resolveCssValue(
+          declarations.get('--credence-color-warning-text') ?? '#92400e',
+          declarations
+        ),
+        warningBorder: resolveCssValue(
+          declarations.get('--credence-color-warning-border') ?? '#f59e0b',
+          declarations
+        ),
+        successSurface: resolveCssValue(
+          declarations.get('--credence-color-success-surface') ?? '#f0fdf4',
+          declarations
+        ),
+        successText: resolveCssValue(
+          declarations.get('--credence-color-success-text') ?? '#166534',
+          declarations
+        ),
+        successBorder: resolveCssValue(
+          declarations.get('--credence-color-success-border') ?? '#15803d',
+          declarations
+        ),
+        infoSurface: resolveCssValue(
+          declarations.get('--credence-color-info-surface') ?? '#eff6ff',
+          declarations
+        ),
+        infoText: resolveCssValue(
+          declarations.get('--credence-color-info-text') ?? '#1e40af',
+          declarations
+        ),
+        infoBorder: resolveCssValue(
+          declarations.get('--credence-color-info-border') ?? '#3b82f6',
+          declarations
+        ),
+        dangerSurface: resolveCssValue(
+          declarations.get('--credence-color-danger-surface') ?? '#fef2f2',
+          declarations
+        ),
+        dangerText: resolveCssValue(
+          declarations.get('--credence-color-danger-text') ?? '#991b1b',
+          declarations
+        ),
+        dangerBorder: resolveCssValue(
+          declarations.get('--credence-color-danger-border') ?? '#ef4444',
+          declarations
+        ),
       }
     }
 
     function evaluateContrast(tokens: ReturnType<typeof getResolvedThemeTokens>, variant: string) {
       const palette: Record<string, { surface: string; text: string; border: string }> = {
-        pending: { surface: tokens.warningSurface, text: tokens.warningText, border: tokens.warningBorder },
-        active: { surface: tokens.successSurface, text: tokens.successText, border: tokens.successBorder },
-        completed: { surface: tokens.infoSurface, text: tokens.infoText, border: tokens.infoBorder },
-        failed: { surface: tokens.dangerSurface, text: tokens.dangerText, border: tokens.dangerBorder },
+        pending: {
+          surface: tokens.warningSurface,
+          text: tokens.warningText,
+          border: tokens.warningBorder,
+        },
+        active: {
+          surface: tokens.successSurface,
+          text: tokens.successText,
+          border: tokens.successBorder,
+        },
+        completed: {
+          surface: tokens.infoSurface,
+          text: tokens.infoText,
+          border: tokens.infoBorder,
+        },
+        failed: {
+          surface: tokens.dangerSurface,
+          text: tokens.dangerText,
+          border: tokens.dangerBorder,
+        },
       }
       const p = palette[variant]
       if (!p) throw new Error(`Unsupported variant: ${variant}`)
       return {
-        textRatio: getContrastRatio(p.text, p.surface),
-        borderRatio: getContrastRatio(p.border, p.surface),
+        textRatio: getContrastRatio(p.text, p.surface, tokens.pageSurface),
+        borderRatio: getContrastRatio(p.border, p.surface, tokens.pageSurface),
       }
     }
 

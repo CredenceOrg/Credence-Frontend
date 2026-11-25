@@ -380,10 +380,21 @@ describe('ConnectWalletDialog — handleBackdropClick failure boundaries', () =>
 
     const backdrop = screen.getByRole('dialog').parentElement!
 
-    // The throw should propagate — testing-library wraps it so we can assert it
-    // was thrown without crashing the test runner. The dialog should still be
-    // in the DOM at the time of the click (it hasn't unmounted yet).
-    await expect(user.click(backdrop)).rejects.toThrow('Parent close handler exploded')
+    // Capture the uncaught error dispatched by React's event system in jsdom
+    let capturedError: Error | null = null
+    const handleWindowError = (event: ErrorEvent) => {
+      capturedError = event.error as Error
+      event.preventDefault()
+    }
+    window.addEventListener('error', handleWindowError)
+    try {
+      await user.click(backdrop)
+    } finally {
+      window.removeEventListener('error', handleWindowError)
+    }
+
+    expect(capturedError).toBeInstanceOf(Error)
+    expect((capturedError as unknown as Error).message).toBe('Parent close handler exploded')
 
     // onClose was called (the error originated inside it, not before it).
     expect(throwingOnClose).toHaveBeenCalledOnce()

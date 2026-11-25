@@ -7,6 +7,19 @@ import Transactions from './Transactions'
 import { apiFetch, ApiError } from '../api/client'
 import type { Transaction } from '../api/types'
 
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({
+    connected: true,
+    isConnected: true,
+    isConnecting: false,
+    address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    error: null,
+    network: 'public',
+  }),
+}))
+
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>()
   return {
@@ -97,6 +110,8 @@ describe('Transactions render loop regression (issue #1377)', () => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
 
+    // Allow any trailing post-load effect commit to flush before measuring steady state.
+    await new Promise((resolve) => setTimeout(resolve, 50))
     const settledCommits = commitCount
     await new Promise((resolve) => setTimeout(resolve, 200))
     expect(commitCount - settledCommits).toBe(0)

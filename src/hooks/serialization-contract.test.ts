@@ -49,6 +49,13 @@ vi.mock('../api/client', async (importOriginal) => {
   }
 })
 
+vi.mock('../context/WalletContext', () => ({
+  useWallet: () => ({
+    address: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7',
+    network: 'test',
+  }),
+}))
+
 // Must be a checksum-valid StrKey: useTrustScore bails out early otherwise.
 const VALID_ADDRESS = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7'
 

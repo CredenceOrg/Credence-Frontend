@@ -169,7 +169,9 @@ describe('Dashboard', () => {
       'active-bonds',
     ])
     expect(
-      Array.from(container.querySelectorAll('article h2')).map((heading) => heading.textContent)
+      Array.from(container.querySelectorAll('article')).map(
+        (article) => article.querySelector('h2')?.textContent
+      )
     ).toEqual(['Trust Score', 'Active Bonds', 'Recent Activity', 'Shortcuts'])
     expect(screen.getByRole('button', { name: 'Move Trust Score earlier' })).toBeDisabled()
   })

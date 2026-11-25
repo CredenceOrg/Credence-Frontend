@@ -38,7 +38,7 @@ export type MutationResult<T> =
  * When a second request arrives for the same key, we return the existing promise
  * instead of starting a new operation.
  */
-const inflightMutations = new Map<string, Promise<MutationResult<any>>>()
+const inflightMutations = new Map<string, Promise<MutationResult<unknown>>>()
 
 /**
  * Balance version registry.

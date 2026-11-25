@@ -154,7 +154,9 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
     if (value instanceof Error) return value
     if (typeof value === 'string') return new Error(value)
     try {
-      return new Error(typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value))
+      return new Error(
+        typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)
+      )
     } catch {
       return new Error('Unknown error')
     }
@@ -229,7 +231,11 @@ export default class ErrorBoundary extends Component<Props, BoundaryState> {
     const { kind, severity } = this.classifyError(normalized)
 
     return (
-      <div className="error-fallback-container" data-error-boundary="true" data-error-terminal="true">
+      <div
+        className="error-fallback-container"
+        data-error-boundary="true"
+        data-error-terminal="true"
+      >
         <ErrorState
           type={kind}
           severity={severity}

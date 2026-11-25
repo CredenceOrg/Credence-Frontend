@@ -14,22 +14,24 @@ import Transactions from './pages/Transactions'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 
+let mockConnected = true
+
 vi.mock('./context/WalletContext', () => ({
   useWallet: () => ({
-    connected: true,
-    isConnected: true,
+    connected: mockConnected,
+    isConnected: mockConnected,
     isConnecting: false,
-    address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    address: mockConnected ? 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' : '',
     connect: vi.fn(),
     disconnect: vi.fn(),
     error: null,
     network: 'public',
   }),
   useWalletContext: () => ({
-    connected: true,
-    isConnected: true,
+    connected: mockConnected,
+    isConnected: mockConnected,
     isConnecting: false,
-    address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    address: mockConnected ? 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' : '',
     connect: vi.fn(),
     disconnect: vi.fn(),
     error: null,
@@ -66,6 +68,7 @@ vi.mock('./hooks/useTrustScore', () => ({
 }))
 
 afterEach(() => {
+  mockConnected = true
   document.body.focus()
 })
 
@@ -109,11 +112,14 @@ async function tabToElement(
 
 describe('keyboard-only walkthrough', () => {
   describe('home page /', () => {
-    beforeEach(() => renderAt('/'))
+    beforeEach(() => {
+      mockConnected = false
+      renderAt('/')
+    })
 
     it('tabs to the Create bond CTA', async () => {
       const user = userEvent.setup()
-      const cta = screen.getByRole('button', { name: /create bond/i })
+      const cta = screen.getByRole('link', { name: /create bond/i })
       expect(cta).toBeVisible()
       await tabToElement(user, cta)
       expect(cta).toHaveFocus()
@@ -121,7 +127,7 @@ describe('keyboard-only walkthrough', () => {
 
     it('tabs to the View trust score CTA', async () => {
       const user = userEvent.setup()
-      const cta = screen.getByRole('button', { name: /view trust score/i })
+      const cta = screen.getByRole('link', { name: /view trust score/i })
       expect(cta).toBeVisible()
       await tabToElement(user, cta)
       expect(cta).toHaveFocus()

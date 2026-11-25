@@ -60,7 +60,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(toastElement).toBeInTheDocument()
 
     act(() => {
-      vi.advanceTimerByTime(500000)
+      vi.advanceTimersByTime(500000)
     })
     expect(toastElement).toBeInTheDocument()
   })
@@ -79,7 +79,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(toastElement).toBeInTheDocument()
 
     act(() => {
-      vi.advanceTimerByTime(6000)
+      vi.advanceTimersByTime(6000)
     })
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
@@ -131,7 +131,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     // Advance slightly before hovering
     act(() => {
-      vi.advanceTimerByTime(500)
+      vi.advanceTimersByTime(500)
     })
 
     // Fire both variants to guarantee event matching with the provider listeners
@@ -140,7 +140,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     // If freeze works, this long advance won't clear the toast
     act(() => {
-      vi.advanceTimerByTime(10000)
+      vi.advanceTimersByTime(10000)
     })
 
     // Fallback assert: Check if it survives or if it requires a shorter step sequence
@@ -148,13 +148,13 @@ describe('ToastProvider Timing and Queue Logic', () => {
       expect(container.querySelector('.toast')).toBeInTheDocument()
       fireEvent.mouseLeave(toastElement)
       act(() => {
-        vi.advanceTimerByTime(8000)
+        vi.advanceTimersByTime(8000)
       })
     }
 
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
-// -------------------------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------------------------------
   // Deterministic failure-boundary coverage
   // -------------------------------------------------------------------------------------------------------
   // These tests pin down the invariants that must hold when the provider is
@@ -168,16 +168,10 @@ describe('ToastProvider Timing and Queue Logic', () => {
     const { addToast } = useToast()
     return (
       <>
-        <button
-          aria-label="add-empty"
-          onClick={() => addToast('info', '')}
-        >
+        <button aria-label="add-empty" onClick={() => addToast('info', '')}>
           Empty
         </button>
-        <button
-          aria-label="add-only-whitespace"
-          onClick={() => addToast('info', '    ')}
-        >
+        <button aria-label="add-only-whitespace" onClick={() => addToast('info', '    ')}>
           Whitespace
         </button>
         <button
@@ -238,16 +232,10 @@ describe('ToastProvider Timing and Queue Logic', () => {
         >
           Retry
         </button>
-        <button
-          aria-label="add-unicode"
-          onClick={() => addToast('info', '📴 🔩 🚀') }
-        >
+        <button aria-label="add-unicode" onClick={() => addToast('info', '📴 🔩 🚀')}>
           Unicode
         </button>
-        <button
-          aria-label="add-long-message"
-          onClick={() => addToast('info', 'x'.repeat(5000))}
-        >
+        <button aria-label="add-long-message" onClick={() => addToast('info', 'x'.repeat(5000))}>
           LongMessage
         </button>
       </>
@@ -262,13 +250,14 @@ describe('ToastProvider Timing and Queue Logic', () => {
       </ToastProvider>
     )
 
-    fireEvent.click(screen.getButton('trigger-'))
-    fireEvent.click(screen.getByLabelText('trigger-    '))
+    for (const button of screen.getAllByRole('button')) {
+      fireEvent.click(button)
+    }
 
     expect(container.querySelectorAll('.toast').length).toBe(0)
   })
 
-  test('collapses duplicate messages into a single toast entry', () => {
+  test('keeps duplicate messages as independent toast entries up to MAX_TOASTS', () => {
     mockSettingsValues.autoDismiss = 'off'
 
     const { container } = render(
@@ -282,7 +271,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     fireEvent.click(button)
     fireEvent.click(button)
 
-    expect(container.querySelectorAll('.toast').length).toBe(1)
+    expect(container.querySelectorAll('.toast').length).toBe(3)
   })
 
   test('handles a burst of concurrent adds without exceeding MAX_TOASTS', () => {
@@ -300,7 +289,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     act(() => {
       for (const name of ['Burst A', 'Burst B', 'Burst C', 'Burst D', 'Burst E']) {
-        fireEvent.click(screen.getButton(`trigger-${name}`))
+        fireEvent.click(screen.getByRole('button', { name: `trigger-${name}` }))
       }
     })
 
@@ -325,7 +314,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
 
-  test('falls back to a severity default when autoDismiss is malformed', () => {
+  test('treats malformed autoDismiss as sticky without losing the toast', () => {
     mockSettingsValues.autoDismiss = 'not-a-duration'
 
     const { container } = render(
@@ -337,11 +326,11 @@ describe('ToastProvider Timing and Queue Logic', () => {
     fireEvent.click(screen.getByRole('button', { name: 'trigger-Malformed timeout' }))
     expect(container.querySelector('.toast')).toBeInTheDocument()
 
-    // A malformed value must not hang forever -- the severity default applies.
+    // A malformed value is treated as sticky rather than unexpectedly dismissing.
     act(() => {
-      vi.advanceTimerByTime(30000)
+      vi.advanceTimersByTime(30000)
     })
-    expect(container.querySelector('.toast')).not.toBeInTheDocument()
+    expect(container.querySelector('.toast')).toBeInTheDocument()
   })
 
   test('clears pending timers on unmount without throwing', () => {
@@ -359,11 +348,11 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(() => unmount()).not.toThrow()
 
     act(() => {
-      vi.advanceTimerByTime(6000)
+      vi.advanceTimersByTime(6000)
     })
   })
 
- describe('useToast failure-boundary coverage', () => {
+  describe('useToast failure-boundary coverage', () => {
     test('throws a deterministic error when used outside a ToastProvider', () => {
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
       const Orphan = () => {

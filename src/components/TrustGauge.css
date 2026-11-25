@@ -443,7 +443,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--credence-space-8) var(--credence-space-4);
-  background: var(--bg-card-secondary, rgba(0,0,0,0.02));
+  background: var(--bg-card-secondary, rgba(0, 0, 0, 0.02));
   border: 1px dashed var(--border-default);
   border-radius: var(--credence-radius-lg);
   color: var(--text-secondary);
@@ -542,7 +542,9 @@
 }
 
 @keyframes trust-gauge-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 [data-theme='dark'] .trust-gauge__error-banner {
@@ -556,4 +558,3 @@
   border-color: rgba(252, 211, 77, 0.2);
   color: #fde68a;
 }
-

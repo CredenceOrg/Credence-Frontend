@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import NetworkIndicator from './NetworkIndicator'
 import { useSettings, type SettingsState } from '../context/SettingsContext'
@@ -7,10 +7,14 @@ vi.mock('../context/SettingsContext', () => ({
   useSettings: vi.fn(),
 }))
 
-function mockNetwork(network: unknown) {
-  vi.mocked(useSettings).mockReturnValue({
+function asSettingsState(network: unknown): SettingsState {
+  return {
     network: network as 'public',
-  } as Partial<SettingsState> as SettingsState)
+  } as Partial<SettingsState> as SettingsState
+}
+
+function mockNetwork(network: unknown) {
+  vi.mocked(useSettings).mockReturnValue(asSettingsState(network))
 }
 
 describe('NetworkIndicator — deterministic failure boundaries', () => {

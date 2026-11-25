@@ -61,11 +61,14 @@ describe('useMutation', () => {
       })
 
       // Wait for loading state to be true
-      await waitFor(() => {
-        if (result.current.isLoading) {
-          loadingDuringMutation = true
-        }
-      }, { timeout: 50 }).catch(() => {
+      await waitFor(
+        () => {
+          if (result.current.isLoading) {
+            loadingDuringMutation = true
+          }
+        },
+        { timeout: 50 }
+      ).catch(() => {
         // It's ok if timeout happens, we just check if loading was true at any point
       })
 
@@ -156,7 +159,7 @@ describe('useMutation', () => {
       // Calling mutate after unmount should not crash, but state updates will be ignored
       try {
         await mutateFn(async () => 'result')
-      } catch (e) {
+      } catch {
         // Error is ok, we're just testing it doesn't crash the test
       }
 
@@ -236,15 +239,12 @@ describe('useMutation', () => {
         return 'result'
       }
 
-      const promise1 = act(async () =>
-        result1.current.mutate(mutation, { idempotencyKey: key })
-      )
-
-      const promise2 = act(async () =>
-        result2.current.mutate(mutation, { idempotencyKey: key })
-      )
-
-      await Promise.all([promise1, promise2])
+      await act(async () => {
+        await Promise.all([
+          result1.current.mutate(mutation, { idempotencyKey: key }),
+          result2.current.mutate(mutation, { idempotencyKey: key }),
+        ])
+      })
 
       expect(executionCount).toBe(1)
       expect(result1.current.data).toBe('result')

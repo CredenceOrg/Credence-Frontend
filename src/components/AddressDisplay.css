@@ -11,7 +11,8 @@
   border-radius: var(--credence-radius-sm);
   background-color: var(--credence-color-surface-hover);
   color: var(--credence-text-primary);
-  transition: background-color var(--credence-motion-duration-fast) var(--credence-motion-easing-standard);
+  transition: background-color var(--credence-motion-duration-fast)
+    var(--credence-motion-easing-standard);
   outline: none;
 }
 
@@ -66,4 +67,3 @@
 .address-display__retry-btn:hover {
   background-color: var(--credence-color-error-light);
 }
-

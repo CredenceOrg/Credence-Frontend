@@ -449,7 +449,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
   it('stages the selection, blocks further changes, then commits exactly once', async () => {
     const user = userEvent.setup()
     const onCommit = vi.fn()
-    render(<SelectStories.PendingWriteHarness latencyMs={60} onCommit={onCommit} />)
+    render(<SelectStories.PendingWriteHarness latencyMs={400} onCommit={onCommit} />)
 
     const select = combobox()
     expect(select).toHaveValue('gold')
@@ -477,7 +477,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
     // and third selection cannot dispatch competing writes and race responses.
     const user = userEvent.setup()
     const onCommit = vi.fn()
-    render(<SelectStories.PendingWriteHarness latencyMs={60} onCommit={onCommit} />)
+    render(<SelectStories.PendingWriteHarness latencyMs={400} onCommit={onCommit} />)
 
     const select = combobox()
     await user.selectOptions(select, 'bronze')
@@ -533,7 +533,7 @@ describe('PendingWrite harness — in-flight write and commit', () => {
 describe('RetryAfterError harness — failure and recovery', () => {
   it('fails without losing the committed value, then recovers on retry', async () => {
     const user = userEvent.setup()
-    render(<SelectStories.RetryAfterErrorHarness latencyMs={60} failTimes={1} />)
+    render(<SelectStories.RetryAfterErrorHarness latencyMs={400} failTimes={1} />)
 
     const select = combobox()
     const retry = screen.getByRole('button', { name: 'Retry save' })
@@ -568,7 +568,7 @@ describe('RetryAfterError harness — failure and recovery', () => {
     // Regression: the failure path must not be hard-coded to one direction.
     const user = userEvent.setup()
     render(
-      <SelectStories.RetryAfterErrorHarness latencyMs={60} failTimes={1} initialValue="platinum" />
+      <SelectStories.RetryAfterErrorHarness latencyMs={400} failTimes={1} initialValue="platinum" />
     )
 
     const select = combobox()

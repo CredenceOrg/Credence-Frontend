@@ -25,10 +25,12 @@ describe('NotFound Page', () => {
     expect(screen.getByRole('heading', { level: 1, name: /page not found/i })).toBeInTheDocument()
 
     // 404 code text
-    expect(screen.getByText(/error 404/i)).toBeInTheDocument()
+    expect(
+      screen.getByText((_content, element) => element?.textContent?.trim() === 'Error 404')
+    ).toBeInTheDocument()
 
     // Description text
-    expect(screen.getByText(/we couldn't find the page you are looking for/i)).toBeInTheDocument()
+    expect(screen.getByText(/the page you're looking for doesn't exist/i)).toBeInTheDocument()
 
     // Recovery Action buttons
     expect(screen.getByRole('button', { name: /back to home/i })).toBeInTheDocument()

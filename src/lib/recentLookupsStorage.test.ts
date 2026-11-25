@@ -18,7 +18,8 @@ function fixtureAddress(seed: number): string {
   let crc = 0
   for (const byte of bytes) {
     crc ^= byte << 8
-    for (let bit = 0; bit < 8; bit++) crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff
+    for (let bit = 0; bit < 8; bit++)
+      crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff
   }
   bytes.push(crc & 0xff, crc >> 8)
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
@@ -90,11 +91,13 @@ describe('recentLookupsStorage', () => {
 
   it('sanitizes malformed values without throwing', () => {
     const validItem = { address: ADDR1, timestamp: 1 }
-    expect(sanitizeRecentLookups([{ timestamp: 1 }, null, { address: 'GBAD' }, validItem])).toEqual([
-      validItem,
-    ])
+    expect(sanitizeRecentLookups([{ timestamp: 1 }, null, { address: 'GBAD' }, validItem])).toEqual(
+      [validItem]
+    )
     expect(sanitizeRecentLookups(null)).toEqual([])
-    expect(sanitizeRecentLookups([undefined, 1, 'bad', { address: ADDR1, timestamp: NaN }])).toEqual([])
+    expect(
+      sanitizeRecentLookups([undefined, 1, 'bad', { address: ADDR1, timestamp: NaN }])
+    ).toEqual([])
     expect(addRecentLookup([{ address: ADDR1, timestamp: 1 }], 'GBAD', 2)).toEqual([
       { address: ADDR1, timestamp: 1 },
     ])
@@ -102,7 +105,10 @@ describe('recentLookupsStorage', () => {
 
   it('moves a case-insensitive duplicate to the top without duplicating it', () => {
     const result = addRecentLookup(
-      [{ address: ADDR1, timestamp: 1 }, { address: ADDR2, timestamp: 2 }],
+      [
+        { address: ADDR1, timestamp: 1 },
+        { address: ADDR2, timestamp: 2 },
+      ],
       ADDR1.toLowerCase(),
       3
     )
@@ -115,7 +121,9 @@ describe('recentLookupsStorage', () => {
 
   it('evicts the oldest item when adding a sixth lookup', () => {
     const addresses = Array.from({ length: 6 }, (_, index) => fixtureAddress(index + 1))
-    const existing = addresses.slice(0, 5).map((address, index) => ({ address, timestamp: 5 - index }))
+    const existing = addresses
+      .slice(0, 5)
+      .map((address, index) => ({ address, timestamp: 5 - index }))
     const result = addRecentLookup(existing, addresses[5], 10)
     expect(result).toHaveLength(5)
     expect(result[0]).toEqual({ address: addresses[5], timestamp: 10 })
@@ -132,7 +140,11 @@ describe('recentLookupsStorage', () => {
     // jsdom's storage defines setItem on the instance, shadowing the
     // prototype — spy on Storage.prototype so every storage handle intercepts.
     const originalSetItem = Storage.prototype.setItem
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+      this: Storage,
+      key: string,
+      value: string
+    ) {
       if (key === RECENT_LOOKUPS_V1_KEY) {
         throw new Error('quota exceeded')
       }

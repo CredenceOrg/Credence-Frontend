@@ -126,7 +126,8 @@ export const TooShort: Story = {
 export const TooLong: Story = {
   name: 'Boundary – too long',
   args: {
-    value: 'GBRPYHIL2CI3FNQ4BXLFMNDLLJUNPU2HY3ZMFSHONUCEOASW7QC7OX2HGBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
+    value:
+      'GBRPYHIL2CI3FNQ4BXLFMNDLLJUNPU2HY3ZMFSHONUCEOASW7QC7OX2HGBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H',
     error: 'Invalid address. Stellar public keys are 56 characters starting with G.',
   },
 }

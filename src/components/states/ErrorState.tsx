@@ -222,8 +222,8 @@ export default function ErrorState({
   ariaLabel,
 }: ErrorStateProps) {
   const rateLimitRemainingMs = useRateLimitRemainingMs()
-  const resolvedSeverity = severity ?? DEFAULT_SEVERITY[type]
-  const copy = ERROR_COPY[type]
+  const resolvedSeverity = severity ?? DEFAULT_SEVERITY[type] ?? 'danger'
+  const copy = ERROR_COPY[type] ?? ERROR_COPY.generic
   const showHeading = !hideHeading && title !== ''
   const resolvedTitle = showHeading ? (title ?? copy.title) : undefined
   const resolvedMessage = message ?? copy.message

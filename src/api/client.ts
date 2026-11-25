@@ -18,7 +18,7 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
    * validated and serialized exactly at this boundary.
    */
   amountFields?: ApiAmountFields
-/**
+  /**
    * When provided, the request is only dispatched if the active identity
    * epoch matches this value at call time **and** when the response arrives.
    * A mismatch at either point causes the promise to reject with
@@ -173,7 +173,12 @@ export class ApiBodyTooLargeError extends ApiError {
   readonly bodySizeBytes: number
 
   constructor(limitBytes: number, payload?: { bodySize: number }) {
-    super(413, `Request body too large (limit ${limitBytes} bytes).`, payload ?? { limitBytes }, 'http_error')
+    super(
+      413,
+      `Request body too large (limit ${limitBytes} bytes).`,
+      payload ?? { limitBytes },
+      'http_error'
+    )
     this.name = 'ApiBodyTooLargeError'
     this.limitBytes = limitBytes
     this.bodySizeBytes = payload?.bodySize ?? 0
@@ -396,11 +401,16 @@ type PathRejection =
   | 'path must not contain a URL fragment'
 
 function invalidPathError(reason: PathRejection, path: unknown): ApiError {
-  return new ApiError(0, `Invalid API request path: ${reason}`, {
-    code: 'invalid_request_url',
-    reason,
-    path: redactPathForDiagnostics(path),
-  }, 'invalid_request_url')
+  return new ApiError(
+    0,
+    `Invalid API request path: ${reason}`,
+    {
+      code: 'invalid_request_url',
+      reason,
+      path: redactPathForDiagnostics(path),
+    },
+    'invalid_request_url'
+  )
 }
 
 function normalizeApiPath(path: string): string {
@@ -409,9 +419,11 @@ function normalizeApiPath(path: string): string {
   }
   const trimmed = path.trim()
   if (!trimmed) throw invalidPathError('path must not be empty', path)
-  if (trimmed.startsWith('//')) throw invalidPathError('path must be relative, not origin-relative', path)
+  if (trimmed.startsWith('//'))
+    throw invalidPathError('path must be relative, not origin-relative', path)
   if (trimmed.includes('\\')) throw invalidPathError('path must not contain backslashes', path)
-  if (hasControlCharacters(trimmed)) throw invalidPathError('path must not contain control characters', path)
+  if (hasControlCharacters(trimmed))
+    throw invalidPathError('path must not contain control characters', path)
   if (trimmed.includes('#')) throw invalidPathError('path must not contain a URL fragment', path)
   return `/${trimmed.replace(/^\/+/, '')}`
 }
@@ -422,15 +434,17 @@ export function buildUrl(path: string, baseUrl: string = API_BASE_URL): string {
   return `${normalizeBaseUrl(baseUrl)}${normalizeApiPath(path)}`
 }
 
-function isJsonBody(body: ApiFetchOptions['body']): body is Record<string, unknown> | unknown[] {
+export function isJsonBody(
+  body: ApiFetchOptions['body']
+): body is Record<string, unknown> | unknown[] {
   return (
     Boolean(body) &&
     typeof body === 'object' &&
-    !(body instanceof FormData) &&
-    !(body instanceof Blob) &&
+    !(typeof FormData !== 'undefined' && body instanceof FormData) &&
+    !(typeof Blob !== 'undefined' && body instanceof Blob) &&
     !(body instanceof ArrayBuffer) &&
     !ArrayBuffer.isView(body) &&
-    !(body instanceof URLSearchParams) &&
+    !(typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) &&
     !(typeof ReadableStream !== 'undefined' && body instanceof ReadableStream)
   )
 }
@@ -467,13 +481,21 @@ function applyAmountFields(
     const hasField = Object.prototype.hasOwnProperty.call(record, field)
     const value = record[field]
     if (!hasField || value === undefined) {
-      throw new ApiAmountError(field, 'MISSING', `Declared amount field "${field}" is missing or undefined.`)
+      throw new ApiAmountError(
+        field,
+        'MISSING',
+        `Declared amount field "${field}" is missing or undefined.`
+      )
     }
     try {
       wireBody[field] = parseAmount(value as string | number | bigint, rules)
     } catch (error) {
       if (error instanceof AmountError) {
-        throw new ApiAmountError(field, error.code, `Invalid amount for field "${field}": ${error.message}`)
+        throw new ApiAmountError(
+          field,
+          error.code,
+          `Invalid amount for field "${field}": ${error.message}`
+        )
       }
       throw error
     }
@@ -505,9 +527,6 @@ async function parseResponse(response: Response): Promise<unknown> {
   return text || undefined
 }
 
-/** Maximum length of a server-provided error message we will surface verbatim. */
-const MAX_ERROR_MESSAGE_LENGTH = 500
-
 /**
  * Extracts a deterministic, safe, user-visible error message from a failed
  * response payload.
@@ -524,12 +543,26 @@ const MAX_ERROR_MESSAGE_LENGTH = 500
  * - Prefers an explicit `message` string, then a `error` string, then a
  *   non-empty string payload, then a status-derived fallback.
  */
-function errorMessage(status: number, payload: unknown): string {
-  if (payload && typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string') {
-    return payload.message
+export function errorMessage(statusOrError: unknown, payload?: unknown): string {
+  if (typeof statusOrError === 'number' && arguments.length >= 2) {
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'message' in payload &&
+      typeof payload.message === 'string'
+    ) {
+      return payload.message
+    }
+    if (typeof payload === 'string' && payload.trim()) return payload
+    return 'Request failed with status ' + statusOrError
   }
-  if (typeof payload === 'string' && payload.trim()) return payload
-  return 'Request failed with status ' + status
+  if (statusOrError instanceof Error) {
+    return statusOrError.message.trim() ? statusOrError.message : 'Something went wrong'
+  }
+  if (typeof statusOrError === 'string' && statusOrError.trim()) {
+    return statusOrError
+  }
+  return 'Something went wrong'
 }
 
 function requestFingerprint(
@@ -545,13 +578,17 @@ function requestFingerprint(
       comparableHeaders.push(`${lowerName}:${value}`)
     }
   })
-  return JSON.stringify([url, init.method || 'GET', comparableHeaders.join('\n'), serializedBody ?? null])
+  return JSON.stringify([url, init.method, comparableHeaders.join('\n'), serializedBody ?? null])
 }
 
 function replayConflict(key: string): ApiError {
-  return new ApiError(409, `Idempotency key has already been used for a different operation: ${key}`, {
-    code: 'idempotency_key_conflict',
-  })
+  return new ApiError(
+    409,
+    `Idempotency key has already been used for a different operation: ${key}`,
+    {
+      code: 'idempotency_key_conflict',
+    }
+  )
 }
 
 interface ApiFetchContext {
@@ -658,7 +695,9 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const { body, amountFields, headers, ...init } = options
   const wireBody = applyAmountFields(body, amountFields)
   const hasJsonBody = isJsonBody(wireBody)
-  const serializedBody: BodyInit | undefined = hasJsonBody ? JSON.stringify(wireBody) : (wireBody as BodyInit | undefined)
+  const serializedBody: BodyInit | undefined = hasJsonBody
+    ? JSON.stringify(wireBody)
+    : (wireBody as BodyInit | undefined)
 
   if (hasJsonBody) {
     const encoded = new TextEncoder().encode(serializedBody as string)
@@ -679,7 +718,12 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       })
     }
 
-    const fingerprint = requestFingerprint(finalUrl, { ...init, method }, serializedBody, requestHeaders)
+    const fingerprint = requestFingerprint(
+      finalUrl,
+      { ...init, method },
+      serializedBody,
+      requestHeaders
+    )
     const existing = replayEntries.get(key)
     if (existing) {
       if (existing.fingerprint !== fingerprint) {
@@ -695,7 +739,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       requestHeaders,
       serializedBody,
       {
-        correlationId: requestHeaders.get('X-Correlation-ID') || 'api-fetch',
+        correlationId: requestHeaders.get('X-Correlation-ID')!,
         path,
         method,
         skipRateLimit: options.skipRateLimit,
@@ -717,7 +761,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     requestHeaders,
     serializedBody,
     {
-      correlationId: requestHeaders.get('X-Correlation-ID') || 'api-fetch',
+      correlationId: requestHeaders.get('X-Correlation-ID')!,
       path,
       method,
       skipRateLimit: options.skipRateLimit,

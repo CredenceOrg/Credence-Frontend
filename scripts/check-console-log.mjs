@@ -8,7 +8,7 @@
  * Default build-dir: dist
  */
 
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const buildDir = resolve(process.argv[2] ?? "dist");
@@ -48,7 +48,7 @@ for (const file of jsFiles) {
   // that are NOT part of a comment or string that contains the word "console"
   // We use a simple regex approach: look for `console.<method>(` patterns
   const matches = content.matchAll(
-    /(?<![\"'`]\s*)(?<!\/\/\s*)(?<!\*\s*)console\.(log|warn|error|info|debug)\s*\(/g,
+    /(?<!["'`]\s*)(?<!\/\/\s*)(?<!\*\s*)console\.(log|warn|error|info|debug)\s*\(/g,
   );
 
   const fileMatches = [];

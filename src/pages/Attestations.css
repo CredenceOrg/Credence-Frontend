@@ -1,5 +1,20 @@
 /* ── Page ───────────────────────────────────────────────────────────────────── */
 
+.attestationsPage__description {
+  color: var(--credence-text-secondary);
+  margin: 0;
+}
+
+.attestationsPage__filterRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--credence-space-4);
+}
+
+.attestationsPage__filterSelect {
+  width: 200px;
+}
+
 .attestationsPage {
   display: grid;
   gap: var(--credence-space-8);

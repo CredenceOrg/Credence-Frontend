@@ -1,0 +1,79 @@
+.attestationForm {
+  display: grid;
+  gap: var(--credence-space-5);
+  background: var(--credence-surface-card);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-xl);
+  padding: var(--credence-space-5);
+}
+
+.attestationForm__evidenceField {
+  display: grid;
+  gap: var(--credence-space-2);
+}
+
+.attestationForm__charCount {
+  text-align: right;
+  font-size: var(--credence-font-size-xs);
+  color: var(--credence-text-secondary);
+  margin-top: calc(var(--credence-space-1) * -1);
+}
+
+.attestationConfirm {
+  display: grid;
+  gap: var(--credence-space-3);
+  padding: var(--credence-space-4);
+  border: 1px solid var(--credence-border-default);
+  border-radius: var(--credence-radius-lg);
+  background: var(--credence-surface-page);
+  color: var(--credence-text-primary);
+}
+
+.attestationConfirm__label {
+  font-size: var(--credence-font-size-xs);
+  color: var(--credence-text-secondary);
+  display: block;
+  text-transform: uppercase;
+  margin-bottom: var(--credence-space-1);
+}
+
+.attestationConfirm__subjectRow {
+  display: flex;
+  align-items: center;
+  gap: var(--credence-space-2);
+}
+
+.attestationConfirm__subjectCode {
+  font-size: var(--credence-font-size-sm);
+  word-break: break-all;
+  flex: 1;
+}
+
+.attestationConfirm__copyButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--credence-space-1);
+  border: none;
+  border-radius: var(--credence-radius-sm);
+  background: transparent;
+  color: var(--credence-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.attestationConfirm__copyButton--reducedMotion {
+  transition: none;
+}
+
+.attestationConfirm__typeValue {
+  font-size: var(--credence-font-size-sm);
+}
+
+.attestationConfirm__evidenceText {
+  margin: 0;
+  font-size: var(--credence-font-size-sm);
+  white-space: pre-wrap;
+  color: var(--credence-text-primary);
+}

@@ -23,6 +23,12 @@ export const QUERY_CACHE_DEFAULTS = {
   ISSUER_TTL_MS: 120_000,
   /** TTL for verifier-specific dashboard queries (2 minutes). */
   VERIFIER_TTL_MS: 120_000,
+  /**
+   * Freshness window for a cached trust score lookup. Repeated lookups
+   * for the same Stellar address within this window reuse the stored
+   * successful result instead of hitting the network again (5 minutes).
+   */
+  TRUST_SCORE_FRESHNESS_MS: 5 * 60_000,
 } as const
 
 /**
@@ -65,6 +71,10 @@ export const QUERY_CACHE_TTLS = {
   VERIFIER_TTL_MS: parseTtlEnv(
     import.meta.env?.VITE_QUERY_CACHE_VERIFIER_TTL_MS,
     QUERY_CACHE_DEFAULTS.VERIFIER_TTL_MS
+  ),
+  TRUST_SCORE_FRESHNESS_MS: parseTtlEnv(
+    import.meta.env?.VITE_QUERY_CACHE_TRUST_SCORE_FRESHNESS_MS,
+    QUERY_CACHE_DEFAULTS.TRUST_SCORE_FRESHNESS_MS
   ),
 } as const
 

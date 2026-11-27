@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { connectMockWallet } from './helpers/wallet'
+import { MOCK_WALLET_ADDRESS } from './mocks/freighter-api.mock'
 
-const SUBJECT = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWNA'
+const SUBJECT = MOCK_WALLET_ADDRESS
 const CREATED_AT = '2026-11-20T12:00:00.000Z'
 
 interface MockAttestation {

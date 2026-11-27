@@ -2,7 +2,6 @@ import { ALL_NAV_LINKS, type NavLink } from './navLinks'
 
 export const DEFAULT_FALLBACK_ROUTE = '/dashboard'
 
-export interface NavigationLink extends NavLink {
 export const PUBLIC_ROUTES = ['/', '/trust', '/trust/summary', '/signin'] as const
 
 export const PRIVATE_ROUTES = [

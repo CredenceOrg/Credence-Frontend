@@ -131,9 +131,9 @@ export default function AttestationForm({
 
   const handleConfirm = async () => {
     setConfirmOpen(false)
-    addToast('success', 'Attestation submitted successfully.')
+
     const file = evidenceFiles[0]
-    onSubmitSuccess?.({
+    const payload: AttestationPayload = {
       subject,
       type,
       evidence: evidence.trim() || `Attached evidence file: ${file?.name ?? ''}`,
@@ -148,30 +148,24 @@ export default function AttestationForm({
             },
           }
         : {}),
-    })
-    const payload: AttestationPayload = { subject, type, evidence }
-    setSubject('')
-    setEvidence('')
-    hashControllerRef.current?.abort()
-    hashControllerRef.current = null
-    setEvidenceFiles([])
-    setEvidenceHash(undefined)
-    setHashProgress(null)
-    setFileError(undefined)
-    setType(ATTESTATION_EVENTS.TYPES.IDENTITY)
-    setErrors({})
-
-    const result = onSubmitSuccess?.(payload)
-    if (result && typeof (result as Promise<unknown>).then === 'function') {
-      try {
-        await result
-        addToast('success', 'Attestation submitted successfully.')
-      } catch {
-        // Error feedback and rollback are handled by the caller.
-      }
-      return
     }
-    addToast('success', 'Attestation submitted successfully.')
+
+    try {
+      await onSubmitSuccess?.(payload)
+      addToast('success', 'Attestation submitted successfully.')
+      setSubject('')
+      setEvidence('')
+      hashControllerRef.current?.abort()
+      hashControllerRef.current = null
+      setEvidenceFiles([])
+      setEvidenceHash(undefined)
+      setHashProgress(null)
+      setFileError(undefined)
+      setType(ATTESTATION_EVENTS.TYPES.IDENTITY)
+      setErrors({})
+    } catch {
+      // The caller owns error feedback. Keep the entered values so the user can retry.
+    }
   }
 
   const handleCancel = () => {

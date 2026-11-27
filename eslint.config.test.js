@@ -29,10 +29,8 @@ describe('eslint.config.js', () => {
   it('should handle unused variables correctly', async () => {
     const eslint = new ESLint({ overrideConfigFile: true, overrideConfig: config });
     const results = await eslint.lintText(`
-      export function fn(_unused) {
-        const unused = 1;
-        return 0;
-      }
+      const unused = 1;
+      const _unused = 2;
     `, { filePath: 'test.ts' });
     
     const errors = results[0].messages.filter(m => m.ruleId === '@typescript-eslint/no-unused-vars');
@@ -47,6 +45,7 @@ describe('eslint.config.js', () => {
       console.log(fs);
     `, { filePath: 'test.mjs' });
     
+    const errors = results[0].messages.filter(m => m.severity === 2);
     // console might be allowed, but we just check it doesn't fail parsing.
     const parseErrors = results[0].messages.filter(m => m.fatal);
     expect(parseErrors.length).toBe(0);

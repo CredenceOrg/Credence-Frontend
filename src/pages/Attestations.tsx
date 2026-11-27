@@ -11,6 +11,7 @@ import {
   createAttestationIdempotencyKey,
   useAttestations,
 } from '../hooks/useAttestations'
+import './Attestations.css'
 
 export function formatTimestamp(date: Date = new Date()): string {
   return (
@@ -130,29 +131,15 @@ export default function Attestations() {
   }
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gap: 'var(--credence-space-6)',
-        maxWidth: 'var(--credence-container-max)',
-        margin: '0 auto',
-      }}
-    >
+    <div className="attestationsPage">
       <header>
         <h1>{t('attestations.title')}</h1>
-        <p style={{ color: 'var(--credence-text-secondary)', margin: 0 }}>
+        <p className="attestationsPage__description">
           {t('attestations.description')}
         </p>
       </header>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 'var(--credence-space-6)',
-          alignItems: 'start',
-        }}
-      >
+      <div className="attestationsPage__columns">
         <section aria-labelledby="form-heading">
           <h2 id="form-heading" className="sr-only">
             {t('attestations.submitForm')}
@@ -161,14 +148,8 @@ export default function Attestations() {
         </section>
 
         <section aria-labelledby="timeline-heading">
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              marginBottom: 'var(--credence-space-4)',
-            }}
-          >
-            <div style={{ width: '200px' }}>
+          <div className="attestationsPage__filterRow">
+            <div className="attestationsPage__filterSelect">
               <Select
                 id="attestation-filter"
                 ariaLabel={t('attestations.filterLabel')}

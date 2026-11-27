@@ -43,7 +43,8 @@ const SINGLE_SUCCESS_ATTESTATION: Attestation = {
   meta: 'Tx 0xabc...1234',
 }
 
-const renderInRouter = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>)
+const renderInRouter = (ui: React.ReactElement) =>
+  render(<MemoryRouter>{ui}</MemoryRouter>)
 
 describe('Attestations Page — empty-state wiring', () => {
   beforeEach(() => {

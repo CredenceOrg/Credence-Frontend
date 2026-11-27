@@ -14,6 +14,7 @@ import {
   hashFile,
   MAX_EVIDENCE_FILE_SIZE_BYTES,
 } from '../lib/fileHash'
+import './AttestationForm.css'
 
 /**
  * Props for the AttestationForm component.
@@ -185,14 +186,7 @@ export default function AttestationForm({
     <>
       <form
         onSubmit={handleSubmit}
-        style={{
-          display: 'grid',
-          gap: 'var(--credence-space-5)',
-          background: 'var(--credence-surface-card)',
-          border: '1px solid var(--credence-border-default)',
-          borderRadius: 'var(--credence-radius-xl)',
-          padding: 'var(--credence-space-5)',
-        }}
+        className="attestationForm"
         aria-label="Submit Attestation"
       >
         <AddressInput
@@ -218,7 +212,7 @@ export default function AttestationForm({
           />
         </FormField>
 
-        <div style={{ display: 'grid', gap: 'var(--credence-space-2)' }}>
+        <div className="attestationForm__evidenceField">
           <FormField
             id="evidence-input"
             label="Evidence"
@@ -233,15 +227,7 @@ export default function AttestationForm({
               rows={4}
             />
           </FormField>
-          <div
-            style={{
-              textAlign: 'right',
-              fontSize: 'var(--credence-font-size-xs)',
-              color: 'var(--credence-text-secondary)',
-              marginTop: 'calc(var(--credence-space-1) * -1)',
-            }}
-            aria-live="polite"
-          >
+          <div className="attestationForm__charCount" aria-live="polite">
             {evidence.length} / 2,000 chars
           </div>
         </div>
@@ -289,39 +275,13 @@ export default function AttestationForm({
           }
           confirmInputHint="Submitting this attestation records it on your trust profile. This action cannot be undone."
         >
-          <div
-            style={{
-              display: 'grid',
-              gap: 'var(--credence-space-3)',
-              padding: 'var(--credence-space-4)',
-              border: '1px solid var(--credence-border-default)',
-              borderRadius: 'var(--credence-radius-lg)',
-              background: 'var(--credence-surface-page)',
-              color: 'var(--credence-text-primary)',
-            }}
-          >
+          <div className="attestationConfirm">
             <div>
-              <strong
-                style={{
-                  fontSize: 'var(--credence-font-size-xs)',
-                  color: 'var(--credence-text-secondary)',
-                  display: 'block',
-                  textTransform: 'uppercase',
-                  marginBottom: 'var(--credence-space-1)',
-                }}
-              >
+              <strong className="attestationConfirm__label">
                 Subject
               </strong>
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: 'var(--credence-space-2)' }}
-              >
-                <code
-                  style={{
-                    fontSize: 'var(--credence-font-size-sm)',
-                    wordBreak: 'break-all',
-                    flex: 1,
-                  }}
-                >
+              <div className="attestationConfirm__subjectRow">
+                <code className="attestationConfirm__subjectCode">
                   {subject}
                 </code>
                 <button
@@ -333,19 +293,10 @@ export default function AttestationForm({
                     }
                   }}
                   aria-label={copied ? 'Copied' : 'Copy subject address'}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 'var(--credence-space-1)',
-                    border: 'none',
-                    borderRadius: 'var(--credence-radius-sm)',
-                    background: 'transparent',
-                    color: 'var(--credence-text-secondary)',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    transition: reducedMotion ? 'none' : 'all 0.2s ease',
-                  }}
+                  className={
+                    'attestationConfirm__copyButton' +
+                    (reducedMotion ? ' attestationConfirm__copyButton--reducedMotion' : '')
+                  }
                 >
                   {copied ? (
                     <svg
@@ -375,18 +326,10 @@ export default function AttestationForm({
               </div>
             </div>
             <div>
-              <strong
-                style={{
-                  fontSize: 'var(--credence-font-size-xs)',
-                  color: 'var(--credence-text-secondary)',
-                  display: 'block',
-                  textTransform: 'uppercase',
-                  marginBottom: 'var(--credence-space-1)',
-                }}
-              >
+              <strong className="attestationConfirm__label">
                 Type
               </strong>
-              <span style={{ fontSize: 'var(--credence-font-size-sm)' }}>
+              <span className="attestationConfirm__typeValue">
                 {type === ATTESTATION_EVENTS.TYPES.IDENTITY
                   ? 'Identity Verification'
                   : type === ATTESTATION_EVENTS.TYPES.PEER_VOUCH
@@ -395,25 +338,10 @@ export default function AttestationForm({
               </span>
             </div>
             <div>
-              <strong
-                style={{
-                  fontSize: 'var(--credence-font-size-xs)',
-                  color: 'var(--credence-text-secondary)',
-                  display: 'block',
-                  textTransform: 'uppercase',
-                  marginBottom: 'var(--credence-space-1)',
-                }}
-              >
+              <strong className="attestationConfirm__label">
                 Evidence
               </strong>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 'var(--credence-font-size-sm)',
-                  whiteSpace: 'pre-wrap',
-                  color: 'var(--credence-text-primary)',
-                }}
-              >
+              <p className="attestationConfirm__evidenceText">
                 {evidence || (evidenceFiles[0] ? `Attached evidence file: ${evidenceFiles[0].name}` : '')}
               </p>
               {evidenceFiles[0] && evidenceHash && (

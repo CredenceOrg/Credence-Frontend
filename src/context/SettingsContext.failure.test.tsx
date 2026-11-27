@@ -26,7 +26,7 @@ describe('SettingsContext Failure Boundary', () => {
     act(() => {
       result.current.setThemeMode('dark')
     })
-
+    
     act(() => {
       result.current.saveSettings()
     })
@@ -54,7 +54,7 @@ describe('SettingsContext Failure Boundary', () => {
     act(() => {
       result.current.setThemeMode('dark')
     })
-
+    
     act(() => {
       result.current.saveSettings()
     })

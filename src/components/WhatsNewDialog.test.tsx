@@ -301,7 +301,7 @@ describe('WhatsNewDialog / ChangelogDrawer', () => {
   it('handles invalid or missing dates gracefully', () => {
     const badDateUpdates = [
       { ...PRODUCT_UPDATES[0], id: 'bad-1', date: 'invalid-date-string' },
-      { ...PRODUCT_UPDATES[0], id: 'bad-2', date: '' },
+      { ...PRODUCT_UPDATES[0], id: 'bad-2', date: '' }
     ]
     vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
       updates: badDateUpdates,
@@ -317,7 +317,10 @@ describe('WhatsNewDialog / ChangelogDrawer', () => {
   })
 
   it('renders correctly when updates contain duplicate IDs', () => {
-    const duplicateUpdates = [PRODUCT_UPDATES[0], PRODUCT_UPDATES[0]]
+    const duplicateUpdates = [
+      PRODUCT_UPDATES[0],
+      PRODUCT_UPDATES[0]
+    ]
     vi.mocked(useProductUpdatesModule.useProductUpdates).mockReturnValue({
       updates: duplicateUpdates,
       unreadCount: 0,

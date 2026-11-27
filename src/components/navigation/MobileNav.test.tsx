@@ -8,7 +8,7 @@ vi.mock('../../config/routes', () => ({
   PRELOADS_BY_PATH: {
     '/': vi.fn().mockResolvedValue({}),
     '/settings': vi.fn().mockResolvedValue({}),
-  },
+  }
 }))
 
 function renderNav(initialPath = '/') {

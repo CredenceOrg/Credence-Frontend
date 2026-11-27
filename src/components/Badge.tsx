@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import './Badge.css'
 import TooltipOnOverflow from './TooltipOnOverflow'
 import { Component, type ReactNode, type ErrorInfo } from 'react'
@@ -49,15 +50,15 @@ const DEFAULT_LABELS: Record<string, string> = {
 
 /**
  * Sanitizes a string to prevent XSS attacks and remove control characters.
- *
+ * 
  * Invariants:
  * - Control characters (0x00-0x1F, 0x7F-0x9F) are removed
  * - Leading/trailing whitespace is trimmed
  * - Empty or whitespace-only input returns empty string
  * - Maximum length enforced to prevent DoS
- *
+ * 
  * Note: Does NOT HTML-escape. React handles that automatically during rendering.
- *
+ * 
  * @param value - Raw string input (may be untrusted)
  * @param maxLength - Maximum allowed length (default: 200 chars)
  * @returns Sanitized string safe for React rendering
@@ -92,14 +93,14 @@ function sanitizeText(value: unknown, maxLength = 200): string {
 
 /**
  * Validates and sanitizes CSS class names to prevent injection attacks.
- *
+ * 
  * Invariants:
  * - Only allows alphanumeric, hyphen, underscore, and space
  * - Removes consecutive spaces
  * - Trims leading/trailing whitespace
  * - Empty or invalid input returns empty string
  * - Maximum length enforced
- *
+ * 
  * @param value - Raw className string
  * @param maxLength - Maximum allowed length (default: 500 chars)
  * @returns Sanitized className string safe for class attribute
@@ -126,7 +127,7 @@ function sanitizeClassName(value: unknown, maxLength = 500): string {
 
 /**
  * Error boundary for Badge tooltip rendering.
- *
+ * 
  * If TooltipOnOverflow throws, falls back to rendering the badge
  * without the tooltip wrapper. This ensures the badge content
  * is always visible even if the tooltip enhancement fails.
@@ -161,20 +162,20 @@ class BadgeTooltipBoundary extends Component<
 
 /**
  * Badge component with deterministic failure-boundary coverage.
- *
+ * 
  * Security guarantees:
  * - All text inputs (label, srPrefix, ariaLabel) are sanitized to prevent XSS
  * - className input is validated to prevent CSS injection
  * - Control characters are stripped from all text inputs
  * - Variant normalization is deterministic and safe
  * - TooltipOnOverflow failures are caught and fallback to plain badge
- *
+ * 
  * Rendering guarantees:
  * - Always renders a valid badge element (never null/undefined)
  * - Invalid variants normalize to 'unknown' with visual indicator
  * - Empty labels fall back to variant default
  * - Tooltip failure does not break badge display
- *
+ * 
  * @param variant - Badge variant (tier or status). Unknown values normalize to 'unknown'
  * @param label - Optional custom label. Sanitized before rendering
  * @param className - Optional CSS classes. Validated before applying
@@ -192,7 +193,7 @@ export default function Badge({ variant, label, className = '', srPrefix, ariaLa
   // Validate variant is a string and normalize
   // Guard against null/undefined/non-string variants
   const variantString = typeof variant === 'string' && variant ? variant.toLowerCase() : 'unknown'
-
+  
   const normalizedVariant = (
     variantString in DEFAULT_LABELS ? variantString : 'unknown'
   ) as BadgeVariant

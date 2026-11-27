@@ -193,7 +193,9 @@ export default function WalletConnect({
           isLoading={status === 'connecting'}
           loadingText="Connecting…"
           onClick={handleConnect}
-          aria-label={status === 'connecting' ? 'Connecting wallet' : 'Connect wallet'}
+          aria-label={
+            status === 'connecting' ? 'Connecting wallet' : 'Connect wallet'
+          }
           className="walletConnect__connectBtn"
           data-testid="wallet-connect-btn"
         >
@@ -236,7 +238,9 @@ export default function WalletConnect({
           <span className="walletConnect__address" title={address}>
             {truncated}
           </span>
-          {balanceHint ? <span className="walletConnect__balance">{balanceHint}</span> : null}
+          {balanceHint ? (
+            <span className="walletConnect__balance">{balanceHint}</span>
+          ) : null}
         </span>
         <span className="walletConnect__chevron" aria-hidden="true">
           ▾

@@ -59,9 +59,8 @@ export function resetAllLazyChunks(): void {
 
 export type ComponentFactory<T extends ComponentType<unknown>> = () => Promise<{ default: T }>
 
-export interface RetryableLazyComponent<
-  T extends ComponentType<unknown>,
-> extends ForwardRefExoticComponent<PropsWithoutRef<ComponentProps<T>> & RefAttributes<unknown>> {
+export interface RetryableLazyComponent<T extends ComponentType<unknown>>
+  extends ForwardRefExoticComponent<PropsWithoutRef<ComponentProps<T>> & RefAttributes<unknown>> {
   preload: () => Promise<{ default: T }>
   reset: () => void
 }
@@ -89,9 +88,7 @@ export function lazyWithRetry<T extends ComponentType<unknown>>(
 
   function getLazyComponent(): LazyExoticComponent<T> {
     if (!currentLazy) {
-      currentLazy = lazy(
-        factory as () => Promise<{ default: ComponentType<ComponentProps<T>> }>
-      ) as LazyExoticComponent<T>
+      currentLazy = lazy(factory as () => Promise<{ default: ComponentType<ComponentProps<T>> }>) as LazyExoticComponent<T>
     }
     return currentLazy
   }

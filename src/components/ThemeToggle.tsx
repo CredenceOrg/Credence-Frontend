@@ -93,7 +93,7 @@ function SunIcon() {
   )
 }
 
-export function MoonIcon() {
+function MoonIcon() {
   return (
     <svg className="theme-toggle__icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
       <path d="M12.03 2.26a.75.75 0 0 0-1.06.92 6 6 0 0 1 7.5 7.5.75.75 0 0 0 .92-1.06 7.5 7.5 0 0 0-7.36-7.36zM7.47 3.7A7 7 0 1 0 16.3 12.53a5.5 5.5 0 1 1-8.83-8.83z" />
@@ -101,124 +101,95 @@ export function MoonIcon() {
   )
 }
 
-/** The OS media query that carries the dark-mode preference. */
-const SYSTEM_DARK_QUERY = '(prefers-color-scheme: dark)'
+export default function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(resolveTheme)
+  // Tracks whether the user has explicitly chosen a theme during this mount.
+  // While false, OS preference changes are honored; once true, they are ignored
+  // so an explicit choice is never silently overwritten.
+  const hasExplicitChoice = useRef(false)
+  // Guards against out-of-order / duplicate async writes from a rapid
+  // succession of toggles or OS events: only the latest commit is applied.
+  const writeGeneration = useRef(0)
 
-/**
- * Maximum number of subscription attempts (1 initial + bounded retries) made
- * per mount before the toggle gives up and keeps its last known value.
- * Exported so the bound is a testable invariant rather than a magic number.
- */
-export const SUBSCRIBE_MAX_ATTEMPTS = 3
+  // Single source of truth for applying a theme to the document and storage.
+  // Idempotent: repeated calls with the same theme are no-ops.
+  const commitTheme = useCallback((nextTheme: Theme) => {
+    const generation = ++writeGeneration.current
+    setTheme((prev) => {
+      if (prev === nextTheme) return prev
+      // Apply to the document only for the latest commited generation.
+      if (generation === writeGeneration.current) {
+        try {
+          document.documentElement.dataset.theme = nextTheme
+        } catch {
+          // DOM writes are best-effort; state remains consistent.
+        }
+        persistTheme(nextTheme)
+      }
+      return nextTheme
+    })
+  }, [])
 
-/** Base delay for the linear retry backoff: 250ms, then 500ms. */
-const SUBSCRIBE_RETRY_DELAY_MS = 250
+  // Keep the document in sync with the current theme on every commit.
+  useEffect(() => {
+    try {
+      document.documentElement.dataset.theme = theme
+    } catch {
+      // ignore DOM availability failures
+    }
+    persistTheme(theme)
+  }, [theme])
 
-/**
- * Failure classes for the system color-scheme read/subscription.
- *
- * These are stable, non-sensitive strings: a diagnostic line names only the
- * class of failure, never an error message, user value, or environment detail.
- */
-export type SystemPrefersDarkFailure =
-  /** SSR / no DOM: `window` is undefined. */
-  | 'window-unavailable'
-  /** `window.matchMedia` is missing or not callable (older/locked-down UA). */
-  | 'match-media-unavailable'
-  /** Constructing the media query list threw (e.g. a hostile/odd UA). */
-  | 'match-media-threw'
-  /** `matchMedia` returned a non-object (`null`, `undefined`, primitive). */
-  | 'invalid-media-query-list'
-  /** Reading `.matches` threw (getter side effect / revoked proxy). */
-  | 'matches-threw'
-  /** `.matches` was not a strict boolean; the value cannot be trusted. */
-  | 'matches-not-boolean'
-  /** The `MediaQueryList` exposes no change-listener API at all. */
-  | 'subscribe-unavailable'
-  /** Registering the change listener threw. */
-  | 'subscribe-threw'
-  /** Removing the change listener threw (cleanup still completes). */
-  | 'unsubscribe-threw'
-  /** A consumer listener threw; the event was contained, not rethrown. */
-  | 'listener-threw'
+  // React to OS preference changes only while no explicit choice exists.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return
+    }
 
-/** Result of one system-preference read, including how the value was obtained. */
-export interface SystemPrefersDarkReading {
-  /** Always a strict boolean — never `undefined`, `null`, or a truthy object. */
-  prefersDark: boolean
-  /**
-   * `'media'` when the value came from a live `matchMedia` read;
-   * `'fallback'` when every read path failed and the safe default was used.
-   */
-  source: 'media' | 'fallback'
-  /** Present only when `source === 'fallback'`. */
-  failure?: SystemPrefersDarkFailure
-}
+    let mql: MediaQueryList
+    try {
+      mql = window.matchMedia(DARK_QUERY)
+    } catch {
+      return
+    }
 
-/** Failure classes already reported once this session (dedupe log spam). */
-const reportedFailures = new Set<SystemPrefersDarkFailure>()
+    const handleChange = (event: MediaQueryListEvent) => {
+      if (hasExplicitChoice.current) return
+      commitTheme(event.matches ? 'dark' : 'light')
+    }
 
-/**
- * Emits one structured, data-free diagnostic per failure class.
- *
- * Invariant: this never throws and never carries anything but the failure
- * class, so a broken environment cannot turn diagnostics into a second
- * failure or leak sensitive material into logs.
- */
-function reportFailure(failure: SystemPrefersDarkFailure): void {
-  if (reportedFailures.has(failure)) return
-  reportedFailures.add(failure)
-  logWarn('theme_system_preference_unavailable', { failure })
-}
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', handleChange)
+      return () => mql.removeEventListener('change', handleChange)
+    }
 
-/**
- * Clears the diagnostic de-duplication cache.
- * Test/teardown hook only — production code never needs it.
- */
-export function resetSystemPrefersDarkDiagnostics(): void {
-  reportedFailures.clear()
-}
+    // Legacy Safari / fallback API.
+    if (typeof mql.addListener === 'function') {
+      mql.addListener(handleChange)
+      return () => mql.removeListener(handleChange)
+    }
 
-function fallbackReading(failure: SystemPrefersDarkFailure): SystemPrefersDarkReading {
-  reportFailure(failure)
-  return { prefersDark: false, source: 'fallback', failure }
-}
+    return undefined
+  }, [commitTheme])
 
-/**
- * Reads the OS `prefers-color-scheme: dark` preference with full failure
- * boundaries, returning enough context to diagnose which boundary was hit.
- *
- * Invariants (see {@link getSystemPrefersDark} for the caller-facing summary):
- * - **Never throws**, whatever the environment does.
- * - **Pure read**: it mutates no state (the only side effect is a once-per-
- *   class diagnostic), so duplicate and concurrent calls are idempotent and
- *   always agree for a given environment state.
- * - **Strict boolean**: only `matches === true` means dark. A truthy
- *   non-boolean (`'true'`, `1`, an object) is treated as *unreadable*, not as
- *   dark, so a malformed environment can never silently flip the theme.
- * - **Safe default**: every failure resolves to light (`false`), the same
- *   default used for SSR — and never to a persisted user value, so a failing
- *   read can never override an explicitly chosen theme.
- */
-export function readSystemPrefersDark(): SystemPrefersDarkReading {
-  if (typeof window === 'undefined') return fallbackReading('window-unavailable')
-  if (typeof window.matchMedia !== 'function') return fallbackReading('match-media-unavailable')
+  // External consumers (e.g. the Settings context) can request a theme
+  // change without duplicating the persistence / DOM invariants.
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
 
-  let mql: MediaQueryList
-  try {
-    mql = window.matchMedia(SYSTEM_DARK_QUERY) as MediaQueryList
-  } catch {
-    return fallbackReading('match-media-threw')
-  }
-  if (!mql || typeof mql !== 'object') return fallbackReading('invalid-media-query-list')
+    const handleExternal = (event: Event) => {
+      const detail = (event as CustomEvent<{ theme?: unknown }>).detail
+      const next = detail?.theme
+      if (!isValidTheme(next)) return
+      hasExplicitChoice.current = true
+      commitTheme(next)
+    }
 
-  let matches: unknown
-  try {
-    matches = mql.matches
-  } catch {
-    return fallbackReading('matches-threw')
-  }
-  if (typeof matches !== 'boolean') return fallbackReading('matches-not-boolean')
+    window.addEventListener(THEME_CHANNEL_EVENT, handleExternal)
+    return () => window.removeEventListener(THEME_CHANNEL_EVENT, handleExternal)
+  }, [commitTheme])
 
   const toggleTheme = () => {
     hasExplicitChoice.current = true
@@ -231,13 +202,12 @@ export function readSystemPrefersDark(): SystemPrefersDarkReading {
     <button
       type="button"
       className="theme-toggle"
-      onClick={() => setThemeMode(nextTheme)}
-      aria-label="Toggle theme"
-      aria-pressed={resolved === 'dark'}
-      title={`Switch to ${nextTheme} theme`}
-      data-theme-source={themeSource}
+      onClick={toggleTheme}
+      aria-label={`Switch to ${nextTheme} mode`}
+      aria-pressed={theme === 'dark'}
+      title={`Switch to ${nextTheme} mode`}
     >
-      {resolved === 'light' ? <MoonIcon /> : <SunIcon />}
+      {theme === 'light' ? <MoonIcon /> : <SunIcon />}
     </button>
   )
 }

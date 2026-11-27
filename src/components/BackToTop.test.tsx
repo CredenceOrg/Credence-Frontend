@@ -278,9 +278,7 @@ describe('BackToTop', () => {
 
       const focusSpy = vi.spyOn(heading, 'focus')
 
-      expect(() =>
-        fireEvent.click(screen.getByRole('button', { name: /back to top/i }))
-      ).not.toThrow()
+      expect(() => fireEvent.click(screen.getByRole('button', { name: /back to top/i }))).not.toThrow()
       expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true })
     })
 

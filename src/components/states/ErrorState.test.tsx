@@ -72,9 +72,9 @@ describe('ErrorState', () => {
   it('disables the retry action while a rate-limit window is active', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(new Response('', { status: 429, headers: { 'Retry-After': '5' } }))
+      vi.fn().mockResolvedValueOnce(
+        new Response('', { status: 429, headers: { 'Retry-After': '5' } })
+      )
     )
     render(<ErrorState action={{ label: 'Try again', onClick: vi.fn() }} />)
 

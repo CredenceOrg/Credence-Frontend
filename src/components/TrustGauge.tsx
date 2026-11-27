@@ -131,6 +131,22 @@ const TIER_INDEX_MAP = TIER_ORDER.reduce(
  * - The returned tier is always a member of TIER_ORDER.
  * - The result is deterministic for any numeric input.
  */
+function resolveTier(score: number): TrustTier {
+  return tierFromScore(score)
+}
+
+/**
+ * Resolve the canonical score, tolerating invalid input.
+ *
+ * Invariants:
+ * - Non-finite scores collapse to 0.
+ * - The result is always within [0, MAX_SCORE].
+ * - The result is deterministic for any numeric input.
+ */
+function resolveScore(score: number): number {
+  return normalizeScore(score)
+}
+
 /**
  * Calculate points remaining to reach the next tier
  * @param score Current score
@@ -138,18 +154,29 @@ const TIER_INDEX_MAP = TIER_ORDER.reduce(
  * @returns Points needed to reach next tier (0 if at platinum)
  */
 export function pointsToNextTier(score: number, tier: TrustTier): number {
-  if (!Number.isFinite(score) || !(tier in TIER_INDEX_MAP)) {
-    return 0
-  }
-  const tierIndex = TIER_INDEX_MAP[tier]
+  // Guard against unknown tier values at runtime (defensive against
+  // callers passing values outside the TrustTier union, e.g. from
+  // deserialized payloads). Fall back to the tier derived from the
+  // normalized score so the result stays deterministic and safe.
+  const safeTier: TrustTier =
+    tier in TIER_INDEX_MAP ? tier : resolveTier(score)
+  const tierIndex = TIER_INDEX_MAP[safeTier]
   if (tierIndex === TIER_ORDER.length - 1) {
     return 0
   }
   const nextTier = TIER_ORDER[tierIndex + 1]
-  const normalizedScore = Math.min(Math.max(0, score), MAX_SCORE)
+  // Normalize the score before computing the delta so invalid inputs
+  // (NaN, Infinity, negative, overflow) cannot produce NaN/negative
+  // results or leak out-of-range values into the UI.
+  const normalizedScore = resolveScore(score)
   const nextTierMin = TIERS[nextTier].min
   const delta = nextTierMin - normalizedScore
-  return Math.ceil(Math.min(Math.max(0, delta), nextTierMin))
+  // Clamp to [0, nextTierMin] so the result is always a non-negative
+  // integer within the tier band, regardless of input.
+  if (!Number.isFinite(delta)) {
+    return nextTierMin
+  }
+  return Math.min(Math.max(0, delta), nextTierMin)
 }
 
 /**
@@ -260,13 +287,7 @@ export default function TrustGauge({
 
       {!isPermitted ? (
         <div className="trust-gauge__permission-denied" role="alert">
-          <svg
-            className="trust-gauge__icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
+          <svg className="trust-gauge__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
@@ -276,13 +297,7 @@ export default function TrustGauge({
         <>
           {error && (
             <div className="trust-gauge__error-banner" role="alert">
-              <svg
-                className="trust-gauge__icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg className="trust-gauge__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -300,13 +315,7 @@ export default function TrustGauge({
 
           {isStale && !error && (
             <div className="trust-gauge__stale-banner" role="status">
-              <svg
-                className="trust-gauge__icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg className="trust-gauge__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
@@ -314,151 +323,149 @@ export default function TrustGauge({
             </div>
           )}
 
-          <div
-            className={`trust-gauge__content-wrapper ${isLoading ? 'trust-gauge__content-wrapper--loading' : ''} ${isStale ? 'trust-gauge__content-wrapper--stale' : ''}`}
-          >
+          <div className={`trust-gauge__content-wrapper ${isLoading ? 'trust-gauge__content-wrapper--loading' : ''} ${isStale ? 'trust-gauge__content-wrapper--stale' : ''}`}>
             {isLoading && (
               <div className="trust-gauge__loading-overlay" role="status" aria-label="Loading">
                 <div className="trust-gauge__spinner" />
               </div>
             )}
-
+            
             {/* Main gauge container */}
             <div
               className="trust-gauge__container"
-              role="progressbar"
-              tabIndex={0}
-              aria-live="polite"
-              aria-atomic="true"
-              aria-valuenow={resolvedScore}
-              aria-valuemin={0}
-              aria-valuemax={MAX_SCORE}
-              aria-label={`Trust score: ${resolvedScore} out of ${MAX_SCORE}, ${resolvedTier} tier`}
-            >
-              {/* Track background with tier divisions */}
-              <div className="trust-gauge__track">
-                {/* Tier threshold markers and fills */}
-                <div
-                  className="trust-gauge__fill trust-gauge__fill--bronze"
-                  role="presentation"
-                  aria-hidden="true"
-                />
-                <div
-                  className="trust-gauge__fill trust-gauge__fill--silver"
-                  role="presentation"
-                  aria-hidden="true"
-                />
-                <div
-                  className="trust-gauge__fill trust-gauge__fill--gold"
-                  role="presentation"
-                  aria-hidden="true"
-                />
-                <div
-                  className="trust-gauge__fill trust-gauge__fill--platinum"
-                  role="presentation"
-                  aria-hidden="true"
-                />
+        role="progressbar"
+        tabIndex={0}
+        aria-live="polite"
+        aria-atomic="true"
+        aria-valuenow={resolvedScore}
+        aria-valuemin={0}
+        aria-valuemax={MAX_SCORE}
+        aria-label={`Trust score: ${resolvedScore} out of ${MAX_SCORE}, ${resolvedTier} tier`}
+      >
+        {/* Track background with tier divisions */}
+        <div className="trust-gauge__track">
+          {/* Tier threshold markers and fills */}
+          <div
+            className="trust-gauge__fill trust-gauge__fill--bronze"
+            role="presentation"
+            aria-hidden="true"
+          />
+          <div
+            className="trust-gauge__fill trust-gauge__fill--silver"
+            role="presentation"
+            aria-hidden="true"
+          />
+          <div
+            className="trust-gauge__fill trust-gauge__fill--gold"
+            role="presentation"
+            aria-hidden="true"
+          />
+          <div
+            className="trust-gauge__fill trust-gauge__fill--platinum"
+            role="presentation"
+            aria-hidden="true"
+          />
 
-                {/* Progress indicator - shows actual current progress */}
+          {/* Progress indicator - shows actual current progress */}
+          <div
+            className="trust-gauge__progress"
+            style={
+              {
+                '--progress-width': `${percentage}%`,
+                ...(reducedMotionTransition ? { transition: reducedMotionTransition } : {}),
+              } as React.CSSProperties & { '--progress-width': string }
+            }
+            role="presentation"
+            aria-hidden="true"
+          />
+
+          {/* Tier threshold markers */}
+          <div className="trust-gauge__markers">
+            {TIER_ORDER.map((t, index) => {
+              const markerPercentage = (TIERS[t].min / MAX_SCORE) * 100
+              return (
                 <div
-                  className="trust-gauge__progress"
+                  key={t}
+                  className={`trust-gauge__marker trust-gauge__marker--${t}`}
                   style={
                     {
-                      '--progress-width': `${percentage}%`,
-                      ...(reducedMotionTransition ? { transition: reducedMotionTransition } : {}),
-                    } as React.CSSProperties & { '--progress-width': string }
+                      '--marker-position': `${markerPercentage}%`,
+                    } as React.CSSProperties & { '--marker-position': string }
                   }
-                  role="presentation"
-                  aria-hidden="true"
-                />
-
-                {/* Tier threshold markers */}
-                <div className="trust-gauge__markers">
-                  {TIER_ORDER.map((t, index) => {
-                    const markerPercentage = (TIERS[t].min / MAX_SCORE) * 100
-                    return (
-                      <div
-                        key={t}
-                        className={`trust-gauge__marker trust-gauge__marker--${t}`}
-                        style={
-                          {
-                            '--marker-position': `${markerPercentage}%`,
-                          } as React.CSSProperties & { '--marker-position': string }
-                        }
-                        title={`${TIERS[t].label}: ${TIERS[t].min}-${TIERS[t].max ?? MAX_SCORE} points`}
-                      >
-                        {/* Only show label for first marker on mobile, all on desktop */}
-                        {index === 0 && <span className="trust-gauge__marker-label">{t}</span>}
-                      </div>
-                    )
-                  })}
+                  title={`${TIERS[t].label}: ${TIERS[t].min}-${TIERS[t].max ?? MAX_SCORE} points`}
+                >
+                  {/* Only show label for first marker on mobile, all on desktop */}
+                  {index === 0 && <span className="trust-gauge__marker-label">{t}</span>}
                 </div>
+              )
+            })}
+          </div>
 
-                {/* Current score indicator thumb */}
-                <div
-                  className="trust-gauge__thumb"
-                  style={
-                    {
-                      '--thumb-position': `${percentage}%`,
-                      ...(reducedMotionTransition ? { transition: reducedMotionTransition } : {}),
-                    } as React.CSSProperties & { '--thumb-position': string }
-                  }
-                  role="presentation"
+          {/* Current score indicator thumb */}
+          <div
+            className="trust-gauge__thumb"
+            style={
+              {
+                '--thumb-position': `${percentage}%`,
+                ...(reducedMotionTransition ? { transition: reducedMotionTransition } : {}),
+              } as React.CSSProperties & { '--thumb-position': string }
+            }
+            role="presentation"
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+
+      {/* Score and tier display */}
+      <div className="trust-gauge__stats">
+        <div className="trust-gauge__score-display">
+          <span className="trust-gauge__score-value">{resolvedScore}</span>
+          <span className="trust-gauge__score-label">/ {MAX_SCORE}</span>
+        </div>
+
+        <div className="trust-gauge__tier-display">
+          <span className="trust-gauge__tier-badge" data-tier={resolvedTier}>
+            {TIERS[resolvedTier].label}
+          </span>
+        </div>
+
+        <div className="trust-gauge__progress-caption">
+          {isAtMax ? (
+            <span className="trust-gauge__maxed">Platinum tier — maximum score achieved</span>
+          ) : (
+            <span className="trust-gauge__next-tier">
+              {nextTierPoints} points to {nextTierLabel}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Tier legend/explanation */}
+      <div className="trust-gauge__legend">
+        <p className="trust-gauge__legend-title">Tier Ranges</p>
+        <ul className="trust-gauge__legend-list">
+          {TIER_ORDER.map((t) => {
+            // Show each band's own upper bound (e.g. Bronze: 0–249, Platinum:
+            // 750–1000). Using TIER_CONFIG[t].max keeps the legend aligned with
+            // the canonical TIER_THRESHOLDS values: Bronze.max=249, Silver.max=499,
+            // etc., so the displayed upper bound is the last inclusive score in
+            // the band (the next band starts at upper+1).
+            const upper = TIER_CONFIG[t].max
+            return (
+              <li key={t} className="trust-gauge__legend-item">
+                <span
+                  className="trust-gauge__legend-dot"
+                  style={{ backgroundColor: TIER_CONFIG[t].color }}
                   aria-hidden="true"
                 />
-              </div>
-            </div>
-
-            {/* Score and tier display */}
-            <div className="trust-gauge__stats">
-              <div className="trust-gauge__score-display">
-                <span className="trust-gauge__score-value">{resolvedScore}</span>
-                <span className="trust-gauge__score-label">/ {MAX_SCORE}</span>
-              </div>
-
-              <div className="trust-gauge__tier-display">
-                <span className="trust-gauge__tier-badge" data-tier={resolvedTier}>
-                  {TIERS[resolvedTier].label}
+                <span className="trust-gauge__legend-text">
+                  {TIER_CONFIG[t].label}: {TIER_CONFIG[t].min}–{upper}
                 </span>
-              </div>
-
-              <div className="trust-gauge__progress-caption">
-                {isAtMax ? (
-                  <span className="trust-gauge__maxed">Platinum tier — maximum score achieved</span>
-                ) : (
-                  <span className="trust-gauge__next-tier">
-                    {nextTierPoints} points to {nextTierLabel}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Tier legend/explanation */}
-            <div className="trust-gauge__legend">
-              <p className="trust-gauge__legend-title">Tier Ranges</p>
-              <ul className="trust-gauge__legend-list">
-                {TIER_ORDER.map((t) => {
-                  // Show each band's own upper bound (e.g. Bronze: 0–249, Platinum:
-                  // 750–1000). Using TIER_CONFIG[t].max keeps the legend aligned with
-                  // the canonical TIER_THRESHOLDS values: Bronze.max=249, Silver.max=499,
-                  // etc., so the displayed upper bound is the last inclusive score in
-                  // the band (the next band starts at upper+1).
-                  const upper = TIER_CONFIG[t].max
-                  return (
-                    <li key={t} className="trust-gauge__legend-item">
-                      <span
-                        className="trust-gauge__legend-dot"
-                        style={{ backgroundColor: TIER_CONFIG[t].color }}
-                        aria-hidden="true"
-                      />
-                      <span className="trust-gauge__legend-text">
-                        {TIER_CONFIG[t].label}: {TIER_CONFIG[t].min}–{upper}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
           </div>
         </>
       )}

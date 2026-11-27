@@ -9,7 +9,7 @@ precacheAndRoute(self.__WB_MANIFEST)
 
 // Cache-First strategy for static assets (js, css, images)
 registerRoute(
-  ({ request }) =>
+  ({ request }) => 
     request.destination === 'style' ||
     request.destination === 'script' ||
     request.destination === 'image',
@@ -40,8 +40,7 @@ export function registerHandlers(scope: ServiceWorkerGlobalScope) {
         const request = indexedDB.deleteDatabase('credence-offline-db')
         request.onsuccess = () => resolve()
         request.onerror = () => reject(request.error)
-        request.onblocked = () =>
-          reject(new Error('Deleting the offline write database was blocked'))
+        request.onblocked = () => reject(new Error('Deleting the offline write database was blocked'))
       })
     )
   })

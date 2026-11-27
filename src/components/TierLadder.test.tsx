@@ -154,9 +154,7 @@ describe('formatThreshold — deterministic failure-boundary coverage', () => {
       expect(formatThreshold({ scoreMin: Number.POSITIVE_INFINITY, scoreMax: null })).toBe('1000+')
       expect(formatThreshold({ scoreMin: Number.NEGATIVE_INFINITY, scoreMax: 200 })).toBe('0–200')
       expect(formatThreshold({ scoreMin: 100, scoreMax: NaN })).toBe('100+')
-      expect(formatThreshold({ scoreMin: 100, scoreMax: Number.POSITIVE_INFINITY })).toBe(
-        '100–1000'
-      )
+      expect(formatThreshold({ scoreMin: 100, scoreMax: Number.POSITIVE_INFINITY })).toBe('100–1000')
     })
 
     it('clamps negative scores to zero', () => {
@@ -306,7 +304,13 @@ describe('TierLadder — loading, error, retry, stale, and permission state cove
     const user = userEvent.setup()
     const onRetry = vi.fn().mockResolvedValue(undefined)
 
-    render(<TierLadder defaultOpen={true} error="Temporary connection loss." onRetry={onRetry} />)
+    render(
+      <TierLadder
+        defaultOpen={true}
+        error="Temporary connection loss."
+        onRetry={onRetry}
+      />
+    )
 
     const retryBtn = screen.getByRole('button', { name: /retry/i })
     expect(retryBtn).toBeInTheDocument()
@@ -323,7 +327,13 @@ describe('TierLadder — loading, error, retry, stale, and permission state cove
     })
     const onRetry = vi.fn().mockReturnValue(pendingPromise)
 
-    render(<TierLadder defaultOpen={true} error="Temporary connection loss." onRetry={onRetry} />)
+    render(
+      <TierLadder
+        defaultOpen={true}
+        error="Temporary connection loss."
+        onRetry={onRetry}
+      />
+    )
 
     const retryBtn = screen.getByRole('button', { name: /retry/i })
     await user.click(retryBtn)
@@ -349,7 +359,13 @@ describe('TierLadder — loading, error, retry, stale, and permission state cove
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const onRetry = vi.fn().mockRejectedValue(new Error('Persistent server error'))
 
-    render(<TierLadder defaultOpen={true} error="Initial error." onRetry={onRetry} />)
+    render(
+      <TierLadder
+        defaultOpen={true}
+        error="Initial error."
+        onRetry={onRetry}
+      />
+    )
 
     const retryBtn = screen.getByRole('button', { name: /retry/i })
     await user.click(retryBtn)

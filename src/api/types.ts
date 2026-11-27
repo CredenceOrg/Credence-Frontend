@@ -81,7 +81,9 @@ export type ApiResponse<
  * `ok: true` narrows `value` to the validated type. `ok: false` carries a
  * stable, non-sensitive `reason` suitable for logs and user-visible errors.
  */
-export type ValidationResult<T> = { ok: true; value: T } | { ok: false; reason: ValidationReason }
+export type ValidationResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; reason: ValidationReason }
 
 export type ValidationReason =
   | 'not_an_object'
@@ -94,7 +96,8 @@ export type ValidationReason =
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 
-const isNonEmptyString = (v: unknown): v is string => typeof v === 'string' && v.length > 0
+const isNonEmptyString = (v: unknown): v is string =>
+  typeof v === 'string' && v.length > 0
 
 /**
  * Validate a cursor-paginated list envelope.
@@ -109,7 +112,7 @@ const isNonEmptyString = (v: unknown): v is string => typeof v === 'string' && v
  */
 export function validateApiListResponse<T>(
   input: unknown,
-  validateItem: (item: unknown) => ValidationResult<T>
+  validateItem: (item: unknown) => ValidationResult<T>,
 ): ValidationResult<ApiListResponse<T>> {
   if (!isPlainObject(input)) return { ok: false, reason: 'not_an_object' }
   if (!Array.isArray(input.items)) return { ok: false, reason: 'missing_field' }
@@ -143,7 +146,7 @@ export function validateApiListResponse<T>(
 export function mergeApiListResponse<T>(
   previous: ApiListResponse<T> | undefined,
   next: ApiListResponse<T>,
-  keyOf: (item: T) => string
+  keyOf: (item: T) => string,
 ): ApiListResponse<T> {
   const seen = new Set<string>()
   const merged: T[] = []
@@ -189,11 +192,12 @@ export async function withRetry<T>(
     delayMs?: (attempt: number) => number
     onRetry?: (attempt: number, error: unknown) => void
     sleep?: (ms: number) => Promise<void>
-  } = {}
+  } = {},
 ): Promise<T> {
   const maxAttempts = Math.max(1, Math.floor(options.maxAttempts ?? 3))
   const delayMs = options.delayMs ?? ((attempt) => 100 * 2 ** (attempt - 1))
-  const sleep = options.sleep ?? ((ms) => new Promise<void>((r) => setTimeout(r, ms)))
+  const sleep =
+    options.sleep ?? ((ms) => new Promise<void>((r) => setTimeout(r, ms)))
 
   let lastError: unknown
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {

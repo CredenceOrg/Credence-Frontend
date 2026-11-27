@@ -53,8 +53,10 @@ const SAMPLE_NOTE: ActivityItem = {
   status: 'in-review',
 }
 
-const renderDrawer = (ui: React.ReactElement, options: { container?: HTMLElement | null } = {}) =>
-  render(ui, { container: options.container ?? document.body })
+const renderDrawer = (
+  ui: React.ReactElement,
+  options: { container?: HTMLElement | null } = {}
+) => render(ui, { container: options.container ?? document.body })
 
 describe('AttestationDetailDrawer', () => {
   afterEach(cleanup)
@@ -187,13 +189,17 @@ describe('AttestationDetailDrawer', () => {
   })
 
   it('renders the empty state when item is null but open=true', () => {
-    renderDrawer(<AttestationDetailDrawer open item={null} onClose={() => {}} labels={LABELS} />)
+    renderDrawer(
+      <AttestationDetailDrawer open item={null} onClose={() => {}} labels={LABELS} />
+    )
     const dialog = screen.getByRole('dialog', { name: /no attestation selected/i })
     expect(dialog).toBeInTheDocument()
     // The empty body copy lives inside an element with role="status" so
     // scope the assertion to that node — otherwise the same text appears
     // in both the h2 and the body and the matching is ambiguous.
-    expect(screen.getByRole('status').textContent).toMatch(/no attestation selected/i)
+    expect(
+      screen.getByRole('status').textContent
+    ).toMatch(/no attestation selected/i)
   })
 })
 

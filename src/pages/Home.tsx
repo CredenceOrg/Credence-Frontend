@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useWallet } from '../context/WalletContext'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useUsdcBalance } from '../hooks/useUsdcBalance'
 import { useTrustScore } from '../hooks/useTrustScore'
 import Badge from '../components/Badge'
@@ -16,7 +15,7 @@ import './Home.css'
 
 function HomeHero() {
   const { t } = useTranslation()
-
+  
   return (
     <div className="home">
       <div>
@@ -44,12 +43,7 @@ interface HomeDashboardPreviewProps {
 function HomeDashboardPreview({ address }: HomeDashboardPreviewProps) {
   const { t } = useTranslation()
   const { balance, status: balanceStatus, refetch: refetchBalance } = useUsdcBalance()
-  const {
-    data: trustData,
-    isLoading: trustLoading,
-    error: trustError,
-    refetch: refetchTrust,
-  } = useTrustScore(address)
+  const { data: trustData, isLoading: trustLoading, error: trustError, refetch: refetchTrust } = useTrustScore(address)
 
   // Trigger trust score fetch on mount and whenever the address changes.
   // Stale data from the previous address is cleared inside useTrustScore
@@ -153,7 +147,6 @@ function HomeDashboardPreview({ address }: HomeDashboardPreviewProps) {
 // ─── Page root ───────────────────────────────────────────────────────────────
 
 export default function Home() {
-  useDocumentTitle('Home')
   const { isConnected, address } = useWallet()
 
   if (isConnected && address) {

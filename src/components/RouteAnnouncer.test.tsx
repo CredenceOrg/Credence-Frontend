@@ -44,7 +44,7 @@ function renderAnnouncer(initialPath: string) {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <RouteAnnouncer />
-    </MemoryRouter>
+    </MemoryRouter>,
   )
 }
 
@@ -342,7 +342,7 @@ describe('RouteAnnouncer – repeated navigation to the same route', () => {
     rerender(
       <MemoryRouter key="away" initialEntries={['/bond']}>
         <RouteAnnouncer />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
     act(() => vi.advanceTimersByTime(ANNOUNCE_DELAY_MS))
     expect(liveRegion()).toHaveTextContent('Bond page loaded')
@@ -350,7 +350,7 @@ describe('RouteAnnouncer – repeated navigation to the same route', () => {
     rerender(
       <MemoryRouter key="back" initialEntries={['/dashboard']}>
         <RouteAnnouncer />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
     // Synchronous clear must happen before the timer
     expect(liveRegion()).toHaveTextContent('')
@@ -366,7 +366,7 @@ describe('RouteAnnouncer – repeated navigation to the same route', () => {
     rerender(
       <MemoryRouter key="bond2" initialEntries={['/bond']}>
         <RouteAnnouncer />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
     // Synchronous clear
     expect(liveRegion()).toHaveTextContent('')
@@ -393,13 +393,13 @@ describe('RouteAnnouncer – rapid navigation / stale timer', () => {
     rerender(
       <MemoryRouter key="1" initialEntries={['/trust']}>
         <RouteAnnouncer />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
     // Navigate again before 100 ms elapses
     rerender(
       <MemoryRouter key="2" initialEntries={['/settings']}>
         <RouteAnnouncer />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     act(() => vi.advanceTimersByTime(ANNOUNCE_DELAY_MS))
@@ -417,7 +417,7 @@ describe('RouteAnnouncer – rapid navigation / stale timer', () => {
     rerender(
       <MemoryRouter key="r1" initialEntries={['/bond']}>
         <RouteAnnouncer />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
     // Advance to just before the /bond timer would fire
     act(() => vi.advanceTimersByTime(ANNOUNCE_DELAY_MS - 10))
@@ -427,7 +427,7 @@ describe('RouteAnnouncer – rapid navigation / stale timer', () => {
     rerender(
       <MemoryRouter key="r2" initialEntries={['/trust']}>
         <RouteAnnouncer />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
     // Wait for the full delay from the /trust render
     act(() => vi.advanceTimersByTime(ANNOUNCE_DELAY_MS))
@@ -480,7 +480,7 @@ describe('RouteAnnouncer – label length boundary', () => {
     render(
       <MemoryRouter initialEntries={['/longpath']}>
         <RouteAnnouncer />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     // Override with a custom registry by exercising the helpers directly
@@ -510,7 +510,7 @@ describe('RouteAnnouncer – regression', () => {
     rerender(
       <MemoryRouter key="trust" initialEntries={['/trust']}>
         <RouteAnnouncer />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
     act(() => vi.advanceTimersByTime(ANNOUNCE_DELAY_MS))
     expect(liveRegion()).toHaveTextContent('Trust Score page loaded')

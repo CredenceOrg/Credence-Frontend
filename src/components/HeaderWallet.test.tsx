@@ -398,10 +398,7 @@ describe('HeaderWallet', () => {
       fireEvent.click(screen.getByTestId('wallet-connected-trigger'))
 
       const explorerLink = screen.getByRole('menuitem', { name: /view on explorer/i })
-      expect(explorerLink).toHaveAttribute(
-        'href',
-        expect.stringContaining('/explorer/testnet/account/')
-      )
+      expect(explorerLink).toHaveAttribute('href', expect.stringContaining('/explorer/testnet/account/'))
     })
   })
 
@@ -419,10 +416,7 @@ describe('HeaderWallet', () => {
       fireEvent.click(screen.getByTestId('wallet-connected-trigger'))
 
       const explorerLink = screen.getByRole('menuitem', { name: /view on explorer/i })
-      expect(explorerLink).toHaveAttribute(
-        'href',
-        expect.stringContaining('/explorer/public/account/')
-      )
+      expect(explorerLink).toHaveAttribute('href', expect.stringContaining('/explorer/public/account/'))
     })
   })
 })

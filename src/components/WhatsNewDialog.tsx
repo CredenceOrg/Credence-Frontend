@@ -16,8 +16,6 @@ export interface WhatsNewDialogProps {
    * When omitted, focus returns to whichever element was active before opening.
    */
   returnFocusRef?: React.RefObject<HTMLElement | null>
-  /** Optional viewport height for the windowed list. Defaults to 420. */
-  containerHeight?: number
 }
 
 const TAG_LABELS: Record<ProductUpdate['tag'], string> = {
@@ -27,7 +25,6 @@ const TAG_LABELS: Record<ProductUpdate['tag'], string> = {
 }
 
 export function formatDate(isoDate: string): string {
-  if (!isoDate || !isoDate.trim()) return isoDate
   const date = new Date(`${isoDate}T00:00:00Z`)
   // A malformed feed entry must not crash the drawer (or surface the literal
   // "Invalid Date"): fall back to the raw value so the failure is diagnosable.
@@ -60,12 +57,7 @@ export function formatDate(isoDate: string): string {
  * - Escape and backdrop click close the drawer.
  * - Marks all updates as read on open, clearing the notification badge and persisting state.
  */
-export default function WhatsNewDialog({
-  open,
-  onClose,
-  returnFocusRef,
-  containerHeight = 420,
-}: WhatsNewDialogProps) {
+export default function WhatsNewDialog({ open, onClose, returnFocusRef }: WhatsNewDialogProps) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -93,16 +85,16 @@ export default function WhatsNewDialog({
   // release happened, so without this a press that starts inside the dialog and
   // ends on the backdrop is reported as a backdrop click and closes the drawer
   // mid-interaction (e.g. while selecting text or dragging the scrollbar).
-  const pressedInsideDialogRef = useRef(false)
+  const backdropPressRef = useRef(false)
 
   const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    pressedInsideDialogRef.current = event.target !== event.currentTarget
+    backdropPressRef.current = event.target === event.currentTarget
   }
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    const startedInside = pressedInsideDialogRef.current
-    pressedInsideDialogRef.current = false
-    if (!startedInside && event.target === event.currentTarget) handleClose()
+    const pressedOnBackdrop = backdropPressRef.current
+    backdropPressRef.current = false
+    if (pressedOnBackdrop && event.target === event.currentTarget) handleClose()
   }
 
   if (!open) return null
@@ -162,7 +154,7 @@ export default function WhatsNewDialog({
             ariaLabel="Recent product updates"
             items={updates}
             itemHeight={118}
-            containerHeight={containerHeight}
+            containerHeight={420}
             getItemKey={(update, index) => `${update.id}-${index}`}
             renderItem={(update) => (
               <li className="whats-new-dialog__item">
@@ -174,7 +166,7 @@ export default function WhatsNewDialog({
                     {TAG_LABELS[update.tag] ?? update.tag}
                   </span>
                   <time className="whats-new-dialog__date" dateTime={update.date}>
-                    {formatDate(update.date) || 'Unknown Date'}
+                    {formatDate(update.date)}
                   </time>
                 </div>
                 <p className="whats-new-dialog__item-title">{update.title}</p>

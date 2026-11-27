@@ -114,7 +114,6 @@ Token-styled native controls meant to sit inside `FormField`.
 4. **Validation**: Use `onValidationChange` (AddressInput) or `onValidityChange` (AmountInput) to gate form submission.
 5. **Design Tokens**: Do not hard-code colors or spacing. Rely on `--credence-*` tokens defined in `DESIGN_TOKENS.md`.
 6. **Shared field errors**: When one message applies to multiple controls (e.g. quiet-hours start/end), put `error` on a single `FormField` and point sibling controls at that alert id with `aria-describedby` + `aria-invalid` so screen readers hear one alert.
-
 ## Quality Checklist
 
 - [ ] Input is reachable via keyboard (`Tab`).

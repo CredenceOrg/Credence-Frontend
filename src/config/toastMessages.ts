@@ -47,7 +47,10 @@ export function isToastAction(value: unknown): value is ToastAction {
  * - Unknown action or outcome -> `null` (caller decides how to surface the
  *   failure) rather than throwing or returning a misleading message.
  */
-export function getToastMessage(action: unknown, outcome: unknown): string | null {
+export function getToastMessage(
+  action: unknown,
+  outcome: unknown,
+): string | null {
   if (!isToastAction(action)) {
     return null
   }

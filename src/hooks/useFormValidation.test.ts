@@ -21,7 +21,7 @@ function requiredFieldsValidator(values: TestFormValues): Record<string, string>
 }
 
 async function asyncRequiredFieldsValidator(
-  values: TestFormValues
+  values: TestFormValues,
 ): Promise<Record<string, string>> {
   // Simulate a network round-trip (e.g. checking email uniqueness)
   await new Promise((r) => setTimeout(r, 10))
@@ -45,7 +45,7 @@ describe('useFormValidation happy path', () => {
         initialValues: { name: 'Alice', email: 'alice@example.com' },
         validate: requiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     await act(async () => {
@@ -68,7 +68,7 @@ describe('useFormValidation happy path', () => {
         initialValues: { name: 'Alice', email: 'alice@example.com' },
         validate: requiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     expect(result.current.isSubmitting).toBe(false)
@@ -87,7 +87,7 @@ describe('useFormValidation happy path', () => {
         initialValues: { name: 'Alice', email: 'alice@example.com' },
         validate: asyncRequiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     await act(async () => {
@@ -112,7 +112,7 @@ describe('useFormValidation sad path', () => {
         initialValues: { name: '', email: '' },
         validate: requiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     await act(async () => {
@@ -134,7 +134,7 @@ describe('useFormValidation sad path', () => {
         initialValues: { name: 'Alice', email: '' },
         validate: requiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     await act(async () => {
@@ -156,7 +156,7 @@ describe('useFormValidation sad path', () => {
         initialValues: { name: '', email: '' },
         validate: asyncRequiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     await act(async () => {
@@ -178,7 +178,7 @@ describe('useFormValidation sad path', () => {
         initialValues: { name: 'Alice', email: 'alice@example.com' },
         validate: requiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     await act(async () => {
@@ -196,7 +196,7 @@ describe('useFormValidation sad path', () => {
         initialValues: { name: 'Alice', email: 'alice@example.com' },
         validate: requiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     await act(async () => {
@@ -216,7 +216,7 @@ describe('useFormValidation field management', () => {
         initialValues: { name: '', email: '' },
         validate: requiredFieldsValidator,
         onSubmit: vi.fn(),
-      })
+      }),
     )
 
     act(() => {
@@ -234,7 +234,7 @@ describe('useFormValidation field management', () => {
         initialValues: { name: '', email: '' },
         validate: requiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     // Trigger validation errors
@@ -262,7 +262,7 @@ describe('useFormValidation field management', () => {
         initialValues: { name: 'Alice', email: 'alice@example.com' },
         validate: requiredFieldsValidator,
         onSubmit,
-      })
+      }),
     )
 
     await act(async () => {
@@ -286,7 +286,9 @@ describe('useFormValidation async validation', () => {
     let validationStarted = false
     let validationFinished = false
 
-    async function trackingValidate(_values: TestFormValues): Promise<Record<string, string>> {
+    async function trackingValidate(
+      _values: TestFormValues,
+    ): Promise<Record<string, string>> {
       validationStarted = true
       await new Promise((r) => setTimeout(r, 20))
       validationFinished = true
@@ -303,7 +305,7 @@ describe('useFormValidation async validation', () => {
         initialValues: { name: 'Alice', email: 'alice@example.com' },
         validate: trackingValidate,
         onSubmit,
-      })
+      }),
     )
 
     expect(validationStarted).toBe(false)
@@ -328,7 +330,7 @@ describe('useFormValidation async validation', () => {
         initialValues: { name: 'Alice', email: 'alice@example.com' },
         validate: throwingValidate,
         onSubmit,
-      })
+      }),
     )
 
     await act(async () => {

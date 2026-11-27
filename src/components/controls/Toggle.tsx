@@ -1,23 +1,12 @@
-import { useId } from 'react'
+import { useCallback, useRef } from 'react'
 import './controls.css'
 
-export interface ToggleProps {
+interface ToggleProps {
   id?: string
   checked: boolean
   onChange: (next: boolean) => void
   ariaLabel?: string
   disabled?: boolean
-  /**
-   * Human-readable explanation shown next to the switch while `disabled` is
-   * true (permission denied, feature not provisioned, read-only session, …).
-   * The reason is rendered as static text and linked with `aria-describedby`
-   * so assistive technology can explain why the control is inert instead of
-   * leaving the user with a silently dead control.
-   *
-   * Only rendered when `disabled` is set; a busy switch is explained by
-   * `loadingLabel` instead.
-   */
-  disabledReason?: string
   isLoading?: boolean
   loadingLabel?: string
   error?: string
@@ -32,120 +21,69 @@ export interface ToggleProps {
 }
 
 /**
- * Controlled boolean switch used for persisted boolean settings.
+ * Normalizes the aria-invalid prop into a boolean.
  *
- * Invariants (all covered by Toggle.test.tsx / Toggle.boundary.test.tsx /
- * Toggle.recovery.test.tsx):
- *
- * 1. The rendered value is always the `checked` prop. The component owns no
- *    internal state, so a rejected/failed mutation can never leave a
- *    half-applied optimistic value on screen, and the emitted value is always
- *    the negation of the last value the parent confirmed.
- * 2. Interaction is refused while `disabled` or `isLoading` is true. This is
- *    enforced in the click handler itself, not only by the `disabled`
- *    attribute, so a programmatically dispatched click cannot smuggle a
- *    state transition through a busy or unauthorised control.
- * 3. `type="button"` is always set: a Toggle inside a `<form>` must not submit
- *    that form (a stray submit would lose unsaved input elsewhere on the page).
- * 4. While `isLoading` is true the switch is `aria-busy` and announces
- *    `loadingLabel` through a polite live region; clicks are dropped, so a
- *    double click cannot fan out into two writes of the same value.
- * 5. `error` is surfaced, not just styled: the message is rendered and linked
- *    through `aria-describedby` together with `aria-invalid="true"`. When the
- *    caller already supplies `aria-describedby` (for example `FormField`, which
- *    renders its own message) Toggle does not render a second copy, so the
- *    message is never announced twice.
- * 6. `onRetry` is rendered only together with `error`, is disabled while a
- *    request is in flight or the control is disabled, and never flips the
- *    switch value.
- * 7. `isStale` never disables the control and never changes the rendered
- *    value; it only annotates it, so a stale value can still be corrected.
+ * Invariant: any explicit invalid signal (error message or aria-invalid)
+ * must map to aria-invalid="true" on the switch so assistive technology
+ * announces the field as invalid even when the visual error state is driven
+ * by a controlled prop instead of a validation message.
  */
+function isInvalidProp(ariaInvalid: ToggleProps['aria-invalid']): boolean {
+  return ariaInvalid === true || ariaInvalid === 'true'
+}
+
 export default function Toggle({
   id,
   checked,
   onChange,
   ariaLabel,
   disabled,
-  disabledReason,
-  isLoading = false,
-  loadingLabel = 'Saving…',
-  isStale = false,
-  staleMessage = 'This value may be out of date. Refresh to confirm the saved value.',
+  isLoading,
   error,
-  onRetry,
-  retryLabel = 'Retry',
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   'aria-required': ariaRequired,
 }: ToggleProps) {
-  // Ids are derived from the caller's `id` when present so the messages stay
-  // addressable from tests and from parent form wiring; `useId` keeps them
-  // unique (and stable across renders) for a Toggle rendered without an id.
-  const generatedId = useId()
-  const baseId = id ?? generatedId
+  const isDisabled = disabled || isLoading
+  const isInvalid = !!error || isInvalidProp(ariaInvalid)
 
-  const isDisabled = Boolean(disabled) || isLoading
-  const isInvalid = Boolean(error) || ariaInvalid === true || ariaInvalid === 'true'
+  // Tracks whether a click is already in flight so concurrent activations
+  // (double-click, keyboard + click, synthetic events) cannot emit more than one
+  // change per committed interaction. The guard is reset on every render so
+  // the controlled component also recovers correctly from a rejected or stale
+  // parent update.
+  const inFlightRef = useRef(false)
+  inFlightRef.current = false
 
-  const showDisabledReason = Boolean(disabled) && Boolean(disabledReason)
-  const showErrorMessage = Boolean(error) && !ariaDescribedBy
-  const showRetry = Boolean(error) && Boolean(onRetry)
-  const errorId = `${baseId}-error`
-  const reasonId = `${baseId}-reason`
-  const staleId = `${baseId}-stale`
-
-  // Merge our own messages with anything the caller already declared. The
-  // caller's tokens come first so an existing description keeps priority.
-  const describedBy =
-    [
-      ariaDescribedBy,
-      showErrorMessage ? errorId : undefined,
-      showDisabledReason ? reasonId : undefined,
-      isStale ? staleId : undefined,
-    ]
-      .filter(Boolean)
-      .join(' ') || undefined
-
-  // Single documented precedence for the reflected state; error styling and
-  // aria-invalid stay independent so a failure that is still being retried is
-  // reported as busy first without losing its invalid marking.
-  const state = isLoading
-    ? 'loading'
-    : isInvalid
-      ? 'error'
-      : disabled
-        ? 'disabled'
-        : isStale
-          ? 'stale'
-          : 'default'
+  const handleClick = useCallback(() => {
+    if (isDisabled) {
+      // Defensive guard: the native disabled attribute already blocks this,
+      // but keeping the check here prevents synthetic event dispatch from
+      // mutating controlled state while loading or disabled.
+      return
+    }
+    if (inFlightRef.current) {
+      // Duplicate activation within the same commit window: ignore to avoid
+      // double toggles that would lose the user's intended value.
+      return
+    }
+    inFlightRef.current = true
+    onChange(!checked)
+  }, [checked, isDisabled, onChange])
 
   return (
-    <div
-      className={['control-toggle-wrapper', isLoading ? 'control-toggle-wrapper--loading' : '']
-        .filter(Boolean)
-        .join(' ')}
-      data-state={state}
-    >
+    <div className={`control-toggle-wrapper ${isLoading ? 'control-toggle-wrapper--loading' : ''}`}>
       <button
         id={id}
-        type="button"
         className={`control-toggle ${isInvalid ? 'control-toggle--error' : ''}`}
         role="switch"
         aria-checked={checked}
         aria-label={ariaLabel}
         aria-invalid={isInvalid ? 'true' : undefined}
-        aria-describedby={describedBy}
+        aria-describedby={ariaDescribedBy}
         aria-required={ariaRequired}
-        aria-busy={isLoading ? 'true' : undefined}
         disabled={isDisabled}
-        onClick={() => {
-          // Invariant 2: re-check the guard here so the refused transition
-          // does not depend on the browser or React filtering clicks that were
-          // dispatched while the control was disabled.
-          if (isDisabled || typeof checked !== 'boolean') return
-          onChange(!checked)
-        }}
+        onClick={handleClick}
       >
         {isLoading ? (
           <span className="control-toggle-spinner" aria-hidden="true" />
@@ -155,50 +93,6 @@ export default function Toggle({
           'Off'
         )}
       </button>
-
-      {/*
-        Always-mounted polite live region: registering the region before the
-        text appears is what makes the announcement reliable, and the region
-        stays empty otherwise so it never interrupts a screen reader.
-      */}
-      <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {isLoading ? loadingLabel : ''}
-      </span>
-
-      {isStale && (
-        <span id={staleId} className="control-toggle__note control-toggle__note--stale">
-          {staleMessage}
-        </span>
-      )}
-
-      {showDisabledReason && (
-        <span id={reasonId} className="control-toggle__note">
-          {disabledReason}
-        </span>
-      )}
-
-      {showErrorMessage && (
-        <span id={errorId} className="control-toggle__error" role="alert">
-          {error}
-        </span>
-      )}
-
-      {showRetry && (
-        <button
-          type="button"
-          className="control-toggle__retry"
-          // Invariant 6: the affordance is disabled while a request is already
-          // in flight or the setting is locked, so parallel retries of the same
-          // write cannot be submitted. The in-handler guard stays as
-          // defence in depth against programmatically dispatched clicks.
-          disabled={isDisabled}
-          onClick={() => {
-            onRetry?.()
-          }}
-        >
-          {retryLabel}
-        </button>
-      )}
     </div>
   )
 }

@@ -59,7 +59,6 @@ import {
   getIdentityEpoch,
   resetApiRateLimiter,
   resetIdentityEpoch,
-  setIdentityEpoch,
 } from './client'
 
 // ----------------------------------------------------------------------------
@@ -164,14 +163,6 @@ describe('getIdentityEpoch / advanceIdentityEpoch / resetIdentityEpoch', () => {
     advanceIdentityEpoch()
     resetIdentityEpoch()
     expect(getIdentityEpoch()).toBe(0)
-  })
-
-  it('setIdentityEpoch sets explicit value or increments when omitted', () => {
-    resetIdentityEpoch()
-    expect(setIdentityEpoch(42)).toBe(42)
-    expect(getIdentityEpoch()).toBe(42)
-    expect(setIdentityEpoch()).toBe(43)
-    expect(getIdentityEpoch()).toBe(43)
   })
 })
 
@@ -510,13 +501,5 @@ describe('resetIdentityEpoch test helper', () => {
     advanceIdentityEpoch()
     resetIdentityEpoch()
     expect(getIdentityEpoch()).toBe(0)
-  })
-
-  it('setIdentityEpoch sets explicit value or increments when omitted', () => {
-    resetIdentityEpoch()
-    expect(setIdentityEpoch(42)).toBe(42)
-    expect(getIdentityEpoch()).toBe(42)
-    expect(setIdentityEpoch()).toBe(43)
-    expect(getIdentityEpoch()).toBe(43)
   })
 })

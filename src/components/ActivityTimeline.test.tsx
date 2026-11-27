@@ -572,7 +572,9 @@ describe('ActivityTimeline', () => {
 
     it('treats a null amount as absent rather than rendering "NaN"', () => {
       const { container } = render(
-        <ActivityTimeline items={[makeItem({ id: 'a', amountUsdc: null as unknown as number })]} />
+        <ActivityTimeline
+          items={[makeItem({ id: 'a', amountUsdc: null as unknown as number })]}
+        />
       )
       expect(container.querySelector('.activity-row__amount')).toBeNull()
     })

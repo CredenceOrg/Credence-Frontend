@@ -62,9 +62,7 @@ describe('ConnectWalletModal — Unit: classifyWalletError and sanitizeErrorMess
   })
 
   it('sanitizes bearer auth tokens and password parameters', () => {
-    const sanitized = sanitizeErrorMessage(
-      'Authorization: bearer eyJhbGciOi... and token=secret123'
-    )
+    const sanitized = sanitizeErrorMessage('Authorization: bearer eyJhbGciOi... and token=secret123')
     expect(sanitized).toContain('bearer [REDACTED]')
     expect(sanitized).toContain('[REDACTED]')
     expect(sanitized).not.toContain('secret123')
@@ -104,9 +102,7 @@ describe('ConnectWalletModal — Unit: classifyWalletError and sanitizeErrorMess
     expect(classifyWalletError({ code: 'network_mismatch' }).state).toBe('stale')
     expect(classifyWalletError({ code: 'stale' }).state).toBe('stale')
     expect(classifyWalletError(new Error('Wallet session is stale')).state).toBe('stale')
-    expect(classifyWalletError({ name: 'StaleSessionError', message: 'Expired' }).state).toBe(
-      'stale'
-    )
+    expect(classifyWalletError({ name: 'StaleSessionError', message: 'Expired' }).state).toBe('stale')
   })
 })
 

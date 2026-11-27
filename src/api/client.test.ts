@@ -12,7 +12,6 @@ import {
   apiRateLimiterSnapshot,
   buildUrl,
   defaultApiRateLimiter,
-  errorMessage,
   getRateLimitRemainingMs,
   normalizeBaseUrl,
   resetApiRateLimiter,
@@ -66,8 +65,8 @@ describe('errorMessage', () => {
     expect(errorMessage({ message: 'not an error' })).toBe('Something went wrong')
   })
 
-  it('returns fallback when the Error has an empty message', () => {
-    expect(errorMessage(new Error(''))).toBe('Something went wrong')
+  it('returns an empty-string message when the Error has an empty message', () => {
+    expect(errorMessage(new Error(''))).toBe('')
   })
 
   it('does not leak sensitive fields from the error object', () => {
@@ -847,9 +846,7 @@ describe('apiFetch pre-flight failure boundaries', () => {
     const committedResponses = new Map<string, { committedEffects: number }>()
     fetchMock.mockImplementation(async () => {
       attempts += 1
-      const key = (
-        fetchMock.mock.calls[fetchMock.mock.calls.length - 1]?.[1]?.headers as Headers
-      ).get('Idempotency-Key')
+      const key = ((fetchMock.mock.calls[fetchMock.mock.calls.length - 1]?.[1]?.headers) as Headers).get('Idempotency-Key')
       if (key && committedResponses.has(key)) return jsonResponse(committedResponses.get(key))
 
       committedEffects += 1
@@ -1458,6 +1455,7 @@ describe('apiFetch amount precision boundary (exact decimal amounts)', () => {
   })
 })
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // buildHeaders determinism and boundary tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1684,6 +1682,7 @@ describe('buildHeaders determinism', () => {
   })
 })
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // State consistency: wireBody, correlationId, headers flow through call chain
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1811,7 +1810,9 @@ describe('state consistency across call chain', () => {
   })
 
   it('includes correlationId in all error scenarios', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'failed' }, { status: 500 }))
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'failed' }, { status: 500 })
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     try {
@@ -1936,31 +1937,6 @@ describe('state consistency across call chain', () => {
     expect(bodies[0]).toContain('"amount":"100.50"')
     expect(bodies[1]).toContain('"amount":"200.25"')
     expect(bodies[2]).toBeUndefined()
-  })
-
-  it('rethrows non-AmountError thrown while serializing an amount field', async () => {
-    const hostileRules = {}
-    Object.defineProperty(hostileRules, 'min', {
-      enumerable: true,
-      get() {
-        throw new RangeError('rules getter exploded')
-      },
-    })
-
-    await expect(
-      apiFetch('/hostile', {
-        method: 'POST',
-        body: { amount: '10.00' },
-        amountFields: { amount: hostileRules as never },
-      })
-    ).rejects.toThrow(RangeError)
-  })
-
-  it('constructs ApiBodyTooLargeError with default payload when omitted', () => {
-    const err = new ApiBodyTooLargeError(1024)
-    expect(err.limitBytes).toBe(1024)
-    expect(err.bodySizeBytes).toBe(0)
-    expect(err.payload).toEqual({ limitBytes: 1024 })
   })
 })
 

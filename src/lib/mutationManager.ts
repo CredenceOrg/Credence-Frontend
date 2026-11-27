@@ -110,7 +110,10 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
  * Calculates exponential backoff delay with jitter.
  * Formula: min(initialDelay * 2^attempt, maxDelay) ± jitter
  */
-function calculateBackoffMs(attempt: number, config: RetryConfig): number {
+function calculateBackoffMs(
+  attempt: number,
+  config: RetryConfig
+): number {
   const exponential = config.initialDelayMs * Math.pow(2, attempt)
   const capped = Math.min(exponential, config.maxDelayMs)
   const jitter = capped * config.jitterFactor * (2 * Math.random() - 1)
@@ -363,11 +366,10 @@ export class MutationManager<T = unknown> {
           } catch (err) {
             // If already aborted, don't retry
             if (state.abortController.signal.aborted) {
-              const abortErr =
-                err instanceof DOMException && err.name === 'AbortError'
-                  ? err
-                  : new DOMException('Aborted', 'AbortError')
-
+              const abortErr = err instanceof DOMException && err.name === 'AbortError' 
+                ? err 
+                : new DOMException('Aborted', 'AbortError')
+              
               const result: MutationResult<T> = {
                 idempotencyKey: key,
                 version,
@@ -413,8 +415,12 @@ export class MutationManager<T = unknown> {
                 nextRetryDelayMs: nextDelayMs,
               })
 
-              // Abort signal firing during delay will reject and propagate
-              await delay(nextDelayMs, state.abortController.signal)
+              try {
+                await delay(nextDelayMs, state.abortController.signal)
+              } catch (delayErr) {
+                // Abort signal fired during delay
+                throw delayErr
+              }
             } else {
               // Non-transient or max retries reached
               const result: MutationResult<T> = {

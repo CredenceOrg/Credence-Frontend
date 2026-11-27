@@ -14,16 +14,9 @@ vi.mock('../api/client', async (importOriginal) => {
   return { ...actual, apiFetch: mocks.apiFetch }
 })
 vi.mock('../context/WalletContext', () => ({
-  useWallet: () => ({
-    isConnected: mocks.connected,
-    address: '',
-    connect: vi.fn(),
-    network: 'public',
-  }),
+  useWallet: () => ({ isConnected: mocks.connected, address: '', connect: vi.fn(), network: 'public' }),
 }))
-vi.mock('../hooks/useNetworkMismatch', () => ({
-  useNetworkMismatch: () => ({ mismatch: false, expected: '', actual: '' }),
-}))
+vi.mock('../hooks/useNetworkMismatch', () => ({ useNetworkMismatch: () => ({ mismatch: false, expected: '', actual: '' }) }))
 vi.mock('../hooks/useSeo', () => ({ useSeo: vi.fn() }))
 vi.mock('../hooks/useMediaQuery', () => ({ useIsMobile: () => false }))
 vi.mock('../hooks/useTrustHistory', () => ({
@@ -72,9 +65,7 @@ function renderPage() {
 
 async function performLookup() {
   fireEvent.change(screen.getByRole('textbox'), { target: { value: ADDRESS } })
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled()
-  )
+  await waitFor(() => expect(screen.getByRole('button', { name: /look up score/i })).not.toBeDisabled())
   fireEvent.click(screen.getByRole('button', { name: /look up score/i }))
   await screen.findByRole('region', { name: /trust score result/i })
 }
@@ -114,14 +105,10 @@ describe('TrustScore recent lookup regressions', () => {
     await performLookup()
 
     await waitFor(() => {
-      expect(
-        setItemSpy.mock.calls.filter(([key]) => key === 'credence:recent-lookups')
-      ).toHaveLength(1)
+      expect(setItemSpy.mock.calls.filter(([key]) => key === 'credence:recent-lookups')).toHaveLength(1)
     })
     await new Promise((resolve) => setTimeout(resolve, 300))
-    expect(setItemSpy.mock.calls.filter(([key]) => key === 'credence:recent-lookups')).toHaveLength(
-      1
-    )
+    expect(setItemSpy.mock.calls.filter(([key]) => key === 'credence:recent-lookups')).toHaveLength(1)
   })
 
   it('drops malformed seeded history and persists only valid entries after lookup', async () => {

@@ -312,8 +312,7 @@ describe('useKeyboardShortcut — handleKeyDown failure boundaries', () => {
     const addSpy = vi.spyOn(window, 'addEventListener')
     const removeSpy = vi.spyOn(window, 'removeEventListener')
     const { rerender } = renderHook(
-      ({ enabled }) =>
-        useKeyboardShortcut(['Mod', 'k'], onShortcut, { enabled, userAgent: WIN_UA }),
+      ({ enabled }) => useKeyboardShortcut(['Mod', 'k'], onShortcut, { enabled, userAgent: WIN_UA }),
       { initialProps: { enabled: true } }
     )
 

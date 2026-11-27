@@ -38,7 +38,10 @@ describe('usePinnedWidgets', () => {
   })
 
   it('removes duplicate stored widgets and respects the maximum', () => {
-    localStorage.setItem('credence:pinned_widgets', JSON.stringify(['a', 'a', 'b', 'c', 'd', 'e']))
+    localStorage.setItem(
+      'credence:pinned_widgets',
+      JSON.stringify(['a', 'a', 'b', 'c', 'd', 'e'])
+    )
 
     const { result } = renderHook(() => usePinnedWidgets())
 

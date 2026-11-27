@@ -113,8 +113,7 @@ export function classifyWalletError(
       return {
         state: 'stale',
         kind: 'stale',
-        message:
-          'Wallet session is stale or network configuration changed. Please reconnect to synchronize.',
+        message: 'Wallet session is stale or network configuration changed. Please reconnect to synchronize.',
       }
     }
 
@@ -271,6 +270,8 @@ export default function ConnectWalletModal({
   }, [isConnected, isOpen, walletIsConnecting, modalState, onClose])
 
   useScrollPreserver({ isActive: isOpen })
+
+  const isConnectingOrLoading = modalState === 'loading' || walletIsConnecting
 
   const handleClose = useCallback(() => {
     // Invariant: Do not allow closing mid-flight while connecting to avoid inconsistent state

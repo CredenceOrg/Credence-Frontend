@@ -11,7 +11,7 @@ export type FormValues = Record<string, unknown>
  * Supports both synchronous and asynchronous (Promise-returning) validation.
  */
 export type ValidateFn<T extends FormValues> = (
-  values: T
+  values: T,
 ) => Record<string, string> | Promise<Record<string, string>>
 
 export interface UseFormValidationOptions<T extends FormValues> {
@@ -56,7 +56,7 @@ export interface UseFormValidationReturn<T extends FormValues> {
 }
 
 export default function useFormValidation<T extends FormValues>(
-  options: UseFormValidationOptions<T>
+  options: UseFormValidationOptions<T>,
 ): UseFormValidationReturn<T> {
   const { initialValues, validate, onSubmit } = options
 

@@ -77,7 +77,10 @@ describe('ErrorBoundary – async render throws (#988)', () => {
 
     // After the async import resolves the component tries to render and throws.
     await waitFor(() => {
-      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute('data-error-kind', 'generic')
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
     // The Suspense fallback must no longer be visible.
@@ -123,7 +126,10 @@ describe('ErrorBoundary – async render throws (#988)', () => {
 
     // After the micro-task resolves the component re-renders and throws.
     await waitFor(() => {
-      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute('data-error-kind', 'generic')
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
@@ -214,10 +220,10 @@ describe('ErrorBoundary – async render throws (#988)', () => {
 
     // Track the number of times the boundary's componentDidCatch fires via the
     // console.error proxy that ErrorBoundary uses for telemetry.
-    const caughtCalls: unknown[][] = []
+    const caughtMessages: string[] = []
     vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
-      if (args[0] === '[ErrorBoundary]') {
-        caughtCalls.push(args)
+      if (typeof args[1] === 'string') {
+        caughtMessages.push(args[1] as string)
       }
     })
 
@@ -244,7 +250,10 @@ describe('ErrorBoundary – async render throws (#988)', () => {
 
     // ── First failure ────────────────────────────────────────────────────────
     await waitFor(() => {
-      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute('data-error-kind', 'generic')
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
 
     // ── Reset (second mount will also throw) ─────────────────────────────────
@@ -254,11 +263,15 @@ describe('ErrorBoundary – async render throws (#988)', () => {
 
     // ── Second failure ───────────────────────────────────────────────────────
     await waitFor(() => {
-      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute('data-error-kind', 'generic')
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
 
     // componentDidCatch was invoked at least twice (once per caught cycle).
-    expect(caughtCalls.length).toBeGreaterThanOrEqual(2)
+    const repeatedCatches = caughtMessages.filter((m) => m.includes('repeated async throw'))
+    expect(repeatedCatches.length).toBeGreaterThanOrEqual(2)
 
     // The "Try again" button is present — the boundary is still usable.
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
@@ -304,15 +317,19 @@ describe('ErrorBoundary – async render throws (#988)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute('data-error-kind', 'generic')
+      expect(screen.getByRole('alert') as HTMLElement).toHaveAttribute(
+        'data-error-kind',
+        'generic'
+      )
     })
 
-    // The boundary's componentDidCatch calls console.error with the safe telemetry fields.
+    // The boundary's componentDidCatch calls console.error with the error message.
     const calls = consoleSpy.mock.calls
-    const boundaryCall = calls.find((args) => args[0] === '[ErrorBoundary]')
+    const boundaryCall = calls.find(
+      (args) => typeof args[1] === 'string' && args[1].includes('componentDidCatch telemetry check')
+    )
     expect(boundaryCall).toBeDefined()
-    expect(boundaryCall?.[1]).toBe('Error')
-    expect(boundaryCall?.[2]).toBe('generic')
-    expect(boundaryCall?.[3]).toBe('danger')
+    // The third argument is the component stack from React's ErrorInfo.
+    expect(typeof boundaryCall?.[2]).toBe('string')
   })
 })

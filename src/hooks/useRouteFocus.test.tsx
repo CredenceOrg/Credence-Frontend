@@ -10,9 +10,7 @@ function Shell() {
   return (
     <div>
       <header>
-        <button type="button" id="header-btn">
-          Header Button
-        </button>
+        <button type="button" id="header-btn">Header Button</button>
       </header>
       <main id="main-content">
         <Outlet />

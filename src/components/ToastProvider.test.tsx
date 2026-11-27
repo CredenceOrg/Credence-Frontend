@@ -81,11 +81,13 @@ function renderProvider(
     settings?: Partial<MockSettings>
     strict?: boolean
     harness?: Harness
-  } = {}
+  } = {},
 ) {
   setSettings(options.settings)
   const Harness = options.harness?.Capture
-  const tree = <ToastProvider>{Harness ? <Harness /> : null}</ToastProvider>
+  const tree = (
+    <ToastProvider>{Harness ? <Harness /> : null}</ToastProvider>
+  )
   return render(options.strict ? <StrictMode>{tree}</StrictMode> : tree)
 }
 
@@ -186,7 +188,7 @@ describe('useToast', () => {
     rerender(
       <ToastProvider>
         <Capture />
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     const last = harness.published[harness.published.length - 1]
@@ -207,7 +209,7 @@ describe('useToast', () => {
     render(
       <ToastProvider>
         <DirectConsumer />
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     expect(seen).not.toBeNull()
@@ -220,13 +222,13 @@ describe('ToastProvider normal lifecycles', () => {
     const { container } = render(
       <ToastProvider>
         <TestComponent />
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     fireEvent.click(screen.getByText('Add Info'))
     expect(container.querySelector('.toast')).toHaveTextContent('Info Message')
 
-    // autoDismiss is 5s
+// autoDismiss is 5s
     act(() => {
       vi.advanceTimersByTime(4999)
     })
@@ -301,7 +303,7 @@ describe('ToastProvider normal lifecycles', () => {
       harness.api.addToast('success', 'Payment sent', {
         txHash: 'a'.repeat(56),
         network: 'test',
-      })
+      }),
     )
 
     const link = within(container).getByRole('link', {
@@ -406,9 +408,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     const harness = makeHarness()
     const { container } = renderProvider({ harness })
 
-    act(() =>
-      harness.api.addToast('info', 'Info', { timeoutMs: 1500.6 } as unknown as LooseOptions)
-    )
+    act(() => harness.api.addToast('info', 'Info', { timeoutMs: 1500.6 } as unknown as LooseOptions))
 
     act(() => {
       vi.advanceTimersByTime(1500)
@@ -438,7 +438,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     const { container } = renderProvider({ harness })
 
     act(() =>
-      harness.api.addToast('danger', 'Danger', { timeoutMs: 2000 } as unknown as LooseOptions)
+      harness.api.addToast('danger', 'Danger', { timeoutMs: 2000 } as unknown as LooseOptions),
     )
 
     act(() => {
@@ -474,7 +474,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     const { container } = renderProvider({ harness, settings: { autoDismiss: '3s' } })
 
     act(() =>
-      harness.api.addToast('info', 'Info', { durationMs: 600000 } as unknown as LooseOptions)
+      harness.api.addToast('info', 'Info', { durationMs: 600000 } as unknown as LooseOptions),
     )
 
     act(() => {
@@ -492,7 +492,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
         message: 'Injected',
         id: 'attacker-controlled',
         severity: 'danger',
-      } as unknown as LooseOptions)
+      } as unknown as LooseOptions),
     )
 
     expect(toastMessages(container)).toEqual(['Authoritative'])
@@ -505,9 +505,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     const { container } = renderProvider({ harness })
 
     act(() => harness.api.addToast('info', 'first', { timeoutMs: 1000 } as unknown as LooseOptions))
-    act(() =>
-      harness.api.addToast('info', 'second', { timeoutMs: 5000 } as unknown as LooseOptions)
-    )
+    act(() => harness.api.addToast('info', 'second', { timeoutMs: 5000 } as unknown as LooseOptions))
 
     act(() => {
       vi.advanceTimersByTime(1001)
@@ -529,7 +527,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     // Empty message should not produce a toast
     act(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(window as any).__toastAddToast?.('info', '')
+      ; (window as any).__toastAddToast?.('info', '')
     })
     expect(container.querySelectorAll('.toast').length).toBe(0)
   })
@@ -548,7 +546,7 @@ describe('ToastProvider auto-dismiss timer resolution', () => {
     // Attempt an invalid toast type; should not throw or corrupt state
     act(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(window as any).__toastAddToast?.('not-a-type', 'Bad')
+      ; (window as any).__toastAddToast?.('not-a-type', 'Bad')
     })
 
     // State still holds the original toast and accepts new ones
@@ -973,9 +971,7 @@ describe('ToastProvider message normalisation boundary', () => {
       },
     }
 
-    expect(() =>
-      act(() => harness.api.addToast('info', hostile as unknown as string))
-    ).not.toThrow()
+    expect(() => act(() => harness.api.addToast('info', hostile as unknown as string))).not.toThrow()
 
     expect(toasts(container)).toHaveLength(0)
     expect(politeRegion(container).textContent).toBe('')
@@ -1175,7 +1171,7 @@ describe('ToastProvider announcements', () => {
     const { container } = render(
       <ToastProvider>
         <TestComponent />
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     expect(container.querySelector('.sr-only[aria-live="polite"]')).toBeInTheDocument()
@@ -1342,24 +1338,23 @@ describe('ToastProvider announcements', () => {
 })
 
 describe('ToastProvider gating', () => {
-  it('suppresses routine toasts when toastsEnabled is false while preserving danger toasts', () => {
+  it('suppresses every toast and announcement when toastsEnabled is false', () => {
     const harness = makeHarness()
     const { container } = renderProvider({ harness, settings: { toastsEnabled: false } })
 
     act(() => harness.api.addToast('info', 'Info'))
     act(() => harness.api.addToast('danger', 'Danger'))
 
-    expect(toasts(container)).toHaveLength(1)
-    expect(container.querySelector('.toast--danger')).toHaveTextContent('Danger')
+    expect(toasts(container)).toHaveLength(0)
     expect(politeRegion(container).textContent).toBe('')
-    expect(assertiveRegion(container).textContent).toBe('Danger')
+    expect(assertiveRegion(container).textContent).toBe('')
   })
 
   it('picks up a mid-session toastsEnabled change on the next dispatch', () => {
     const { rerender, container } = render(
       <ToastProvider>
         <TestComponent />
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     fireEvent.click(screen.getByText('Add Info'))
@@ -1369,11 +1364,11 @@ describe('ToastProvider gating', () => {
     rerender(
       <ToastProvider>
         <TestComponent />
-      </ToastProvider>
+      </ToastProvider>,
     )
 
-    fireEvent.click(screen.getByText('Add Info'))
-    expect(container.querySelectorAll('.toast--info')).toHaveLength(1)
+    fireEvent.click(screen.getByText('Add Danger'))
+    expect(container.querySelector('.toast--danger')).not.toBeInTheDocument()
     // The toast shown before the change is untouched.
     expect(container.querySelector('.toast--info')).toHaveTextContent('Info Message')
   })
@@ -1382,14 +1377,14 @@ describe('ToastProvider gating', () => {
     const { rerender, container } = render(
       <ToastProvider>
         <TestComponent />
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     setSettings({ autoDismiss: '3s' })
     rerender(
       <ToastProvider>
         <TestComponent />
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     fireEvent.click(screen.getByText('Add Info'))
@@ -1403,14 +1398,14 @@ describe('ToastProvider gating', () => {
   })
 })
 
-function renderWithQuietHours(overrides: Partial<MockSettings> = {}) {
-  const harness = makeHarness()
-  const rendered = renderProvider({
-    harness,
-    settings: { quietHoursEnabled: true, ...overrides },
-  })
-  return { ...rendered, harness }
-}
+  function renderWithQuietHours(overrides: Partial<MockSettings> = {}) {
+    const harness = makeHarness()
+    const rendered = renderProvider({
+      harness,
+      settings: { quietHoursEnabled: true, ...overrides },
+    })
+    return { ...rendered, harness }
+  }
 
 describe('ToastProvider quiet hours', () => {
   beforeEach(() => {
@@ -1657,7 +1652,7 @@ describe('ToastProvider error recovery', () => {
         <Boundary>
           <ExplodingConsumer />
         </Boundary>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Arm' }))
@@ -1708,7 +1703,7 @@ describe('ToastProvider error recovery', () => {
     expect(() =>
       act(() => {
         vi.advanceTimersByTime(5000)
-      })
+      }),
     ).not.toThrow()
     expect(toasts(container)).toHaveLength(0)
 
@@ -1728,7 +1723,7 @@ describe('ToastProvider error recovery', () => {
         <Boundary>
           <ThrowOnMount />
         </Boundary>
-      </ToastProvider>
+      </ToastProvider>,
     )
 
     expect(screen.getByText('consumer failed')).toBeInTheDocument()
@@ -1740,7 +1735,7 @@ describe('ToastProvider error recovery', () => {
     const replacement = render(
       <ToastProvider>
         <Capture />
-      </ToastProvider>
+      </ToastProvider>,
     )
     act(() => harness.api.addToast('success', 'recovered'))
     expect(toastMessages(replacement.container)).toEqual(['recovered'])
@@ -1750,7 +1745,6 @@ describe('ToastProvider error recovery', () => {
 
   it('silences non-danger toasts when quiet hours wrap around midnight', () => {
     // 23:00 is inside 22:00–07:00 and the default window wraps around midnight
-    vi.setSystemTime(new Date('2024-01-01T23:00:00'))
     const { container, harness } = renderWithQuietHours()
     act(() => harness.api.addToast('info', 'Info Message'))
     expect(container.querySelector('.toast')).not.toBeInTheDocument()

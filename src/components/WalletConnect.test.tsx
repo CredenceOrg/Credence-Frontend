@@ -34,7 +34,9 @@ describe('WalletConnect (controlled mode)', () => {
   })
 
   it('opens the dropdown and closes on Escape with focus restore', async () => {
-    render(<WalletConnect status="connected" address={WALLET_CONNECT_DEMO_ADDRESS} />)
+    render(
+      <WalletConnect status="connected" address={WALLET_CONNECT_DEMO_ADDRESS} />
+    )
     const trigger = screen.getByTestId('wallet-connected-trigger')
     fireEvent.click(trigger)
     expect(screen.getByRole('menu', { name: /wallet actions/i })).toBeInTheDocument()
@@ -48,7 +50,11 @@ describe('WalletConnect (controlled mode)', () => {
 
   it('exposes copy, explorer, and disconnect menu items', () => {
     render(
-      <WalletConnect status="connected" address={WALLET_CONNECT_DEMO_ADDRESS} network="public" />
+      <WalletConnect
+        status="connected"
+        address={WALLET_CONNECT_DEMO_ADDRESS}
+        network="public"
+      />
     )
     fireEvent.click(screen.getByTestId('wallet-connected-trigger'))
 

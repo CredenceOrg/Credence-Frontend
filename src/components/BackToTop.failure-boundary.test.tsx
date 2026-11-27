@@ -111,42 +111,12 @@ describe('BackToTop — scroll failure boundaries (B1, B2)', () => {
   // The scroll is best-effort. None of these may throw out of the handler, and
   // none of them may cost the user their focus placement.
   const throwingScrolls: Array<[string, () => never]> = [
-    [
-      'an Error',
-      () => {
-        throw new Error('scroll failed')
-      },
-    ],
-    [
-      'a TypeError',
-      () => {
-        throw new TypeError('unsupported argument')
-      },
-    ],
-    [
-      'a DOMException',
-      () => {
-        throw new DOMException('not implemented', 'NotSupportedError')
-      },
-    ],
-    [
-      'a non-Error object',
-      () => {
-        throw { code: 'E_SCROLL' }
-      },
-    ],
-    [
-      'a string',
-      () => {
-        throw 'scroll failed'
-      },
-    ],
-    [
-      'null',
-      () => {
-        throw null
-      },
-    ],
+    ['an Error', () => { throw new Error('scroll failed') }],
+    ['a TypeError', () => { throw new TypeError('unsupported argument') }],
+    ['a DOMException', () => { throw new DOMException('not implemented', 'NotSupportedError') }],
+    ['a non-Error object', () => { throw { code: 'E_SCROLL' } }],
+    ['a string', () => { throw 'scroll failed' }],
+    ['null', () => { throw null }],
   ]
 
   it.each(throwingScrolls)('does not throw when scrollTo rejects with %s', (_label, impl) => {
@@ -162,9 +132,7 @@ describe('BackToTop — scroll failure boundaries (B1, B2)', () => {
   it('attempts exactly one scroll per click regardless of failure', () => {
     appendMain(heading())
     render(<BackToTop />)
-    vi.mocked(window.scrollTo).mockImplementation(() => {
-      throw new Error('nope')
-    })
+    vi.mocked(window.scrollTo).mockImplementation(() => { throw new Error('nope') })
 
     clickQuietly()
     clickQuietly()
@@ -175,9 +143,7 @@ describe('BackToTop — scroll failure boundaries (B1, B2)', () => {
   it('records a scroll failure without raising an error-level log', () => {
     appendMain(heading())
     render(<BackToTop />)
-    vi.mocked(window.scrollTo).mockImplementation(() => {
-      throw new Error('scroll failed')
-    })
+    vi.mocked(window.scrollTo).mockImplementation(() => { throw new Error('scroll failed') })
 
     clickQuietly()
 
@@ -192,9 +158,7 @@ describe('BackToTop — scroll failure boundaries (B1, B2)', () => {
     render(<BackToTop />)
     // A DOMException message can echo the offending call and page content.
     const secret = 'scrollTo failed for node "Stellar Wallet Balance 0xabc123"'
-    vi.mocked(window.scrollTo).mockImplementation(() => {
-      throw new Error(secret)
-    })
+    vi.mocked(window.scrollTo).mockImplementation(() => { throw new Error(secret) })
 
     clickQuietly()
 
@@ -209,9 +173,7 @@ describe('BackToTop — scroll failure boundaries (B1, B2)', () => {
   it('never logs a forbidden field name', () => {
     appendMain(heading())
     render(<BackToTop />)
-    vi.mocked(window.scrollTo).mockImplementation(() => {
-      throw new Error('x')
-    })
+    vi.mocked(window.scrollTo).mockImplementation(() => { throw new Error('x') })
     clickQuietly()
 
     for (const line of debugLines(consoleDebugSpy)) {
@@ -223,9 +185,7 @@ describe('BackToTop — scroll failure boundaries (B1, B2)', () => {
     appendMain(heading())
     render(<BackToTop />)
 
-    vi.mocked(window.scrollTo).mockImplementationOnce(() => {
-      throw new Error('nope')
-    })
+    vi.mocked(window.scrollTo).mockImplementationOnce(() => { throw new Error('nope') })
     clickQuietly()
     expect(eventsIn(debugLines(consoleDebugSpy))).toContain('back-to-top.scroll-failed')
 
@@ -282,9 +242,7 @@ describe('BackToTop — focus failure boundaries (B1, B4)', () => {
     const h = heading()
     appendMain(h)
     render(<BackToTop />)
-    vi.spyOn(h, 'focus').mockImplementation(() => {
-      throw thrown
-    })
+    vi.spyOn(h, 'focus').mockImplementation(() => { throw thrown })
 
     expect(() => clickQuietly()).not.toThrow()
     expect(eventsIn(debugLines(consoleDebugSpy))).toContain('back-to-top.focus-failed')
@@ -294,9 +252,7 @@ describe('BackToTop — focus failure boundaries (B1, B4)', () => {
     const h = heading()
     appendMain(h)
     render(<BackToTop />)
-    vi.spyOn(h, 'focus').mockImplementation(() => {
-      throw new TypeError('nope')
-    })
+    vi.spyOn(h, 'focus').mockImplementation(() => { throw new TypeError('nope') })
 
     clickQuietly()
 
@@ -333,7 +289,7 @@ describe('BackToTop — focus failure boundaries (B1, B4)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled()
   })
 
-  it('still survives when tabindex assignment and both focus attempts all fail', () => {
+it('still survives when tabindex assignment and both focus attempts all fail', () => {
     const h = heading()
     appendMain(h)
     render(<BackToTop />)
@@ -363,9 +319,9 @@ describe('BackToTop — DOM lookup failure boundaries (B1, B3)', () => {
   it('survives getElementById throwing and records it', () => {
     appendMain(heading())
     render(<BackToTop />)
-    const getById = vi.spyOn(document, 'getElementById').mockImplementation(() => {
-      throw new DOMException('detached', 'NotFoundError')
-    })
+    const getById = vi
+      .spyOn(document, 'getElementById')
+      .mockImplementation(() => { throw new DOMException('detached', 'NotFoundError') })
 
     expect(() => clickQuietly()).not.toThrow()
     expect(getById).toHaveBeenCalledWith('main-content')
@@ -414,9 +370,7 @@ describe('BackToTop — DOM lookup failure boundaries (B1, B3)', () => {
     h.remove()
     clickQuietly()
     const lines = debugLines(consoleDebugSpy)
-    expect(
-      lines.some((l) => l.includes('event=back-to-top.focus-applied') && l.includes('target=main'))
-    ).toBe(true)
+    expect(lines.some((l) => l.includes('event=back-to-top.focus-applied') && l.includes('target=main'))).toBe(true)
     expect(mainFocusIsCalled(main)).toBe(true)
   })
 
@@ -699,19 +653,13 @@ describe('BackToTop — repeated and concurrent activation (B1, B6)', () => {
     window.addEventListener('unhandledrejection', onUnhandled)
 
     const scrollImpls = [
-      () => {
-        throw new Error('a')
-      },
+      () => { throw new Error('a') },
       () => undefined,
-      () => {
-        throw new DOMException('b', 'NotSupportedError')
-      },
+      () => { throw new DOMException('b', 'NotSupportedError') },
       () => undefined,
     ]
     let i = 0
-    vi.mocked(window.scrollTo).mockImplementation(() => {
-      scrollImpls[i++]()
-    })
+    vi.mocked(window.scrollTo).mockImplementation(() => { scrollImpls[i++]() })
 
     for (let n = 0; n < scrollImpls.length; n++) {
       expect(() => clickQuietly()).not.toThrow()
@@ -727,12 +675,8 @@ describe('BackToTop — repeated and concurrent activation (B1, B6)', () => {
     const h = heading()
     appendMain(h)
     render(<BackToTop />)
-    vi.mocked(window.scrollTo).mockImplementation(() => {
-      throw new Error('x')
-    })
-    vi.spyOn(h, 'focus').mockImplementation(() => {
-      throw new TypeError('y')
-    })
+    vi.mocked(window.scrollTo).mockImplementation(() => { throw new Error('x') })
+    vi.spyOn(h, 'focus').mockImplementation(() => { throw new TypeError('y') })
 
     clickQuietly()
 
@@ -800,9 +744,7 @@ describe('BackToTop — mount, visibility and accessibility boundaries', () => {
     appendMain(heading())
     const { unmount } = render(<BackToTop />)
     unmount()
-    expect(() =>
-      fireEvent.click(screen.queryByRole('button', { name: /back to top/i }) ?? document.body)
-    ).not.toThrow()
+    expect(() => fireEvent.click(screen.queryByRole('button', { name: /back to top/i }) ?? document.body)).not.toThrow()
     expect(consoleErrorSpy).not.toHaveBeenCalled()
   })
 
@@ -1010,9 +952,7 @@ describe('BackToTop — regressions against the documented contract', () => {
     appendMain(h)
     render(<BackToTop />)
     const focusSpy = vi.spyOn(h, 'focus')
-    vi.mocked(window.scrollTo).mockImplementation(() => {
-      throw new Error('x')
-    })
+    vi.mocked(window.scrollTo).mockImplementation(() => { throw new Error('x') })
 
     clickQuietly()
 
@@ -1035,9 +975,7 @@ describe('BackToTop — regressions against the documented contract', () => {
     const h = heading()
     appendMain(h)
     render(<BackToTop />)
-    vi.mocked(window.scrollTo).mockImplementation(() => {
-      throw new Error('x')
-    })
+    vi.mocked(window.scrollTo).mockImplementation(() => { throw new Error('x') })
     const focusSpy = vi.spyOn(h, 'focus').mockImplementation((...args: unknown[]) => {
       if (args.length > 0) throw new TypeError('no options')
     })

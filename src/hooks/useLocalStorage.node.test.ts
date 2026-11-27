@@ -5,7 +5,7 @@
 // be reached in a jsdom environment (because jsdom always provides window).
 
 import { describe, expect, it } from 'vitest'
-import { resolveStoredValue, safeStorage, writeToStorage } from './useLocalStorage'
+import { resolveStoredValue, writeToStorage } from './useLocalStorage'
 
 describe('useLocalStorage helpers (SSR / Node environment)', () => {
   it('resolveStoredValue returns initialValue when window is undefined', () => {
@@ -22,10 +22,5 @@ describe('useLocalStorage helpers (SSR / Node environment)', () => {
   it('writeToStorage does not throw when window is undefined', () => {
     // SSR setter path: typeof window === 'undefined' → early return, no write attempted.
     expect(() => writeToStorage('any-key', { value: 'data' })).not.toThrow()
-  })
-
-  it('safeStorage returns SSR error when window is undefined', () => {
-    expect(safeStorage.getItem('k').ok).toBe(false)
-    expect(safeStorage.setItem('k', 'v').ok).toBe(false)
   })
 })

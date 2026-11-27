@@ -19,16 +19,10 @@ interface LoadingSkeletonProps {
 
 export default function LoadingSkeleton({
   variant = 'text',
-  rows: rawRows = 3,
-  width: rawWidth = '100%',
-  height: rawHeight,
+  rows = 3,
+  width = '100%',
+  height,
 }: LoadingSkeletonProps) {
-  const rows =
-    typeof rawRows === 'number' && Number.isInteger(rawRows) && rawRows > 0
-      ? Math.min(rawRows, 24)
-      : 3
-  const width = typeof rawWidth === 'string' && rawWidth.trim() !== '' ? rawWidth : '100%'
-  const height = typeof rawHeight === 'string' && rawHeight.trim() !== '' ? rawHeight : undefined
   // Honor prefers-reduced-motion at the JS layer: when the user requests reduced
   // motion we omit the shimmer animation entirely instead of relying on the
   // global CSS override. Components that control animation via inline styles
@@ -151,7 +145,12 @@ export default function LoadingSkeleton({
 
   if (variant === 'stat-widget') {
     return (
-      <div className="skeleton--stat-widget" style={{ width }} role="status" aria-label="Loading">
+      <div
+        className="skeleton--stat-widget"
+        style={{ width }}
+        role="status"
+        aria-label="Loading"
+      >
         <div className={`${baseClass} skeleton--stat-label`} />
         <div className={`${baseClass} skeleton--stat-value`} />
         <div className={`${baseClass} skeleton--stat-sub`} />
@@ -161,7 +160,12 @@ export default function LoadingSkeleton({
 
   if (variant === 'list-row') {
     return (
-      <div className="skeleton-wrapper" style={{ width }} role="status" aria-label="Loading">
+      <div
+        className="skeleton-wrapper"
+        style={{ width }}
+        role="status"
+        aria-label="Loading"
+      >
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="skeleton--list-row">
             <div className={`${baseClass} skeleton--list-avatar`} />
@@ -178,7 +182,12 @@ export default function LoadingSkeleton({
 
   if (variant === 'bond-row') {
     return (
-      <div className="skeleton-wrapper" style={{ width }} role="status" aria-label="Loading">
+      <div
+        className="skeleton-wrapper"
+        style={{ width }}
+        role="status"
+        aria-label="Loading"
+      >
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="skeleton--bond-row">
             <div className="skeleton--bond-left">

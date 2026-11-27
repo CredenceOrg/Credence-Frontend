@@ -520,12 +520,16 @@ describe('WhatsNewDialog – accessibility invariants', () => {
 
   it('header close button has a descriptive aria-label', () => {
     render(<WhatsNewDialog open={true} onClose={() => undefined} />)
-    expect(screen.getByRole('button', { name: /close what's new/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /close what's new/i })
+    ).toBeInTheDocument()
   })
 
   it('update list has an aria-label describing its content', () => {
     render(<WhatsNewDialog open={true} onClose={() => undefined} />)
-    expect(screen.getByRole('list', { name: /recent product updates/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('list', { name: /recent product updates/i })
+    ).toBeInTheDocument()
   })
 
   it('each tag span has an aria-label matching the human-readable label', () => {
@@ -610,7 +614,8 @@ describe('ChangelogDrawer alias', () => {
     const { unmount: u1 } = render(<WhatsNewDialog open={true} onClose={onClose} />)
     const wndDialog = document.body.querySelector('[role="dialog"]')
     // Normalize auto-generated IDs (React useId produces :r0:, :r1: etc.) before comparing.
-    const normalize = (el: Element | null) => el?.outerHTML.replace(/:[a-z0-9]+:/g, ':ID:') ?? ''
+    const normalize = (el: Element | null) =>
+      el?.outerHTML.replace(/:[a-z0-9]+:/g, ':ID:') ?? ''
     const wndHtml = normalize(wndDialog)
     u1()
 

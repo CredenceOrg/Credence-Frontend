@@ -283,8 +283,7 @@ export function useApiQuery<T>(
         }
       }
     },
-    [staleTimeMs, cacheKey]
-    [staleTimeMs, ttlMs, gcTimeMs]
+    [staleTimeMs, ttlMs, gcTimeMs, cacheKey]
   )
 
   // Initial fetch

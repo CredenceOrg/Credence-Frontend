@@ -33,7 +33,6 @@ We do not automatically retry failed API requests at the `apiFetch` level. This 
 If a specific component or query requires retries (e.g., fetching a user's wallet balance), that logic should be implemented at the React Query level (or equivalent state management layer) using its built-in retry configurations.
 
 ## Error Taxonomy
-
 ### `errorMessage` — Deterministic Failure Boundaries
 
 `errorMessage(error)` in `src/api/client.ts` maps any thrown value to a
@@ -71,6 +70,7 @@ Compatibility: the exported signature `errorMessage(error: unknown): string`
 is unchanged. Existing callers that passed `Error` or `ApiError` observe the
 same strings; only previously-undefined behavior (non-`Error` inputs, empty
 messages) is now pinned to the documented fallbacks.
+
 
 All failed API requests surface as an `ApiError`. This taxonomy ensures consumers can reliably switch on the `status` code or inspect the server `payload`.
 
@@ -128,16 +128,16 @@ async function submitData() {
 
 ### Failure-Boundary Test Matrix
 
-| Scenario            | Input                                                | Expected output                   |
-| ------------------- | ---------------------------------------------------- | --------------------------------- |
-| Success (no error)  | `null` / `undefined`                                 | generic fallback string           |
-| `ApiError` 4xx/5xx  | `new ApiError(404, 'Not found')`                     | `"Not found"`                     |
-| `ApiError` network  | `new ApiError(0, '')`                                | `"Network request failed"`        |
-| `ApiAmountError`    | `new ApiAmountError('amount', 'OVERFLOW', '…')`      | its `message` verbatim            |
-| Abort               | `Object.assign(new Error(), { name: 'AbortError' })` | cancellation string               |
-| Boundary: empty msg | `new ApiError(500, '   ')`                           | generic fallback string           |
-| Hostile input       | `Symbol('x')`, throwing getter                       | generic fallback string, no throw |
-| Duplicate calls     | same input twice                                     | identical output (determinism)    |
+| Scenario            | Input                                   | Expected output                     |
+| ------------------- | --------------------------------------- | ----------------------------------- |
+| Success (no error)  | `null` / `undefined`                    | generic fallback string             |
+| `ApiError` 4xx/5xx  | `new ApiError(404, 'Not found')`        | `"Not found"`                       |
+| `ApiError` network  | `new ApiError(0, '')`                   | `"Network request failed"`          |
+| `ApiAmountError`    | `new ApiAmountError('amount', 'OVERFLOW', '…')` | its `message` verbatim      |
+| Abort               | `Object.assign(new Error(), { name: 'AbortError' })` | cancellation string   |
+| Boundary: empty msg | `new ApiError(500, '   ')`              | generic fallback string             |
+| Hostile input       | `Symbol('x')`, throwing getter          | generic fallback string, no throw   |
+| Duplicate calls     | same input twice                        | identical output (determinism)      |
 
 Retries and concurrent execution are unaffected: `errorMessage` is pure and
 stateless, so it cannot introduce ordering, timing, or shared-state hazards.

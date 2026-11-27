@@ -7,14 +7,10 @@ vi.mock('../context/SettingsContext', () => ({
   useSettings: vi.fn(),
 }))
 
-function asSettingsState(network: unknown): SettingsState {
-  return {
-    network: network as 'public',
-  } as Partial<SettingsState> as SettingsState
-}
-
 function mockNetwork(network: unknown) {
-  vi.mocked(useSettings).mockReturnValue(asSettingsState(network))
+  vi.mocked(useSettings).mockReturnValue({
+    network: network as 'public',
+  } as Partial<SettingsState> as SettingsState)
 }
 
 describe('NetworkIndicator — deterministic failure boundaries', () => {

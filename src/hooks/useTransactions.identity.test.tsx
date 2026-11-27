@@ -1,12 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useTransactions } from './useTransactions'
-import {
-  apiFetch,
-  ApiSessionConflictError,
-  advanceIdentityEpoch,
-  resetIdentityEpoch,
-} from '../api/client'
+import { apiFetch, ApiSessionConflictError, advanceIdentityEpoch, resetIdentityEpoch } from '../api/client'
 import type { Transaction } from '../api/types'
 import { scopedKey, PENDING_TXS_LEGACY_KEY, PENDING_TXS_V1_KEY } from '../lib/pendingTransactionsStorage'
 

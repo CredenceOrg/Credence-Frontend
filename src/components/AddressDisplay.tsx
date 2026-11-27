@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import useCopyToClipboard from '../hooks/useCopyToClipboard'
 import { useToast } from './ToastProvider'
 import { truncateAddress } from '../lib/stellar'
@@ -30,8 +30,6 @@ export default function AddressDisplay({
   const { addToast } = useToast()
   const [isHovered, setIsHovered] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
-  const [isCopying, setIsCopying] = useState(false)
-  const isCopyingRef = useRef(false)
 
   if (error) {
     const errorMessage = typeof error === 'string' ? error : error.message
@@ -68,25 +66,10 @@ export default function AddressDisplay({
   const safeAddress = address || ''
 
   const handleCopy = async () => {
-    if (!safeAddress.trim() || isCopyingRef.current) return
-    isCopyingRef.current = true
-    setIsCopying(true)
-    try {
-      const success = await copy(safeAddress)
-      if (success) {
-        addToast('success', 'Address copied to clipboard')
-      } else {
-        addToast('warning', 'Could not copy address — please copy it manually')
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'NotAllowedError') {
-        addToast('danger', 'Clipboard access was denied — check your browser permissions')
-      } else {
-        addToast('danger', 'Failed to copy address')
-      }
-    } finally {
-      isCopyingRef.current = false
-      setIsCopying(false)
+    if (!safeAddress) return
+    const success = await copy(safeAddress)
+    if (success) {
+      addToast('success', 'Address copied to clipboard')
     }
   }
 
@@ -108,13 +91,11 @@ export default function AddressDisplay({
           {displayText}
         </code>
       </TooltipOnOverflow>
-      {showCopyButton && (
+      {showCopyButton && safeAddress && (
         <button
           type="button"
           className="address-display__copy-btn"
           onClick={handleCopy}
-          disabled={isCopying}
-          aria-busy={isCopying ? 'true' : 'false'}
           aria-label={copied ? 'Copied' : 'Copy address'}
         >
           {copied ? (

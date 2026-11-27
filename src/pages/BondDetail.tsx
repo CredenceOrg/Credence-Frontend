@@ -300,9 +300,7 @@ export default function BondDetail() {
 
           <div className="bond-detail__actions">
             <div className="bond-detail__action-section">
-              <span className="bond-detail__action-label">
-                {t('bond.detail.extendLockDuration')}
-              </span>
+              <span className="bond-detail__action-label">{t('bond.detail.extendLockDuration')}</span>
               <div className="bond-detail__btn-group">
                 <Button
                   type="button"

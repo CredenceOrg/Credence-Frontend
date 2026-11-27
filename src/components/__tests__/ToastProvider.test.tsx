@@ -154,7 +154,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
 
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
-  // -------------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------
   // Deterministic failure-boundary coverage
   // -------------------------------------------------------------------------------------------------------
   // These tests pin down the invariants that must hold when the provider is
@@ -168,10 +168,16 @@ describe('ToastProvider Timing and Queue Logic', () => {
     const { addToast } = useToast()
     return (
       <>
-        <button aria-label="add-empty" onClick={() => addToast('info', '')}>
+        <button
+          aria-label="add-empty"
+          onClick={() => addToast('info', '')}
+        >
           Empty
         </button>
-        <button aria-label="add-only-whitespace" onClick={() => addToast('info', '    ')}>
+        <button
+          aria-label="add-only-whitespace"
+          onClick={() => addToast('info', '    ')}
+        >
           Whitespace
         </button>
         <button
@@ -232,10 +238,16 @@ describe('ToastProvider Timing and Queue Logic', () => {
         >
           Retry
         </button>
-        <button aria-label="add-unicode" onClick={() => addToast('info', '📴 🔩 🚀')}>
+        <button
+          aria-label="add-unicode"
+          onClick={() => addToast('info', '📴 🔩 🚀') }
+        >
           Unicode
         </button>
-        <button aria-label="add-long-message" onClick={() => addToast('info', 'x'.repeat(5000))}>
+        <button
+          aria-label="add-long-message"
+          onClick={() => addToast('info', 'x'.repeat(5000))}
+        >
           LongMessage
         </button>
       </>
@@ -256,7 +268,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(container.querySelectorAll('.toast').length).toBe(0)
   })
 
-  test('keeps duplicate messages as independent toast entries up to MAX_TOASTS', () => {
+  test('collapses duplicate messages into a single toast entry', () => {
     mockSettingsValues.autoDismiss = 'off'
 
     const { container } = render(
@@ -270,7 +282,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     fireEvent.click(button)
     fireEvent.click(button)
 
-    expect(container.querySelectorAll('.toast').length).toBe(3)
+    expect(container.querySelectorAll('.toast').length).toBe(1)
   })
 
   test('handles a burst of concurrent adds without exceeding MAX_TOASTS', () => {
@@ -313,7 +325,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
 
-  test('treats malformed autoDismiss as sticky without losing the toast', () => {
+  test('falls back to a severity default when autoDismiss is malformed', () => {
     mockSettingsValues.autoDismiss = 'not-a-duration'
 
     const { container } = render(
@@ -325,11 +337,11 @@ describe('ToastProvider Timing and Queue Logic', () => {
     fireEvent.click(screen.getByRole('button', { name: 'trigger-Malformed timeout' }))
     expect(container.querySelector('.toast')).toBeInTheDocument()
 
-    // A malformed value is treated as sticky rather than unexpectedly dismissing.
+    // A malformed value must not hang forever -- the severity default applies.
     act(() => {
       vi.advanceTimersByTime(30000)
     })
-    expect(container.querySelector('.toast')).toBeInTheDocument()
+    expect(container.querySelector('.toast')).not.toBeInTheDocument()
   })
 
   test('clears pending timers on unmount without throwing', () => {
@@ -351,7 +363,7 @@ describe('ToastProvider Timing and Queue Logic', () => {
     })
   })
 
-  describe('useToast failure-boundary coverage', () => {
+ describe('useToast failure-boundary coverage', () => {
     test('throws a deterministic error when used outside a ToastProvider', () => {
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
       const Orphan = () => {

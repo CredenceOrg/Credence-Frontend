@@ -17,7 +17,6 @@ have completed.
 ## What's cached
 
 ### Service Worker Cache
-
 - **App Shell**: HTML, CSS, JavaScript, and static assets are precached by the service worker.
 - **Read-only Endpoints**: API `GET` requests are cached using a `NetworkFirst` strategy to provide fresh data when online and cached data when offline.
 
@@ -68,9 +67,9 @@ Network errors are surfaced as `ApiError` with code `network_error` and status `
 
 ## Summary table
 
-| Scenario                            | Behaviour                                                                                                                                  |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Page load while offline**         | App loads from Service Worker cache. `useQuery` falls back to cached data or handles the error. Settings, etc. served from `localStorage`. |
-| **Widget refresh while offline**    | `useWidgetCache` fetches; if network fails, Service Worker serves cached response.                                                         |
-| **Auto-save / Write while offline** | The request passes through; `apiFetch` surfaces a `network_error` and the write is not queued.                                             |
-| **Reconnect**                       | Failed writes remain failed; the user or application must initiate a new request.                                                          |
+| Scenario                                               | Behaviour                                                                                                                                                                |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Page load while offline**                            | App loads from Service Worker cache. `useQuery` falls back to cached data or handles the error. Settings, etc. served from `localStorage`. |
+| **Widget refresh while offline**                       | `useWidgetCache` fetches; if network fails, Service Worker serves cached response. |
+| **Auto-save / Write while offline**                    | The request passes through; `apiFetch` surfaces a `network_error` and the write is not queued. |
+| **Reconnect**                                          | Failed writes remain failed; the user or application must initiate a new request. |

@@ -281,7 +281,7 @@ describe('AddressDisplay', () => {
       await waitFor(() => {
         expect(mockAddToast).toHaveBeenCalledWith(
           'warning',
-          'Could not copy address — please copy it manually'
+          'Could not copy address — please copy it manually',
         )
       })
     })
@@ -312,7 +312,7 @@ describe('AddressDisplay', () => {
       await waitFor(() => {
         expect(mockAddToast).toHaveBeenCalledWith(
           'danger',
-          'Clipboard access was denied — check your browser permissions'
+          'Clipboard access was denied — check your browser permissions',
         )
       })
     })
@@ -529,7 +529,7 @@ describe('AddressDisplay', () => {
       render(<AddressDisplay error="Network failure" onRetry={handleRetry} />)
       const retryBtn = screen.getByRole('button', { name: 'Retry' })
       expect(retryBtn).toBeInTheDocument()
-
+      
       fireEvent.click(retryBtn)
       expect(handleRetry).toHaveBeenCalledTimes(1)
     })

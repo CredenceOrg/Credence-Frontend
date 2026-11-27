@@ -26,15 +26,18 @@
   font-size: var(--credence-font-size-sm);
 }
 
-.form-field[data-state='error']
-  :is(input, select, textarea):not([type='checkbox']):not([type='radio']) {
+.form-field[data-state='error'] :is(input, select, textarea):not([type='checkbox']):not(
+    [type='radio']
+  ) {
   border-color: var(--credence-color-danger-border, var(--credence-color-danger-text));
 }
 
-.form-field[data-state='success']
-  :is(input, select, textarea):not([type='checkbox']):not([type='radio']) {
+.form-field[data-state='success'] :is(input, select, textarea):not([type='checkbox']):not(
+    [type='radio']
+  ) {
   border-color: var(--credence-color-success-border);
 }
+
 
 .form-field.is-loading :is(input, select, textarea) {
   opacity: 0.7;
@@ -55,8 +58,7 @@
   background-color: var(--credence-color-danger-bg);
 }
 
-.form-field-retry-btn,
-.form-field-retry-button-inline {
+.form-field-retry-btn, .form-field-retry-button-inline {
   align-self: flex-start;
   margin-top: var(--credence-space-1);
   padding: var(--credence-space-1) var(--credence-space-3);
@@ -68,8 +70,7 @@
   cursor: pointer;
 }
 
-.form-field-retry-btn:hover,
-.form-field-retry-button-inline:hover {
+.form-field-retry-btn:hover, .form-field-retry-button-inline:hover {
   background: var(--credence-color-danger-border);
   color: var(--credence-color-white);
 }

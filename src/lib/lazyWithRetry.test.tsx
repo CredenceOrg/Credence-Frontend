@@ -72,9 +72,7 @@ describe('lazyWithRetry', () => {
       },
     })
 
-    const factory = vi
-      .fn()
-      .mockRejectedValue(new Error('Failed to fetch dynamically imported module'))
+    const factory = vi.fn().mockRejectedValue(new Error('Failed to fetch dynamically imported module'))
     const FailingComponent = lazyWithRetry(factory)
 
     const { unmount } = render(

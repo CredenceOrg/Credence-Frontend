@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-  type ReactNode,
-} from 'react'
+import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react'
 import { useSettings } from '../context/SettingsContext'
 import { isWithinQuietHours, nowMinutesSinceMidnight } from '../lib/quietHours'
 import { appendNotification } from '../lib/notificationHistory'
@@ -87,16 +79,12 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   const idCounter = useRef(0)
   const timeoutsMap = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
-  useEffect(
-    () => () => {
-      if (politeAnnouncementTimer.current !== null) clearTimeout(politeAnnouncementTimer.current)
-      if (assertiveAnnouncementTimer.current !== null)
-        clearTimeout(assertiveAnnouncementTimer.current)
-      timeoutsMap.current.forEach((timerId) => clearTimeout(timerId))
-      timeoutsMap.current.clear()
-    },
-    []
-  )
+  useEffect(() => () => {
+    if (politeAnnouncementTimer.current !== null) clearTimeout(politeAnnouncementTimer.current)
+    if (assertiveAnnouncementTimer.current !== null) clearTimeout(assertiveAnnouncementTimer.current)
+    timeoutsMap.current.forEach((timerId) => clearTimeout(timerId))
+    timeoutsMap.current.clear()
+  }, [])
 
   const announce = useCallback((rawMessage: string, assertive = false) => {
     const message = normalizeToastMessage(rawMessage)

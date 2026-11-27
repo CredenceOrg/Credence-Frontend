@@ -217,9 +217,7 @@ interface DetailRowProps {
 
 function DetailRow({ label, value, valueNode, multiline }: DetailRowProps) {
   return (
-    <div
-      className={`attestationDrawer__row${multiline ? ' attestationDrawer__row--multiline' : ''}`}
-    >
+    <div className={`attestationDrawer__row${multiline ? ' attestationDrawer__row--multiline' : ''}`}>
       <span className="attestationDrawer__rowLabel">{label}</span>
       {valueNode ? (
         <span className="attestationDrawer__rowValue">{valueNode}</span>

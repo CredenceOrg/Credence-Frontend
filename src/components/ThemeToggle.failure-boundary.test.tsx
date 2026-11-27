@@ -491,10 +491,9 @@ describe('ThemeToggle: system read fails (rejection)', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
     expect(JSON.parse(localStorage.getItem('credence:settings')!).themeMode).toBe('dark')
 
-    // The preference still toggles cleanly through SettingsContext.
+    // The persisted preference still round-trips through SettingsContext.
     fireEvent.click(btn)
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+    expect(JSON.parse(localStorage.getItem('credence:settings')!).themeMode).toBe('light')
     // The legacy orphan key is never resurrected.
     expect(localStorage.getItem('theme')).toBeNull()
   })

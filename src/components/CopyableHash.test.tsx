@@ -49,8 +49,8 @@ describe('CopyableHash', () => {
     const hash = '0x93a1234567890abcdef1234567890abcdef22f4'
     render(<CopyableHash hash={hash} />)
 
-    // Truncates to first 6 + "…" + last 4
-    expect(screen.getByText('0x93a1…22f4')).toBeInTheDocument()
+    // Uses truncateAddress: first 12 + "..." + last 8
+    expect(screen.getByText('0x93a1234567...cdef22f4')).toBeInTheDocument()
   })
 
   it('renders a full tx hash if it is short', () => {
@@ -153,7 +153,7 @@ describe('CopyableHash', () => {
         render(<CopyableHash hash="abc" />)
 
         const btn = screen.getByRole('button', { name: 'Copy hash' })
-
+        
         await act(async () => {
           fireEvent.click(btn)
         })
@@ -183,7 +183,7 @@ describe('CopyableHash', () => {
     it('handles extremely long hashes safely', () => {
       const longHash = 'A'.repeat(10000)
       render(<CopyableHash hash={longHash} />)
-      expect(screen.getByText('AAAAAA…AAAA')).toBeInTheDocument()
+      expect(screen.getByText('AAAAAAAAAAAA...AAAAAAAA')).toBeInTheDocument()
     })
   })
 })

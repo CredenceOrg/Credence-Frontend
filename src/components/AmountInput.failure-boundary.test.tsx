@@ -124,9 +124,7 @@ describe('AmountInput — inline validation message integrity', () => {
   })
 
   it('renders a caller-supplied error verbatim', () => {
-    render(
-      <ControlledAmountInput value="1.00" balance={1000} error="Bond is undercollateralised" />
-    )
+    render(<ControlledAmountInput value="1.00" balance={1000} error="Bond is undercollateralised" />)
     expect(screen.getByRole('alert').textContent).toBe('Bond is undercollateralised')
   })
 
@@ -273,55 +271,15 @@ describe('AmountInput — Max failure classification (I8)', () => {
 
   it.each([
     ['network fault', new TypeError('Failed to fetch'), 'network', 'Failed to get max amount.'],
-    [
-      'offline message',
-      new Error('You appear to be offline'),
-      'network',
-      'Failed to get max amount.',
-    ],
-    [
-      'network_error code',
-      signalError('boom', { code: 'network_error' }),
-      'network',
-      'Failed to get max amount.',
-    ],
-    [
-      'PermissionError name',
-      signalError('nope', { name: 'PermissionError' }),
-      'permission',
-      'Permission denied getting max amount.',
-    ],
-    [
-      'unauthorized message',
-      new Error('401 Unauthorized'),
-      'permission',
-      'Permission denied getting max amount.',
-    ],
-    [
-      'permission message',
-      new Error('Wallet permission revoked'),
-      'permission',
-      'Permission denied getting max amount.',
-    ],
-    [
-      'PERMISSION_DENIED code',
-      signalError('denied', { code: 'PERMISSION_DENIED' }),
-      'permission',
-      'Permission denied getting max amount.',
-    ],
-    [
-      'StaleDataError name',
-      signalError('old', { name: 'StaleDataError' }),
-      'stale',
-      'Max amount data is stale.',
-    ],
+    ['offline message', new Error('You appear to be offline'), 'network', 'Failed to get max amount.'],
+    ['network_error code', signalError('boom', { code: 'network_error' }), 'network', 'Failed to get max amount.'],
+    ['PermissionError name', signalError('nope', { name: 'PermissionError' }), 'permission', 'Permission denied getting max amount.'],
+    ['unauthorized message', new Error('401 Unauthorized'), 'permission', 'Permission denied getting max amount.'],
+    ['permission message', new Error('Wallet permission revoked'), 'permission', 'Permission denied getting max amount.'],
+    ['PERMISSION_DENIED code', signalError('denied', { code: 'PERMISSION_DENIED' }), 'permission', 'Permission denied getting max amount.'],
+    ['StaleDataError name', signalError('old', { name: 'StaleDataError' }), 'stale', 'Max amount data is stale.'],
     ['stale message', new Error('Balance cache is stale'), 'stale', 'Max amount data is stale.'],
-    [
-      'STALE_DATA code',
-      signalError('old', { code: 'STALE_DATA' }),
-      'stale',
-      'Max amount data is stale.',
-    ],
+    ['STALE_DATA code', signalError('old', { code: 'STALE_DATA' }), 'stale', 'Max amount data is stale.'],
     ['unclassifiable', new Error('something odd happened'), 'unknown', 'Failed to get max amount.'],
   ])('maps a %s rejection to the right state', async (_label, err, reason, copy) => {
     const { onChange } = await failWith(err)
@@ -369,13 +327,7 @@ describe('AmountInput — Max failure classification (I8)', () => {
       .mockImplementationOnce(() => gate.promise)
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value=""
-        onChange={onChange}
-        balance={0}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={onChange} balance={0} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     fireEvent.click(maxButton())
@@ -440,13 +392,7 @@ describe('AmountInput — invalid max payload boundaries (I5)', () => {
     const onMaxRequest = vi.fn().mockResolvedValue(payload)
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value="42.00"
-        onChange={onChange}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="42.00" onChange={onChange} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     fireEvent.click(maxButton())
@@ -462,13 +408,7 @@ describe('AmountInput — invalid max payload boundaries (I5)', () => {
     const onMaxRequest = vi.fn().mockResolvedValue(-0)
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value=""
-        onChange={onChange}
-        balance={0}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={onChange} balance={0} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
     fireEvent.click(maxButton())
     await act(async () => {})
@@ -479,13 +419,7 @@ describe('AmountInput — invalid max payload boundaries (I5)', () => {
     const onMaxRequest = vi.fn().mockResolvedValue(400.129)
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value=""
-        onChange={onChange}
-        balance={0}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={onChange} balance={0} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
     fireEvent.click(maxButton())
     await act(async () => {})
@@ -497,13 +431,7 @@ describe('AmountInput — invalid max payload boundaries (I5)', () => {
     const onMaxRequest = vi.fn().mockResolvedValue(5000)
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value=""
-        onChange={onChange}
-        balance={100}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={onChange} balance={100} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
     fireEvent.click(maxButton())
     await act(async () => {})
@@ -511,16 +439,13 @@ describe('AmountInput — invalid max payload boundaries (I5)', () => {
   })
 
   it('recovers from an invalid payload through Retry', async () => {
-    const onMaxRequest = vi.fn().mockResolvedValueOnce(Number.NaN).mockResolvedValueOnce(88.5)
+    const onMaxRequest = vi
+      .fn()
+      .mockResolvedValueOnce(Number.NaN)
+      .mockResolvedValueOnce(88.5)
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value=""
-        onChange={onChange}
-        balance={0}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={onChange} balance={0} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     fireEvent.click(maxButton())
@@ -558,9 +483,7 @@ describe('AmountInput — no data loss on failure (I1)', () => {
 
   it('keeps what the user types after a permission failure', async () => {
     const user = userEvent.setup()
-    const onMaxRequest = vi
-      .fn()
-      .mockRejectedValue(signalError('denied', { name: 'PermissionError' }))
+    const onMaxRequest = vi.fn().mockRejectedValue(signalError('denied', { name: 'PermissionError' }))
     render(<ControlledAmountInput value="10.00" balance={1000} onMaxRequest={onMaxRequest} />)
 
     fireEvent.click(maxButton())
@@ -610,13 +533,7 @@ describe('AmountInput — no data loss on failure (I1)', () => {
     const onMaxRequest = vi.fn().mockImplementation(() => new Promise<number>(() => {}))
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value="42.00"
-        onChange={onChange}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="42.00" onChange={onChange} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
     fireEvent.click(maxButton())
     expect(onChange).not.toHaveBeenCalled()
@@ -629,23 +546,13 @@ describe('AmountInput — no data loss on failure (I1)', () => {
 describe('AmountInput — retry from each failure state (I4)', () => {
   it.each([
     ['error', new Error('network'), 'Failed to get max amount.'],
-    [
-      'permission',
-      signalError('denied', { name: 'PermissionError' }),
-      'Permission denied getting max amount.',
-    ],
+    ['permission', signalError('denied', { name: 'PermissionError' }), 'Permission denied getting max amount.'],
     ['stale', signalError('x', { name: 'StaleDataError' }), 'Max amount data is stale.'],
   ])('retries successfully after a %s failure', async (_state, err, copy) => {
     const onMaxRequest = vi.fn().mockRejectedValueOnce(err).mockResolvedValueOnce(600)
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value=""
-        onChange={onChange}
-        balance={0}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={onChange} balance={0} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     fireEvent.click(maxButton())
@@ -666,15 +573,7 @@ describe('AmountInput — retry from each failure state (I4)', () => {
       .fn()
       .mockRejectedValueOnce(new Error('network'))
       .mockImplementationOnce(() => gate.promise)
-    render(
-      <AmountInput
-        value=""
-        onChange={vi.fn()}
-        balance={0}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="" onChange={vi.fn()} balance={0} onMaxRequest={onMaxRequest} aria-label="Amount" />)
 
     fireEvent.click(maxButton())
     await screen.findByText('Failed to get max amount.')
@@ -684,9 +583,7 @@ describe('AmountInput — retry from each failure state (I4)', () => {
     expect(maxButton()).toHaveAttribute('aria-busy', 'true')
     // The alert is withdrawn while retrying so the user is not told about a
     // failure that is no longer current.
-    expect(
-      screen.queryByRole('button', { name: /retry getting max amount/i })
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /retry getting max amount/i })).not.toBeInTheDocument()
 
     await act(async () => {
       gate.resolve(10)
@@ -698,13 +595,7 @@ describe('AmountInput — retry from each failure state (I4)', () => {
     const onMaxRequest = vi.fn().mockRejectedValue(new Error('network'))
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value="42.00"
-        onChange={onChange}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="42.00" onChange={onChange} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     fireEvent.click(maxButton())
@@ -726,15 +617,7 @@ describe('AmountInput — retry from each failure state (I4)', () => {
       .fn()
       .mockRejectedValueOnce(new Error('network'))
       .mockRejectedValueOnce(signalError('revoked', { name: 'PermissionError' }))
-    render(
-      <AmountInput
-        value=""
-        onChange={vi.fn()}
-        balance={0}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="" onChange={vi.fn()} balance={0} onMaxRequest={onMaxRequest} aria-label="Amount" />)
 
     fireEvent.click(maxButton())
     await screen.findByText('Failed to get max amount.')
@@ -757,13 +640,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
     const gate = deferred<number>()
     const onMaxRequest = vi.fn().mockImplementation(() => gate.promise)
     render(
-      <AmountInput
-        value=""
-        onChange={vi.fn()}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={vi.fn()} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     const btn = maxButton()
@@ -781,13 +658,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
     const gate = deferred<number>()
     const onMaxRequest = vi.fn().mockImplementation(() => gate.promise)
     render(
-      <AmountInput
-        value=""
-        onChange={vi.fn()}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={vi.fn()} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     const btn = maxButton()
@@ -811,13 +682,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
     const onMaxRequest = vi.fn().mockImplementation(() => gates[call++].promise)
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value=""
-        onChange={onChange}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={onChange} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     fireEvent.click(maxButton())
@@ -844,12 +709,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
       .mockImplementationOnce(() => second.promise)
     const onChange = vi.fn()
     render(
-      <ControlledAmountInput
-        value=""
-        onChange={onChange}
-        balance={100000}
-        onMaxRequest={onMaxRequest}
-      />
+      <ControlledAmountInput value="" onChange={onChange} balance={100000} onMaxRequest={onMaxRequest} />
     )
 
     fireEvent.click(maxButton())
@@ -877,12 +737,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
     const gate = deferred<number>()
     const onMaxRequest = vi.fn().mockImplementation(() => gate.promise)
     render(
-      <ControlledAmountInput
-        value="0"
-        balance={1000}
-        presets={[100, 500]}
-        onMaxRequest={onMaxRequest}
-      />
+      <ControlledAmountInput value="0" balance={1000} presets={[100, 500]} onMaxRequest={onMaxRequest} />
     )
 
     fireEvent.click(maxButton())
@@ -948,9 +803,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
     const gates = [first, second]
     let call = 0
     const onMaxRequest = vi.fn().mockImplementation(() => gates[call++].promise)
-    render(
-      <ControlledAmountInput value="0" balance={1000} presets={[100]} onMaxRequest={onMaxRequest} />
-    )
+    render(<ControlledAmountInput value="0" balance={1000} presets={[100]} onMaxRequest={onMaxRequest} />)
 
     fireEvent.click(maxButton())
     fireEvent.click(screen.getByRole('button', { name: 'Set amount to 100 USDC' }))
@@ -971,9 +824,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
   it('does not resurrect an error banner from a request superseded before it failed', async () => {
     const gate = deferred<number>()
     const onMaxRequest = vi.fn().mockImplementation(() => gate.promise)
-    render(
-      <ControlledAmountInput value="0" balance={1000} presets={[100]} onMaxRequest={onMaxRequest} />
-    )
+    render(<ControlledAmountInput value="0" balance={1000} presets={[100]} onMaxRequest={onMaxRequest} />)
 
     fireEvent.click(maxButton())
     fireEvent.click(screen.getByRole('button', { name: 'Set amount to 100 USDC' }))
@@ -994,13 +845,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
     const onMaxRequest = vi.fn().mockImplementation(() => gate.promise)
     const onChange = vi.fn()
     const { unmount } = render(
-      <AmountInput
-        value="42.00"
-        onChange={onChange}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="42.00" onChange={onChange} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     fireEvent.click(maxButton())
@@ -1018,13 +863,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
     const gate = deferred<number>()
     const onMaxRequest = vi.fn().mockImplementation(() => gate.promise)
     const { unmount } = render(
-      <AmountInput
-        value=""
-        onChange={vi.fn()}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={vi.fn()} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
     fireEvent.click(maxButton())
     unmount()
@@ -1043,13 +882,7 @@ describe('AmountInput — concurrency and timing boundaries (I2, I3, I4)', () =>
       .mockImplementationOnce(() => second.promise)
     const onChange = vi.fn()
     render(
-      <AmountInput
-        value=""
-        onChange={onChange}
-        balance={0}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={onChange} balance={0} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
 
     fireEvent.click(maxButton())
@@ -1098,15 +931,7 @@ describe('AmountInput — Max without onMaxRequest (synchronous path)', () => {
     ['-Infinity', Number.NEGATIVE_INFINITY],
     ['NaN', Number.NaN],
   ])('disables Max for a %s balance and keeps every preset disabled', (_label, balance) => {
-    render(
-      <AmountInput
-        value=""
-        onChange={vi.fn()}
-        balance={balance}
-        presets={[1, 2]}
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="" onChange={vi.fn()} balance={balance} presets={[1, 2]} aria-label="Amount" />)
     expect(maxButton()).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Set amount to 1 USDC' })).toBeDisabled()
   })
@@ -1139,13 +964,7 @@ describe('AmountInput — Max without onMaxRequest (synchronous path)', () => {
   it('cannot be clicked while an async max request is loading', () => {
     const onMaxRequest = vi.fn().mockImplementation(() => new Promise<number>(() => {}))
     render(
-      <AmountInput
-        value=""
-        onChange={vi.fn()}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={vi.fn()} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
     fireEvent.click(maxButton())
     expect(maxButton()).toBeDisabled()
@@ -1158,15 +977,7 @@ describe('AmountInput — Max without onMaxRequest (synchronous path)', () => {
 describe('AmountInput — balance and min boundaries (I5)', () => {
   it('flags an amount equal to the balance as valid', () => {
     const onValidityChange = vi.fn()
-    render(
-      <AmountInput
-        value="100.00"
-        onChange={vi.fn()}
-        balance={100}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="100.00" onChange={vi.fn()} balance={100} onValidityChange={onValidityChange} aria-label="Amount" />)
     expect(onValidityChange).toHaveBeenLastCalledWith(true)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
@@ -1177,9 +988,7 @@ describe('AmountInput — balance and min boundaries (I5)', () => {
   })
 
   it('flags one cent under the minimum as invalid', () => {
-    render(
-      <AmountInput value="9.99" onChange={vi.fn()} balance={1000} min={10} aria-label="Amount" />
-    )
+    render(<AmountInput value="9.99" onChange={vi.fn()} balance={1000} min={10} aria-label="Amount" />)
     expect(screen.getByRole('alert')).toHaveTextContent('Amount must be at least 10 USDC.')
   })
 
@@ -1223,35 +1032,17 @@ describe('AmountInput — onValidityChange transition semantics (I7)', () => {
   it('notifies once per transition, not once per render', () => {
     const onValidityChange = vi.fn()
     const { rerender } = render(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={100}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={100} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     expect(onValidityChange).toHaveBeenCalledTimes(1)
 
     // Re-rendering with an identical value must not re-notify: a caller that
     // stores this in state would otherwise loop.
     rerender(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={100}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={100} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     rerender(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={100}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={100} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     expect(onValidityChange).toHaveBeenCalledTimes(1)
   })
@@ -1259,26 +1050,12 @@ describe('AmountInput — onValidityChange transition semantics (I7)', () => {
   it('is stable across a re-render caused by an unrelated prop change', () => {
     const onValidityChange = vi.fn()
     const { rerender } = render(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={1000}
-        currencyLabel="USDC"
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={1000} currencyLabel="USDC" onValidityChange={onValidityChange} aria-label="Amount" />
     )
     expect(onValidityChange).toHaveBeenCalledTimes(1)
 
     rerender(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={1000}
-        currencyLabel="XLM"
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={1000} currencyLabel="XLM" onValidityChange={onValidityChange} aria-label="Amount" />
     )
     expect(onValidityChange).toHaveBeenCalledTimes(1)
   })
@@ -1289,51 +1066,27 @@ describe('AmountInput — onValidityChange transition semantics (I7)', () => {
     // this in state would render forever.
     const onValidityChange = vi.fn()
     const { rerender } = render(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={1000}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={1000} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     expect(onValidityChange).toHaveBeenCalledTimes(1)
 
     // Same validity, same callback identity: the effect does not even re-run.
     rerender(
-      <AmountInput
-        value="60.00"
-        onChange={vi.fn()}
-        balance={1000}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="60.00" onChange={vi.fn()} balance={1000} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     expect(onValidityChange).toHaveBeenCalledTimes(1)
 
     // Same validity, *new* callback identity: the effect re-runs but must not
     // re-notify, because the boolean it would send is unchanged.
     rerender(
-      <AmountInput
-        value="60.00"
-        onChange={vi.fn()}
-        balance={1000}
-        onValidityChange={vi.fn()}
-        aria-label="Amount"
-      />
+      <AmountInput value="60.00" onChange={vi.fn()} balance={1000} onValidityChange={vi.fn()} aria-label="Amount" />
     )
     expect(onValidityChange).toHaveBeenCalledTimes(1)
 
     // A genuine transition with a fresh callback still notifies.
     const next = vi.fn()
     rerender(
-      <AmountInput
-        value="1500.00"
-        onChange={vi.fn()}
-        balance={1000}
-        onValidityChange={next}
-        aria-label="Amount"
-      />
+      <AmountInput value="1500.00" onChange={vi.fn()} balance={1000} onValidityChange={next} aria-label="Amount" />
     )
     expect(next).toHaveBeenCalledWith(false)
     expect(screen.getByRole('alert')).toHaveTextContent('Amount exceeds available balance.')
@@ -1342,31 +1095,13 @@ describe('AmountInput — onValidityChange transition semantics (I7)', () => {
   it('notifies on every real transition in both directions', () => {
     const onValidityChange = vi.fn()
     const { rerender } = render(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={100}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={100} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     rerender(
-      <AmountInput
-        value="500.00"
-        onChange={vi.fn()}
-        balance={100}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="500.00" onChange={vi.fn()} balance={100} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     rerender(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={100}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={100} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     expect(onValidityChange.mock.calls).toEqual([[true], [false], [true]])
   })
@@ -1375,14 +1110,7 @@ describe('AmountInput — onValidityChange transition semantics (I7)', () => {
     const onMaxRequest = vi.fn().mockResolvedValue(5000)
     const onValidityChange = vi.fn()
     const { rerender } = render(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={1000} onMaxRequest={onMaxRequest} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     expect(onValidityChange).toHaveBeenLastCalledWith(true)
 
@@ -1391,14 +1119,7 @@ describe('AmountInput — onValidityChange transition semantics (I7)', () => {
 
     // Simulate the controlled parent applying the committed max.
     rerender(
-      <AmountInput
-        value="5000.00"
-        onChange={vi.fn()}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        onValidityChange={onValidityChange}
-        aria-label="Amount"
-      />
+      <AmountInput value="5000.00" onChange={vi.fn()} balance={1000} onMaxRequest={onMaxRequest} onValidityChange={onValidityChange} aria-label="Amount" />
     )
     expect(onValidityChange).toHaveBeenLastCalledWith(false)
     expect(screen.getByRole('alert')).toHaveTextContent('Amount exceeds available balance.')
@@ -1415,15 +1136,7 @@ describe('AmountInput — onValidityChange transition semantics (I7)', () => {
 
 describe('AmountInput — preset boundaries (I6)', () => {
   it('renders duplicate presets once and does not warn', () => {
-    render(
-      <AmountInput
-        value=""
-        onChange={vi.fn()}
-        balance={10000}
-        presets={[100, 100, 250]}
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="" onChange={vi.fn()} balance={10000} presets={[100, 100, 250]} aria-label="Amount" />)
     expect(screen.getAllByRole('button', { name: 'Set amount to 100 USDC' })).toHaveLength(1)
     expect(screen.getAllByRole('button', { name: 'Set amount to 250 USDC' })).toHaveLength(1)
     expect(consoleErrorSpy).not.toHaveBeenCalled()
@@ -1435,15 +1148,7 @@ describe('AmountInput — preset boundaries (I6)', () => {
     ['a negative amount', -50],
   ])('drops a %s preset instead of writing it into the field', (_label, bad) => {
     const onChange = vi.fn()
-    render(
-      <AmountInput
-        value="42.00"
-        onChange={onChange}
-        balance={10000}
-        presets={[bad, 100]}
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="42.00" onChange={onChange} balance={10000} presets={[bad, 100]} aria-label="Amount" />)
     expect(screen.getByRole('button', { name: 'Set amount to 100 USDC' })).toBeInTheDocument()
     expect(document.querySelector('.amountInput__presets')?.children).toHaveLength(1)
     expect(onChange).not.toHaveBeenCalled()
@@ -1464,45 +1169,25 @@ describe('AmountInput — preset boundaries (I6)', () => {
   })
 
   it('renders no chips for an empty preset list', () => {
-    render(
-      <AmountInput value="" onChange={vi.fn()} balance={1000} presets={[]} aria-label="Amount" />
-    )
+    render(<AmountInput value="" onChange={vi.fn()} balance={1000} presets={[]} aria-label="Amount" />)
     expect(document.querySelector('.amountInput__presets')?.children).toHaveLength(0)
   })
 
   it('disables presets above the clamped balance', () => {
-    render(
-      <AmountInput value="" onChange={vi.fn()} balance={-5} presets={[100]} aria-label="Amount" />
-    )
+    render(<AmountInput value="" onChange={vi.fn()} balance={-5} presets={[100]} aria-label="Amount" />)
     expect(screen.getByRole('button', { name: 'Set amount to 100 USDC' })).toBeDisabled()
   })
 
   it('commits the preset on click', () => {
     const onChange = vi.fn()
-    render(
-      <AmountInput
-        value=""
-        onChange={onChange}
-        balance={10000}
-        presets={[250]}
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="" onChange={onChange} balance={10000} presets={[250]} aria-label="Amount" />)
     fireEvent.click(screen.getByRole('button', { name: 'Set amount to 250 USDC' }))
     expect(onChange).toHaveBeenCalledWith('250.00')
   })
 
   it('keeps a zero preset selectable', () => {
     const onChange = vi.fn()
-    render(
-      <AmountInput
-        value="5.00"
-        onChange={onChange}
-        balance={1000}
-        presets={[0]}
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="5.00" onChange={onChange} balance={1000} presets={[0]} aria-label="Amount" />)
     fireEvent.click(screen.getByRole('button', { name: 'Set amount to 0 USDC' }))
     expect(onChange).toHaveBeenCalledWith('0.00')
   })
@@ -1528,13 +1213,7 @@ describe('AmountInput — accessibility and diagnosability wiring', () => {
 
   it('keeps the caller id alone when the control is valid', () => {
     render(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={100}
-        aria-describedby="network-warning"
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={100} aria-describedby="network-warning" aria-label="Amount" />
     )
     expect(textbox().getAttribute('aria-describedby')).toBe('network-warning')
   })
@@ -1542,13 +1221,7 @@ describe('AmountInput — accessibility and diagnosability wiring', () => {
   it('adds only the max-error id once a max failure is shown', async () => {
     const onMaxRequest = vi.fn().mockRejectedValue(new Error('network'))
     render(
-      <AmountInput
-        value="50.00"
-        onChange={vi.fn()}
-        balance={1000}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="50.00" onChange={vi.fn()} balance={1000} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
     fireEvent.click(maxButton())
     const alert = await screen.findByRole('alert')
@@ -1565,18 +1238,9 @@ describe('AmountInput — accessibility and diagnosability wiring', () => {
   })
 
   it('drops the max-error id after recovery', async () => {
-    const onMaxRequest = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('network'))
-      .mockResolvedValueOnce(10)
+    const onMaxRequest = vi.fn().mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(10)
     render(
-      <AmountInput
-        value=""
-        onChange={vi.fn()}
-        balance={0}
-        onMaxRequest={onMaxRequest}
-        aria-label="Amount"
-      />
+      <AmountInput value="" onChange={vi.fn()} balance={0} onMaxRequest={onMaxRequest} aria-label="Amount" />
     )
     fireEvent.click(maxButton())
     await screen.findByRole('alert')
@@ -1588,23 +1252,13 @@ describe('AmountInput — accessibility and diagnosability wiring', () => {
   })
 
   it('marks the control invalid for aria-invalid="true" even without a message', () => {
-    render(
-      <AmountInput
-        value="1.00"
-        onChange={vi.fn()}
-        balance={1000}
-        aria-invalid="true"
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="1.00" onChange={vi.fn()} balance={1000} aria-invalid="true" aria-label="Amount" />)
     expect(textbox()).toHaveAttribute('aria-invalid', 'true')
     expect(root()).toHaveAttribute('data-invalid', 'true')
   })
 
   it('uses a custom currencyLabel in every user-visible string', async () => {
-    const onMaxRequest = vi
-      .fn()
-      .mockRejectedValue(signalError('denied', { name: 'PermissionError' }))
+    const onMaxRequest = vi.fn().mockRejectedValue(signalError('denied', { name: 'PermissionError' }))
     render(
       <AmountInput
         value=""
@@ -1641,20 +1295,8 @@ describe('AmountInput — accessibility and diagnosability wiring', () => {
     const onMaxRequest = vi.fn().mockRejectedValue(new Error('network'))
     render(
       <>
-        <AmountInput
-          value=""
-          onChange={vi.fn()}
-          balance={0}
-          onMaxRequest={onMaxRequest}
-          aria-label="First"
-        />
-        <AmountInput
-          value=""
-          onChange={vi.fn()}
-          balance={0}
-          onMaxRequest={onMaxRequest}
-          aria-label="Second"
-        />
+        <AmountInput value="" onChange={vi.fn()} balance={0} onMaxRequest={onMaxRequest} aria-label="First" />
+        <AmountInput value="" onChange={vi.fn()} balance={0} onMaxRequest={onMaxRequest} aria-label="Second" />
       </>
     )
     fireEvent.click(screen.getAllByRole('button', { name: /set max amount/i })[0])
@@ -1742,16 +1384,7 @@ describe('AmountInput — controlled consumer round trip (no data loss)', () => 
     const user = userEvent.setup()
     const onFocus = vi.fn()
     const onBlur = vi.fn()
-    render(
-      <AmountInput
-        value="10.00"
-        onChange={vi.fn()}
-        balance={1000}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        aria-label="Amount"
-      />
-    )
+    render(<AmountInput value="10.00" onChange={vi.fn()} balance={1000} onFocus={onFocus} onBlur={onBlur} aria-label="Amount" />)
 
     await user.click(textbox())
     expect(onFocus).toHaveBeenCalledTimes(1)

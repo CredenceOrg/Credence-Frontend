@@ -264,7 +264,7 @@ describe('Select — invalid-state boundaries (I4)', () => {
     expect(onChange).toHaveBeenCalledWith('mainnet')
   })
 
-  it('renders the error message in a role="alert" node linked via aria-describedby (I3)', () => {
+  it('does not render the error message itself, leaving one announcement to the caller (I5)', () => {
     render(
       <Select
         value="testnet"
@@ -275,9 +275,7 @@ describe('Select — invalid-state boundaries (I4)', () => {
       />
     )
 
-    const alert = screen.getByRole('alert')
-    expect(alert).toHaveTextContent('Unsupported network')
-    expect(combobox()).toHaveAttribute('aria-describedby', alert.id)
+    expect(screen.queryByText('Unsupported network')).toBeNull()
   })
 
   it('announces the error exactly once when composed with FormField', () => {

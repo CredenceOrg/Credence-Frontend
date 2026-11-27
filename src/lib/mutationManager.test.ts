@@ -31,9 +31,10 @@ describe('MutationManager', () => {
 
   describe('Basic mutation execution', () => {
     test('executes mutation and returns result', async () => {
-      const result = await manager.mutate(async () => 'success', {
-        key: createIdempotencyKey('/test', 'POST'),
-      })
+      const result = await manager.mutate(
+        async () => 'success',
+        { key: createIdempotencyKey('/test', 'POST') }
+      )
 
       expect(result.data).toBe('success')
       expect(result.error).toBeNull()
@@ -390,14 +391,10 @@ describe('MutationManager', () => {
     const abortableWait = (ms: number, signal?: AbortSignal): Promise<void> => {
       return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(resolve, ms)
-        signal?.addEventListener(
-          'abort',
-          () => {
-            clearTimeout(timeoutId)
-            reject(new DOMException('Aborted', 'AbortError'))
-          },
-          { once: true }
-        )
+        signal?.addEventListener('abort', () => {
+          clearTimeout(timeoutId)
+          reject(new DOMException('Aborted', 'AbortError'))
+        }, { once: true })
       })
     }
 
@@ -485,7 +482,9 @@ describe('MutationManager', () => {
       }
 
       // Fire 50 concurrent identical mutations
-      const promises = Array.from({ length: 50 }, () => manager.mutate(mutation, { key }))
+      const promises = Array.from({ length: 50 }, () =>
+        manager.mutate(mutation, { key })
+      )
 
       const results = await Promise.all(promises)
 
@@ -529,15 +528,9 @@ describe('MutationManager', () => {
 
       const results = await Promise.all([
         manager.mutate(async () => 'success', { key: key1 }),
-        manager.mutate(
-          async () => {
-            throw new Error('Network error')
-          },
-          {
-            key: key2,
-            retryConfig: { maxRetries: 0, initialDelayMs: 10, maxDelayMs: 100, jitterFactor: 0 },
-          }
-        ),
+        manager.mutate(async () => {
+          throw new Error('Network error')
+        }, { key: key2, retryConfig: { maxRetries: 0, initialDelayMs: 10, maxDelayMs: 100, jitterFactor: 0 } }),
       ])
 
       expect(results[0].data).toBe('success')
@@ -625,10 +618,7 @@ describe('MutationManager', () => {
         async () => {
           throw new Error('Network request failed')
         },
-        {
-          key,
-          retryConfig: { maxRetries: 0, initialDelayMs: 10, maxDelayMs: 100, jitterFactor: 0 },
-        }
+        { key, retryConfig: { maxRetries: 0, initialDelayMs: 10, maxDelayMs: 100, jitterFactor: 0 } }
       )
 
       expect(result.errorCategory).toBe('network')
@@ -643,10 +633,7 @@ describe('MutationManager', () => {
         async () => {
           throw error
         },
-        {
-          key,
-          retryConfig: { maxRetries: 0, initialDelayMs: 10, maxDelayMs: 100, jitterFactor: 0 },
-        }
+        { key, retryConfig: { maxRetries: 0, initialDelayMs: 10, maxDelayMs: 100, jitterFactor: 0 } }
       )
 
       expect(result.isTransient).toBe(false)

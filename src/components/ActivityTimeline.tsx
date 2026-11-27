@@ -139,14 +139,21 @@ export default function ActivityTimeline({
       </header>
 
       {count === 0 ? (
-        <EmptyState illustration="activity" title={emptyTitle} description={emptyDescription} />
+        <EmptyState
+          illustration="activity"
+          title={emptyTitle}
+          description={emptyDescription}
+        />
       ) : (
         <ul className="activity-timeline" aria-label="Recent timeline events">
           {items.map((item) => {
             const isExpanded = expandedId === item.id
             const panelId = `details-${item.id}`
             const buttonId = `trigger-${item.id}`
-            const rowClassName = ['activity-row', onSelect ? 'activity-row--selectable' : '']
+            const rowClassName = [
+              'activity-row',
+              onSelect ? 'activity-row--selectable' : '',
+            ]
               .filter(Boolean)
               .join(' ')
             const disclosureLabel = onSelect
@@ -232,12 +239,7 @@ export default function ActivityTimeline({
                   </button>
 
                   {isExpanded && (
-                    <div
-                      id={panelId}
-                      className="activity-row__detail-panel"
-                      role="region"
-                      aria-label="Details"
-                    >
+                    <div id={panelId} className="activity-row__detail-panel" role="region" aria-label="Details">
                       <p className="activity-row__actor">
                         <strong>Actor:</strong> {item.actor}
                       </p>

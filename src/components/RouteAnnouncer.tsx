@@ -44,7 +44,7 @@ export const UNKNOWN_ROUTE_LABEL = 'Page Not Found'
  */
 export function resolvePageLabel(
   pathname?: string | null | unknown,
-  registry: Record<string, string> = ROUTE_LABELS
+  registry: Record<string, string> = ROUTE_LABELS,
 ): string {
   if (typeof pathname !== 'string' || !pathname.trim()) {
     return UNKNOWN_ROUTE_LABEL

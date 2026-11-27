@@ -68,6 +68,10 @@ export default function NotFound() {
           hideHeading
           ariaLabel="Page not found"
           icon={MAGNIFIER_ICON}
+          action={{
+            label: 'Back to home',
+            onClick: () => navigate('/'),
+          }}
         />
       </div>
 

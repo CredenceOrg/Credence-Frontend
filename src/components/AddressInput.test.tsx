@@ -352,7 +352,9 @@ describe('echo display respects addressDisplay setting', () => {
   it('shows friendly address when addressDisplay is "friendly"', async () => {
     const text = await renderAndTriggerEcho('friendly')
     // formatAddressForDisplay falls back to truncated form until on-chain names exist
-    expect(text).toBe(`${VALID_KEY.substring(0, 6)}…${VALID_KEY.substring(VALID_KEY.length - 4)}`)
+    expect(text).toBe(
+      `${VALID_KEY.substring(0, 6)}…${VALID_KEY.substring(VALID_KEY.length - 4)}`
+    )
   })
 
   it('re-renders echo when addressDisplay setting changes', async () => {

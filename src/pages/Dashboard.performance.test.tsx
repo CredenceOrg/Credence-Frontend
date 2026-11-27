@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import ToastProvider from '../components/ToastProvider'
 import Dashboard from './Dashboard'
 
 let mockConnected = true
@@ -59,9 +58,7 @@ vi.mock('../context/WalletContext', () => ({
 function renderDashboard() {
   return render(
     <MemoryRouter>
-      <ToastProvider>
-        <Dashboard />
-      </ToastProvider>
+      <Dashboard />
     </MemoryRouter>
   )
 }

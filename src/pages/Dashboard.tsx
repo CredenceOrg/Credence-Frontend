@@ -29,26 +29,22 @@ import './Dashboard.css'
 const onboardingSteps = [
   {
     title: 'Welcome to your dashboard',
-    description:
-      'Start with the trust score overview to see how your on-chain reputation is trending.',
+    description: 'Start with the trust score overview to see how your on-chain reputation is trending.',
     target: 'trust-score',
   },
   {
     title: 'Review active bonds',
-    description:
-      'Track the bonds you already have on the books and the next unlocks from the summary card.',
+    description: 'Track the bonds you already have on the books and the next unlocks from the summary card.',
     target: 'active-bonds',
   },
   {
     title: 'Monitor recent activity',
-    description:
-      'Follow the latest attestations and protocol updates to stay current with your account.',
+    description: 'Follow the latest attestations and protocol updates to stay current with your account.',
     target: 'recent-activity',
   },
   {
     title: 'Jump to key workflows',
-    description:
-      'Use the shortcuts section to move quickly into bond creation, trust review, or attestations.',
+    description: 'Use the shortcuts section to move quickly into bond creation, trust review, or attestations.',
     target: 'shortcuts',
   },
 ] as const
@@ -168,11 +164,7 @@ export default function Dashboard() {
     }
 
     return (
-      <div
-        className="dashboard__widgetControls"
-        role="group"
-        aria-label={`${title} widget controls`}
-      >
+      <div className="dashboard__widgetControls" role="group" aria-label={`${title} widget controls`}>
         <PinWidgetButton
           slug={slug}
           widgetTitle={title}
@@ -381,7 +373,9 @@ export default function Dashboard() {
       <header className="dashboard__header">
         <div>
           <h1 className="dashboard__title">{t('dashboard.title')}</h1>
-          <p className="dashboard__description">{t('dashboard.description')}</p>
+          <p className="dashboard__description">
+            {t('dashboard.description')}
+          </p>
         </div>
         {connected && address && (
           <div className="dashboard__wallet" aria-label="Connected wallet">
@@ -434,9 +428,7 @@ export default function Dashboard() {
                   {onboardingStep + 1}/{onboardingSteps.length}
                 </span>
               </div>
-              <p className="dashboard__onboardingDescription">
-                {currentOnboardingStep.description}
-              </p>
+              <p className="dashboard__onboardingDescription">{currentOnboardingStep.description}</p>
               <div className="dashboard__onboardingActions">
                 <Button type="button" variant="ghost" onClick={skipOnboarding}>
                   Skip tour

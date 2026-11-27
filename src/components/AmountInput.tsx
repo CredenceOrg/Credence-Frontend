@@ -58,7 +58,12 @@ export type MaxState = 'idle' | 'loading' | 'error' | 'stale' | 'permission'
  * is enough to make a failure diagnosable (assertable in tests, readable in the
  * DOM as `data-max-error-reason`) without leaking anything.
  */
-export type MaxErrorReason = 'network' | 'permission' | 'stale' | 'invalid_payload' | 'unknown'
+export type MaxErrorReason =
+  | 'network'
+  | 'permission'
+  | 'stale'
+  | 'invalid_payload'
+  | 'unknown'
 
 /** Error name/code used by upstream callers to signal "you may not read max". */
 const PERMISSION_CODES = new Set(['PERMISSION_DENIED'])
@@ -338,12 +343,11 @@ export default function AmountInput({
   }
 
   const isDisabled = disabled || isLoading
-  const isMaxDisabled = (!onMaxRequest && safeBalance <= 0) || isDisabled || maxState === 'loading'
+  const isMaxDisabled =
+    (!onMaxRequest && safeBalance <= 0) || isDisabled || maxState === 'loading'
 
   const showMaxError = maxState === 'error' || maxState === 'stale' || maxState === 'permission'
-  const maxErrorText = showMaxError
-    ? MAX_ERROR_COPY[maxState as 'error' | 'stale' | 'permission']
-    : ''
+  const maxErrorText = showMaxError ? MAX_ERROR_COPY[maxState as 'error' | 'stale' | 'permission'] : ''
 
   // Finite, non-negative, unique. Guards against `NaN`/`Infinity` chips writing
   // `"NaN"` into the field and against duplicate React keys (I6).
@@ -356,9 +360,7 @@ export default function AmountInput({
 
   // Merge any caller-supplied aria-describedby with our internal error id when we own the message.
   const describedBy =
-    [ariaDescribedBy, showInlineError ? errorId : undefined, showMaxError ? maxErrorId : undefined]
-      .filter(Boolean)
-      .join(' ') || undefined
+    [ariaDescribedBy, showInlineError ? errorId : undefined, showMaxError ? maxErrorId : undefined].filter(Boolean).join(' ') || undefined
 
   return (
     <div
@@ -430,7 +432,9 @@ export default function AmountInput({
 
       {showMaxError && (
         <div id={maxErrorId} className="amountInput__maxErrorBox" role="alert">
-          <span className="amountInput__errorText">{maxErrorText}</span>
+          <span className="amountInput__errorText">
+            {maxErrorText}
+          </span>
           <button
             type="button"
             onClick={handleMax}

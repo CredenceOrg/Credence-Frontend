@@ -178,12 +178,7 @@ describe('FormField Stories — recovery and state transitions (no user data los
 
     // Hint + error → success (recovery): alert gone, status announced, value intact.
     rerender(
-      <FormField
-        id="boundary-field"
-        label="Amount"
-        hint="Enter XLM amount"
-        success="Amount accepted"
-      >
+      <FormField id="boundary-field" label="Amount" hint="Enter XLM amount" success="Amount accepted">
         <input data-testid="boundary-input" />
       </FormField>
     )

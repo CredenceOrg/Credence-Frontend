@@ -50,7 +50,11 @@ vi.mock('../lib/clearAppLocalStorage', () => ({
 vi.mock('./SettingsContext', () => ({ useSettings: () => h.state.settings }))
 vi.mock('../hooks/useWallet', () => ({ useWallet: () => h.state.wallet }))
 vi.mock('../hooks/useIdleTimeout', () => ({
-  useIdleTimeout: (opts: { timeoutMs: number; onIdle: () => void; onActivity?: () => void }) => {
+  useIdleTimeout: (opts: {
+    timeoutMs: number
+    onIdle: () => void
+    onActivity?: () => void
+  }) => {
     h.state.idle.push(opts)
   },
 }))

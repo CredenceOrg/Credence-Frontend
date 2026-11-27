@@ -42,7 +42,8 @@ const ALLOWED_PROTOCOLS = new Set(['https:', 'http:', 'mailto:'])
  * callers do not need a try/catch.
  */
 export type SafeOpenResult =
-  { ok: true; handle: WindowProxy | null } | { ok: false; error: SafeOpenError }
+  | { ok: true; handle: WindowProxy | null }
+  | { ok: false; error: SafeOpenError }
 
 /**
  * Typed error describing why a URL was rejected.
@@ -52,7 +53,8 @@ export type SafeOpenResult =
  * - `'invalid_url'` — the string could not be parsed as a URL at all.
  */
 export type SafeOpenError =
-  { kind: 'blocked_protocol'; url: string; protocol: string } | { kind: 'invalid_url'; url: string }
+  | { kind: 'blocked_protocol'; url: string; protocol: string }
+  | { kind: 'invalid_url'; url: string }
 
 /**
  * Safely opens `url` in a new browser tab.

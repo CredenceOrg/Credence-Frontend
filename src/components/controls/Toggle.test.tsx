@@ -112,7 +112,9 @@ describe('Toggle', () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
 
-    render(<Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" disabled />)
+    render(
+      <Toggle checked={false} onChange={handleChange} ariaLabel="Enable toasts" disabled />
+    )
 
     const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
     expect(toggle).toBeDisabled()
@@ -156,19 +158,8 @@ describe('Toggle', () => {
 
     const toggle = screen.getByRole('switch', { name: 'Enable toasts' })
 
-    let caughtError: Error | null = null
-    const onWindowError = (event: ErrorEvent) => {
-      event.preventDefault()
-      caughtError = event.error as Error
-    }
-    window.addEventListener('error', onWindowError)
-    try {
-      await user.click(toggle)
-    } finally {
-      window.removeEventListener('error', onWindowError)
-    }
+    await expect(user.click(toggle)).rejects.toThrow('persistence failed')
 
-    expect(caughtError?.message).toBe('persistence failed')
     expect(handleChange).toHaveBeenCalledTimes(1)
     expect(toggle).not.toBeChecked()
   })
@@ -186,7 +177,9 @@ describe('Toggle', () => {
     await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
     expect(handleChange).toHaveBeenNthCalledWith(1, true)
 
-    rerender(<Toggle checked onChange={handleChange} ariaLabel="Enable toasts" />)
+    rerender(
+      <Toggle checked onChange={handleChange} ariaLabel="Enable toasts" />
+    )
 
     await user.click(screen.getByRole('switch', { name: 'Enable toasts' }))
     expect(handleChange).toHaveBeenNthCalledWith(2, false)

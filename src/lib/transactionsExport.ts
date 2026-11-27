@@ -63,21 +63,7 @@ function expandScientificNotation(value: string): string {
 }
 
 function stripControlCharacters(value: string): string {
-  let result = ''
-  for (let i = 0; i < value.length; i++) {
-    const code = value.charCodeAt(i)
-    if (
-      (code >= 0x00 && code <= 0x08) ||
-      code === 0x0b ||
-      code === 0x0c ||
-      (code >= 0x0e && code <= 0x1f) ||
-      code === 0x7f
-    ) {
-      continue
-    }
-    result += value[i]
-  }
-  return result
+  return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
 }
 
 function neutralizeFormula(value: string): string {

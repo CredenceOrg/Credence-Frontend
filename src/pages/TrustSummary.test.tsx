@@ -137,7 +137,9 @@ describe('TrustSummary', () => {
   })
 
   it('requests the new address when the query param changes', async () => {
-    apiFetchMock.mockImplementation(async (path) => (path.includes(ADDRESS_A) ? scoreA : scoreB))
+    apiFetchMock.mockImplementation(async (path) =>
+      path.includes(ADDRESS_A) ? scoreA : scoreB
+    )
 
     renderPage(`/trust/summary?address=${ADDRESS_A}`)
 
@@ -157,7 +159,7 @@ describe('TrustSummary', () => {
     expect(shownAddress()).toBe(ADDRESS_B)
   })
 
-  it("never shows one address next to another address's score", async () => {
+  it('never shows one address next to another address\'s score', async () => {
     const pendingB = deferred<unknown>()
     apiFetchMock.mockImplementation(async (path) =>
       path.includes(ADDRESS_A) ? scoreA : pendingB.promise

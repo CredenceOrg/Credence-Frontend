@@ -117,7 +117,7 @@ describe('ActionCard', () => {
     await user.click(screen.getByRole('button', { name: 'Copy link to this card' }))
 
     expect(mockCopy).toHaveBeenCalledTimes(1)
-    expect(mockAddToast).toHaveBeenCalledWith('danger', 'Unable to copy link')
+    expect(mockAddToast).toHaveBeenCalledWith('error', 'Unable to copy link')
     expect(onCopyError).toHaveBeenCalledOnce()
   })
 
@@ -139,7 +139,7 @@ describe('ActionCard', () => {
 
     await user.click(screen.getByRole('button', { name: 'Copy link to this card' }))
 
-    expect(mockAddToast).toHaveBeenCalledWith('danger', 'Unable to copy link')
+    expect(mockAddToast).toHaveBeenCalledWith('error', 'Unable to copy link')
     expect(onCopyError).toHaveBeenCalledWith(failure)
   })
 
@@ -175,7 +175,7 @@ describe('ActionCard', () => {
         Content
       </ActionCard>
     )
-    expect(screen.getByText('Beta')).toBeInTheDocument()
+    expect(screen.getByText('BETA')).toBeInTheDocument()
   })
 
   it('renders close button when onDismiss is provided', async () => {
@@ -250,7 +250,11 @@ describe('ActionCard', () => {
     })
 
     it('ignores touch events if onDismiss is not provided', () => {
-      const { container } = render(<ActionCard title="Test">Content</ActionCard>)
+      const { container } = render(
+        <ActionCard title="Test">
+          Content
+        </ActionCard>
+      )
       const article = container.querySelector('article')!
       fireEvent.touchStart(article, { touches: [{ clientX: 0 }] })
       fireEvent.touchMove(article, { touches: [{ clientX: 200 }] })

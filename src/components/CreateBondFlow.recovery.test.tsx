@@ -203,7 +203,9 @@ describe('CreateBondFlow boundary and recovery', () => {
     funding = { ...funding, status: 'ready' }
     view.rerender(<CreateBondFlow />)
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: /Step 2/ })).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /Step 2/ })).toBeInTheDocument()
+    )
   })
 
   it.each([

@@ -6,7 +6,9 @@ export interface SmartBackLocationState {
 }
 
 export type SmartBackResult =
-  { type: 'state'; path: string } | { type: 'history' } | { type: 'fallback'; path: string }
+  | { type: 'state'; path: string }
+  | { type: 'history' }
+  | { type: 'fallback'; path: string }
 
 /**
  * Resolves the destination for smart-back navigation.

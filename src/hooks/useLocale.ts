@@ -71,6 +71,7 @@ export function useLocale(): UseLocaleResult {
   // i18next is pointing at the right language. This handles the case where
   // a persisted non-English locale was read from localStorage but the bundle
   // has not been imported yet.
+  useEffect(() => {
     if (locale === 'en') {
       if (i18n.language !== 'en') {
         void i18n.changeLanguage('en')
@@ -107,3 +108,4 @@ export function useLocale(): UseLocaleResult {
     }
   }, [locale])
   return { locale, setLocale, isLoading }
+}

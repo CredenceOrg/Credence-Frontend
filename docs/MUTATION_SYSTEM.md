@@ -11,7 +11,6 @@ The mutation system provides production-grade concurrency safety for asynchronou
 The core engine providing concurrent request safety, idempotency, retry with exponential backoff, and event-driven observability.
 
 **Key Guarantees:**
-
 - **Deduplication**: Identical concurrent mutations (same idempotency key) execute only once
 - **Versioning**: Sequential executions maintain version history for stale result detection
 - **Retry**: Automatic retry with exponential backoff for transient errors
@@ -23,14 +22,11 @@ The core engine providing concurrent request safety, idempotency, retry with exp
 ```typescript
 class MutationManager<T> {
   // Execute a mutation with optional retry and cancellation
-  mutate(
-    asyncFn: () => Promise<T>,
-    options: {
-      key: IdempotencyKey
-      signal?: AbortSignal
-      retryConfig?: RetryConfig
-    }
-  ): Promise<MutationResult<T>>
+  mutate(asyncFn: () => Promise<T>, options: {
+    key: IdempotencyKey
+    signal?: AbortSignal
+    retryConfig?: RetryConfig
+  }): Promise<MutationResult<T>>
 
   // Get the latest result for a key
   getLatestResult(key: IdempotencyKey): MutationResult<T> | null
@@ -53,39 +49,25 @@ class MutationManager<T> {
 
 ```typescript
 interface MutationResult<T> {
-  data: T | null // Operation result (null if failed)
-  error: Error | null // Error object (null if succeeded)
-  errorCategory: ErrorCategory // 'network' | 'rateLimit' | 'validation' | 'authorization' | 'server' | 'unknown'
-  attempts: number // Number of execution attempts (including retries)
-  isTransient: boolean // Whether error is transient and retryable
-  isRetry: boolean // Whether this result came from a retry
-  idempotencyKey: IdempotencyKey // The key used for this operation
-  version: number // Execution version (incremented on new execution)
+  data: T | null           // Operation result (null if failed)
+  error: Error | null      // Error object (null if succeeded)
+  errorCategory: ErrorCategory  // 'network' | 'rateLimit' | 'validation' | 'authorization' | 'server' | 'unknown'
+  attempts: number         // Number of execution attempts (including retries)
+  isTransient: boolean     // Whether error is transient and retryable
+  isRetry: boolean         // Whether this result came from a retry
+  idempotencyKey: IdempotencyKey  // The key used for this operation
+  version: number          // Execution version (incremented on new execution)
 }
 ```
 
 **Event Types:**
 
 ```typescript
-type MutationEvent<T> =
+type MutationEvent<T> = 
   | { type: 'started'; key: IdempotencyKey; version: number; timestamp: number }
-  | {
-      type: 'retrying'
-      key: IdempotencyKey
-      version: number
-      attempt: number
-      nextRetryDelayMs: number
-      timestamp: number
-    }
+  | { type: 'retrying'; key: IdempotencyKey; version: number; attempt: number; nextRetryDelayMs: number; timestamp: number }
   | { type: 'succeeded'; key: IdempotencyKey; version: number; result: T; timestamp: number }
-  | {
-      type: 'failed'
-      key: IdempotencyKey
-      version: number
-      error: Error
-      isTransient: boolean
-      timestamp: number
-    }
+  | { type: 'failed'; key: IdempotencyKey; version: number; error: Error; isTransient: boolean; timestamp: number }
 ```
 
 ### 2. useMutation Hook (`src/hooks/useMutation.ts`)
@@ -113,7 +95,6 @@ const {
 ```
 
 **Key Features:**
-
 - Automatic lifecycle management with component unmounting
 - AbortSignal support for cancellation
 - Global deduplication across component instances
@@ -139,7 +120,6 @@ function getGlobalMutationManager(): MutationManager<unknown>
 ```
 
 This ensures:
-
 - Single execution per key across all component instances
 - Shared state and event listeners
 - Consistent behavior regardless of where mutations are initiated
@@ -170,7 +150,6 @@ Default max retries: 3
 ```
 
 **Transient Error Detection:**
-
 - Network errors: `/network|econnrefused/i`
 - Rate limit errors: `/rate|throttle|quota/i`
 - Server errors: `/5\d\d/` (HTTP 5xx status codes)
@@ -180,17 +159,14 @@ Non-transient errors (validation, authorization) fail immediately without retry.
 ## Race Safety Guarantees
 
 ### Guarantee 1: Deduplication
-
 **Invariant**: No two concurrent identical mutations execute their async function.
 
-**Mechanism**:
-
+**Mechanism**: 
 - Map-based request state tracking with IdempotencyKey
 - Concurrent requests with same key share a single Promise
 - ExecutionCount tracked to verify single execution
 
-**Proof**:
-
+**Proof**: 
 ```
 Test: 50 concurrent identical mutations
 Expected: executionCount === 1
@@ -198,17 +174,14 @@ Verified: ✓ Test passing
 ```
 
 ### Guarantee 2: Idempotency
-
 **Invariant**: Identical mutations can be safely retried without duplicate side effects.
 
 **Mechanism**:
-
 - Deterministic idempotency key generation
 - Sequential requests with same key execute independently
 - Each execution gets versioned result
 
 **Proof**:
-
 ```
 Test: Sequential identical mutations (A, A, A)
 Expected: 3 independent executions, 3 versions (1, 2, 3)
@@ -216,11 +189,9 @@ Verified: ✓ Test passing
 ```
 
 ### Guarantee 3: No Stale Overwrites
-
 **Invariant**: Later results never overwritten by stale earlier results.
 
 **Mechanism**:
-
 - Version tracking per request state
 - Each new execution increments version
 - Result timestamping for ordering
@@ -228,17 +199,14 @@ Verified: ✓ Test passing
 **Design**: Stale result detection implemented but doesn't block; reserved for future use case.
 
 ### Guarantee 4: Transient Error Retry
-
 **Invariant**: Transient errors automatically retry with exponential backoff.
 
 **Mechanism**:
-
 - Pattern-based error categorization
 - Exponential backoff with jitter (prevents thundering herd)
 - MaxRetries respected (default 3)
 
 **Proof**:
-
 ```
 Test: Mutation fails with transient error on attempts 1-2, succeeds on 3
 Expected: Automatic retry, final success, attempts === 3
@@ -246,17 +214,14 @@ Verified: ✓ Test passing
 ```
 
 ### Guarantee 5: Immediate Non-Transient Failure
-
 **Invariant**: Non-transient errors (validation, authorization) fail immediately without retry.
 
 **Mechanism**:
-
 - Error categorization by pattern
 - Non-transient errors throw immediately
 - Application layer handles specific categories
 
 **Proof**:
-
 ```
 Test: Validation error
 Expected: Immediate failure, no retry, attempts === 1
@@ -264,18 +229,15 @@ Verified: ✓ Test passing
 ```
 
 ### Guarantee 6: Cancellation Safety
-
 **Invariant**: AbortSignal cancellation is always respected and never throws.
 
 **Mechanism**:
-
 - AbortSignal combined from user + internal controller
 - Signal checked before and during operations
 - AbortError caught and handled gracefully
 - No state updates after unmount (via isMountedRef)
 
 **Proof**:
-
 ```
 Test: Cancel in-flight mutation
 Expected: Operation aborted, no state corruption
@@ -285,12 +247,11 @@ Verified: ✓ Test passing
 ## Concurrency Safety Proof
 
 ### Test Scenario 1: High Concurrency
-
 ```typescript
 // 50 concurrent identical mutations
-const promises = Array(50)
-  .fill(null)
-  .map(() => manager.mutate(() => mockCreateBond(), { key: bondKey }))
+const promises = Array(50).fill(null).map(() =>
+  manager.mutate(() => mockCreateBond(), { key: bondKey })
+)
 const results = await Promise.all(promises)
 
 // Expected: executionCount === 1, all 50 awaited same promise
@@ -298,7 +259,6 @@ const results = await Promise.all(promises)
 ```
 
 ### Test Scenario 2: Interleaved Concurrent
-
 ```typescript
 // Request A (key=X) → executing
 // Request B (key=Y) → executing (independent)
@@ -309,7 +269,6 @@ const results = await Promise.all(promises)
 ```
 
 ### Test Scenario 3: Retry After Failure
-
 ```typescript
 // First execution fails with transient error
 // Automatic retry happens
@@ -322,26 +281,29 @@ const results = await Promise.all(promises)
 ## Integration Test Coverage
 
 ### Bond Mutations
-
 - ✓ Create bond with deduplication (concurrent identical)
 - ✓ Withdraw bond with idempotency (sequential identical)
 - ✓ Concurrent bond and withdrawal (different keys)
 - ✓ High concurrency (50 concurrent creates)
 
 ### Trust Score Mutations
-
 - ✓ Update trust score with idempotency
 - ✓ Concurrent updates
 - ✓ Event emission verification
+- ✓ Freshness cache: repeated `lookupTrustScore(address)` calls within
+  `QUERY_CACHE_TTLS.TRUST_SCORE_FRESHNESS_MS` (default 5 min, overridable
+  via `VITE_QUERY_CACHE_TRUST_SCORE_FRESHNESS_MS`) reuse the last
+  successful result (`fromCache: true`). Failed, pending or stale
+  entries always trigger a fresh lookup; address matching is
+  case-insensitive. See `src/lib/trustScoreMutations.ts` →
+  `checkExistingTrustScoreOperation`.
 
 ### Error Recovery
-
 - ✓ Transient error auto-retry
 - ✓ Non-transient error immediate failure
 - ✓ Network failure recovery
 
 ### Observability
-
 - ✓ Event emission on lifecycle
 - ✓ Error categorization for UI routing
 - ✓ Attempt tracking
@@ -410,13 +372,15 @@ function BondComponent() {
 const { mutate } = useMutation<TrustScoreUpdate>()
 
 // Key auto-generated from function signature
-await mutate(async () => {
-  const response = await fetch('/api/trust-score', {
-    method: 'POST',
-    body: JSON.stringify({ address, newScore }),
-  })
-  return response.json()
-})
+await mutate(
+  async () => {
+    const response = await fetch('/api/trust-score', {
+      method: 'POST',
+      body: JSON.stringify({ address, newScore }),
+    })
+    return response.json()
+  }
+)
 ```
 
 ### With Cancellation
@@ -426,14 +390,16 @@ const { mutate, isLoading } = useMutation<Bond>()
 const abortController = new AbortController()
 
 const handleCreateBond = async (amount: number) => {
-  await mutate(async () => {
-    const response = await fetch('/api/bonds', {
-      method: 'POST',
-      signal: abortController.signal,
-      body: JSON.stringify({ amount }),
-    })
-    return response.json()
-  })
+  await mutate(
+    async () => {
+      const response = await fetch('/api/bonds', {
+        method: 'POST',
+        signal: abortController.signal,
+        body: JSON.stringify({ amount }),
+      })
+      return response.json()
+    }
+  )
 }
 
 // Later: cancel in-flight request
@@ -471,19 +437,16 @@ unsubscribe()
 ## Performance Characteristics
 
 ### Memory
-
 - Per-mutation overhead: ~1KB (RequestState + Map entry)
 - Event listeners: ~500 bytes each
 - No accumulation: Completed results are kept in latest state only
 
 ### CPU
-
 - Deduplication lookup: O(1) hash table
 - Version comparison: O(1) integer
 - Error categorization: O(n) pattern matching (5-10 patterns)
 
 ### Network
-
 - No additional requests: Uses existing API calls
 - Idempotency key size: ~32 bytes (SHA-256 hex)
 - Retry delays: Exponential backoff prevents thundering herd
@@ -494,11 +457,11 @@ unsubscribe()
 
 ```typescript
 interface RetryConfig {
-  maxRetries?: number // Default: 3
-  initialDelayMs?: number // Default: 500
-  maxDelayMs?: number // Default: 10000
-  backoffMultiplier?: number // Default: 2
-  jitterFraction?: number // Default: 0.1 (10%)
+  maxRetries?: number           // Default: 3
+  initialDelayMs?: number       // Default: 500
+  maxDelayMs?: number           // Default: 10000
+  backoffMultiplier?: number    // Default: 2
+  jitterFraction?: number       // Default: 0.1 (10%)
 }
 ```
 
@@ -507,14 +470,17 @@ interface RetryConfig {
 ```typescript
 const { mutate } = useMutation<Bond>()
 
-await mutate(async () => fetchBond(), {
-  idempotencyKey,
-  retryConfig: {
-    maxRetries: 5,
-    initialDelayMs: 1000,
-    maxDelayMs: 30000,
-  },
-})
+await mutate(
+  async () => fetchBond(),
+  {
+    idempotencyKey,
+    retryConfig: {
+      maxRetries: 5,
+      initialDelayMs: 1000,
+      maxDelayMs: 30000,
+    }
+  }
+)
 ```
 
 ## Limitations and Known Issues
@@ -560,25 +526,21 @@ npm test -- src/lib/mutationManager.test.ts src/__tests__/mutations.integration.
 ## Security Considerations
 
 ### Idempotency Key Privacy
-
 - Keys are derived from request parameters (deterministic)
 - Keys should not leak sensitive data in logs
 - Consider hashing in security-critical contexts
 
 ### Error Information Leakage
-
 - Errors are categorized to prevent exposing server details
 - Sensitive error messages should be filtered before display
 - Logs should sanitize error content
 
 ### Retry Timing
-
 - Exponential backoff prevents abuse/DOS
 - Max retries limit prevents resource exhaustion
 - Jitter prevents thundering herd
 
 ### Cancellation Safety
-
 - AbortSignal prevents resource leaks
 - Component unmount cleanup prevents memory leaks
 - No state mutations after abort
@@ -588,7 +550,6 @@ npm test -- src/lib/mutationManager.test.ts src/__tests__/mutations.integration.
 ### From Manual Retry/Error Handling
 
 **Before:**
-
 ```typescript
 const [isLoading, setIsLoading] = useState(false)
 const [error, setError] = useState(null)
@@ -609,7 +570,7 @@ const handleCreateBond = async (amount: number) => {
         return bond
       } catch (error) {
         lastError = error
-        if (attempt < 2) await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)))
+        if (attempt < 2) await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)))
       }
     }
     throw lastError
@@ -621,7 +582,6 @@ const handleCreateBond = async (amount: number) => {
 ```
 
 **After:**
-
 ```typescript
 const { mutate, isLoading, error, data } = useMutation<Bond>()
 
@@ -647,11 +607,11 @@ const idempotencyKey = createIdempotencyKey('/bonds', 'POST', { amount })
 // Server-side
 app.post('/api/bonds', (req, res) => {
   const key = req.headers['x-idempotency-key']
-
+  
   // Check if request was already processed
   const existing = requestCache.get(key)
   if (existing) return res.json(existing)
-
+  
   // Process new request
   const bond = createBond(req.body)
   requestCache.set(key, bond)

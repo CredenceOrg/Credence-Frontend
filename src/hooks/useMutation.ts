@@ -194,11 +194,14 @@ export function useMutation<T = unknown>(
 
       try {
         // Execute mutation through the global manager
-        const result = await manager.mutate((signal) => mutationFn(signal), {
-          key,
-          signal: controller.signal,
-          retryConfig: options.retryConfig,
-        })
+        const result = await manager.mutate(
+          (signal) => mutationFn(signal),
+          {
+            key,
+            signal: controller.signal,
+            retryConfig: options.retryConfig,
+          }
+        )
 
         // Update state only if component is still mounted
         if (!isMountedRef.current) {

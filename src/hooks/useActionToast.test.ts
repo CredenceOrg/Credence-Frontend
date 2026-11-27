@@ -89,11 +89,7 @@ describe('useActionToast', () => {
 
     expect(mockAddToast).toHaveBeenCalledTimes(actions.length)
     actions.forEach((action, index) => {
-      expect(mockAddToast).toHaveBeenNthCalledWith(
-        index + 1,
-        'success',
-        ACTION_TOASTS[action].success
-      )
+      expect(mockAddToast).toHaveBeenNthCalledWith(index + 1, 'success', ACTION_TOASTS[action].success)
     })
   })
 
@@ -118,9 +114,9 @@ describe('useActionToast', () => {
     const thunk = vi.fn(async () => 'must not run')
 
     await act(async () => {
-      await expect(result.current.withToast('archive' as ToastAction, thunk)).rejects.toThrow(
-        'Unsupported action toast type.'
-      )
+      await expect(
+        result.current.withToast('archive' as ToastAction, thunk)
+      ).rejects.toThrow('Unsupported action toast type.')
     })
 
     expect(thunk).not.toHaveBeenCalled()

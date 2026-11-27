@@ -148,10 +148,9 @@ describe('SessionTimeoutDialog', () => {
     it('clears the countdown interval when unmounted', () => {
       const { unmount } = renderModal({ timeLeftSeconds: 5 })
 
-      const timersBeforeUnmount = vi.getTimerCount()
-      expect(timersBeforeUnmount).toBeGreaterThanOrEqual(1)
+      expect(vi.getTimerCount()).toBe(1)
       unmount()
-      expect(vi.getTimerCount()).toBe(timersBeforeUnmount - 1)
+      expect(vi.getTimerCount()).toBe(0)
     })
 
     it('stops counting down once closed', () => {
@@ -181,8 +180,7 @@ describe('SessionTimeoutDialog', () => {
   describe('recovery and concurrency', () => {
     it('shows a safe retry after renewal failure and preserves the confirmation phrase', async () => {
       const user = userEvent.setup()
-      const onStayLoggedIn = vi
-        .fn()
+      const onStayLoggedIn = vi.fn()
         .mockRejectedValueOnce(new Error('access_token=secret permission denied'))
         .mockResolvedValueOnce(undefined)
       renderModal({ onStayLoggedIn })
@@ -297,10 +295,9 @@ describe('SessionTimeoutDialog', () => {
     it('shows loading and prevents concurrent session extension attempts', async () => {
       let resolveExtension!: () => void
       const onStayLoggedIn = vi.fn(
-        () =>
-          new Promise<void>((resolve) => {
-            resolveExtension = resolve
-          })
+        () => new Promise<void>((resolve) => {
+          resolveExtension = resolve
+        })
       )
       const user = userEvent.setup()
       renderModal({ onStayLoggedIn })

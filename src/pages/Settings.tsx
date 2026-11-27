@@ -570,47 +570,44 @@ export default function Settings() {
     t,
   ])
 
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (!file) return
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
 
-      setImportFileName(file.name)
-      setImportError(null)
-      setImportPreview(null)
+    setImportFileName(file.name)
+    setImportError(null)
+    setImportPreview(null)
 
-      const reader = new FileReader()
-      reader.onload = (evt) => {
-        const text = evt.target?.result
-        if (typeof text !== 'string') {
-          setImportError(t('settings.backup.fileReadError'))
-          return
-        }
-
-        let parsed: unknown
-        try {
-          parsed = JSON.parse(text)
-        } catch {
-          setImportError(t('settings.backup.invalidJson'))
-          return
-        }
-
-        const result = validateAndNormalize(parsed)
-        if (!result.ok) {
-          setImportError(result.errors.join('; '))
-          return
-        }
-
-        setImportPreview(result.data)
-        setImportConfirmOpen(true)
-      }
-      reader.onerror = () => {
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const text = evt.target?.result
+      if (typeof text !== 'string') {
         setImportError(t('settings.backup.fileReadError'))
+        return
       }
-      reader.readAsText(file)
-    },
-    [t]
-  )
+
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(text)
+      } catch {
+        setImportError(t('settings.backup.invalidJson'))
+        return
+      }
+
+      const result = validateAndNormalize(parsed)
+      if (!result.ok) {
+        setImportError(result.errors.join('; '))
+        return
+      }
+
+      setImportPreview(result.data)
+      setImportConfirmOpen(true)
+    }
+    reader.onerror = () => {
+      setImportError(t('settings.backup.fileReadError'))
+    }
+    reader.readAsText(file)
+  }, [t])
 
   const handleImportConfirm = useCallback(() => {
     if (!importPreview) return
@@ -746,7 +743,9 @@ export default function Settings() {
       {/* ── Network ─────────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="network-heading">
         <h2 id="network-heading">{t('settings.network.heading')}</h2>
-        <p className="settings-section__description">{t('settings.network.description')}</p>
+        <p className="settings-section__description">
+          {t('settings.network.description')}
+        </p>
 
         <FormField
           id="network-select"
@@ -767,7 +766,9 @@ export default function Settings() {
       {/* ── Display ─────────────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="display-heading">
         <h2 id="display-heading">{t('settings.display.heading')}</h2>
-        <p className="settings-section__description">{t('settings.display.description')}</p>
+        <p className="settings-section__description">
+          {t('settings.display.description')}
+        </p>
 
         {/*
          * fieldset + legend provides a native grouping landmark for the three
@@ -777,9 +778,7 @@ export default function Settings() {
          * expose ARIA radiogroup in browsing mode.
          */}
         <fieldset className="settings-fieldset">
-          <legend className="settings-fieldset__legend">
-            {t('settings.display.addressFormat')}
-          </legend>
+          <legend className="settings-fieldset__legend">{t('settings.display.addressFormat')}</legend>
           <SegmentedControl
             id="address-display"
             ariaLabel={t('settings.display.addressFormat')}
@@ -936,7 +935,9 @@ export default function Settings() {
       {/* ── Notifications ───────────────────────────────────────── */}
       <section className="settings-section" aria-labelledby="notifications-heading">
         <h2 id="notifications-heading">{t('settings.notifications.heading')}</h2>
-        <p className="settings-section__description">{t('settings.notifications.description')}</p>
+        <p className="settings-section__description">
+          {t('settings.notifications.description')}
+        </p>
 
         <FormField id="toasts-enabled" label={t('settings.notifications.enableToasts')}>
           <Toggle
@@ -976,10 +977,7 @@ export default function Settings() {
         </div>
 
         {/* Quiet Hours sub-section */}
-        <fieldset
-          className="settings-fieldset settings-fieldset--card"
-          aria-describedby="quiet-hours-desc"
-        >
+        <fieldset className="settings-fieldset settings-fieldset--card" aria-describedby="quiet-hours-desc">
           <legend className="settings-fieldset__legend settings-fieldset__legend--card">
             {t('settings.notifications.quietHours.heading')}
           </legend>
@@ -995,11 +993,7 @@ export default function Settings() {
             />
           </FormField>
 
-          <FormField
-            id="quiet-hours-start"
-            label={t('settings.notifications.quietHours.start')}
-            error={quietHoursError}
-          >
+          <FormField id="quiet-hours-start" label={t('settings.notifications.quietHours.start')} error={quietHoursError}>
             <Input
               compact
               value={draft.quietHoursStart}

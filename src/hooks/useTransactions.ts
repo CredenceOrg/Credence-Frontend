@@ -55,6 +55,8 @@ export interface FetchedPage {
 interface InFlightPage {
   controller: AbortController
   promise: Promise<FetchedPage | null>
+}
+
 /**
  * Fetch a single cursor page of transactions using the shared `PAGE_SIZE`
  * and active identity epoch. Reused by both `useTransactions` and full-history
@@ -118,11 +120,6 @@ export interface UseTransactionsResult {
   goToPage: (page: number) => Promise<void>
   /** Prefetch a page in the background (fires-and-forgets). */
   prefetchPage: (page: number) => Promise<void>
-}
-
-interface InFlightPage {
-  controller: AbortController
-  promise: Promise<FetchedPage | null>
 }
 
 export function useTransactions(): UseTransactionsResult {

@@ -14,7 +14,7 @@
  * @see {@link docs/risk-disclaimer.md} for the full risk/slashing policy.
  */
 
-import { Component, useMemo, useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import AmountInput from './AmountInput'
 import { FormField } from './forms/FormField'
 import Button from './Button'
@@ -139,48 +139,7 @@ const saveAuditLog = (records: BondAuditRecord[]): void => {
 // Divider used between review card sections
 // ---------------------------------------------------------------------------
 
-const ReviewDivider = () => (
-  <div role="separator" aria-hidden="true" className="createBondFlow__reviewDivider" />
-)
-
-export interface CreateBondFlowErrorBoundaryProps {
-  children: ReactNode
-  onReset?: () => void
-}
-
-interface CreateBondFlowErrorBoundaryState {
-  hasError: boolean
-}
-
-export class CreateBondFlowErrorBoundary extends Component<
-  CreateBondFlowErrorBoundaryProps,
-  CreateBondFlowErrorBoundaryState
-> {
-  state: CreateBondFlowErrorBoundaryState = { hasError: false }
-
-  static getDerivedStateFromError(): CreateBondFlowErrorBoundaryState {
-    return { hasError: true }
-  }
-
-  private handleReset = () => {
-    this.setState({ hasError: false })
-    this.props.onReset?.()
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div role="alert" className="createBondFlow__errorBoundary">
-          <p>Unexpected error occurred while rendering the bond flow.</p>
-          <button type="button" onClick={this.handleReset}>
-            Retry
-          </button>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
+const ReviewDivider = () => <div className="createBondFlow__reviewDivider" />
 
 /**
  * Emits a diagnostic when a wizard transition is refused because the wizard is
@@ -227,8 +186,6 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   const submittingRef = useRef(false)
   const mountedRef = useRef(true)
   const pendingNextRef = useRef(false)
-  const isConnectedRef = useRef(isConnected && Boolean(address))
-  isConnectedRef.current = isConnected && Boolean(address)
 
   /**
    * Latest committed wizard step, mirrored outside React state.
@@ -354,7 +311,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
   // Recheck funding at navigation and submission; a previously loaded balance
   // or connected wallet is not authorization for a later mutation.
   const validateFunding = (): string => {
-    if (!isConnected || !address) return 'Wallet disconnected. Reconnect your wallet and try again.'
+    if (!isConnected) return 'Wallet disconnected. Reconnect your wallet and try again.'
     if (isReauthRequired?.()) {
       void requestReauth().then((success) => {
         if (success && stepRef.current === BOND_FLOW_STEP_AMOUNT) {
@@ -528,15 +485,6 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
       recordAudit('BOND_CREATE_REQUESTED')
       const pending = onComplete?.()
       const result = pending ? await pending : undefined
-      if (!isConnectedRef.current) {
-        if (mountedRef.current) {
-          setConfirmError(
-            'Wallet disconnected during bond creation. Please reconnect and verify your bond status.'
-          )
-        }
-        recordAudit('BOND_CREATE_FAILED', 'WALLET_DISCONNECTED_DURING_SUBMISSION')
-        return
-      }
       recordAudit('BOND_CREATE_COMMITTED', undefined, result || undefined)
       try {
         if (mountedRef.current) addToast('success', 'Bond created successfully.')
@@ -545,15 +493,7 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
       }
       if (mountedRef.current) safeReset()
     } catch {
-      const errorMessage = 'Bond creation failed. Please try again.'
-      if (mountedRef.current) {
-        setConfirmError(errorMessage)
-        try {
-          addToast('danger', errorMessage)
-        } catch {
-          console.warn('[CreateBondFlow] Failure notification failed')
-        }
-      }
+      if (mountedRef.current) setConfirmError('Bond creation failed. Please try again.')
       recordAudit('BOND_CREATE_FAILED', 'MUTATION_FAILED')
     } finally {
       submittingRef.current = false
@@ -863,7 +803,6 @@ export default function CreateBondFlow({ onComplete, onCancel, onAudit }: Create
 
         {step < BOND_FLOW_MAX_STEP ? (
           <Button
-            key={`next-step-${step}`}
             type="button"
             onClick={handleNext}
             disabled={submitting}

@@ -33,22 +33,6 @@ export default function Attestations() {
   const { items, isLoading, error, isSubmitting, refetch, submitAttestation } = useAttestations()
   const [filterTone, setFilterTone] = useState<string>('all')
 
-    const newItem: ActivityItem = {
-      id: `evt-new-${items.length + 1}`,
-      timestamp: new Date().toISOString(),
-      title:
-        payload.type === ATTESTATION_EVENTS.TYPES.IDENTITY
-          ? t('activityTimeline.identityAttestation')
-          : payload.type === ATTESTATION_EVENTS.TYPES.PEER_VOUCH
-            ? t('activityTimeline.peerVouch')
-            : t('activityTimeline.credentialCertification'),
-      description: payload.evidence,
-      actor,
-      statusLabel: t('activityTimeline.submitted'),
-      tone: 'success',
-      meta: t('activityTimeline.subject', { subject: payload.subject.substring(0, 8) }),
-      ...(payload.evidenceHash ? { evidenceHash: payload.evidenceHash } : {}),
-      ...(payload.evidenceFile ? { evidenceFile: payload.evidenceFile } : {}),
   const handleSubmitSuccess = async (payload: AttestationPayload) => {
     const idempotencyKey = createAttestationIdempotencyKey()
     try {

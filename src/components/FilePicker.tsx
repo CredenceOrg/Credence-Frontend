@@ -171,8 +171,6 @@ function FilePickerInner({
         tabIndex={disabled ? -1 : 0}
         aria-disabled={disabled || undefined}
         aria-describedby={ariaDescribedBy}
-        aria-invalid={ariaInvalid}
-        aria-required={required || undefined}
         aria-labelledby={`${inputId}-label`}
         aria-controls={`${announceId} ${dragAnnounceId}`}
         aria-roledescription="file drop zone"

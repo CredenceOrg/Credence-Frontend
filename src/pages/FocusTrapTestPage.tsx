@@ -145,14 +145,13 @@ export default function FocusTrapTestPage() {
           <button onFocus={() => handleTrapElementFocus('Button 3')} style={{ margin: '0.5rem' }}>
             Button 3
           </button>
-          <a
-            href="#"
+          <button type="button"
             onClick={(e) => e.preventDefault()}
             onFocus={() => handleTrapElementFocus('Link 1')}
             style={{ margin: '0.5rem' }}
           >
             Link 1
-          </a>
+          </button>
           <input
             type="text"
             placeholder="Input 2"

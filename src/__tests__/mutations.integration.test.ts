@@ -233,14 +233,14 @@ describe('Mutation Integration - Bond and Trust Score Operations', () => {
     })
 
     test('ensures idempotency across identical retried requests', async () => {
-      let callCount = 0
+      let _callCount = 0
       const createdIds = new Set<string>()
       const address = 'GABCD1234567890'
       const key = createIdempotencyKey(`/trust-score/${address}`, 'PUT')
 
       const result1 = await trustScoreMutationManager.mutate(
         async () => {
-          callCount++
+          _callCount++
           const update = await mockUpdateTrustScore(address, 10)
           createdIds.add(update.address)
           return update
@@ -251,7 +251,7 @@ describe('Mutation Integration - Bond and Trust Score Operations', () => {
       // Retry with same key - should not create duplicate
       const result2 = await trustScoreMutationManager.mutate(
         async () => {
-          callCount++
+          _callCount++
           const update = await mockUpdateTrustScore(address, 10)
           createdIds.add(update.address)
           return update

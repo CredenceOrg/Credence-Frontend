@@ -222,8 +222,10 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
   const watcherStopRef = useRef<(() => void) | null>(null)
   const connectInFlightRef = useRef(false)
   const settingsNetworkRef = useRef(_settingsNetwork)
+  // eslint-disable-next-line react-hooks/refs -- pattern: keep ref in sync with prop during render so effects/callbacks read the latest value without stale closure
   settingsNetworkRef.current = _settingsNetwork
   const activeAdapterIdRef = useRef(adapterId)
+  // eslint-disable-next-line react-hooks/refs -- pattern: keep ref in sync with state during render so async callbacks read the latest adapter id
   activeAdapterIdRef.current = adapterId
   const walletStateRef = useRef<{ address: string; network: CredenceNetwork | null }>({
     address: '',
@@ -438,40 +440,27 @@ export function useWallet(_settingsNetwork: string): UseWalletState {
     let cancelled = false
 
     async function restoreSession() {
-      // Validate/migrate storage, and use the persisted adapter id if present.
-      const persisted = readPersistedWalletSession()
-      const restoreAdapterId = persisted?.adapterId ?? readPersistedAdapterId()
-      const adapter = getWalletAdapter(restoreAdapterId)
-      activeAdapterIdRef.current = adapter.id
-      setAdapterId(adapter.id)
-
-      const installed = await adapter.isInstalled()
-      if (!installed || cancelled) return
-
-      const existingAddress = await adapter.getAddress()
-      if (!existingAddress || cancelled) return
-
-      const restoredNetwork = await adapter.getNetwork()
-      if (!cancelled) {
-        applyWalletState(
-          { address: existingAddress, network: restoredNetwork },
-          { adapterId: adapter.id }
-        )
-        await startWatcher(adapter)
       try {
-        // Validate/migrate storage, but Freighter's currently allowed state is authoritative.
-        readPersistedWalletSession()
+        // Validate/migrate storage, and use the persisted adapter id if present.
+        const persisted = readPersistedWalletSession()
+        const restoreAdapterId = persisted?.adapterId ?? readPersistedAdapterId()
+        const adapter = getWalletAdapter(restoreAdapterId)
+        activeAdapterIdRef.current = adapter.id
+        setAdapterId(adapter.id)
 
-        const installed = await checkFreighterInstalled()
+        const installed = await adapter.isInstalled()
         if (!installed || cancelled) return
 
-        const existingAddress = await fetchFreighterAddress()
+        const existingAddress = await adapter.getAddress()
         if (!existingAddress || cancelled) return
 
-        const restoredNetwork = await fetchFreighterNetwork()
+        const restoredNetwork = await adapter.getNetwork()
         if (!cancelled) {
-          applyWalletState({ address: existingAddress, network: restoredNetwork })
-          await startWatcher()
+          applyWalletState(
+            { address: existingAddress, network: restoredNetwork },
+            { adapterId: adapter.id }
+          )
+          await startWatcher(adapter)
         }
       } finally {
         if (!cancelled) {

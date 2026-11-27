@@ -33,9 +33,9 @@ describe('eslint.config.js', () => {
       const _unused = 2;
     `, { filePath: 'test.ts' });
     
-    const errors = results[0].messages.filter(m => m.ruleId === '@typescript-eslint/no-unused-vars');
-    expect(errors.length).toBe(1);
-    expect(errors[0].message).toContain("'unused' is assigned a value but never used");
+    const _errors = results[0].messages.filter(m => m.ruleId === '@typescript-eslint/no-unused-vars');
+    expect(_errors.length).toBe(1);
+    expect(_errors[0].message).toContain("'unused' is assigned a value but never used");
   });
   
   it('should parse valid node mjs without errors', async () => {
@@ -45,7 +45,6 @@ describe('eslint.config.js', () => {
       console.log(fs);
     `, { filePath: 'test.mjs' });
     
-    const errors = results[0].messages.filter(m => m.severity === 2);
     // console might be allowed, but we just check it doesn't fail parsing.
     const parseErrors = results[0].messages.filter(m => m.fatal);
     expect(parseErrors.length).toBe(0);

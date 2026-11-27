@@ -156,7 +156,7 @@ describe('useMutation', () => {
       // Calling mutate after unmount should not crash, but state updates will be ignored
       try {
         await mutateFn(async () => 'result')
-      } catch (e) {
+      } catch (_e) {
         // Error is ok, we're just testing it doesn't crash the test
       }
 

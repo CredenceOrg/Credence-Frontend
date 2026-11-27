@@ -1,7 +1,6 @@
 import { HORIZON_URLS } from '../lib/horizon'
 
 const SCRIPT_SRC = "'self'"
-const STYLE_SRC = "'self' 'unsafe-inline'"
 const DEV_CONNECT_SRC = ["'self'", 'ws://localhost:*'] as const
 const PRODUCTION_API_ORIGIN = 'https://api.credence.org'
 

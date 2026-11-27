@@ -81,6 +81,7 @@ export default function AddressDisplay({
       <TooltipOnOverflow content={safeAddress} forceShow>
         <code
           className="address-display__address"
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- <code> is keyboard-focusable for copy-on-focus UX
           tabIndex={0}
           title={safeAddress}
           onMouseEnter={() => setIsHovered(true)}

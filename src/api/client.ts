@@ -546,7 +546,7 @@ async function parseResponse(response: Response): Promise<unknown> {
 }
 
 /** Maximum length of a server-provided error message we will surface verbatim. */
-const MAX_ERROR_MESSAGE_LENGTH = 500
+const _MAX_ERROR_MESSAGE_LENGTH = 500
 
 /**
  * Extracts a deterministic, safe, user-visible error message from a failed

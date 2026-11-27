@@ -63,6 +63,7 @@ function expandScientificNotation(value: string): string {
 }
 
 function stripControlCharacters(value: string): string {
+  // eslint-disable-next-line no-control-regex -- intentional: strips actual control characters from CSV export values
   return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
 }
 

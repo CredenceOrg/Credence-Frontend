@@ -11,7 +11,7 @@ import { emitWalletSessionEvent, generateCorrelationId } from '../lib/walletAudi
 import { clearAppLocalStorage } from '../lib/clearAppLocalStorage'
 import { getWalletAdapter } from '../lib/wallet/registry'
 import { createCrossTabBus, type CrossTabMessage, type CrossTabMessageType } from '../lib/crossTab'
-import { fetchFreighterAddress, requestFreighterAccess } from '../lib/freighterClient'
+import { } from '../lib/freighterClient'
 
 export type WalletContextValue = UseWalletState & {
   connected: boolean

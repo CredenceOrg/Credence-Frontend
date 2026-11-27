@@ -198,7 +198,7 @@ describe('useLocalStorage', () => {
     })
     it('handles undefined written value gracefully', () => {
       const { result } = renderHook(() => useLocalStorage(KEY, 'default'))
-      act(() => result.current[1](undefined as any))
+      act(() => result.current[1](undefined as unknown))
       expect(result.current[0]).toBe('default')
     })
   })

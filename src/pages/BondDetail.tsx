@@ -15,7 +15,7 @@ import ConnectWalletDialog from '../components/ConnectWalletDialog'
 import { computeWithdrawBreakdown, calcUnlockDate, calcTimeRemaining, calcLockStartDate, type Bond } from '../lib/bondPenalty'
 import './BondDetail.css'
 
-const mockBonds: Bond[] = [
+const _mockBonds: Bond[] = [
   { id: 1, amountUsdc: 1000, status: 'locked', durationDays: 30 },
   { id: 2, amountUsdc: 500, status: 'grace-period', durationDays: 90 },
   { id: 3, amountUsdc: 750, status: 'active', durationDays: 180 },

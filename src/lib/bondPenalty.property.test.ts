@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import fc from 'fast-check'
 import * as penalty from './bondPenalty'
 
-const RUNS = { numRuns: 200 }
 
 
 describe('bondPenalty property tests', () => {

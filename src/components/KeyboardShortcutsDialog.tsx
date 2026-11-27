@@ -140,7 +140,7 @@ export default function KeyboardShortcutsDialog({
   if (!open) return null
 
   return createPortal(
-    <div className="shortcuts-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
+    <div className="shortcuts-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={true}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -148,7 +148,6 @@ export default function KeyboardShortcutsDialog({
         aria-labelledby={titleId}
         aria-describedby={descId}
         className="shortcuts-dialog"
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="shortcuts-dialog__header">
           <h2 id={titleId} className="shortcuts-dialog__title">
@@ -172,7 +171,7 @@ export default function KeyboardShortcutsDialog({
           {hasShortcuts ? Array.from(grouped.entries()).map(([group, shortcuts]) => (
             <section key={group} className="shortcuts-dialog__group">
               <h3 className="shortcuts-dialog__group-heading">{group}</h3>
-              <ul className="shortcuts-dialog__list" role="list">
+              <ul className="shortcuts-dialog__list">
                 {shortcuts.map((shortcut) => (
                   <li key={shortcut.label} className="shortcuts-dialog__item">
                     <span className="shortcuts-dialog__label">{shortcut.label}</span>

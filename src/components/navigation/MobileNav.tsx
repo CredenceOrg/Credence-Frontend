@@ -194,7 +194,7 @@ function MobileNavInner() {
           </button>
         </div>
 
-        <ul className="mobileNav-links" role="list">
+        <ul className="mobileNav-links">
           {SECONDARY_NAV_LINKS.map(({ to, labelKey }) => (
             <li key={to}>
               <PrefetchNavLink

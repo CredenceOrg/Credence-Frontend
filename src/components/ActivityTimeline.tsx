@@ -110,16 +110,19 @@ export default function ActivityTimeline({
   // unauthorized partial detail remains open.
   useEffect(() => {
     if (expandedId !== null && !items.some((item) => item.id === expandedId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional derived-state sync: clears stale expandedId when item list changes
       setExpandedId(null)
     }
   }, [items, expandedId])
 
   // Reset expansion state when nonce changes to guarantee deterministic replay and idempotency protection.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset: nonce change signals a full state reload
     setExpandedId(null)
   }, [nonce])
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- section acts as composite keyboard widget; onKeyDown handles arrow-key navigation between timeline rows
     <section
       className={`activity-surface${compact ? ' activity-surface--compact' : ''}`}
       aria-label="Activity and attestations"
@@ -163,6 +166,7 @@ export default function ActivityTimeline({
                 : 'Show details'
             const statusPrefix = item.statusLabel ? `${item.statusLabel}. ` : ''
             return (
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events -- row click is a pointer convenience; primary keyboard activation is the inner disclosure button
               <li
                 className={rowClassName}
                 key={item.id}

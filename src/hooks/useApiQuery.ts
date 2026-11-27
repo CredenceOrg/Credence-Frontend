@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, ApiError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
-import { WIDGET_CACHE_DEFAULTS } from '../config/widgetCache'
-import { useSettings } from '../context/SettingsContext'
-import { useWallet } from '../context/WalletContext'
 import { QUERY_CACHE_TTLS } from '../config/queryCache'
 import { scrubPII } from '../lib/piiScrub'
 
@@ -16,10 +13,6 @@ interface CacheEntry<T> {
 }
 
 const cache = new Map<string, CacheEntry<unknown>>()
-
-function buildCacheKey(path: string, network: string, address: string): string {
-  return `${network}:${address || 'anon'}:${path}`
-}
 
 function getCacheEntry<T>(key: string): CacheEntry<T> | undefined {
   return cache.get(key) as CacheEntry<T> | undefined
@@ -62,6 +55,10 @@ function evictIfExpired<T>(key: string): CacheEntry<T> | undefined {
     return undefined
   }
   return entry
+}
+
+function makeCacheKey(path: string, identityKey?: string): string {
+  return identityKey === undefined ? path : `${path}\u0000${identityKey}`
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────
@@ -129,20 +126,6 @@ export function useApiQuery<T>(
   const [staleState, setStaleState] = useState(() => {
     const cached = evictIfExpired<T>(queryKey)
     return { key: queryKey, value: cached !== undefined && !isCacheFresh(queryKey, staleTimeMs) }
-  const { enabled = true, staleTimeMs = WIDGET_CACHE_DEFAULTS.STALE_TIME_MS } = options
-  const { network } = useSettings()
-  const { address } = useWallet()
-  const cacheKey = buildCacheKey(path, network, address)
-
-  const [data, setData] = useState<T | undefined>(() => {
-    const cached = getCacheEntry<T>(cacheKey)
-    return cached?.data
-  })
-  const [error, setError] = useState<ApiError | null>(null)
-  const [isLoading, setIsLoading] = useState<boolean>(enabled)
-  const [isStale, setIsStale] = useState<boolean>(() => {
-    const cached = getCacheEntry<T>(cacheKey)
-    return cached !== undefined && !isCacheFresh(cacheKey, staleTimeMs)
   })
 
   const mountedRef = useRef(true)
@@ -152,9 +135,6 @@ export function useApiQuery<T>(
   pathRef.current = path
   const identityKeyRef = useRef(identityKey)
   identityKeyRef.current = identityKey
-  const cacheKeyRef = useRef(cacheKey)
-  const prevCacheKeyRef = useRef(cacheKey)
-  cacheKeyRef.current = cacheKey
 
   // Cleanup: mark unmounted, abort any in-flight request
   useEffect(() => {
@@ -166,21 +146,6 @@ export function useApiQuery<T>(
     }
   }, [])
 
-  // Abort in-flight requests and reset state when network, address, or path changes
-  useEffect(() => {
-    if (prevCacheKeyRef.current === cacheKey) return
-    prevCacheKeyRef.current = cacheKey
-
-    abortRef.current?.abort('context-changed')
-    abortRef.current = null
-    runIdRef.current += 1
-
-    const cached = getCacheEntry<T>(cacheKey)
-    setData(cached?.data)
-    setIsStale(cached !== undefined && !isCacheFresh(cacheKey, staleTimeMs))
-    setError(null)
-  }, [cacheKey, staleTimeMs])
-
   const fetch = useCallback(
     async (bypassCache = false): Promise<void> => {
       const currentPath = pathRef.current
@@ -188,20 +153,6 @@ export function useApiQuery<T>(
       let serveStaleInBackground = false
 
       // Serve from cache unless bypassed
-      if (!bypassCache && isCacheFresh(currentQueryKey, staleTimeMs)) {
-        const cached = getCacheEntry<T>(currentQueryKey)
-      const currentKey = cacheKeyRef.current
-
-      // Serve from cache unless bypassed
-      const currentKey = cacheKeyRef.current
-
-      // Serve from cache unless bypassed
-      const currentKey = cacheKeyRef.current
-
-      // Serve from cache unless bypassed
-      if (!bypassCache && isCacheFresh(currentKey, staleTimeMs)) {
-        const cached = getCacheEntry<T>(currentKey)
-        if (cached) {
       if (!bypassCache) {
         const cached = evictIfExpired<T>(currentQueryKey)
         if (cached && isCacheFresh(currentQueryKey, staleTimeMs)) {
@@ -219,13 +170,6 @@ export function useApiQuery<T>(
         }
       } else {
         evictIfExpired<T>(currentQueryKey)
-      }
-
-      if (bypassCache) {
-        const cached = evictIfExpired<T>(currentQueryKey)
-        if (cached) {
-          setStaleState({ key: currentQueryKey, value: false })
-        }
       }
 
       // Offline guard
@@ -262,10 +206,6 @@ export function useApiQuery<T>(
           setCacheEntry(currentQueryKey, sanitized, ttlMs, gcTimeMs)
           setStaleState({ key: currentQueryKey, value: false })
           setErrorState(undefined)
-          setData(sanitized)
-          setCacheEntry(currentKey, sanitized)
-          setIsStale(false)
-          setError(null)
         }
       } catch (err) {
         if (controller.signal.aborted) return
@@ -283,7 +223,6 @@ export function useApiQuery<T>(
         }
       }
     },
-    [staleTimeMs, cacheKey]
     [staleTimeMs, ttlMs, gcTimeMs]
   )
 
@@ -310,10 +249,6 @@ export function useApiQuery<T>(
   return { data, isLoading, error, isStale, refetch: () => fetch(true) }
 }
 
-function makeCacheKey(path: string, identityKey?: string): string {
-  return identityKey === undefined ? path : `${path}\u0000${identityKey}`
-}
-
 /**
  * Invalidate a single cached entry so the next mount or refetch re-fetches.
  *
@@ -323,14 +258,6 @@ function makeCacheKey(path: string, identityKey?: string): string {
  * ```
  */
 export function invalidateApiQuery(path: string, identityKey?: string): void {
-  cache.delete(makeCacheKey(path, identityKey))
-export function invalidateApiQuery(path: string): void {
-  const suffix = `:${path}`
-  for (const key of cache.keys()) {
-    if (key === path || key.endsWith(suffix)) {
-      cache.delete(key)
-    }
-  }
   const key = makeCacheKey(path, identityKey)
   const entry = cache.get(key)
   if (entry) clearTimeout(entry.gcTimer)

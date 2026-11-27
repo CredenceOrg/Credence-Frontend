@@ -104,7 +104,7 @@ export default function WhatsNewDialog({ open, onClose, returnFocusRef }: WhatsN
       className="whats-new-dialog__backdrop"
       onMouseDown={handleBackdropMouseDown}
       onClick={handleBackdropClick}
-      aria-hidden={false}
+      aria-hidden={true}
     >
       <div
         ref={dialogRef}
@@ -112,7 +112,6 @@ export default function WhatsNewDialog({ open, onClose, returnFocusRef }: WhatsN
         aria-modal="true"
         aria-labelledby={titleId}
         className="whats-new-dialog"
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="whats-new-dialog__header">
           <div className="whats-new-dialog__title-container">

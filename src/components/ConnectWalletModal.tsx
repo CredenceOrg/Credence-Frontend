@@ -368,7 +368,7 @@ export default function ConnectWalletModal({
   const installUrl = selectedAdapter?.installUrl ?? 'https://www.freighter.app/'
 
   return createPortal(
-    <div className="connect-wallet-dialog__backdrop" onClick={handleBackdropClick}>
+    <div className="connect-wallet-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={true}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -377,7 +377,6 @@ export default function ConnectWalletModal({
         aria-describedby={descId}
         tabIndex={-1}
         className="connect-wallet-dialog"
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="connect-wallet-dialog__header">
           <h2 id={titleId} className="connect-wallet-dialog__title">

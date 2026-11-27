@@ -1,8 +1,7 @@
-import { ALL_NAV_LINKS, type NavLink } from './navLinks'
+import { ALL_NAV_LINKS } from './navLinks'
 
 export const DEFAULT_FALLBACK_ROUTE = '/dashboard'
 
-export interface NavigationLink extends NavLink {
 export const PUBLIC_ROUTES = ['/', '/trust', '/trust/summary', '/signin'] as const
 
 export const PRIVATE_ROUTES = [
@@ -31,14 +30,6 @@ export const NAV_LINKS = navigationLinks.filter((link) => link.to !== '/')
 export const NOT_FOUND_LINKS = navigationLinks.filter((link) => link.quickLinkIcon)
 export const SUGGESTION_ROUTES = navigationLinks.map((link) => link.to)
 const LABELS_BY_PATH = Object.fromEntries(navigationLinks.map(({ to, label }) => [to, label]))
-export const NAV_LINKS: NavigationLink[] = [
-  { to: '/dashboard', label: 'Dashboard', requiresWallet: true },
-  { to: '/bond', label: 'Bond', requiresWallet: true },
-  { to: '/trust', label: 'Trust Score', requiresWallet: false },
-  { to: '/attestations', label: 'Attestations', requiresWallet: true },
-  { to: '/transactions', label: 'Transactions', requiresWallet: true },
-  { to: '/settings', label: 'Settings', requiresWallet: true },
-]
 
 export interface ActionLauncherItem {
   id: string

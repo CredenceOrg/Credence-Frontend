@@ -32,6 +32,7 @@ export type TierValidationError = {
  * Validate the raw tier definitions derived from `TIERS` & `TIER_ORDER`.
  * Returns an array of errors – empty means the data is safe to use.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- tiers record values are dynamically shaped
 function validateTierData(order: TrustTier[], tiers: Record<TrustTier, any>): TierValidationError[] {
   const errors: TierValidationError[] = []
   const seen = new Set<TrustTier>()
@@ -83,6 +84,7 @@ function validateTierData(order: TrustTier[], tiers: Record<TrustTier, any>): Ti
  * Build the deterministic ladder after successful validation.
  * The function is pure and safe to memoise.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- tiers record values are dynamically shaped
 function buildTierLadder(order: TrustTier[], tiers: Record<TrustTier, any>): TierDefinition[] {
   return order.map((id) => {
     const t = tiers[id]

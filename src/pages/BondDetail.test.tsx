@@ -70,7 +70,7 @@ vi.mock('../components/ConfirmDialog', () => ({
       <div role="dialog" aria-label={title}>
         <h2>{title}</h2>
         <label htmlFor="confirm-input">Type CONFIRM</label>
-        <input id="confirm-input" type="text" role="textbox" aria-label="type confirm" />
+        <input id="confirm-input" type="text" aria-label="type confirm" />
         <button onClick={onCancel}>Cancel</button>
         <button onClick={onConfirm}>Withdraw bond</button>
       </div>

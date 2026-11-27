@@ -59,34 +59,6 @@ export interface AppProps {
 export function App({ children, errorFallback, loadingFallback }: AppProps = {}) {
   return (
     <BrowserRouter>
-      <WidgetCacheProvider>
-        <SettingsProvider>
-          <ToastProvider>
-            <WalletProvider>
-              <ErrorBoundary fallback={errorFallback}>
-                <Suspense
-                  fallback={
-                    loadingFallback ?? (
-                      <div role="status" aria-live="polite">
-                        Loading...
-                      </div>
-                    )
-                  }
-                >
-                  {children ?? (
-                    <Routes>
-                      <Route path="/" element={<Layout />}>
-                        <Route index element={<Home />} />
-                        <Route path="trust" element={<TrustScore />} />
-                        <Route path="trust/summary" element={<TrustSummary />} />
-                        <Route path="trust/:address" element={<TrustScore />} />
-                        <Route path="attestations" element={<Attestations />} />
-                        <Route path="transactions" element={<Transactions />} />
-                        <Route path="settings" element={<Settings />} />
-                        <Route path="test-amount-input" element={<AmountInputTestPage />} />
-                        <Route path="signin" element={<SignIn />} />
-                        <Route path="test-amount-input" element={<AmountInputTestPage />} />
-                        <Route element={<RequireWallet />}>
       <FeatureFlagProvider>
         <WidgetCacheProvider>
           <SettingsProvider>
@@ -106,6 +78,9 @@ export function App({ children, errorFallback, loadingFallback }: AppProps = {})
                       <Routes>
                         <Route path="/" element={<Layout />}>
                           <Route index element={<Home />} />
+                          <Route path="trust" element={<TrustScore />} />
+                          <Route path="trust/summary" element={<TrustSummary />} />
+                          <Route path="trust/:address" element={<TrustScore />} />
                           <Route path="dashboard" element={<Dashboard />} />
                           <Route path="bond" element={<Bond />} />
                           <Route path="bond/new" element={<CreateBondPage />} />
@@ -113,29 +88,10 @@ export function App({ children, errorFallback, loadingFallback }: AppProps = {})
                           <Route path="attestations" element={<Attestations />} />
                           <Route path="transactions" element={<Transactions />} />
                           <Route path="settings" element={<Settings />} />
-                        </Route>
-                        {import.meta.env.DEV && ToastTest && (
-                          <Route path="dev/toasts" element={<ToastTest />} />
-                        )}
-                        <Route path="*" element={<NotFound />} />
-                      </Route>
-                    </Routes>
-                  )}
-                </Suspense>
-                <BreakpointOverlay />
-                <DebugOverlay />
-              </ErrorBoundary>
-            </WalletProvider>
-          </ToastProvider>
-        </SettingsProvider>
-      </WidgetCacheProvider>
-                          <Route path="trust" element={<TrustScore />} />
-                          <Route path="trust/summary" element={<TrustSummary />} />
-                          <Route path="attestations" element={<Attestations />} />
-                          <Route path="transactions" element={<Transactions />} />
-                          <Route path="settings" element={<Settings />} />
                           <Route path="test-amount-input" element={<AmountInputTestPage />} />
                           <Route path="signin" element={<SignIn />} />
+                          <Route element={<RequireWallet />}>
+                          </Route>
                           {import.meta.env.DEV && ToastTest && (
                             <Route path="dev/toasts" element={<ToastTest />} />
                           )}

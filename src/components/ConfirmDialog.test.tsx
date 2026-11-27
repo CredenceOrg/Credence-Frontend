@@ -805,7 +805,7 @@ describe('ConfirmDialog', () => {
 describe('ConfirmDialog - failure boundary coverage', () => {
   it('handles promise rejection internally without closing', async () => {
     const user = userEvent.setup()
-    let rejectPromise: any
+    let rejectPromise: unknown
     const promise = new Promise<void>((_, reject) => { rejectPromise = reject })
     const onConfirm = vi.fn().mockReturnValue(promise)
     renderDialog({ onConfirm })

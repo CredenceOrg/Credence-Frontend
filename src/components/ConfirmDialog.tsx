@@ -215,7 +215,7 @@ export default function ConfirmDialog({
       className="confirm-dialog__backdrop"
       onClick={handleBackdropClick}
       onMouseDown={(e) => e.stopPropagation()}
-      aria-hidden={false}
+      aria-hidden={true}
     >
       <div
         ref={dialogRef}
@@ -224,7 +224,6 @@ export default function ConfirmDialog({
         aria-labelledby={titleId}
         aria-describedby={descId}
         className={`confirm-dialog confirm-dialog--${variant}`}
-        onClick={(e) => e.stopPropagation()}
       >
         <div id={announcementId} className="sr-only" aria-live="assertive" aria-atomic="true">
           {announcement}

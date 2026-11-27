@@ -352,18 +352,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     quietHoursEnabled !== originalSettings.quietHoursEnabled ||
     quietHoursStart !== originalSettings.quietHoursStart ||
     quietHoursEnd !== originalSettings.quietHoursEnd ||
-    unlockRemindersEnabled !== originalSettings.unlockRemindersEnabled
+    unlockRemindersEnabled !== originalSettings.unlockRemindersEnabled ||
+    locale !== originalSettings.locale
 
   const saveSettings = (next?: SettingsPayload) => {
     // A caller that just changed state in the same event handler cannot rely on
     // the render closure (React batches updates), so prefer the explicit payload
     // when one is supplied. Omitting it commits the current context state.
     const payload: SettingsPayload = next ?? {
-    locale !== originalSettings.locale
-
-  // Auto-persist any draft change immediately so values survive a page reload.
-  useEffect(() => {
-    setPersistedSettings({
       themeMode,
       network,
       addressDisplay,
@@ -373,6 +369,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       quietHoursStart,
       quietHoursEnd,
       unlockRemindersEnabled,
+      locale,
     }
 
     setThemeMode(payload.themeMode)
@@ -384,33 +381,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setQuietHoursStart(payload.quietHoursStart)
     setQuietHoursEnd(payload.quietHoursEnd)
     setUnlockRemindersEnabled(payload.unlockRemindersEnabled)
-      locale,
-    })
-  }, [
-    themeMode,
-    network,
-    addressDisplay,
-    toastsEnabled,
-    autoDismiss,
-    quietHoursEnabled,
-    quietHoursStart,
-    quietHoursEnd,
-    locale,
-    setPersistedSettings,
-  ])
-
-  const saveSettings = () => {
-    const payload: PersistedSettings = {
-      themeMode,
-      network,
-      addressDisplay,
-      toastsEnabled,
-      autoDismiss,
-      quietHoursEnabled,
-      quietHoursStart,
-      quietHoursEnd,
-      locale,
-    }
     setPersistedSettings(payload)
     setOriginalSettings(payload)
     if (typeof window !== 'undefined') {
@@ -463,7 +433,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(createTypedCustomEvent(SETTINGS_EVENTS.UPDATED, defaults))
     }
-    saveSettings({ ...DEFAULT_SETTINGS })
   }
 
   const cancelSettings = () => {

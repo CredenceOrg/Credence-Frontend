@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import './Badge.css'
 import TooltipOnOverflow from './TooltipOnOverflow'
 import { Component, type ReactNode, type ErrorInfo } from 'react'

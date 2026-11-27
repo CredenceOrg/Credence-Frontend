@@ -29,7 +29,6 @@ vi.mock('../lib/identityEpoch', () => ({
 const STORAGE_KEY = 'credence:settings'
 const mockedUpdateSettings = vi.mocked(updateSettings)
 const mockedGetIdentityEpoch = vi.mocked(getIdentityEpoch)
-=======
 
 const DEFAULTS: SettingsPayload = {
   themeMode: 'system',

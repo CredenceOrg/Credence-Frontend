@@ -252,7 +252,7 @@ export default function WalletConnect({
           ref={menuRef}
           id={menuId}
           className="walletConnect__menu"
-          role="menu"
+          role="menu" tabIndex={0}
           aria-label="Wallet actions"
           onKeyDown={onMenuKeyDown}
         >

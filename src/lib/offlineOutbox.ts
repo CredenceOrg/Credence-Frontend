@@ -149,7 +149,7 @@ function setStatus(status: OfflineOutboxStatus): void {
   }
 }
 
-function refreshStatus(): void {
+function _refreshStatus(): void {
   const state = dropStaleEpochs(readState());
   setStatus(computeStatus(state));
 }

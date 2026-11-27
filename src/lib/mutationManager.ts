@@ -415,6 +415,7 @@ export class MutationManager<T = unknown> {
                 nextRetryDelayMs: nextDelayMs,
               })
 
+              // eslint-disable-next-line no-useless-catch -- catch documents the abort-signal intent; rethrow is intentional
               try {
                 await delay(nextDelayMs, state.abortController.signal)
               } catch (delayErr) {

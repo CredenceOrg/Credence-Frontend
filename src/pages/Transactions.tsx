@@ -84,9 +84,8 @@ export default function Transactions() {
   }
 
   const { network: settingsNetwork } = useSettings()
-  const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage, pendingTimeouts } =
   const { address: walletAddress, network: walletNetwork } = useWallet()
-  const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage } =
+  const { data, isLoading, error, refetch, page, totalPages, hasNextPage, goToPage, prefetchPage, pendingTimeouts } =
     useTransactions()
   const { addToast } = useToast()
   const [filter, setFilter] = useState<StatusFilter>('all')

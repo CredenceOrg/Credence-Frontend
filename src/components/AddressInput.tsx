@@ -175,7 +175,9 @@ export default function AddressInput({
   value,
   onChange,
   onValidationChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- prop reserved for future disabled state handling
   disabled = false,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- prop reserved for future loading state UI
   isLoading = false,
   className = '',
   error: externalError,
@@ -457,6 +459,7 @@ export default function AddressInput({
                     aria-selected={isActive}
                     className={`address-input-book-option ${isActive ? 'address-input-book-option--active' : ''}`}
                     onMouseEnter={() => setActiveIndex(idx)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSelectEntry(entry.address) }}
                     onClick={() => handleSelectEntry(entry.address)}
                   >
                     <span className="address-input-book-option-label">{entry.label}</span>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { apiFetch, ApiError, ApiSessionConflictError, getIdentityEpoch } from '../api/client'
 import type { ApiResponse, operations, Transaction } from '../api/types'
-import { validateTransactionList } from '../api/validators'
 import { getTransaction } from '../lib/horizon'
 import { useWallet } from '../context/WalletContext'
 import { useSettings } from '../context/SettingsContext'
@@ -55,6 +54,7 @@ export interface FetchedPage {
 interface InFlightPage {
   controller: AbortController
   promise: Promise<FetchedPage | null>
+}
 /**
  * Fetch a single cursor page of transactions using the shared `PAGE_SIZE`
  * and active identity epoch. Reused by both `useTransactions` and full-history
@@ -182,20 +182,6 @@ export function useTransactions(): UseTransactionsResult {
       if (pageNum > 1 && cursor === undefined) {
         return null
       }
-
-      const params = new URLSearchParams()
-      params.set('limit', String(PAGE_SIZE))
-      if (cursor) {
-        params.set('cursor', cursor)
-      }
-
-      const epoch = getIdentityEpoch()
-
-      const result = await apiFetch<TransactionsResponse>(`/transactions?${params.toString()}`, {
-        signal,
-        identityEpoch: epoch,
-        validate: validateTransactionList,
-      })
 
       // A response that lands after abort (refetch / unmount / superseded
       // navigation) must not be written into a cache that may already have

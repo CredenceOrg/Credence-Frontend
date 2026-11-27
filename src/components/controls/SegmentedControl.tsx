@@ -34,7 +34,7 @@ export function resolveDirection(element: HTMLElement | null): 'ltr' | 'rtl' {
 /**
  * SegmentedControl — a pill-strip of mutually exclusive options.
  *
- * Renders as a `role="radiogroup"` containing individual `role="radio"`
+ * Renders as a `role="radiogroup" tabIndex={0}` containing individual `role="radio"`
  * buttons so screen readers correctly announce the group label and current
  * selection.
  *
@@ -126,7 +126,7 @@ export default function SegmentedControl<T extends string = string>({
       ref={groupRef}
       id={id}
       className="control-segmented"
-      role="radiogroup"
+      role="radiogroup" tabIndex={0}
       aria-label={ariaLabel}
       aria-disabled={disabled || undefined}
       onKeyDown={handleKeyDown}

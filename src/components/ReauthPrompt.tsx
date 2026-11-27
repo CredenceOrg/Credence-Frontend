@@ -65,7 +65,7 @@ export default function ReauthPrompt({
   if (!open) return null
 
   return createPortal(
-    <div className="confirm-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
+    <div className="confirm-dialog__backdrop" onClick={handleBackdropClick} aria-hidden={true}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -73,7 +73,6 @@ export default function ReauthPrompt({
         aria-labelledby={titleId}
         aria-describedby={descId}
         className="confirm-dialog confirm-dialog--info"
-        onClick={(e) => e.stopPropagation()}
       >
         <div id={announcementId} className="sr-only" aria-live="assertive" aria-atomic="true">
           Re-authentication required

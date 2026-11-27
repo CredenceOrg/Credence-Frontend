@@ -96,6 +96,7 @@ export default function ActionLauncher({
 
   useEffect(() => {
     if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset: clearing query when launcher opens is a synchronous derived-state pattern, not a cascade
     setQuery('')
   }, [open])
 
@@ -158,7 +159,8 @@ export default function ActionLauncher({
   if (!open) return null
 
   return createPortal(
-    <div className="action-launcher__backdrop" onClick={handleBackdropClick} aria-hidden={false}>
+    // The backdrop is aria-hidden; keyboard close is owned by useFocusTrap's Escape handler
+    <div className="action-launcher__backdrop" onClick={handleBackdropClick} aria-hidden={true}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -166,7 +168,6 @@ export default function ActionLauncher({
         aria-labelledby={titleId}
         aria-describedby={descId}
         className="action-launcher"
-        onClick={(event) => event.stopPropagation()}
       >
         <header className="action-launcher__header">
           <div>

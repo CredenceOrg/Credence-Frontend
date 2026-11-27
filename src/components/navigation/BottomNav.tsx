@@ -31,7 +31,7 @@ export default function BottomNav() {
 
   return (
     <nav className="bottomNav" aria-label="Bottom navigation">
-      <ul className="bottomNav-list" role="list">
+      <ul className="bottomNav-list">
         {PRIMARY_NAV_LINKS.map(({ to, labelKey, ariaLabel }) => (
           <li key={to} className="bottomNav-item">
             <NavLink

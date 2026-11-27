@@ -1,6 +1,7 @@
 import { ComponentType } from 'react'
 import { lazyWithRetry } from '../lib/lazyWithRetry'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ComponentType<any> matches React.lazy return type
 export type PreloadFn = () => Promise<{ default: ComponentType<any> }>
 
 export const Home = lazyWithRetry(() => import('../pages/Home'))

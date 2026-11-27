@@ -143,7 +143,9 @@ describe('TooltipOnOverflow', () => {
     stubCreateElement(OVERFLOWING.scroll, OVERFLOWING.offset)
     render(
       <TooltipOnOverflow content="Full text here">
-        <span data-testid="child" tabIndex={0}>
+        <span data-testid="child"
+ // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- test fixture
+ tabIndex={0}>
           Truncated...
         </span>
       </TooltipOnOverflow>
@@ -164,7 +166,9 @@ describe('TooltipOnOverflow', () => {
     stubCreateElement(OVERFLOWING.scroll, OVERFLOWING.offset)
     render(
       <TooltipOnOverflow content="Full text here">
-        <span data-testid="child" tabIndex={0}>
+        <span data-testid="child"
+ // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- test fixture
+ tabIndex={0}>
           Truncated...
         </span>
       </TooltipOnOverflow>
@@ -189,7 +193,9 @@ describe('TooltipOnOverflow', () => {
     stubCreateElement(OVERFLOWING.scroll, OVERFLOWING.offset)
     render(
       <TooltipOnOverflow content="Full text here">
-        <span data-testid="child" tabIndex={0}>
+        <span data-testid="child"
+ // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- test fixture
+ tabIndex={0}>
           Truncated...
         </span>
       </TooltipOnOverflow>
@@ -213,7 +219,9 @@ describe('TooltipOnOverflow', () => {
     stubCreateElement(OVERFLOWING.scroll, OVERFLOWING.offset)
     render(
       <TooltipOnOverflow content="Full text here">
-        <span data-testid="child" tabIndex={0}>
+        <span data-testid="child"
+ // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- test fixture
+ tabIndex={0}>
           Truncated...
         </span>
       </TooltipOnOverflow>
@@ -375,7 +383,9 @@ describe('TooltipOnOverflow', () => {
       stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
       render(
         <TooltipOnOverflow content="Full tooltip content" forceShow>
-          <span data-testid="child" tabIndex={0}>
+          <span data-testid="child"
+ // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- test fixture
+ tabIndex={0}>
             Short text
           </span>
         </TooltipOnOverflow>
@@ -409,7 +419,9 @@ describe('TooltipOnOverflow', () => {
       stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
       render(
         <TooltipOnOverflow content="Full tooltip content" forceShow>
-          <span data-testid="child" tabIndex={0}>
+          <span data-testid="child"
+ // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- test fixture
+ tabIndex={0}>
             Short text
           </span>
         </TooltipOnOverflow>
@@ -433,7 +445,9 @@ describe('TooltipOnOverflow', () => {
       stubCreateElement(NOT_OVERFLOWING.scroll, NOT_OVERFLOWING.offset)
       render(
         <TooltipOnOverflow content="Full tooltip content" forceShow>
-          <span data-testid="child" tabIndex={0}>
+          <span data-testid="child"
+ // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- test fixture
+ tabIndex={0}>
             Short text
           </span>
         </TooltipOnOverflow>

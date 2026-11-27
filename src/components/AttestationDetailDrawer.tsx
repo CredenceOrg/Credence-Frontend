@@ -120,7 +120,7 @@ export default function AttestationDetailDrawer({
       className="attestationDrawer__backdrop"
       onMouseDown={handleBackdropMouseDown}
       onClick={handleBackdropClick}
-      aria-hidden={false}
+      aria-hidden={true}
     >
       <div
         ref={dialogRef}
@@ -128,7 +128,6 @@ export default function AttestationDetailDrawer({
         aria-modal="true"
         aria-labelledby={titleId}
         className="attestationDrawer"
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="attestationDrawer__header">
           <div className="attestationDrawer__titleBlock">

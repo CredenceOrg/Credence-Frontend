@@ -207,7 +207,7 @@ export default function SpeedDial({ actions = DEFAULT_ACTIONS }: SpeedDialProps)
         id={listId}
         ref={listRef}
         className={`speedDial__actions${isOpen ? ' speedDial__actions--open' : ''}`}
-        role="list"
+       
         aria-label="Quick action menu"
       >
         {actions.map((action) => (

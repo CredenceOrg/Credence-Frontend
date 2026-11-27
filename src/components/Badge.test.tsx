@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test file: intentional wrong-type casts to verify error boundaries */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { render, screen } from '@testing-library/react'

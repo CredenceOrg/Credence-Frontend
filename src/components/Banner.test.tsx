@@ -313,7 +313,6 @@ describe('Banner', () => {
       // This is the security-critical path: a javascript: action href must never
       // result in a new browsing context or relaxed referrer policy.
       render(
-        // eslint-disable-next-line no-script-url
         <Banner severity="info" action={{ label: 'XSS', href: 'javascript:alert(1)' }}>
           Message
         </Banner>

@@ -55,6 +55,7 @@ export default function CopyableHash({
       : 'https://stellar.expert/explorer/public'
 
   const explorerPath = kind === 'address' ? `/account/${hash}` : `/tx/${hash}`
+  // eslint-disable-next-line no-useless-assignment -- reassigned intentionally based on feature flag
   const explorerHref = `${explorerBaseUrl}${explorerPath}`
   const explorerHref = explorerUrl(network, hash, kind)
 
